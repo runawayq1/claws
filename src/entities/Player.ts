@@ -123,6 +123,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   baseSpeedCache = 0
 
   private touchTarget: Phaser.Math.Vector2 | null = null
+  private _shadow!: Phaser.GameObjects.Ellipse
   private lastAttackTime = 0
   private isAttacking = false
   private isDead = false
@@ -247,6 +248,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.setCollideWorldBounds(true)
     this.setDepth(10)
+
+    // Shadow under hero — dark ellipse at feet level
+    const shadowBody = this.body as Phaser.Physics.Arcade.Body
+    const shadow = scene.add.ellipse(x, shadowBody.bottom, 40, 16, 0x000000, 0.35).setDepth(9)
+    scene.tweens.add({
+      targets: shadow,
+      scaleX: { from: 0.9, to: 1.1 },
+      scaleY: { from: 0.85, to: 1.05 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    })
+    this._shadow = shadow
 
     // Player can't be pushed by enemies
     const body = this.body as Phaser.Physics.Arcade.Body
@@ -1462,12 +1477,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= explodeRadius) {
             (e as any).takeDamage(effectiveDmg, 'fire')
 
-            // Backdraft: knockback enemies from explosion center
-            if (this.hasBackdraft) {
-              const kb = Phaser.Math.Angle.Between(tx, ty, e.x, e.y)
-              const body = e.body as Phaser.Physics.Arcade.Body
-              if (body) body.setVelocity(Math.cos(kb) * 200, Math.sin(kb) * 200)
-            }
+            // Base fireball knockback (Backdraft upgrades to 300)
+            const kb = Phaser.Math.Angle.Between(tx, ty, e.x, e.y)
+            const body = e.body as Phaser.Physics.Arcade.Body
+            const kbForce = this.hasBackdraft ? 300 : 120
+            if (body) body.setVelocity(Math.cos(kb) * kbForce, Math.sin(kb) * kbForce)
 
             // Wildfire: kill triggers mini-explosion on nearby enemies
             if (this.hasWildfire) {
@@ -2707,6 +2721,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   update(_time: number, delta: number) {
     if (this.isDead) return
+
+    // Shadow follows player — at feet level
+    if (this._shadow) {
+      const body = this.body as Phaser.Physics.Arcade.Body
+      this._shadow.setPosition(this.x, body.bottom)
+    }
 
     if (this.hpRegen > 0 && this.hp < this.maxHp) {
       this.hp = Math.min(this.maxHp, this.hp + this.hpRegen * (delta / 1000))

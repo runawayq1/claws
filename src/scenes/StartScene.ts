@@ -33,6 +33,7 @@ export class StartScene extends Phaser.Scene {
   private circles: Phaser.GameObjects.Graphics[] = []
   private selectedIndex = -1
   private playerName = ''
+  private selectedMap: 'GameScene' | 'UndeadMapScene' = 'GameScene'
 
   constructor() {
     super({ key: 'StartScene' })
@@ -47,6 +48,9 @@ export class StartScene extends Phaser.Scene {
       if (!this.textures.exists(key)) {
         this.load.spritesheet(key, hero.asset, { frameWidth: hero.fw, frameHeight: hero.fh })
       }
+    }
+    if (!this.textures.exists('book_anim')) {
+      this.load.spritesheet('book_anim', 'assets/book/book_anim.png', { frameWidth: 542, frameHeight: 542 })
     }
   }
 
@@ -107,15 +111,96 @@ export class StartScene extends Phaser.Scene {
       }
     })
 
-    // Encyclopedia button
-    const encBtn = this.add.text(width / 2 - (compact ? 52 : 72), compact ? height - 14 : height * 0.92, 'ENCYCLOPEDIA', {
-      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
-      backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
-    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
-    encBtn.on('pointerover', () => encBtn.setColor('#d4b483'))
-    encBtn.on('pointerout', () => encBtn.setColor('#888888'))
-    encBtn.on('pointerdown', () => this.scene.start('EncyclopediaScene'))
+    // Encyclopedia book icon (bottom-right) with decorative frame
+    const bookSize = compact ? 64 : 90
+    const framePad = bookSize / 2 + 16   // enough margin so pentagon + label fits
+    const frameX = width - framePad
+    const frameY = height - framePad - (compact ? 10 : 18)
+
+    // Pentagon geometry
+    const fr = bookSize / 2 + 8
+
+    // Helper: draw pentagon frame at given brightness
+    const drawFrame = (bright: boolean) => {
+      frameG.clear()
+      frameG.fillStyle(0x3a6ea5, bright ? 0.25 : 0.15)
+      frameG.beginPath(); frameG.moveTo(pts[0].x, pts[0].y)
+      pts.forEach((p, i) => { if (i > 0) frameG.lineTo(p.x, p.y) }); frameG.closePath(); frameG.fillPath()
+      frameG.lineStyle(bright ? 2.5 : 2, bright ? 0x7db4e0 : 0x5b8cb8, bright ? 0.9 : 0.7)
+      frameG.beginPath(); frameG.moveTo(pts[0].x, pts[0].y)
+      pts.forEach((p, i) => { if (i > 0) frameG.lineTo(p.x, p.y) }); frameG.closePath(); frameG.strokePath()
+      frameG.lineStyle(1, 0xd4b483, bright ? 0.5 : 0.35)
+      frameG.beginPath(); frameG.moveTo(iPts[0].x, iPts[0].y)
+      iPts.forEach((p, i) => { if (i > 0) frameG.lineTo(p.x, p.y) }); frameG.closePath(); frameG.strokePath()
+      pts.forEach(p => { frameG.fillStyle(bright ? 0xffd700 : 0xd4b483, bright ? 0.8 : 0.6); frameG.fillCircle(p.x, p.y, bright ? 3 : 2.5) })
+    }
+
+    const frameG = this.add.graphics().setDepth(9)
+    const pts = [
+      { x: frameX, y: frameY - fr },
+      { x: frameX + fr, y: frameY - fr * 0.35 },
+      { x: frameX + fr * 0.7, y: frameY + fr * 0.85 },
+      { x: frameX - fr * 0.7, y: frameY + fr * 0.85 },
+      { x: frameX - fr, y: frameY - fr * 0.35 },
+    ]
+    const ir = fr - 5
+    const iPts = [
+      { x: frameX, y: frameY - ir },
+      { x: frameX + ir, y: frameY - ir * 0.35 },
+      { x: frameX + ir * 0.7, y: frameY + ir * 0.85 },
+      { x: frameX - ir * 0.7, y: frameY + ir * 0.85 },
+      { x: frameX - ir, y: frameY - ir * 0.35 },
+    ]
+    drawFrame(false)
+
+    // Book animations
+    if (!this.anims.exists('book_open')) {
+      this.anims.create({ key: 'book_open', frames: this.anims.generateFrameNumbers('book_anim', { start: 11, end: 0 }), frameRate: 18, repeat: 0 })
+    }
+    if (!this.anims.exists('book_close')) {
+      this.anims.create({ key: 'book_close', frames: this.anims.generateFrameNumbers('book_anim', { start: 0, end: 11 }), frameRate: 18, repeat: 0 })
+    }
+
+    // Book sprite centered in pentagon
+    const bookSprite = this.add.sprite(frameX, frameY, 'book_anim', 11)
+      .setDisplaySize(bookSize, bookSize)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(10)
+
+    // Label under the frame
+    const labelY = frameY + fr * 0.85 + 8
+    const bookLabel = this.add.text(frameX, labelY, 'Encyclopedia', {
+      fontFamily: 'monospace', fontSize: compact ? '8px' : '10px',
+      color: '#888888', stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(10)
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+
+    if (!isMobile) {
+      // Desktop: hover opens/closes, click goes straight
+      bookSprite.on('pointerover', () => {
+        bookSprite.play('book_open')
+        bookLabel.setColor('#d4b483')
+        drawFrame(true)
+      })
+      bookSprite.on('pointerout', () => {
+        bookSprite.play('book_close')
+        bookLabel.setColor('#888888')
+        drawFrame(false)
+      })
+      bookSprite.on('pointerdown', () => {
+        this.scene.start('EncyclopediaScene')
+      })
+    } else {
+      // Mobile: tap plays open animation, then transitions
+      bookSprite.on('pointerdown', () => {
+        bookSprite.disableInteractive()
+        bookSprite.play('book_open')
+        bookSprite.once('animationcomplete', () => {
+          this.scene.start('EncyclopediaScene')
+        })
+      })
+    }
 
     // Profile button
     const profileBtn = this.add.text(width / 2 + (compact ? 52 : 72), compact ? height - 14 : height * 0.92, 'PROFILE', {
@@ -126,6 +211,29 @@ export class StartScene extends Phaser.Scene {
     profileBtn.on('pointerover', () => profileBtn.setColor('#FFD700'))
     profileBtn.on('pointerout', () => profileBtn.setColor('#888888'))
     profileBtn.on('pointerdown', () => this.scene.start('ProfileScene'))
+
+    // Map selector — toggle between Grasslands and Undead map
+    this.selectedMap = 'GameScene'
+    const mapBtnY = compact ? height - 14 : height * 0.92
+    const mapBtnX = width / 2 - (compact ? 52 : 72)
+    const mapBtn = this.add.text(mapBtnX, mapBtnY, 'MAP: GRASSLANDS', {
+      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
+      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
+    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    const updateMapBtn = () => {
+      if (this.selectedMap === 'UndeadMapScene') {
+        mapBtn.setText('MAP: UNDEAD').setColor('#aa88ff')
+      } else {
+        mapBtn.setText('MAP: GRASSLANDS').setColor('#888888')
+      }
+    }
+    mapBtn.on('pointerover', () => mapBtn.setColor(this.selectedMap === 'UndeadMapScene' ? '#cc99ff' : '#aaffaa'))
+    mapBtn.on('pointerout', () => updateMapBtn())
+    mapBtn.on('pointerdown', () => {
+      this.selectedMap = this.selectedMap === 'GameScene' ? 'UndeadMapScene' : 'GameScene'
+      updateMapBtn()
+    })
 
     // TEST button — corner shortcut to hitbox debug scene
     const testBtn = this.add.text(width - 10, height - 10, 'TEST', {
@@ -220,7 +328,7 @@ export class StartScene extends Phaser.Scene {
         // Brief flash then start
         this.cameras.main.flash(200, 255, 255, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
           if (progress >= 1) {
-            this.scene.start('GameScene', { hero: hero.type })
+            this.scene.start(this.selectedMap, { hero: hero.type })
           }
         })
       })

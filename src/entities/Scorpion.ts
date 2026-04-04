@@ -142,7 +142,8 @@ export class FlyingEye extends Phaser.Physics.Arcade.Sprite {
       this.rootTimer -= delta
       if (this.rootTimer <= 0) this.isRooted = false
     }
-    this.setFlipX(this.player.x < this.x)
+    const dx = this.player.x - this.x
+    if (Math.abs(dx) > 4) this.setFlipX(dx < 0)
 
     if (this.speed < this.baseSpeed * 0.95) {
       this.setTint(0x6688ff)

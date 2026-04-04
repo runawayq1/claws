@@ -52,7 +52,7 @@ export class LevelUpScene extends Phaser.Scene {
         strokeThickness: 6,
       }).setOrigin(0.5)
 
-      this.add.text(width / 2, headerY + 48, 'Pick a specialization branch', {
+      this.add.text(width / 2, headerY + 48, 'Choose Specialization', {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#aaaaaa',
@@ -169,20 +169,20 @@ export class LevelUpScene extends Phaser.Scene {
     }).setOrigin(0.5)
     container.add(nameLabel)
 
-    // All 5 skill names as preview
-    if (upgrade._branchDef) {
-      const skills = upgrade._branchDef.upgrades
-      const previewY = iconY + BRANCH_ICON_SIZE / 2 + 44
-      skills.forEach((skill, si) => {
-        const txt = this.add.text(0, previewY + si * 18, `${si === 0 ? '▸' : '·'} ${skill.label}`, {
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          color: si === 0 ? branchHex : '#777788',
-          stroke: '#000000',
-          strokeThickness: 1,
-        }).setOrigin(0.5)
-        container.add(txt)
-      })
+    // First skill description
+    if (upgrade.desc) {
+      const descY = iconY + BRANCH_ICON_SIZE / 2 + 44
+      const descTxt = this.add.text(0, descY, upgrade.desc, {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: '#cccccc',
+        stroke: '#000000',
+        strokeThickness: 1,
+        wordWrap: { width: cw - 40 },
+        align: 'center',
+        lineSpacing: 4,
+      }).setOrigin(0.5, 0)
+      container.add(descTxt)
     }
 
     // SELECT button
@@ -337,11 +337,11 @@ export class LevelUpScene extends Phaser.Scene {
     gradG.fillRoundedRect(lx, ly + CARD_H / 2, CARD_W, CARD_H / 2, { tl: 0, tr: 0, bl: 8, br: 8 })
     container.add(gradG)
 
-    // ── "★ HERO SKILL" label — inside card at top ─────────────────────────
+    // ── Top strip: "★ HERO SKILL" + branch name ───────────────────────────
     if (isPersonal) {
-      const heroLabel = this.add.text(0, ly + 8, '★ HERO SKILL', {
+      const heroLabel = this.add.text(0, ly + 12, '★ HERO SKILL', {
         fontFamily: 'monospace',
-        fontSize: '9px',
+        fontSize: '8px',
         color: '#ffd700',
         stroke: '#000000',
         strokeThickness: 2,
@@ -349,13 +349,9 @@ export class LevelUpScene extends Phaser.Scene {
       container.add(heroLabel)
     }
 
-    // ── Branch name (colored, 14px) — top of card content ────────────────
-    // In branch mode: branch name is first prominent text element.
-    // In normal mode: also show branch name for personal cards.
     if (isPersonal && upgrade.branch) {
       const branchFontSize = isBranchMode ? '14px' : '10px'
-      // In branch mode the branch name sits below the hero label; in normal mode it shares the strip
-      const branchNameY = isBranchMode ? ly + 20 : ly + STRIP_H / 2
+      const branchNameY = isBranchMode ? ly + 26 : ly + 26
       const branchLabel = this.add.text(0, branchNameY, upgrade.branch, {
         fontFamily: 'monospace',
         fontSize: branchFontSize,
@@ -395,7 +391,7 @@ export class LevelUpScene extends Phaser.Scene {
     // Normal mode: icon starts below strip/dots area
     const iconOffsetY = isBranchMode
       ? ly + 36 + ICON_SIZE / 2
-      : (isPersonal ? ly + STRIP_H + 26 : ly + 28)
+      : (isPersonal ? ly + STRIP_H + 34 : ly + 36)
     // Soft glow circle behind icon (drawn before icon so it sits beneath)
     if (isPersonal) {
       const glowG = this.add.graphics()
@@ -419,32 +415,25 @@ export class LevelUpScene extends Phaser.Scene {
     }).setOrigin(0.5)
     container.add(nameLabel)
 
-    if (isBranchMode && upgrade._branchDef) {
-      // ── Branch preview: 3 bullet skills (9px) below skill name ───────────
-      const previewSkills = upgrade._branchDef.upgrades.slice(0, 3)
-      const previewLines = previewSkills.map(u => `· ${u.label}`).join('\n')
-      const previewLabel = this.add.text(0, nameY + 20, previewLines, {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#888899',
-        stroke: '#000000',
-        strokeThickness: 1,
-        align: 'center',
-      }).setOrigin(0.5)
-      container.add(previewLabel)
-    } else {
-      // ── Normal mode: description ──────────────────────────────────────────
-      const descLabel = this.add.text(0, nameY + 20, upgrade.desc, {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#999999',
-        stroke: '#000000',
-        strokeThickness: 2,
-        wordWrap: { width: CARD_W - 16 },
-        align: 'center',
-      }).setOrigin(0.5)
-      container.add(descLabel)
+    // ── Description — fit within card ──────────────────────────────────────
+    const descMaxY = ly + CARD_H - 36  // space for SELECT button
+    const descAvail = descMaxY - (nameY + 16)
+    const descFontSize = descAvail < 40 ? '8px' : '9px'
+    const descLabel = this.add.text(0, nameY + 16, upgrade.desc, {
+      fontFamily: 'monospace',
+      fontSize: descFontSize,
+      color: isPersonal ? '#cccccc' : '#999999',
+      stroke: '#000000',
+      strokeThickness: 1,
+      wordWrap: { width: CARD_W - 24 },
+      align: 'center',
+      lineSpacing: 2,
+    }).setOrigin(0.5, 0)
+    // Clip if still too tall
+    if (descLabel.height > descAvail) {
+      descLabel.setCrop(0, 0, descLabel.width, descAvail)
     }
+    container.add(descLabel)
 
     // ── SELECT button — consistently at bottom with padding ───────────────
     const btnY = ly + CARD_H - 18

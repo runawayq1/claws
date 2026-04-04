@@ -96,16 +96,31 @@ const HERO_INFO: HeroInfo[] = [
 ]
 
 // ============================================================
+// book_content.png — crop regions for hero element medallions
+// Each entry is [cropX, cropY, cropW, cropH] within the 336x448 image
+// ============================================================
+const HERO_MEDALLION: Record<string, [number, number, number, number]> = {
+  ignara:   [14,  13,  91, 101],  // fire medallion (orange)
+  sifra:    [66,  13, 120, 101],  // water/ice medallion (blue)
+  amun:     [146, 13, 120, 101],  // earth medallion (warm brown)
+  nazar:    [226, 13,  93, 100],  // dark element (navy blue)
+  huntress: [14, 136,  91, 121],  // nature/leaf art (green)
+}
+
+// ============================================================
 // EncyclopediaScene
 // ============================================================
 
-// Bookmark frame indices per hero (one frame per hero, left column of bookmarks.png)
-const BOOKMARK_FRAMES: Record<string, number> = {
-  sifra:    0,
-  ignara:   2,
-  amun:     4,
-  nazar:    6,
-  huntress: 8,
+// Bookmark frame indices per hero:
+// bookmarks.png is 2 cols x 5 rows (32x28 per frame).
+// Left column = inactive frame, right column = active frame.
+// Frame numbering (Phaser row-major): 0=sifra-inactive, 1=sifra-active, 2=ignara-inactive...
+const BOOKMARK_FRAMES: Record<string, { inactive: number; active: number }> = {
+  sifra:    { inactive: 0, active: 1 },
+  ignara:   { inactive: 2, active: 3 },
+  amun:     { inactive: 4, active: 5 },
+  nazar:    { inactive: 6, active: 7 },
+  huntress: { inactive: 8, active: 9 },
 }
 
 export class EncyclopediaScene extends Phaser.Scene {
@@ -119,19 +134,23 @@ export class EncyclopediaScene extends Phaser.Scene {
   private leftContainer!: Phaser.GameObjects.Container
   private rightContainer!: Phaser.GameObjects.Container
 
-  // Bookmark sprite refs so we can update the active offset
+  // Bookmark sprite refs so we can update the active offset and frame
   private bookmarkSprites: Phaser.GameObjects.Image[] = []
+
+  // Main content container (hidden during open/close animation)
+  private bookContent!: Phaser.GameObjects.Container
 
   constructor() {
     super({ key: 'EncyclopediaScene' })
   }
 
   preload() {
-    this.load.image('book_page', 'assets/book/pages_apper.png')
-    this.load.spritesheet('book_icons', 'assets/book/Icons.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('book_sells', 'assets/book/sells_full.png', { frameWidth: 24, frameHeight: 24 })
-    this.load.spritesheet('book_bookmarks', 'assets/book/bookmarks.png', { frameWidth: 32, frameHeight: 28 })
-    this.load.image('book_tileset', 'assets/book/info_tileset.png')
+    this.load.image('book_page',     'assets/book/pages_apper.png')
+    this.load.image('book_tileset',  'assets/book/info_tileset.png')
+    this.load.image('book_content',  'assets/book/book_content.png')
+    this.load.spritesheet('book_icons',     'assets/book/Icons.png',      { frameWidth: 32, frameHeight: 32 })
+    this.load.spritesheet('book_sells',     'assets/book/sells_full.png', { frameWidth: 32, frameHeight: 24 })
+    this.load.spritesheet('book_bookmarks', 'assets/book/bookmarks.png',  { frameWidth: 32, frameHeight: 28 })
   }
 
   create() {
@@ -140,6 +159,8 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Full screen dark bg
     this.add.rectangle(0, 0, width, height, 0x0d0d1a).setOrigin(0, 0)
+
+    this.bookContent = this.add.container(0, 0)
 
     // Book dimensions
     const bookW = Math.min(width * 0.9, 900)
@@ -155,15 +176,45 @@ export class EncyclopediaScene extends Phaser.Scene {
     const shadow = this.add.graphics()
     shadow.fillStyle(0x000000, 0.5)
     shadow.fillRoundedRect(bookX + 6, bookY + 6, bookW, bookH, 10)
+    this.bookContent.add(shadow)
 
     // Book background (spine area)
     const bookBg = this.add.graphics()
     bookBg.fillStyle(0x2a1810)
     bookBg.fillRoundedRect(bookX, bookY, bookW, bookH, 10)
-
-    // Spine center divider
     bookBg.fillStyle(0x1a0f08)
     bookBg.fillRect(bookX + bookW / 2 - 6, bookY + 4, 12, bookH - 8)
+    this.bookContent.add(bookBg)
+
+    // Spine decorations — gold accent lines and dot pattern on the binding
+    const spineDecG = this.add.graphics()
+    const spX = bookX + bookW / 2 - 6
+    const spW = 12
+    // Gold outer edge lines on spine
+    spineDecG.lineStyle(1, 0xc9a227, 0.55)
+    spineDecG.lineBetween(spX + 1, bookY + 4, spX + 1, bookY + bookH - 4)
+    spineDecG.lineBetween(spX + spW - 1, bookY + 4, spX + spW - 1, bookY + bookH - 4)
+    // Horizontal accent bands near top and bottom
+    spineDecG.lineStyle(1, 0xc9a227, 0.45)
+    spineDecG.lineBetween(spX, bookY + 18, spX + spW, bookY + 18)
+    spineDecG.lineBetween(spX, bookY + 22, spX + spW, bookY + 22)
+    spineDecG.lineBetween(spX, bookY + bookH - 18, spX + spW, bookY + bookH - 18)
+    spineDecG.lineBetween(spX, bookY + bookH - 22, spX + spW, bookY + bookH - 22)
+    // Dot pattern down the center of the spine
+    spineDecG.fillStyle(0xc9a227, 0.4)
+    const spCenterX = spX + spW / 2
+    const dotSpacing = 18
+    const dotsStart = bookY + 32
+    const dotsEnd   = bookY + bookH - 32
+    for (let dy = dotsStart; dy < dotsEnd; dy += dotSpacing) {
+      spineDecG.fillCircle(spCenterX, dy, 1.5)
+    }
+    // Central diamond ornament on spine
+    spineDecG.fillStyle(0xc9a227, 0.5)
+    const midY = bookY + bookH / 2
+    spineDecG.fillTriangle(spCenterX, midY - 5, spCenterX - 3, midY, spCenterX, midY + 5)
+    spineDecG.fillTriangle(spCenterX, midY - 5, spCenterX + 3, midY, spCenterX, midY + 5)
+    this.bookContent.add(spineDecG)
 
     // Left page parchment
     const leftPageBg = this.add.graphics()
@@ -171,6 +222,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     leftPageBg.fillRoundedRect(leftPageX + 4, bookY + 4, pageW, bookH - 8, { tl: 8, tr: 0, bl: 8, br: 0 })
     leftPageBg.fillStyle(0xd4b483, 0.6)
     leftPageBg.fillRoundedRect(leftPageX + 10, bookY + 10, pageW - 14, bookH - 20, { tl: 6, tr: 0, bl: 6, br: 0 })
+    this.bookContent.add(leftPageBg)
 
     // Right page parchment
     const rightPageBg = this.add.graphics()
@@ -178,37 +230,131 @@ export class EncyclopediaScene extends Phaser.Scene {
     rightPageBg.fillRoundedRect(rightPageX, bookY + 4, pageW, bookH - 8, { tl: 0, tr: 8, bl: 0, br: 8 })
     rightPageBg.fillStyle(0xd4b483, 0.6)
     rightPageBg.fillRoundedRect(rightPageX + 4, bookY + 10, pageW - 14, bookH - 20, { tl: 0, tr: 6, bl: 0, br: 6 })
+    this.bookContent.add(rightPageBg)
 
-    // Page texture overlays from pages_apper.png (4 variants, each 120×176)
-    // Left page uses frame crop at x=0, right page at x=240 (lighter variant)
+    // Page-stack edge lines on left page outer edge (gives depth like stacked pages)
+    const leftEdgeG = this.add.graphics()
+    leftEdgeG.lineStyle(1, 0xa07040, 0.35)
+    leftEdgeG.lineBetween(leftPageX + 2, bookY + 10, leftPageX + 2, bookY + bookH - 10)
+    leftEdgeG.lineStyle(1, 0x8a5e30, 0.22)
+    leftEdgeG.lineBetween(leftPageX + 1, bookY + 12, leftPageX + 1, bookY + bookH - 12)
+    leftEdgeG.lineStyle(1, 0xd4b483, 0.18)
+    leftEdgeG.lineBetween(leftPageX + 3, bookY + 8, leftPageX + 3, bookY + bookH - 8)
+    this.bookContent.add(leftEdgeG)
+
+    // Page-stack edge lines on right page outer edge
+    const rightEdgeG = this.add.graphics()
+    const reX = rightPageX + pageW
+    rightEdgeG.lineStyle(1, 0xa07040, 0.35)
+    rightEdgeG.lineBetween(reX - 2, bookY + 10, reX - 2, bookY + bookH - 10)
+    rightEdgeG.lineStyle(1, 0x8a5e30, 0.22)
+    rightEdgeG.lineBetween(reX - 1, bookY + 12, reX - 1, bookY + bookH - 12)
+    rightEdgeG.lineStyle(1, 0xd4b483, 0.18)
+    rightEdgeG.lineBetween(reX - 3, bookY + 8, reX - 3, bookY + bookH - 8)
+    this.bookContent.add(rightEdgeG)
+
+    // Inner shadow on left page (near spine edge) — depth where pages meet binding
+    const leftSpineShadow = this.add.graphics()
+    const lsX = leftPageX + pageW - 12
+    leftSpineShadow.fillStyle(0x000000, 0.22)
+    leftSpineShadow.fillRect(lsX, bookY + 4, 12, bookH - 8)
+    leftSpineShadow.fillStyle(0x000000, 0.10)
+    leftSpineShadow.fillRect(lsX - 6, bookY + 4, 6, bookH - 8)
+    this.bookContent.add(leftSpineShadow)
+
+    // Inner shadow on right page (near spine edge)
+    const rightSpineShadow = this.add.graphics()
+    rightSpineShadow.fillStyle(0x000000, 0.22)
+    rightSpineShadow.fillRect(rightPageX, bookY + 4, 12, bookH - 8)
+    rightSpineShadow.fillStyle(0x000000, 0.10)
+    rightSpineShadow.fillRect(rightPageX + 12, bookY + 4, 6, bookH - 8)
+    this.bookContent.add(rightSpineShadow)
+
+    // Thin ornate border lines along page edges (inside the page, inset from corners)
+    const leftBorderG = this.add.graphics()
+    leftBorderG.lineStyle(1, 0x8b6914, 0.28)
+    leftBorderG.strokeRoundedRect(leftPageX + 10, bookY + 10, pageW - 14, bookH - 20, { tl: 6, tr: 0, bl: 6, br: 0 })
+    this.bookContent.add(leftBorderG)
+
+    const rightBorderG = this.add.graphics()
+    rightBorderG.lineStyle(1, 0x8b6914, 0.28)
+    rightBorderG.strokeRoundedRect(rightPageX + 4, bookY + 10, pageW - 14, bookH - 20, { tl: 0, tr: 6, bl: 0, br: 6 })
+    this.bookContent.add(rightBorderG)
+
+    // Page texture overlays (pages_apper.png: 4 texture variants, each ~120x176 in a 480x176 strip)
     if (this.textures.exists('book_page')) {
       const leftTex = this.add.image(leftPageX + 4, bookY + 4, 'book_page')
-        .setOrigin(0, 0)
-        .setCrop(0, 0, 120, 176)
-        .setDisplaySize(pageW, bookH - 8)
-        .setAlpha(0.15)
-      leftTex.setTint(0xb8936a)
+        .setOrigin(0, 0).setCrop(0, 0, 120, 176).setDisplaySize(pageW, bookH - 8).setAlpha(0.18).setTint(0xb8936a)
+      this.bookContent.add(leftTex)
 
       const rightTex = this.add.image(rightPageX, bookY + 4, 'book_page')
-        .setOrigin(0, 0)
-        .setCrop(240, 0, 120, 176)
-        .setDisplaySize(pageW, bookH - 8)
-        .setAlpha(0.15)
-      rightTex.setTint(0xc8a97a)
+        .setOrigin(0, 0).setCrop(240, 0, 120, 176).setDisplaySize(pageW, bookH - 8).setAlpha(0.18).setTint(0xc8a97a)
+      this.bookContent.add(rightTex)
     }
 
+    // Decorative corner ornaments from info_tileset.png
+    // Top section of tileset (y=0-39): left corner at x=9-39 (31px), right corner at x=89-121 (33px)
+    // We render them as small tinted images at page corners
+    this._addPageCorners(leftPageX + 4, bookY + 4, pageW, bookH - 8, false)
+    this._addPageCorners(rightPageX, bookY + 4, pageW, bookH - 8, true)
+
     // Left page title
-    this.add.text(leftPageX + pageW / 2, bookY + 22, 'HEROES', {
+    const heroesTitle = this.add.text(leftPageX + pageW / 2, bookY + 22, 'HEROES', {
       fontFamily: 'monospace', fontSize: '14px',
       color: '#2a1810', stroke: '#c8a97a', strokeThickness: 1,
     }).setOrigin(0.5)
+    this.bookContent.add(heroesTitle)
 
-    // Decorative title underline
+    // Title flourish — decorative dashes and dots on either side of "HEROES"
+    const titleFlourishG = this.add.graphics()
+    const titleCX = leftPageX + pageW / 2
+    const titleY = bookY + 22
+    // Left flourish: line + dot + line
+    titleFlourishG.lineStyle(1, 0x8b6914, 0.55)
+    titleFlourishG.lineBetween(titleCX - 58, titleY, titleCX - 48, titleY)
+    titleFlourishG.fillStyle(0x8b6914, 0.55)
+    titleFlourishG.fillCircle(titleCX - 44, titleY, 2)
+    titleFlourishG.lineBetween(titleCX - 40, titleY, titleCX - 34, titleY)
+    // Right flourish (mirrored)
+    titleFlourishG.lineStyle(1, 0x8b6914, 0.55)
+    titleFlourishG.lineBetween(titleCX + 58, titleY, titleCX + 48, titleY)
+    titleFlourishG.fillStyle(0x8b6914, 0.55)
+    titleFlourishG.fillCircle(titleCX + 44, titleY, 2)
+    titleFlourishG.lineBetween(titleCX + 40, titleY, titleCX + 34, titleY)
+    this.bookContent.add(titleFlourishG)
+
+    // Decorative title underline — double line with gap
     const titleLine = this.add.graphics()
-    titleLine.lineStyle(1, 0x2a1810, 0.4)
-    titleLine.lineBetween(leftPageX + 16, bookY + 34, leftPageX + pageW - 10, bookY + 34)
+    titleLine.lineStyle(1.5, 0x8b6914, 0.5)
+    titleLine.lineBetween(leftPageX + 18, bookY + 33, leftPageX + pageW - 12, bookY + 33)
+    titleLine.lineStyle(0.5, 0x8b6914, 0.3)
+    titleLine.lineBetween(leftPageX + 22, bookY + 36, leftPageX + pageW - 16, bookY + 36)
+    this.bookContent.add(titleLine)
 
-    // Close button
+    // Footer decoration — small ornamental line + center dot at page bottoms
+    const footerDecG = this.add.graphics()
+    const footY = bookY + bookH - 10
+    // Left page footer
+    const lfCX = leftPageX + pageW / 2
+    footerDecG.lineStyle(1, 0x8b6914, 0.35)
+    footerDecG.lineBetween(lfCX - 30, footY, lfCX - 6, footY)
+    footerDecG.lineBetween(lfCX + 6, footY, lfCX + 30, footY)
+    footerDecG.fillStyle(0x8b6914, 0.45)
+    footerDecG.fillCircle(lfCX, footY, 2.5)
+    footerDecG.fillCircle(lfCX - 3, footY, 1)
+    footerDecG.fillCircle(lfCX + 3, footY, 1)
+    // Right page footer
+    const rfCX = rightPageX + pageW / 2
+    footerDecG.lineStyle(1, 0x8b6914, 0.35)
+    footerDecG.lineBetween(rfCX - 30, footY, rfCX - 6, footY)
+    footerDecG.lineBetween(rfCX + 6, footY, rfCX + 30, footY)
+    footerDecG.fillStyle(0x8b6914, 0.45)
+    footerDecG.fillCircle(rfCX, footY, 2.5)
+    footerDecG.fillCircle(rfCX - 3, footY, 1)
+    footerDecG.fillCircle(rfCX + 3, footY, 1)
+    this.bookContent.add(footerDecG)
+
+    // Close button — plays closing animation then goes to StartScene
     const closeBtn = this.add.text(bookX + bookW - 6, bookY - 2, 'X', {
       fontFamily: 'monospace', fontSize: '16px',
       color: '#d4b483', stroke: '#000000', strokeThickness: 3,
@@ -218,21 +364,23 @@ export class EncyclopediaScene extends Phaser.Scene {
     closeBtn.on('pointerout',  () => closeBtn.setColor('#d4b483'))
     closeBtn.on('pointerdown', () => this.scene.start('StartScene'))
 
-    // Bookmark tabs on the left edge (drawn before containers so they're below content)
+    // Bookmark tabs on left edge — use active/inactive frames
     this.bookmarkSprites = []
     if (this.textures.exists('book_bookmarks')) {
       const bRowH = Math.min((bookH - 60) / HERO_INFO.length, 68)
       const bStartY = bookY + 44
       HERO_INFO.forEach((hero, i) => {
-        const frame = BOOKMARK_FRAMES[hero.type] ?? i * 2
-        const bY = bStartY + i * bRowH + bRowH / 2
+        const frames = BOOKMARK_FRAMES[hero.type] ?? { inactive: i * 2, active: i * 2 + 1 }
         const isActive = this.selectedHeroType === hero.type
+        const frame = isActive ? frames.active : frames.inactive
+        const bY = bStartY + i * bRowH + bRowH / 2
         const bX = leftPageX - 4 + (isActive ? 10 : 0)
         const bm = this.add.image(bX, bY, 'book_bookmarks', frame)
           .setOrigin(1, 0.5)
           .setDepth(5)
           .setInteractive({ useHandCursor: true })
         this.bookmarkSprites.push(bm)
+        this.bookContent.add(bm)
 
         bm.on('pointerdown', () => {
           this.selectedHeroType = hero.type
@@ -245,9 +393,74 @@ export class EncyclopediaScene extends Phaser.Scene {
     // Build containers
     this.leftContainer  = this.add.container(0, 0)
     this.rightContainer = this.add.container(0, 0)
+    this.bookContent.add(this.leftContainer)
+    this.bookContent.add(this.rightContainer)
 
     this.buildLeftPage(leftPageX, bookY, pageW, bookH)
     this.buildRightPage(rightPageX, bookY, pageW, bookH)
+  }
+
+  // Draw corner ornaments using info_tileset.png
+  // The tileset has two small square corner pieces at top (y=0-39):
+  //   Left corner: x=9-39 (31x40), Right corner: x=89-121 (33x40)
+  // We crop and display at the four corners of each page
+  private _addPageCorners(px: number, py: number, pw: number, ph: number, mirrorX: boolean) {
+    if (!this.textures.exists('book_tileset')) return
+
+    const cornerSize = 36  // display size for corner ornaments (was 22, now much more visible)
+    const alpha = 0.72      // opacity (was 0.55)
+
+    // Top-left corner
+    const tlCorner = this.add.image(px, py, 'book_tileset')
+      .setOrigin(0, 0)
+      .setCrop(9, 0, 31, 40)
+      .setDisplaySize(cornerSize, cornerSize)
+      .setAlpha(alpha)
+      .setTint(0x8b6914)
+    this.bookContent.add(tlCorner)
+
+    // Top-right corner (mirror horizontally for right page)
+    const trCorner = this.add.image(px + pw, py, 'book_tileset')
+      .setOrigin(1, 0)
+      .setCrop(89, 0, 33, 40)
+      .setDisplaySize(cornerSize, cornerSize)
+      .setAlpha(alpha)
+      .setTint(0x8b6914)
+    if (mirrorX) trCorner.setFlipX(true)
+    this.bookContent.add(trCorner)
+
+    // Bottom-left corner
+    const blCorner = this.add.image(px, py + ph, 'book_tileset')
+      .setOrigin(0, 1)
+      .setCrop(9, 0, 31, 40)
+      .setDisplaySize(cornerSize, cornerSize)
+      .setAlpha(alpha)
+      .setTint(0x8b6914)
+      .setFlipY(true)
+    this.bookContent.add(blCorner)
+
+    // Bottom-right corner
+    const brCorner = this.add.image(px + pw, py + ph, 'book_tileset')
+      .setOrigin(1, 1)
+      .setCrop(89, 0, 33, 40)
+      .setDisplaySize(cornerSize, cornerSize)
+      .setAlpha(alpha)
+      .setTint(0x8b6914)
+      .setFlipY(true)
+    if (mirrorX) brCorner.setFlipX(true)
+    this.bookContent.add(brCorner)
+
+    // Additional small diamond accents mid-edge (top/bottom center of each page)
+    const edgeDecG = this.add.graphics()
+    edgeDecG.fillStyle(0x8b6914, 0.42)
+    // Top center small diamond
+    const tcX = px + pw / 2
+    edgeDecG.fillTriangle(tcX, py + 3, tcX - 4, py + 7, tcX, py + 11)
+    edgeDecG.fillTriangle(tcX, py + 3, tcX + 4, py + 7, tcX, py + 11)
+    // Bottom center small diamond
+    edgeDecG.fillTriangle(tcX, py + ph - 3, tcX - 4, py + ph - 7, tcX, py + ph - 11)
+    edgeDecG.fillTriangle(tcX, py + ph - 3, tcX + 4, py + ph - 7, tcX, py + ph - 11)
+    this.bookContent.add(edgeDecG)
   }
 
   // Helper: recalculate layout constants and rebuild both pages
@@ -261,16 +474,19 @@ export class EncyclopediaScene extends Phaser.Scene {
     const leftPageX = bookX
     const rightPageX = bookX + bookW / 2 + 8
 
-    // Update bookmark active offsets
+    // Update bookmark active offsets and frames
     const bRowH = Math.min((bookH - 60) / HERO_INFO.length, 68)
     const bStartY = bookY + 44
     HERO_INFO.forEach((hero, i) => {
       const bm = this.bookmarkSprites[i]
       if (!bm) return
       const isActive = this.selectedHeroType === hero.type
+      const frames = BOOKMARK_FRAMES[hero.type] ?? { inactive: i * 2, active: i * 2 + 1 }
+      const frame = isActive ? frames.active : frames.inactive
       const bY = bStartY + i * bRowH + bRowH / 2
       const bX = leftPageX - 4 + (isActive ? 10 : 0)
       bm.setPosition(bX, bY)
+      bm.setFrame(frame)
     })
 
     this.buildLeftPage(leftPageX, bookY, pageW, bookH)
@@ -291,21 +507,35 @@ export class EncyclopediaScene extends Phaser.Scene {
       const rowY = startY + i * rowH
       const colorHex = '#' + hero.color.toString(16).padStart(6, '0')
 
-      // Row highlight for selected
+      // Row highlight for selected — use a sell slot as background texture
       if (isSelected) {
         const highlight = this.add.graphics()
-        highlight.fillStyle(0x2a1810, 0.18)
-        highlight.fillRoundedRect(px + 10, rowY, pw - 18, rowH - 4, 4)
+        highlight.fillStyle(hero.color, 0.12)
+        highlight.fillRoundedRect(px + 10, rowY + 2, pw - 18, rowH - 6, 4)
+        highlight.lineStyle(1, hero.color, 0.35)
+        highlight.strokeRoundedRect(px + 10, rowY + 2, pw - 18, rowH - 6, 4)
         this.leftContainer.add(highlight)
       }
 
-      // Color circle
-      const circleG = this.add.graphics()
-      circleG.fillStyle(hero.color, 0.85)
-      circleG.fillCircle(px + 26, rowY + rowH / 2, 10)
-      circleG.lineStyle(1.5, hero.color, 0.7)
-      circleG.strokeCircle(px + 26, rowY + rowH / 2, 10)
-      this.leftContainer.add(circleG)
+      // Element medallion from book_content for the active hero's row
+      // For non-selected rows: small colored bookmark-icon-sized medallion
+      const medallion = HERO_MEDALLION[hero.type]
+      if (medallion && this.textures.exists('book_content')) {
+        const [cx, cy, cw, ch] = medallion
+        const displaySz = isSelected ? Math.min(rowH - 8, 36) : Math.min(rowH - 12, 28)
+        const img = this.add.image(px + 22, rowY + rowH / 2, 'book_content')
+          .setOrigin(0.5)
+          .setCrop(cx, cy, cw, ch)
+          .setDisplaySize(displaySz, displaySz)
+          .setAlpha(isSelected ? 0.95 : 0.55)
+        this.leftContainer.add(img)
+      } else {
+        // Fallback: color circle
+        const circleG = this.add.graphics()
+        circleG.fillStyle(hero.color, 0.85)
+        circleG.fillCircle(px + 22, rowY + rowH / 2, 10)
+        this.leftContainer.add(circleG)
+      }
 
       // Hero name — always visible
       const nameText = this.add.text(px + 42, rowY + rowH / 2 - 8, hero.name, {
@@ -319,11 +549,22 @@ export class EncyclopediaScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '9px', color: '#665544',
       }).setOrigin(0, 0.5))
 
-      // "Played" checkmark
+      // "Played" indicator — use a sell slot with golden tint
       if (played) {
-        this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
-          fontFamily: 'monospace', fontSize: '10px', color: '#44aa44',
-        }).setOrigin(0.5))
+        if (this.textures.exists('book_sells')) {
+          const badge = this.add.image(px + pw - 16, rowY + rowH / 2, 'book_sells', 0)
+            .setDisplaySize(18, 14)
+            .setTint(0xddaa22)
+            .setOrigin(0.5)
+          this.leftContainer.add(badge)
+          this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
+            fontFamily: 'monospace', fontSize: '8px', color: '#2a1810',
+          }).setOrigin(0.5))
+        } else {
+          this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
+            fontFamily: 'monospace', fontSize: '10px', color: '#44aa44',
+          }).setOrigin(0.5))
+        }
       }
 
       // Row separator
@@ -372,7 +613,18 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.removeAll(true)
 
     if (!this.selectedHeroType) {
-      this.rightContainer.add(this.add.text(px + pw / 2, py + ph / 2,
+      // No hero selected — show a welcome panel with page-frame texture
+      if (this.textures.exists('book_tileset')) {
+        // Draw the large page frame from info_tileset (y=89-165, w=113x77)
+        const frameImg = this.add.image(px + pw / 2, py + ph / 2 - 30, 'book_tileset')
+          .setOrigin(0.5)
+          .setCrop(9, 89, 113, 77)
+          .setDisplaySize(pw - 30, 100)
+          .setAlpha(0.25)
+          .setTint(0x8b6914)
+        this.rightContainer.add(frameImg)
+      }
+      this.rightContainer.add(this.add.text(px + pw / 2, py + ph / 2 - 30,
         'Select a hero\nto read about them', {
           fontFamily: 'monospace', fontSize: '12px', color: '#998866', align: 'center',
         }).setOrigin(0.5))
@@ -396,12 +648,21 @@ export class EncyclopediaScene extends Phaser.Scene {
     labels.forEach((label, idx) => {
       const isActive = this.rightPage === idx
       const btnX = px + pw * ((idx + 0.5) / labels.length)
+
+      // Sell slot background for active tab
+      if (isActive && this.textures.exists('book_sells')) {
+        const tabSlot = this.add.image(btnX, navY, 'book_sells', 3)
+          .setDisplaySize(52, 18)
+          .setTint(heroInfo ? heroInfo.color : 0xd4b483)
+          .setAlpha(0.35)
+          .setOrigin(0.5)
+        this.rightContainer.add(tabSlot)
+      }
+
       const btn = this.add.text(btnX, navY, label, {
         fontFamily: 'monospace', fontSize: '9px',
         color: isActive ? heroColorHex : '#998866',
         stroke: '#c8a97a', strokeThickness: 0.5,
-        backgroundColor: isActive ? 'rgba(42,24,16,0.2)' : undefined,
-        padding: isActive ? { x: 4, y: 2 } : undefined,
       }).setOrigin(0.5).setInteractive({ useHandCursor: !isActive })
 
       if (!isActive) {
@@ -429,29 +690,54 @@ export class EncyclopediaScene extends Phaser.Scene {
     const hero = HERO_INFO.find(h => h.type === heroType)!
     const colorHex = '#' + hero.color.toString(16).padStart(6, '0')
 
-    // Hero name + role
-    this.rightContainer.add(this.add.text(px + pw / 2, py + 20, hero.name, {
-      fontFamily: 'monospace', fontSize: '16px', color: colorHex,
-    }).setOrigin(0.5))
-    this.rightContainer.add(this.add.text(px + pw / 2, py + 38, hero.role, {
-      fontFamily: 'monospace', fontSize: '10px', color: '#665544',
-    }).setOrigin(0.5))
+    // Hero element medallion portrait — displayed at top-right of page
+    const medallion = HERO_MEDALLION[heroType]
+    if (medallion && this.textures.exists('book_content')) {
+      const [cx, cy, cw, ch] = medallion
+      const portraitSize = Math.min(pw * 0.28, 68)
+      const portrait = this.add.image(px + pw - 12, py + 12, 'book_content')
+        .setOrigin(1, 0)
+        .setCrop(cx, cy, cw, ch)
+        .setDisplaySize(portraitSize, portraitSize)
+        .setAlpha(0.85)
+      this.rightContainer.add(portrait)
 
-    // Decorative line
+      // Subtle frame around portrait using sell slot
+      if (this.textures.exists('book_sells')) {
+        const portraitFrame = this.add.image(px + pw - 12 - portraitSize / 2, py + 12 + portraitSize / 2, 'book_sells', 7)
+          .setDisplaySize(portraitSize + 8, portraitSize + 8)
+          .setTint(hero.color)
+          .setAlpha(0.3)
+          .setOrigin(0.5)
+        this.rightContainer.add(portraitFrame)
+        // Bring portrait above frame
+        portrait.setDepth(1)
+      }
+    }
+
+    // Hero name + role
+    this.rightContainer.add(this.add.text(px + 12, py + 18, hero.name, {
+      fontFamily: 'monospace', fontSize: '16px', color: colorHex,
+    }).setOrigin(0, 0))
+    this.rightContainer.add(this.add.text(px + 12, py + 38, hero.role, {
+      fontFamily: 'monospace', fontSize: '10px', color: '#665544',
+    }).setOrigin(0, 0))
+
+    // Decorative line below header — use hero color
     const lineG = this.add.graphics()
-    lineG.lineStyle(1, hero.color, 0.3)
-    lineG.lineBetween(px + 20, py + 50, px + pw - 20, py + 50)
+    lineG.lineStyle(1.5, hero.color, 0.45)
+    lineG.lineBetween(px + 12, py + 54, px + pw - 12, py + 54)
     this.rightContainer.add(lineG)
 
     // Lore text — wrapped
     const textW = pw - 30
-    this.rightContainer.add(this.add.text(px + 15, py + 58, hero.lore, {
+    this.rightContainer.add(this.add.text(px + 15, py + 60, hero.lore, {
       fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
     }))
 
     // Playstyle section
-    const playstyleY = py + 58 + 80
+    const playstyleY = py + 60 + 80
     const lineG2 = this.add.graphics()
     lineG2.lineStyle(0.5, 0x2a1810, 0.25)
     lineG2.lineBetween(px + 20, playstyleY, px + pw - 20, playstyleY)
@@ -467,7 +753,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Branch overview — always visible
     const branches = HERO_BRANCHES[heroType] || []
-    const branchStartY = playstyleY + 22 + 70
+    const branchStartY = playstyleY + 22 + 72
     const lineG3 = this.add.graphics()
     lineG3.lineStyle(0.5, 0x2a1810, 0.25)
     lineG3.lineBetween(px + 20, branchStartY, px + pw - 20, branchStartY)
@@ -477,12 +763,28 @@ export class EncyclopediaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '10px', color: '#2a1810',
     }))
 
+    const iconBaseMap: Record<string, number> = {
+      ignara: 0, sifra: 27, amun: 18, nazar: 18, huntress: 9,
+    }
+    const iconBase = iconBaseMap[heroType] ?? 0
+
     branches.forEach((branch, i) => {
-      const bY = branchStartY + 22 + i * 20
+      const bY = branchStartY + 22 + i * 22
       const bColorHex = '#' + branch.color.toString(16).padStart(6, '0')
-      // Branch name + first upgrade desc as preview
-      this.rightContainer.add(this.add.text(px + 15, bY, `◆ ${branch.name}`, {
-        fontFamily: 'monospace', fontSize: '9px', color: bColorHex,
+      const branchUnlocked = this.encData.branches.includes(branch.name)
+
+      // Small branch icon
+      if (this.textures.exists('book_icons')) {
+        const iconFrame = (iconBase + i * 9) % 90
+        const branchIcon = this.add.image(px + 16, bY + 9, 'book_icons', iconFrame)
+          .setDisplaySize(14, 14)
+          .setOrigin(0.5)
+          .setAlpha(branchUnlocked ? 0.9 : 0.3)
+        this.rightContainer.add(branchIcon)
+      }
+
+      this.rightContainer.add(this.add.text(px + 26, bY, `${branch.name}`, {
+        fontFamily: 'monospace', fontSize: '9px', color: branchUnlocked ? bColorHex : '#998866',
       }))
       this.rightContainer.add(this.add.text(px + pw - 10, bY, branch.upgrades[0].desc, {
         fontFamily: 'monospace', fontSize: '8px', color: '#665544',
@@ -492,96 +794,321 @@ export class EncyclopediaScene extends Phaser.Scene {
 
   // ── Branch skills page ────────────────────────────────────────────────────
 
+  // Track which branch tab and which skill slot is selected within this page
+  private selectedBranchIdx = 0
+  private selectedSkillIdx = -1
+
+  // Decoration rows in book_content.png (336x448) for each hero's element header.
+  // Each entry: [leftPieceX, leftPieceY, leftPieceW, leftPieceH,
+  //              centerX, centerY, centerW, centerH,
+  //              stripY, stripH]  — strip covers the full decoration band
+  private static readonly HERO_DECO: Record<string, {
+    stripY: number, stripH: number,
+    centerX: number, centerY: number, centerW: number, centerH: number,
+    leftX: number, leftY: number, leftW: number, leftH: number,
+  }> = {
+    ignara:   { stripY: 115, stripH: 60, centerX: 100, centerY: 115, centerW: 80, centerH: 60, leftX: 0,   leftY: 115, leftW: 60,  leftH: 60  },
+    sifra:    { stripY: 180, stripH: 60, centerX: 100, centerY: 180, centerW: 80, centerH: 60, leftX: 0,   leftY: 180, leftW: 60,  leftH: 60  },
+    huntress: { stripY: 245, stripH: 60, centerX: 100, centerY: 245, centerW: 80, centerH: 60, leftX: 0,   leftY: 245, leftW: 60,  leftH: 60  },
+    amun:     { stripY: 310, stripH: 60, centerX: 100, centerY: 310, centerW: 80, centerH: 60, leftX: 0,   leftY: 310, leftW: 60,  leftH: 60  },
+    nazar:    { stripY: 115, stripH: 60, centerX: 100, centerY: 115, centerW: 80, centerH: 60, leftX: 0,   leftY: 115, leftW: 60,  leftH: 60  },
+  }
+
   private buildSkillsPage(px: number, py: number, pw: number, ph: number) {
     const heroType = this.selectedHeroType!
-    const heroInfo = HERO_INFO.find(h => h.type === heroType)!
-
-    // Page title (centered, slightly larger)
-    const titleText = this.add.text(px + pw / 2, py + 22, heroInfo.name + ' — Branches', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#2a1810',
-    }).setOrigin(0.5)
-    this.rightContainer.add(titleText)
-
-    const titleLineG = this.add.graphics()
-    titleLineG.lineStyle(1, 0x2a1810, 0.4)
-    titleLineG.lineBetween(px + 6, py + 34, px + pw - 6, py + 34)
-    this.rightContainer.add(titleLineG)
-
     const branches = HERO_BRANCHES[heroType] || []
-    const contentH = ph - 62  // leave room for nav
-    const branchH = contentH / Math.max(branches.length, 1)
+    if (this.selectedBranchIdx >= branches.length) this.selectedBranchIdx = 0
 
-    // Determine icon category base for this hero
     const iconBaseMap: Record<string, number> = {
       ignara: 0, sifra: 27, amun: 18, nazar: 18, huntress: 9,
     }
     const iconBase = iconBaseMap[heroType] ?? 0
 
+    // ── Compact branch tabs (35px) ───────────────────────────────────
+    const tabH = 34
+    const tabGap = 4
+    const tabW = (pw - tabGap * (branches.length + 1)) / branches.length
+    const tabY = py + 8
+
     branches.forEach((branch, bi) => {
-      const bY = py + 38 + bi * branchH
+      const tabX = px + tabGap + bi * (tabW + tabGap)
+      const isActive = bi === this.selectedBranchIdx
       const branchColorHex = '#' + branch.color.toString(16).padStart(6, '0')
 
-      // Branch header — always visible with real name and color
-      const bHeaderG = this.add.graphics()
-      bHeaderG.lineStyle(0.5, branch.color, 0.35)
-      bHeaderG.lineBetween(px + 10, bY + 16, px + pw - 10, bY + 16)
-      this.rightContainer.add(bHeaderG)
+      const tabG = this.add.graphics()
+      if (isActive) {
+        tabG.fillStyle(branch.color, 0.22)
+        tabG.fillRoundedRect(tabX, tabY, tabW, tabH, { tl: 6, tr: 6, bl: 0, br: 0 })
+        tabG.lineStyle(1.5, branch.color, 0.85)
+        tabG.strokeRoundedRect(tabX, tabY, tabW, tabH, { tl: 6, tr: 6, bl: 0, br: 0 })
+      } else {
+        tabG.fillStyle(0x2a1810, 0.10)
+        tabG.fillRoundedRect(tabX, tabY + 2, tabW, tabH - 4, { tl: 5, tr: 5, bl: 0, br: 0 })
+        tabG.lineStyle(1, branch.color, 0.25)
+        tabG.strokeRoundedRect(tabX, tabY + 2, tabW, tabH - 4, { tl: 5, tr: 5, bl: 0, br: 0 })
+      }
+      this.rightContainer.add(tabG)
 
-      this.rightContainer.add(this.add.text(px + 12, bY + 4, branch.name, {
-        fontFamily: 'monospace', fontSize: '10px', color: branchColorHex,
-      }))
+      // Small icon + name on one line
+      const iconFrame = (iconBase + bi * 9) % 90
+      if (this.textures.exists('book_icons')) {
+        const iconImg = this.add.image(tabX + 10, tabY + tabH / 2 + (isActive ? 0 : 1), 'book_icons', iconFrame)
+          .setDisplaySize(isActive ? 18 : 14, isActive ? 18 : 14).setOrigin(0.5)
+        if (!isActive) iconImg.setAlpha(0.5)
+        this.rightContainer.add(iconImg)
+      }
+      this.rightContainer.add(this.add.text(tabX + 22, tabY + tabH / 2 + (isActive ? 0 : 1), branch.name, {
+        fontFamily: 'monospace', fontSize: isActive ? '9px' : '8px',
+        color: isActive ? branchColorHex : '#665544',
+      }).setOrigin(0, 0.5))
 
-      // Upgrades — names always shown, desc locked until discovered
-      const upgradeH = Math.min((branchH - 20) / branch.upgrades.length, 16)
-      branch.upgrades.forEach((upgrade, ui) => {
-        const uY = bY + 20 + ui * upgradeH
-        const upgradeUnlocked = this.encData.upgrades.includes(upgrade.id)
-        const iconFrame = (iconBase + bi * 9 + ui) % 90
+      const tabZone = this.add.zone(tabX + tabW / 2, tabY + tabH / 2, tabW, tabH)
+        .setInteractive({ useHandCursor: !isActive })
+      if (!isActive) {
+        tabZone.on('pointerdown', () => {
+          this.selectedBranchIdx = bi
+          this.selectedSkillIdx = -1
+          this._rebuild()
+        })
+      }
+      this.rightContainer.add(tabZone)
+    })
 
-        // Skill name always visible
-        this.rightContainer.add(this.add.text(px + 22, uY, `· ${upgrade.label}`, {
-          fontFamily: 'monospace', fontSize: '9px',
-          color: upgradeUnlocked ? '#2a1810' : '#999988',
-        }))
+    const activeBranch = branches[this.selectedBranchIdx]
+    if (!activeBranch) return
 
-        if (upgradeUnlocked) {
-          // Icon + description
-          if (this.textures.exists('book_icons')) {
-            this.rightContainer.add(this.add.image(px + 14, uY + upgradeH / 2, 'book_icons', iconFrame)
-              .setDisplaySize(12, 12).setOrigin(0.5))
-          }
-          this.rightContainer.add(this.add.text(px + pw - 10, uY, upgrade.desc, {
-            fontFamily: 'monospace', fontSize: '8px', color: '#665544',
-          }).setOrigin(1, 0))
+    // ── Element header decoration ────────────────────────────────────
+    const headerY = tabY + tabH + 2
+    const headerH = 54
+    const deco = EncyclopediaScene.HERO_DECO[heroType]
+
+    // Full-width decoration strip as background (tinted, subtle)
+    if (deco && this.textures.exists('book_content')) {
+      const strip = this.add.image(px + pw / 2, headerY, 'book_content')
+        .setOrigin(0.5, 0)
+        .setCrop(0, deco.stripY, 336, deco.stripH)
+        .setDisplaySize(pw - 8, headerH)
+        .setAlpha(0.18)
+      if (heroType === 'nazar') strip.setTint(0xff6666)
+      this.rightContainer.add(strip)
+    }
+
+    // Medallion portrait centered in header
+    const medallion = HERO_MEDALLION[heroType]
+    if (medallion && this.textures.exists('book_content')) {
+      const [mx, my, mw, mh] = medallion
+      const mSize = Math.min(headerH - 4, 44)
+      const medallionImg = this.add.image(px + pw / 2, headerY + headerH / 2, 'book_content')
+        .setOrigin(0.5)
+        .setCrop(mx, my, mw, mh)
+        .setDisplaySize(mSize, mSize)
+        .setAlpha(0.88)
+      if (heroType === 'nazar') medallionImg.setTint(0xff9999)
+      this.rightContainer.add(medallionImg)
+    }
+
+    // Branch name centered in header
+    const branchColorHex = '#' + activeBranch.color.toString(16).padStart(6, '0')
+    const headerLabel = this.add.text(px + pw / 2, headerY + headerH - 10, activeBranch.name.toUpperCase(), {
+      fontFamily: 'monospace', fontSize: '9px',
+      color: branchColorHex,
+      stroke: '#c8a97a', strokeThickness: 2,
+    }).setOrigin(0.5, 1)
+    this.rightContainer.add(headerLabel)
+
+    // Divider below header
+    const divY = headerY + headerH + 2
+    const divG = this.add.graphics()
+    divG.lineStyle(1.5, activeBranch.color, 0.45)
+    divG.lineBetween(px + 6, divY, px + pw - 6, divY)
+    this.rightContainer.add(divG)
+
+    // ── Skill icon grid ──────────────────────────────────────────────
+    const gridStartY = divY + 8
+    const numSkills = activeBranch.upgrades.length
+    // Layout: all skills in a single row (up to 5 fit fine)
+    const cellDisplayW = 36
+    const cellDisplayH = 28
+    const cellGap = 6
+    const gridTotalW = numSkills * cellDisplayW + (numSkills - 1) * cellGap
+    const gridStartX = px + (pw - gridTotalW) / 2
+
+    activeBranch.upgrades.forEach((upgrade, ui) => {
+      const cellX = gridStartX + ui * (cellDisplayW + cellGap)
+      const cellCX = cellX + cellDisplayW / 2
+      const cellCY = gridStartY + cellDisplayH / 2
+      const unlocked = this.encData.upgrades.includes(upgrade.id)
+      const iconFrame = (iconBase + this.selectedBranchIdx * 9 + ui) % 90
+      const isSelectedSkill = ui === this.selectedSkillIdx
+
+      // Slot frame background from sells_full.png (32x24 per frame, use frame 0 unlocked / frame 6 locked)
+      if (this.textures.exists('book_sells')) {
+        const slotFrame = unlocked ? (isSelectedSkill ? 3 : 0) : 6
+        const slot = this.add.image(cellCX, cellCY, 'book_sells', slotFrame)
+          .setDisplaySize(cellDisplayW, cellDisplayH)
+          .setOrigin(0.5)
+        if (!unlocked) {
+          slot.setTint(0x443322).setAlpha(0.7)
+        } else if (isSelectedSkill) {
+          slot.setTint(activeBranch.color).setAlpha(0.7)
         } else {
-          // Locked slot + ???
-          if (this.textures.exists('book_sells')) {
-            this.rightContainer.add(this.add.image(px + 14, uY + upgradeH / 2, 'book_sells', 0)
-              .setDisplaySize(12, 12).setTint(0x555555).setAlpha(0.6).setOrigin(0.5))
-          }
-          this.rightContainer.add(this.add.text(px + pw - 10, uY, '???', {
-            fontFamily: 'monospace', fontSize: '8px', color: '#aaaaaa',
-          }).setOrigin(1, 0))
+          slot.setTint(0xd4b483).setAlpha(0.55)
+        }
+        this.rightContainer.add(slot)
+      }
+
+      // Selection highlight ring
+      if (isSelectedSkill) {
+        const ringG = this.add.graphics()
+        ringG.lineStyle(2, activeBranch.color, 0.9)
+        ringG.strokeRect(cellX - 1, gridStartY - 1, cellDisplayW + 2, cellDisplayH + 2)
+        this.rightContainer.add(ringG)
+      }
+
+      // Skill icon or lock symbol
+      if (unlocked && this.textures.exists('book_icons')) {
+        const iconImg = this.add.image(cellCX, cellCY - 2, 'book_icons', iconFrame)
+          .setDisplaySize(18, 18).setOrigin(0.5).setDepth(1)
+        this.rightContainer.add(iconImg)
+      } else if (!unlocked) {
+        // Grey locked slot with '?' text
+        this.rightContainer.add(this.add.text(cellCX, cellCY - 2, '?', {
+          fontFamily: 'monospace', fontSize: '12px', color: '#665544',
+        }).setOrigin(0.5).setAlpha(0.6))
+      }
+
+      // Skill index number below icon (1-based) as tiny label
+      this.rightContainer.add(this.add.text(cellCX, gridStartY + cellDisplayH - 7, `${ui + 1}`, {
+        fontFamily: 'monospace', fontSize: '7px',
+        color: unlocked ? branchColorHex : '#554433',
+      }).setOrigin(0.5, 1).setAlpha(0.75))
+
+      // Interactive zone for the cell
+      const zone = this.add.zone(cellCX, cellCY, cellDisplayW, cellDisplayH)
+        .setInteractive({ useHandCursor: true })
+      zone.on('pointerover', () => {
+        if (ui !== this.selectedSkillIdx) {
+          zone.setData('hover', true)
         }
       })
-
-      // Section divider between branches
-      if (bi < branches.length - 1) {
-        const divG = this.add.graphics()
-        divG.lineStyle(0.5, 0x2a1810, 0.12)
-        divG.lineBetween(px + 14, bY + branchH - 2, px + pw - 14, bY + branchH - 2)
-        this.rightContainer.add(divG)
-      }
+      zone.on('pointerdown', () => {
+        this.selectedSkillIdx = (this.selectedSkillIdx === ui) ? -1 : ui
+        this._rebuild()
+      })
+      this.rightContainer.add(zone)
     })
+
+    // ── Skill detail card (appears below grid when a skill is selected) ──
+    const cardStartY = gridStartY + cellDisplayH + 12
+
+    if (this.selectedSkillIdx >= 0 && this.selectedSkillIdx < activeBranch.upgrades.length) {
+      const skill = activeBranch.upgrades[this.selectedSkillIdx]
+      const unlocked = this.encData.upgrades.includes(skill.id)
+      const iconFrame = (iconBase + this.selectedBranchIdx * 9 + this.selectedSkillIdx) % 90
+      const cardW = pw - 16
+      const cardX = px + 8
+      const cardH = ph - (cardStartY - py) - 34  // leave room for nav
+
+      // Card background using info_tileset page frame (y=89-165, 113x77px)
+      const cardBgG = this.add.graphics()
+      cardBgG.fillStyle(0xc8a97a, 0.22)
+      cardBgG.fillRoundedRect(cardX, cardStartY, cardW, cardH, 4)
+      cardBgG.lineStyle(1, activeBranch.color, 0.45)
+      cardBgG.strokeRoundedRect(cardX, cardStartY, cardW, cardH, 4)
+      this.rightContainer.add(cardBgG)
+
+      // Page frame texture overlay (info_tileset y=89 large frame)
+      if (this.textures.exists('book_tileset')) {
+        const frameOverlay = this.add.image(cardX, cardStartY, 'book_tileset')
+          .setOrigin(0, 0)
+          .setCrop(9, 89, 113, 77)
+          .setDisplaySize(cardW, cardH)
+          .setAlpha(0.10)
+          .setTint(0x8b6914)
+        this.rightContainer.add(frameOverlay)
+      }
+
+      // Large skill icon top-left of card
+      const iconDisplaySize = 28
+      const iconX = cardX + 10 + iconDisplaySize / 2
+      const iconY = cardStartY + 10 + iconDisplaySize / 2
+
+      if (this.textures.exists('book_sells')) {
+        const iconSlot = this.add.image(iconX, iconY, 'book_sells', unlocked ? 3 : 6)
+          .setDisplaySize(iconDisplaySize + 8, iconDisplaySize + 6)
+          .setTint(unlocked ? activeBranch.color : 0x443322)
+          .setAlpha(unlocked ? 0.55 : 0.4)
+          .setOrigin(0.5)
+        this.rightContainer.add(iconSlot)
+      }
+
+      if (unlocked && this.textures.exists('book_icons')) {
+        const bigIcon = this.add.image(iconX, iconY, 'book_icons', iconFrame)
+          .setDisplaySize(iconDisplaySize, iconDisplaySize).setOrigin(0.5).setDepth(2)
+        this.rightContainer.add(bigIcon)
+      } else if (!unlocked) {
+        this.rightContainer.add(this.add.text(iconX, iconY, '?', {
+          fontFamily: 'monospace', fontSize: '18px', color: '#665544',
+        }).setOrigin(0.5).setAlpha(0.6))
+      }
+
+      // Skill name (right of icon)
+      const nameX = cardX + 10 + iconDisplaySize + 8
+      const nameW = cardW - iconDisplaySize - 24
+      this.rightContainer.add(this.add.text(nameX, cardStartY + 8, skill.label, {
+        fontFamily: 'monospace', fontSize: '11px',
+        color: unlocked ? branchColorHex : '#887766',
+      }).setOrigin(0, 0))
+
+      // Branch tag below name
+      this.rightContainer.add(this.add.text(nameX, cardStartY + 22, activeBranch.name, {
+        fontFamily: 'monospace', fontSize: '8px', color: '#998866',
+      }).setOrigin(0, 0))
+
+      // Divider under header row
+      const cardDivY = cardStartY + iconDisplaySize + 16
+      const cdivG = this.add.graphics()
+      cdivG.lineStyle(0.5, activeBranch.color, 0.3)
+      cdivG.lineBetween(cardX + 6, cardDivY, cardX + cardW - 6, cardDivY)
+      this.rightContainer.add(cdivG)
+
+      // Description text
+      if (unlocked) {
+        this.rightContainer.add(this.add.text(cardX + 10, cardDivY + 6, skill.desc, {
+          fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
+          wordWrap: { width: nameW + iconDisplaySize + 4 }, lineSpacing: 3,
+        }).setOrigin(0, 0))
+      } else {
+        this.rightContainer.add(this.add.text(cardX + 10, cardDivY + 6, 'Undiscovered ability.\nDefeat enemies to reveal this skill.', {
+          fontFamily: 'monospace', fontSize: '9px', color: '#998866',
+          fontStyle: 'italic', wordWrap: { width: cardW - 20 }, lineSpacing: 3,
+        }).setOrigin(0, 0))
+      }
+
+      // Skill number badge (bottom-right of card)
+      this.rightContainer.add(this.add.text(cardX + cardW - 8, cardStartY + cardH - 6,
+        `${this.selectedSkillIdx + 1} / ${numSkills}`, {
+          fontFamily: 'monospace', fontSize: '8px', color: branchColorHex,
+        }).setOrigin(1, 1).setAlpha(0.6))
+
+    } else {
+      // No skill selected — prompt
+      this.rightContainer.add(this.add.text(px + pw / 2, cardStartY + 16,
+        'Tap a skill slot to view details', {
+          fontFamily: 'monospace', fontSize: '9px', color: '#998866',
+          fontStyle: 'italic',
+        }).setOrigin(0.5, 0))
+    }
   }
 
   // ── Generic upgrades page ─────────────────────────────────────────────────
 
   private buildGenericsPage(px: number, py: number, pw: number, ph: number) {
     const heroInfo = HERO_INFO.find(h => h.type === this.selectedHeroType)!
+    const heroColor = heroInfo.color
 
-    // Page title (centered, slightly larger)
-    const titleText = this.add.text(px + pw / 2, py + 22, heroInfo.name + ' — Generic Upgrades', {
+    // Page title
+    const titleText = this.add.text(px + pw / 2, py + 22, 'Generic Upgrades', {
       fontFamily: 'monospace', fontSize: '11px', color: '#2a1810',
     }).setOrigin(0.5)
     this.rightContainer.add(titleText)
@@ -592,12 +1119,23 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.add(titleLineG)
 
     const contentH = ph - 62
-    const rowH = Math.min(contentH / GENERIC_POOL.length, 20)
+    const rowH = Math.min(contentH / GENERIC_POOL.length, 22)
 
     GENERIC_POOL.forEach((upgrade, i) => {
       const rowY = py + 40 + i * rowH
       const unlocked = this.encData.upgrades.includes(upgrade.id)
       const iconFrame = (54 + i) % 90  // generic icons from row 6+
+
+      // Row background — alternating sell slot frames
+      if (this.textures.exists('book_sells')) {
+        const slotFrame = unlocked ? (i % 3) : 9  // vary frames for unlocked
+        const rowSlot = this.add.image(px + pw / 2, rowY + rowH / 2, 'book_sells', slotFrame)
+          .setDisplaySize(pw - 12, rowH - 2)
+          .setAlpha(unlocked ? 0.15 : 0.08)
+          .setTint(unlocked ? heroColor : 0x665544)
+          .setOrigin(0.5)
+        this.rightContainer.add(rowSlot)
+      }
 
       if (unlocked) {
         // Skill icon
@@ -608,47 +1146,29 @@ export class EncyclopediaScene extends Phaser.Scene {
           this.rightContainer.add(icon)
         }
 
-        const labelText = this.add.text(px + 22, rowY, `· ${upgrade.label}`, {
+        const labelText = this.add.text(px + 24, rowY + 2, `${upgrade.label}`, {
           fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
         }).setOrigin(0, 0)
         this.rightContainer.add(labelText)
 
-        const descText = this.add.text(px + pw - 10, rowY, upgrade.desc, {
+        const descText = this.add.text(px + pw - 10, rowY + 2, upgrade.desc, {
           fontFamily: 'monospace', fontSize: '8px', color: '#665544',
         }).setOrigin(1, 0)
         this.rightContainer.add(descText)
       } else {
+        // Locked slot — lock icon + dashes
         if (this.textures.exists('book_sells')) {
-          const slot = this.add.image(px + 14, rowY + rowH / 2, 'book_sells', 0)
+          const slot = this.add.image(px + 14, rowY + rowH / 2, 'book_sells', 9)
             .setDisplaySize(12, 12)
-            .setTint(0x555555)
-            .setAlpha(0.6)
+            .setTint(0x665544)
+            .setAlpha(0.5)
             .setOrigin(0.5)
           this.rightContainer.add(slot)
         }
 
-        const lockedLabel = this.add.text(px + 22, rowY, `· ???`, {
-          fontFamily: 'monospace', fontSize: '9px', color: '#aaaaaa',
-        }).setOrigin(0, 0)
-        this.rightContainer.add(lockedLabel)
-
-        if (this.textures.exists('book_sells')) {
-          const descSlot = this.add.image(px + pw - 18, rowY + rowH / 2, 'book_sells', 0)
-            .setDisplaySize(14, 14)
-            .setTint(0x555555)
-            .setAlpha(0.5)
-            .setOrigin(0.5)
-          this.rightContainer.add(descSlot)
-          const descLockTxt = this.add.text(px + pw - 18, rowY + rowH / 2, '???', {
-            fontFamily: 'monospace', fontSize: '7px', color: '#aaaaaa',
-          }).setOrigin(0.5)
-          this.rightContainer.add(descLockTxt)
-        } else {
-          const lockedDesc = this.add.text(px + pw - 10, rowY, '[?]', {
-            fontFamily: 'monospace', fontSize: '8px', color: '#aaaaaa',
-          }).setOrigin(1, 0)
-          this.rightContainer.add(lockedDesc)
-        }
+        this.rightContainer.add(this.add.text(px + 24, rowY + 2, `— Undiscovered —`, {
+          fontFamily: 'monospace', fontSize: '9px', color: '#998866',
+        }).setOrigin(0, 0))
       }
 
       // Row divider every 2 items

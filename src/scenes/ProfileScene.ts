@@ -74,10 +74,11 @@ export class ProfileScene extends Phaser.Scene {
 
     // === HERO STATS ===
     const heroList = [
-      { key: 'ignara', name: 'Ignara', color: '#ff6644' },
-      { key: 'sifra',  name: 'Sifra',  color: '#66bbff' },
-      { key: 'amun',   name: 'Amun',   color: '#ffdd44' },
-      { key: 'nazar',  name: 'Nazar',  color: '#cc4422' },
+      { key: 'ignara',   name: 'Ignara', color: '#ff6644' },
+      { key: 'sifra',    name: 'Sifra',  color: '#66bbff' },
+      { key: 'amun',     name: 'Amun',   color: '#ffdd44' },
+      { key: 'nazar',    name: 'Nazar',  color: '#cc4422' },
+      { key: 'huntress', name: 'Lyra',   color: '#2ecc71' },
     ]
     const heroH = 28 + heroList.length * 20 + 8
     this.drawPanel(panelX, y, panelW, heroH, 'HERO STATS')

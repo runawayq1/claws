@@ -1,126 +1,182 @@
 # Asset Inventory
 
-LOADED = referenced in GameScene.ts or TestScene.ts preload (identical lists). StartScene loads hero Idle sheets via dynamic key.
-UNUSED = present on disk, not loaded in any preload block.
+LOADED = referenced in preload() of GameScene/UndeadMapScene/StartScene/EncyclopediaScene.
+UNUSED = files exist on disk but not loaded.
 
 ---
 
-## /goblin
-| File | Size | Status |
+## /skeleton
+| File | Key | Loaded |
 |---|---|---|
-| Attack3.png | 5.3K | LOADED (`goblin_attack`, 150×150) |
-| Bomb_sprite.png | 4.8K | UNUSED |
+| Attack3.png | `skeleton_attack`, 150×150 | LOADED |
+
+## /goblin
+| File | Key | Loaded |
+|---|---|---|
+| Attack3.png | `goblin_attack`, 150×150 | LOADED |
+| Bomb_sprite.png | — | UNUSED |
 
 ## /mushroom
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| Attack3.png | 4.2K | LOADED (`mushroom_attack`, 150×150) |
-| Projectile_sprite.png | 878B | UNUSED |
+| Attack3.png | `mushroom_attack`, 150×150 | LOADED |
+| Projectile_sprite.png | — | UNUSED |
 
 ## /flying_eye
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| Attack3.png | 2.6K | LOADED (`flyingeye_attack`, 150×150) |
-| projectile_sprite.png | 1.6K | UNUSED |
+| Attack3.png | `flyingeye_attack`, 150×150 | LOADED |
+| projectile_sprite.png | — | UNUSED |
+
+---
 
 ## /fire_wizard  _(Ignara hero)_
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| Idle.png | 4.9K | LOADED (`ignara_idle`, 150×150) — also StartScene |
-| Move.png | 5.3K | LOADED (`ignara_run`) |
-| Attack.png | 6.0K | LOADED (`ignara_attack`) |
-| Take Hit.png | 3.7K | LOADED (`ignara_hurt`) |
-| Death.png | 5.1K | LOADED (`ignara_death`) |
+| Idle.png | `ignara_idle`, 150×150 | LOADED (also StartScene) |
+| Move.png | `ignara_run` | LOADED |
+| Attack.png | `ignara_attack` | LOADED |
+| Take Hit.png | `ignara_hurt` | LOADED |
+| Death.png | `ignara_death` | LOADED |
 
 ## /wizard  _(Sifra hero)_
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| Idle.png | 6.9K | LOADED (`sifra_idle`, 231×190) — also StartScene |
-| Run.png | 11K | LOADED (`sifra_run`) |
-| Attack1.png | 15K | LOADED (`sifra_attack`) |
-| Hit.png | 6.8K | LOADED (`sifra_hurt`) |
-| Death.png | 12K | LOADED (`sifra_death`) |
-| Attack2.png | 14K | UNUSED |
-| Jump.png | 3.4K | UNUSED |
-| Fall.png | 3.4K | UNUSED |
+| Idle.png | `sifra_idle`, 231×190 | LOADED (also StartScene) |
+| Run.png | `sifra_run` | LOADED |
+| Attack1.png | `sifra_attack` | LOADED |
+| Hit.png | `sifra_hurt` | LOADED |
+| Death.png | `sifra_death` | LOADED |
+| Attack2.png, Jump.png, Fall.png | — | UNUSED |
 
 ## /king  _(Amun hero)_
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| Idle.png | 5.5K | LOADED (`amun_idle`, 160×111) — also StartScene |
-| Run.png | 6.1K | LOADED (`amun_run`) |
-| Attack1.png | 5.2K | LOADED (`amun_attack`) |
-| Take Hit.png | 4.5K | LOADED (`amun_hurt`) |
-| Death.png | 5.9K | LOADED (`amun_death`) |
-| Attack2.png | 4.4K | UNUSED |
-| Attack3.png | 5.3K | UNUSED |
-| Jump.png | 2.4K | UNUSED |
-| Fall.png | 1.9K | UNUSED |
-| Take Hit - white silhouette.png | 4.1K | UNUSED |
+| Idle.png | `amun_idle`, 160×111 | LOADED (also StartScene) |
+| Run.png | `amun_run` | LOADED |
+| Attack1.png | `amun_attack` | LOADED |
+| Take Hit.png | `amun_hurt` | LOADED |
+| Death.png | `amun_death` | LOADED |
+| Attack2.png, Attack3.png, Jump.png, Fall.png, Take Hit - white silhouette.png | — | UNUSED |
 
 ## /martial_hero  _(Nazar hero)_
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| Idle.png | 5.0K | LOADED (`nazar_idle`, 200×200) — also StartScene |
-| Run.png | 4.4K | LOADED (`nazar_run`) |
-| Attack1.png | 5.4K | LOADED (`nazar_attack`) |
-| Take Hit.png | 3.9K | LOADED (`nazar_hurt`) |
-| Death.png | 5.1K | LOADED (`nazar_death`) |
-| Attack2.png | 4.4K | UNUSED |
-| Jump.png | 2.1K | UNUSED |
-| Fall.png | 2.2K | UNUSED |
-| Take Hit - white silhouette.png | 3.6K | UNUSED |
+| Idle.png | `nazar_idle`, 200×200 | LOADED (also StartScene) |
+| Run.png | `nazar_run` | LOADED |
+| Attack1.png | `nazar_attack` | LOADED |
+| Take Hit.png | `nazar_hurt` | LOADED |
+| Death.png | `nazar_death` | LOADED |
+| Attack2.png, Jump.png, Fall.png, Take Hit - white silhouette.png | — | UNUSED |
 
-## /evil_wizard  _(Khet — commented out)_
-| File | Size | Status |
+## /huntress  _(Huntress/Lyra hero)_
+| File | Key | Loaded |
 |---|---|---|
-| All 8 files (76K total) | — | UNUSED (hero removed from roster, load calls commented out) |
+| Idle.png | `huntress_idle`, 150×150 | LOADED (also StartScene) |
+| Run.png | `huntress_run` | LOADED |
+| Attack1.png | `huntress_attack` | LOADED |
+| Attack2.png | `huntress_attack2` (melee alt, 5 frames) | LOADED |
+| Attack3.png | `huntress_ranged` (spear throw, 5 frames used) | LOADED |
+| Take hit.png | `huntress_hurt` | LOADED |
+| Death.png | `huntress_death` | LOADED |
+
+## /evil_wizard  _(Khet — removed from roster)_
+All files UNUSED. Load calls commented out. Hero can be re-added by uncommenting.
+
+---
 
 ## /vfx
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| flamethrower_sheet.png | 9.2K | LOADED (`vfx_flame`, 64×24) |
-| flamethrower_preview.png | 14K | UNUSED |
-| flame_frame_0–4.png | ~2.5K ea | UNUSED (individual frames, sheet used instead) |
+| flamethrower_sheet.png | `vfx_flame`, 64×24 | LOADED |
+| flamethrower_preview.png | — | UNUSED |
+| flame_frame_0–4.png | — | UNUSED (individual frames, sheet used) |
+
+**Generated textures** (procedural, no file): `vfx_flame` (16×16 blob), `vfx_smoke`, `vfx_spark`, `vfx_slash`, `claws_boss`, various grave textures.
+
+---
 
 ## /icons
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| skill_icons_sheet.png | 18K | LOADED (`skill_icons`, 32×32) |
-| skill_icons_preview.png | 32K | UNUSED |
-| icon_index.json | 1.5K | UNUSED (runtime ref only) |
-| 68 individual icon PNGs (226–891B ea) | ~25K total | UNUSED (sheet used) |
+| skill_icons_sheet.png | `skill_icons`, 32×32 per frame | LOADED |
+| skill_icons_preview.png | — | UNUSED |
+| icon_index.json | — | UNUSED (reference only) |
+| 68 individual icon PNGs | — | UNUSED (sheet used instead) |
 
-## /rocks  _(40 files, Rock1–8 × sizes 1–5)_
-| Loaded keys | Status |
-|---|---|
-| Rock1_1, Rock1_2, Rock2_1, Rock2_2, Rock3_1, Rock3_2 | LOADED (6 of 40) |
-| Rock1_3–5, Rock2_3–5, Rock3_3–5, Rock4_1–5, Rock5_1–5, Rock6_1–5, Rock7_1–5, Rock8_1–5 | UNUSED (34 files, ~68K) |
+---
+
+## /rocks  _(40 files total, Rock1–8 × sizes 1–5)_
+| Keys | Files | Status |
+|---|---|---|
+| `rock1_1`, `rock1_2`, `rock2_1`, `rock2_2`, `rock3_1`, `rock3_2` | Rock1_1–2, Rock2_1–2, Rock3_1–2 (no shadow variants) | LOADED (6 of 40) |
+| Rock1_3–5 through Rock8_1–5 | — | UNUSED |
+
+---
 
 ## /terrain
-| File | Size | Status |
+| File | Key | Loaded |
 |---|---|---|
-| TX Tileset Grass.png | 11K | LOADED (`terrain_grass`, 32×32) |
-| TX Tileset Stone Ground.png | 8.3K | LOADED (`terrain_stone`, 32×32) |
-| tree1.png | 18K | LOADED (`deco_tree1`) |
-| tree2.png | 15K | LOADED (`deco_tree2`) |
-| tree3.png | 11K | LOADED (`deco_tree3`) |
-| TX Plant.png | 64K | UNUSED |
-| TX Props.png | 85K | UNUSED |
-| TX Struct.png | 40K | UNUSED |
-| TX Shadow.png | 8.9K | UNUSED |
-| TX Shadow Plant.png | 3.3K | UNUSED |
-| TX Player.png | 2.5K | UNUSED |
+| TX Tileset Grass.png | `terrain_grass`, 32×32 frames | LOADED (GameScene grass map) |
+| TX Tileset Stone Ground.png | `terrain_stone`, 32×32 frames | LOADED (preloaded, not used in drawTerrain currently) |
+| tree1.png | `deco_tree1` | LOADED |
+| tree2.png | `deco_tree2` | LOADED |
+| tree3.png | `deco_tree3` | LOADED |
+| TX Plant.png, TX Props.png, TX Struct.png, TX Shadow.png, TX Shadow Plant.png, TX Player.png | — | UNUSED |
 
-## /props  _(33 files, ~75K total)_
-All UNUSED — barrel, bushes, chests, crates, doors, fountain, gravestones, rubble, signposts, stones, tomb statue, vase, well.
+**Note:** GameScene terrain is pure grass — `terrain_stone` is preloaded but the `drawTerrain()` override only uses grass frames. No stone patches in current implementation.
 
-## /hero, /orc, /soldier, /huntress, /skeleton
-All files UNUSED in current preload (legacy / future character assets).
+---
+
+## /props
+| File | Key | Loaded |
+|---|---|---|
+| grass_tuft1.png | `prop_grass_tuft1` | LOADED |
+| grass_tuft3.png | `prop_grass_tuft3` | LOADED |
+| All other files (barrel, bushes, chests, crates, doors, fountain, gravestones, rubble, signposts, stones, tomb statue, vase, well) | — | UNUSED |
+
+---
+
+## /undead  _(UndeadMapScene only)_
+
+### Ground tileset
+| File | Key | Notes |
+|---|---|---|
+| Ground_rocks.png | `undead_ground` | 416×1392px, 16×16 tiles, 26 cols × 87 rows. Loaded as spritesheet. Scale 4 = 64px game tiles. |
+| Water_coasts.png | — | On disk, not loaded |
+| Details.png | — | On disk, not loaded |
+
+### Prop images (19 keys, all in `assets/undead/`)
+| Key | File | Scale |
+|---|---|---|
+| `undead_grave1–4` | `Grave_shadow1_1–4.png` | 2.5 |
+| `undead_ruin1–3` | `Ruin_shadow1_1–3.png` | 1 / 1 / 1.5 |
+| `undead_dead_tree1–2` | `Dead_tree_shadow1_1–2.png` | 1 |
+| `undead_broken_tree1–2` | `Broken_tree_shadow1_1–2.png` | 1 / 3 |
+| `undead_crystal1–2` | `Crystal_shadow1_1–2.png` | 1.5 |
+| `undead_bones1–2` | `Bones_shadow1_1–2.png` | 3 / 5 |
+| `undead_skulls` | `Pile_sculls_shadow1.png` | 0.8 |
+| `undead_dead_arm` | `Dead_arm_shadow1_1.png` | 1.5 |
+| `undead_thorn1–2` | `Thorn_plant_shadow1_1–2.png` | 0.9 |
+
+---
+
+## /book  _(EncyclopediaScene)_
+| File | Key | Notes |
+|---|---|---|
+| pages_apper.png | `book_page` | Book page background image |
+| info_tileset.png | `book_tileset` | UI tileset |
+| book_content.png | `book_content` | 336×448; hero medallion crops defined in `HERO_MEDALLION` |
+| Icons.png | `book_icons` | Spritesheet, 32×32 frames |
+| sells_full.png | `book_sells` | Spritesheet, 32×24 frames |
+| bookmarks.png | `book_bookmarks` | Spritesheet, 32×28 per frame, 2 cols × 5 rows (inactive/active per hero) |
+| book_anim.png | `book_anim` | 12-frame animation, 542×542 per frame (StartScene book icon) |
+
+---
+
+## Legacy / future character assets (unused)
 | Folder | Approx total |
 |---|---|
-| hero | ~100K (10 files) |
-| orc | ~100K (10 files) |
-| soldier | ~238K (11 files) |
-| huntress | ~30K (11 files) |
-| skeleton | ~6K (2 files) |
+| /hero | ~100K (10 files) |
+| /orc | ~100K (10 files) |
+| /soldier | ~238K (11 files) |

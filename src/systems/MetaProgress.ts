@@ -43,7 +43,7 @@ export interface MetaData {
 // ============================================================
 // ACHIEVEMENT DEFINITIONS (25 total)
 // ============================================================
-const HEROES = ['ignara', 'nazar', 'sifra', 'amun']
+const HEROES = ['ignara', 'nazar', 'sifra', 'amun', 'huntress']
 
 const ACHIEVEMENT_DEFS: AchievementDef[] = [
   // --- Kill milestones ---

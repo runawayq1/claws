@@ -29,8 +29,8 @@ export class GameScene extends Phaser.Scene {
   private gameOver = false
   private selectedHero: HeroType = 'ignara'
 
-  constructor() {
-    super({ key: 'GameScene' })
+  constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
+    super(config ?? { key: 'GameScene' })
   }
 
   preload() {
@@ -105,36 +105,9 @@ export class GameScene extends Phaser.Scene {
     this.load.image('deco_tree2', 'assets/terrain/tree2.png')
     this.load.image('deco_tree3', 'assets/terrain/tree3.png')
 
-    // Prop images for zone decorations
-    this.load.image('prop_bush1', 'assets/props/bush1.png')
-    this.load.image('prop_bush2', 'assets/props/bush2.png')
-    this.load.image('prop_bush3', 'assets/props/bush3.png')
-    this.load.image('prop_bush4', 'assets/props/bush4.png')
+    // Prop images for zone decorations (only files that exist in props/)
     this.load.image('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
     this.load.image('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
-    this.load.image('prop_grass_tuft4', 'assets/props/grass_tuft4.png')
-    this.load.image('prop_grass_tuft5', 'assets/props/grass_tuft5.png')
-    this.load.image('prop_gravestone1', 'assets/props/gravestone1.png')
-    this.load.image('prop_gravestone2', 'assets/props/gravestone2.png')
-    this.load.image('prop_rubble1', 'assets/props/rubble1.png')
-    this.load.image('prop_rubble2', 'assets/props/rubble2.png')
-    this.load.image('prop_rubble3', 'assets/props/rubble3.png')
-    this.load.image('prop_cross', 'assets/props/cross.png')
-    this.load.image('prop_tombstone_tall', 'assets/props/tombstone_tall.png')
-    this.load.image('prop_tomb_statue', 'assets/props/tomb_statue.png')
-    this.load.image('prop_barrel', 'assets/props/barrel.png')
-    this.load.image('prop_crate_small', 'assets/props/crate_small.png')
-    this.load.image('prop_crate_large', 'assets/props/crate_large.png')
-    this.load.image('prop_signpost', 'assets/props/signpost.png')
-    this.load.image('prop_signpost2', 'assets/props/signpost2.png')
-    this.load.image('prop_fountain', 'assets/props/fountain.png')
-    this.load.image('prop_well', 'assets/props/well.png')
-    this.load.image('prop_stone_small1', 'assets/props/stone_small1.png')
-    this.load.image('prop_stone_small2', 'assets/props/stone_small2.png')
-    this.load.image('prop_stone_small3', 'assets/props/stone_small3.png')
-    this.load.image('prop_stone_small4', 'assets/props/stone_small4.png')
-    this.load.image('prop_stone_small5', 'assets/props/stone_small5.png')
-    this.load.image('prop_vase_small', 'assets/props/vase_small.png')
   }
 
   create(data?: { hero?: HeroType }) {
@@ -351,7 +324,7 @@ export class GameScene extends Phaser.Scene {
     return 4
   }
 
-  private drawTerrain() {
+  protected drawTerrain() {
     const tileSize = CONFIG.TILE_SIZE
 
     const rng = (x: number, y: number, salt: number) => {
@@ -360,32 +333,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     const GRASS_FRAMES = [4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 23, 28, 29, 30, 31]
-    // Stone fill tiles (rows 0-1 of stone tileset — solid stone variants)
-    const STONE_FILL = [9, 10, 13, 14]
 
     const cols = Math.ceil(CONFIG.WORLD_WIDTH / tileSize)
     const rows = Math.ceil(CONFIG.WORLD_HEIGHT / tileSize)
-    const cx = CONFIG.WORLD_WIDTH / 2
-    const cy = CONFIG.WORLD_HEIGHT / 2
-
-    // Stone road mask — returns true if tile should be stone road (zones 0-1 only)
-    const ROAD_W = 2.5 // road half-width in tiles
-    const isRoad = (tileCol: number, tileRow: number, zone: number): boolean => {
-      if (zone > 1) return false
-      const px = tileCol * tileSize + tileSize / 2
-      const py = tileRow * tileSize + tileSize / 2
-      const dx = (px - cx) / tileSize
-      const dy = (py - cy) / tileSize
-
-      // Central clearing (radius ~3 tiles)
-      if (dx * dx + dy * dy < 12) return true
-
-      // Main cross roads (N-S and E-W) — extend to zone 1 boundary (~1200px = ~18.75 tiles)
-      if (Math.abs(dx) < ROAD_W && Math.abs(dy) < 19) return true
-      if (Math.abs(dy) < ROAD_W && Math.abs(dx) < 19) return true
-
-      return false
-    }
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -394,38 +344,19 @@ export class GameScene extends Phaser.Scene {
         const zone = this.getZone(px, py)
         const rand = rng(c, r, 3)
 
-        // Determine if this tile uses stone ground
-        let useStone = false
-        if (zone === 2 && rand < 0.30) useStone = true       // Ruins: 30% stone patches
-        else if (zone === 4 && rand < 0.80) useStone = true  // Wastes: 80% stone
+        const grassFrame = GRASS_FRAMES[Math.floor(rand * GRASS_FRAMES.length)]
+        const tile = this.add.image(px, py, 'terrain_grass', grassFrame)
+          .setScale(2)
+          .setDepth(0)
 
-        if (useStone) {
-          const stoneFrame = STONE_FILL[Math.floor(rng(c, r, 7) * STONE_FILL.length)]
-          const tile = this.add.image(px, py, 'terrain_stone', stoneFrame)
-            .setScale(2)
-            .setDepth(0)
-          if (zone === 4) tile.setTint(0xbbaa99)
-          else if (zone === 2) tile.setTint(0xdddddd)
-        } else {
-          const grassFrame = GRASS_FRAMES[Math.floor(rand * GRASS_FRAMES.length)]
-          const tile = this.add.image(px, py, 'terrain_grass', grassFrame)
-            .setScale(2)
-            .setDepth(0)
-          if (zone === 3) tile.setTint(0x889988)
-        }
-
-        // Stone road overlay (zones 0-1)
-        if (isRoad(c, r, zone)) {
-          const stoneFrame = STONE_FILL[Math.floor(rng(c, r, 7) * STONE_FILL.length)]
-          this.add.image(px, py, 'terrain_stone', stoneFrame)
-            .setScale(2)
-            .setDepth(0.1)
-        }
+        // Subtle zone tinting
+        if (zone === 3) tile.setTint(0xccddcc)
+        else if (zone === 4) tile.setTint(0xbbccbb)
       }
     }
   }
 
-  private treePositions: { x: number; y: number }[] = []
+  protected treePositions: { x: number; y: number }[] = []
 
   private scatterRocks() {
     this.rocks = this.physics.add.staticGroup()
@@ -494,7 +425,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private scatterDecorations() {
+  protected scatterDecorations() {
     const centerX = CONFIG.WORLD_WIDTH / 2
     const centerY = CONFIG.WORLD_HEIGHT / 2
     this.treePositions = []
@@ -520,38 +451,19 @@ export class GameScene extends Phaser.Scene {
     const addProp = (x: number, y: number, key: string, tint?: number) => {
       placed.push({ x, y })
       this.treePositions.push({ x, y })
-      const img = this.add.image(x, y, key)
-        .setDepth(3)
-        .setScale(Phaser.Math.FloatBetween(0.7, 1.3))
+      const img = this.add.image(x, y, key).setDepth(3)
       if (tint !== undefined) img.setTint(tint)
     }
 
     const treeKeys = ['deco_tree1', 'deco_tree2', 'deco_tree3']
-    const bushKeys = ['prop_bush1', 'prop_bush2', 'prop_bush3', 'prop_bush4']
-    const tuftKeys = ['prop_grass_tuft1', 'prop_grass_tuft3', 'prop_grass_tuft4', 'prop_grass_tuft5']
-    const graveKeys = ['prop_gravestone1', 'prop_gravestone2', 'prop_cross', 'prop_tombstone_tall', 'prop_tomb_statue']
-    const rubbleKeys = ['prop_rubble1', 'prop_rubble2', 'prop_rubble3']
-    const crateKeys = ['prop_barrel', 'prop_crate_small', 'prop_crate_large']
-    const stoneKeys = ['prop_stone_small1', 'prop_stone_small2', 'prop_stone_small3', 'prop_stone_small4', 'prop_stone_small5']
+    const tuftKeys = ['prop_grass_tuft1', 'prop_grass_tuft3']
     const pick = (arr: string[]) => arr[Phaser.Math.Between(0, arr.length - 1)]
 
     // --- Zone 0: Crossroads (0-600px) ---
-    // Well at center
-    this.add.image(centerX, centerY + 60, 'prop_well').setDepth(3).setScale(1.0)
-    placed.push({ x: centerX, y: centerY + 60 })
-    this.treePositions.push({ x: centerX, y: centerY + 60 })
-    // Fountain nearby
-    const fontPos = tryPlace(120, 260)
-    if (fontPos) addProp(fontPos.x, fontPos.y, 'prop_fountain')
-    // 2 signposts near roads
-    for (let i = 0; i < 2; i++) {
-      const p = tryPlace(80, 400)
-      if (p) addProp(p.x, p.y, pick(['prop_signpost', 'prop_signpost2']))
-    }
-    // Couple vases/small props
-    for (let i = 0; i < 2; i++) {
-      const p = tryPlace(100, 550)
-      if (p) addProp(p.x, p.y, 'prop_vase_small')
+    const z0TuftCount = Phaser.Math.Between(4, 6)
+    for (let i = 0; i < z0TuftCount; i++) {
+      const p = tryPlace(80, 550)
+      if (p) addProp(p.x, p.y, pick(tuftKeys))
     }
 
     // --- Zone 1: Meadow (600-1200px) ---
@@ -560,62 +472,42 @@ export class GameScene extends Phaser.Scene {
       const p = tryPlace(620, 1180)
       if (p) addProp(p.x, p.y, pick(treeKeys))
     }
-    const z1BushCount = Phaser.Math.Between(10, 15)
-    for (let i = 0; i < z1BushCount; i++) {
-      const p = tryPlace(620, 1180)
-      if (p) addProp(p.x, p.y, pick(bushKeys))
-    }
-    const z1TuftCount = Phaser.Math.Between(8, 10)
+    const z1TuftCount = Phaser.Math.Between(12, 18)
     for (let i = 0; i < z1TuftCount; i++) {
       const p = tryPlace(620, 1180)
       if (p) addProp(p.x, p.y, pick(tuftKeys))
     }
 
-    // --- Zone 2: Ruins (1200-1800px) — slight gray tint 0xdddddd ---
-    const z2GraveCount = Phaser.Math.Between(8, 10)
-    for (let i = 0; i < z2GraveCount; i++) {
+    // --- Zone 2: (1200-1800px) ---
+    const z2TreeCount = Phaser.Math.Between(10, 15)
+    for (let i = 0; i < z2TreeCount; i++) {
       const p = tryPlace(1220, 1780)
-      if (p) addProp(p.x, p.y, pick(graveKeys), 0xdddddd)
+      if (p) addProp(p.x, p.y, pick(treeKeys))
     }
-    const z2RubbleCount = Phaser.Math.Between(5, 8)
-    for (let i = 0; i < z2RubbleCount; i++) {
+    const z2TuftCount = Phaser.Math.Between(8, 12)
+    for (let i = 0; i < z2TuftCount; i++) {
       const p = tryPlace(1220, 1780)
-      if (p) addProp(p.x, p.y, pick(rubbleKeys), 0xdddddd)
-    }
-    const z2CrateCount = Phaser.Math.Between(3, 5)
-    for (let i = 0; i < z2CrateCount; i++) {
-      const p = tryPlace(1220, 1780)
-      if (p) addProp(p.x, p.y, pick(crateKeys), 0xdddddd)
+      if (p) addProp(p.x, p.y, pick(tuftKeys))
     }
 
-    // --- Zone 3: Dark Forest (1800-2400px) — dark tint 0x889988 ---
-    const z3TreeCount = Phaser.Math.Between(20, 30)
+    // --- Zone 3: Dark Forest (1800-2400px) ---
+    const z3TreeCount = Phaser.Math.Between(25, 35)
     for (let i = 0; i < z3TreeCount; i++) {
       const p = tryPlace(1820, 2380)
-      if (p) addProp(p.x, p.y, pick(treeKeys), 0x889988)
+      if (p) addProp(p.x, p.y, pick(treeKeys), 0xccddcc)
     }
-    const z3BushCount = Phaser.Math.Between(10, 15)
-    for (let i = 0; i < z3BushCount; i++) {
+    const z3TuftCount = Phaser.Math.Between(10, 16)
+    for (let i = 0; i < z3TuftCount; i++) {
       const p = tryPlace(1820, 2380)
-      if (p) addProp(p.x, p.y, pick(bushKeys), 0x889988)
+      if (p) addProp(p.x, p.y, pick(tuftKeys), 0xccddcc)
     }
 
-    // --- Zone 4: Wastes (2400px+) — slight brown tint 0xbbaa99 ---
-    const maxWorldDist = Math.sqrt(2) * (CONFIG.WORLD_WIDTH / 2) // corner distance
-    const z4RubbleCount = Phaser.Math.Between(8, 12)
-    for (let i = 0; i < z4RubbleCount; i++) {
+    // --- Zone 4: Wastes (2400px+) ---
+    const maxWorldDist = Math.sqrt(2) * (CONFIG.WORLD_WIDTH / 2)
+    const z4TuftCount = Phaser.Math.Between(6, 10)
+    for (let i = 0; i < z4TuftCount; i++) {
       const p = tryPlace(2420, maxWorldDist - 100)
-      if (p) addProp(p.x, p.y, pick(rubbleKeys), 0xbbaa99)
-    }
-    const z4StoneCount = Phaser.Math.Between(8, 12)
-    for (let i = 0; i < z4StoneCount; i++) {
-      const p = tryPlace(2420, maxWorldDist - 100)
-      if (p) addProp(p.x, p.y, pick(stoneKeys), 0xbbaa99)
-    }
-    const z4VaseCount = Phaser.Math.Between(3, 5)
-    for (let i = 0; i < z4VaseCount; i++) {
-      const p = tryPlace(2420, maxWorldDist - 100)
-      if (p) addProp(p.x, p.y, 'prop_vase_small', 0xbbaa99)
+      if (p) addProp(p.x, p.y, pick(tuftKeys), 0xbbccbb)
     }
   }
 
