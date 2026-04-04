@@ -3530,8 +3530,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
                 }).setOrigin(0.5).setDepth(21)
                 this.scene.tweens.add({ targets: ct, y: ct.y - 20, alpha: 0, duration: 500, onComplete: () => ct.destroy() })
               }
-              // Explosive Tips: small AOE on every hit
-              if (this.hasExplosiveTips) {
+              // Explosive Tips: AOE on first hit only
+              if (this.hasExplosiveTips && hitSet.size === 1) {
                 const blastR = 40 + this.splashRadius * 0.4
                 const blast = this.scene.add.circle(e.x, e.y, 8, 0xff6600, 0.5).setDepth(10)
                 this.scene.tweens.add({ targets: blast, scale: blastR / 8, alpha: 0, duration: 250, onComplete: () => blast.destroy() })
