@@ -68,14 +68,31 @@ interface HeroInfo {
   name: string
   role: string
   color: number
+  lore: string
+  playstyle: string
 }
 
 const HERO_INFO: HeroInfo[] = [
-  { type: 'ignara',   name: 'Ignara', role: 'Fire Mage',      color: 0xe84118 },
-  { type: 'sifra',    name: 'Sifra',  role: 'Ice Mage',       color: 0x82ccdd },
-  { type: 'amun',     name: 'Amun',   role: 'Guardian',       color: 0xfff200 },
-  { type: 'nazar',    name: 'Nazar',  role: 'Samurai',        color: 0xc23616 },
-  { type: 'huntress', name: 'Lyra',   role: 'Spear Thrower',  color: 0x2ecc71 },
+  { type: 'ignara', name: 'Ignara', role: 'Fire Mage', color: 0xe84118,
+    lore: 'Born in the volcanic forges of Mount Kael, Ignara mastered flame before she could walk. Exiled for burning down the Academy of Elements, she now wanders the cursed lands, turning swarms to ash with a flick of her wrist.',
+    playstyle: 'Ranged AoE caster. Fireballs explode on impact. Excels at clearing dense packs. Three paths: raw damage (Inferno), survivability (Fortress), or chaotic destruction (Havoc).',
+  },
+  { type: 'sifra', name: 'Sifra', role: 'Ice Mage', color: 0x82ccdd,
+    lore: 'Sifra was once a scholar of the Frozen Spire, studying the boundary between ice and lightning. An experiment gone wrong fused both elements into her soul. She now channels frost and storm in equal measure.',
+    playstyle: 'Dual-stance caster. Switch between Ice shards (piercing projectiles) and Lightning (continuous beam). Branches: Frost (crowd control), Shatter (split projectiles), Crystal (defense), or Lightning (chain damage).',
+  },
+  { type: 'amun', name: 'Amun', role: 'Guardian', color: 0xfff200,
+    lore: 'The last king of a fallen desert kingdom, Amun carries the weight of his people on his shoulders. His divine armor channels the earth itself, creating shockwaves that flatten anything in his path.',
+    playstyle: 'Melee tank with shockwave AoE. Slow but devastating. Three paths: Wrath (damage auras), Bastion (near-immortal defense), or Quake (crowd control and knockback).',
+  },
+  { type: 'nazar', name: 'Nazar', role: 'Samurai', color: 0xc23616,
+    lore: 'A ronin who abandoned his clan after discovering their dark pact with the swarm. Nazar wields both blade and venom — his sword cuts through flesh, while his poisoned strikes rot enemies from within.',
+    playstyle: 'Dual-stance melee. Sword stance for quick slashes and mobility. Venom stance for poison DoT and area denial. Branches: Blade (assassin), Venom (poison master), or Shadow (stealth and execution).',
+  },
+  { type: 'huntress', name: 'Lyra', role: 'Spear Thrower', color: 0x2ecc71,
+    lore: 'Raised by the forest wardens of the Green Veil, Lyra learned to throw before she could speak. Her spears fly true across any distance, and in close quarters her blade work is equally deadly.',
+    playstyle: 'Dual-stance fighter. Spear stance hurls piercing projectiles across the screen. Melee stance delivers fast combo strikes. Branches: Predator (crits and marks), Stalker (mobility and traps), or Warden (spear mastery and AoE).',
+  },
 ]
 
 // ============================================================
@@ -96,7 +113,7 @@ export class EncyclopediaScene extends Phaser.Scene {
   private encData!: EncyclopediaData
 
   // For page system on right page
-  private rightPage = 0  // 0 = branch skills, 1 = generic upgrades
+  private rightPage = 0  // 0 = lore, 1 = branch skills, 2 = generic upgrades
 
   // Containers rebuilt on hero select / page flip
   private leftContainer!: Phaser.GameObjects.Container
@@ -207,27 +224,21 @@ export class EncyclopediaScene extends Phaser.Scene {
       const bRowH = Math.min((bookH - 60) / HERO_INFO.length, 68)
       const bStartY = bookY + 44
       HERO_INFO.forEach((hero, i) => {
-        const unlocked = this.encData.heroes.includes(hero.type)
         const frame = BOOKMARK_FRAMES[hero.type] ?? i * 2
         const bY = bStartY + i * bRowH + bRowH / 2
-        // Bookmarks hang off the left edge; active one sticks out further
         const isActive = this.selectedHeroType === hero.type
         const bX = leftPageX - 4 + (isActive ? 10 : 0)
         const bm = this.add.image(bX, bY, 'book_bookmarks', frame)
           .setOrigin(1, 0.5)
           .setDepth(5)
-        if (!unlocked) bm.setTint(0x555555)
+          .setInteractive({ useHandCursor: true })
         this.bookmarkSprites.push(bm)
 
-        // Clicking bookmark selects the hero (if unlocked)
-        if (unlocked) {
-          bm.setInteractive({ useHandCursor: true })
-          bm.on('pointerdown', () => {
-            this.selectedHeroType = hero.type
-            this.rightPage = 0
-            this._rebuild()
-          })
-        }
+        bm.on('pointerdown', () => {
+          this.selectedHeroType = hero.type
+          this.rightPage = 0
+          this._rebuild()
+        })
       })
     }
 
@@ -275,7 +286,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const rowH = Math.min((ph - 60) / HERO_INFO.length, 68)
 
     HERO_INFO.forEach((hero, i) => {
-      const unlocked = this.encData.heroes.includes(hero.type)
+      const played = this.encData.heroes.includes(hero.type)
       const isSelected = this.selectedHeroType === hero.type
       const rowY = startY + i * rowH
       const colorHex = '#' + hero.color.toString(16).padStart(6, '0')
@@ -290,39 +301,29 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Color circle
       const circleG = this.add.graphics()
-      circleG.fillStyle(unlocked ? hero.color : 0x555555, unlocked ? 0.85 : 0.4)
+      circleG.fillStyle(hero.color, 0.85)
       circleG.fillCircle(px + 26, rowY + rowH / 2, 10)
-      circleG.lineStyle(1.5, unlocked ? hero.color : 0x666666, 0.7)
+      circleG.lineStyle(1.5, hero.color, 0.7)
       circleG.strokeCircle(px + 26, rowY + rowH / 2, 10)
       this.leftContainer.add(circleG)
 
-      // Hero name
-      const nameText = this.add.text(px + 42, rowY + rowH / 2 - 8, unlocked ? hero.name : '???', {
+      // Hero name — always visible
+      const nameText = this.add.text(px + 42, rowY + rowH / 2 - 8, hero.name, {
         fontFamily: 'monospace', fontSize: '12px',
-        color: unlocked ? colorHex : '#888888',
+        color: isSelected ? '#ffffff' : colorHex,
       }).setOrigin(0, 0.5)
       this.leftContainer.add(nameText)
 
       // Role
-      const roleText = this.add.text(px + 42, rowY + rowH / 2 + 8, unlocked ? hero.role : 'Unknown', {
-        fontFamily: 'monospace', fontSize: '9px',
-        color: '#665544',
-      }).setOrigin(0, 0.5)
-      this.leftContainer.add(roleText)
+      this.leftContainer.add(this.add.text(px + 42, rowY + rowH / 2 + 8, hero.role, {
+        fontFamily: 'monospace', fontSize: '9px', color: '#665544',
+      }).setOrigin(0, 0.5))
 
-      // Lock indicator — dark sells slot with "???" text
-      if (!unlocked) {
-        if (this.textures.exists('book_sells')) {
-          const lockSlot = this.add.image(px + pw - 22, rowY + rowH / 2, 'book_sells', 0)
-            .setDisplaySize(20, 20)
-            .setTint(0x555555)
-            .setAlpha(0.75)
-          this.leftContainer.add(lockSlot)
-        }
-        const lockText = this.add.text(px + pw - 22, rowY + rowH / 2, '?', {
-          fontFamily: 'monospace', fontSize: '9px', color: '#aaaaaa',
-        }).setOrigin(0.5)
-        this.leftContainer.add(lockText)
+      // "Played" checkmark
+      if (played) {
+        this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
+          fontFamily: 'monospace', fontSize: '10px', color: '#44aa44',
+        }).setOrigin(0.5))
       }
 
       // Row separator
@@ -333,25 +334,17 @@ export class EncyclopediaScene extends Phaser.Scene {
         this.leftContainer.add(sepG)
       }
 
-      // Interactive zone (only for unlocked heroes)
-      if (unlocked) {
-        const zone = this.add.zone(px + pw / 2, rowY + rowH / 2, pw - 20, rowH - 6)
-          .setInteractive({ useHandCursor: true })
-
-        zone.on('pointerover', () => {
-          if (this.selectedHeroType !== hero.type) nameText.setColor('#ffffff')
-        })
-        zone.on('pointerout', () => {
-          if (this.selectedHeroType !== hero.type) nameText.setColor(colorHex)
-        })
-        zone.on('pointerdown', () => {
-          this.selectedHeroType = hero.type
-          this.rightPage = 0
-          this._rebuild()
-        })
-
-        this.leftContainer.add(zone)
-      }
+      // Interactive zone — always clickable
+      const zone = this.add.zone(px + pw / 2, rowY + rowH / 2, pw - 20, rowH - 6)
+        .setInteractive({ useHandCursor: true })
+      zone.on('pointerover', () => { if (!isSelected) nameText.setColor('#ffffff') })
+      zone.on('pointerout', () => { if (!isSelected) nameText.setColor(colorHex) })
+      zone.on('pointerdown', () => {
+        this.selectedHeroType = hero.type
+        this.rightPage = 0
+        this._rebuild()
+      })
+      this.leftContainer.add(zone)
     })
 
     // Footer: discover counter
@@ -363,16 +356,14 @@ export class EncyclopediaScene extends Phaser.Scene {
     GENERIC_POOL.forEach(u => allUpgradeIds.add(u.id))
     const totalSkills = allUpgradeIds.size
     const discoveredSkills = this.encData.upgrades.filter(id => allUpgradeIds.has(id)).length
-    const counterText = this.add.text(px + pw / 2, py + ph - 22,
+    this.leftContainer.add(this.add.text(px + pw / 2, py + ph - 22,
       `Discovered: ${discoveredSkills}/${totalSkills}`, {
         fontFamily: 'monospace', fontSize: '9px', color: '#665544',
-      }).setOrigin(0.5)
-    this.leftContainer.add(counterText)
-
-    const hintText = this.add.text(px + pw / 2, py + ph - 10, 'Tap a hero to view skills', {
-      fontFamily: 'monospace', fontSize: '8px', color: '#998866',
-    }).setOrigin(0.5)
-    this.leftContainer.add(hintText)
+      }).setOrigin(0.5))
+    this.leftContainer.add(this.add.text(px + pw / 2, py + ph - 10,
+      'Tap a hero to read about them', {
+        fontFamily: 'monospace', fontSize: '8px', color: '#998866',
+      }).setOrigin(0.5))
   }
 
   // ── Right page: skills or empty ───────────────────────────────────────────
@@ -381,15 +372,16 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.removeAll(true)
 
     if (!this.selectedHeroType) {
-      const emptyText = this.add.text(px + pw / 2, py + ph / 2, 'Select a hero\nto view their skills', {
-        fontFamily: 'monospace', fontSize: '12px', color: '#998866',
-        align: 'center',
-      }).setOrigin(0.5)
-      this.rightContainer.add(emptyText)
+      this.rightContainer.add(this.add.text(px + pw / 2, py + ph / 2,
+        'Select a hero\nto read about them', {
+          fontFamily: 'monospace', fontSize: '12px', color: '#998866', align: 'center',
+        }).setOrigin(0.5))
       return
     }
 
     if (this.rightPage === 0) {
+      this.buildLorePage(px, py, pw, ph)
+    } else if (this.rightPage === 1) {
       this.buildSkillsPage(px, py, pw, ph)
     } else {
       this.buildGenericsPage(px, py, pw, ph)
@@ -398,13 +390,12 @@ export class EncyclopediaScene extends Phaser.Scene {
     // Page nav tabs at bottom
     const heroInfo = HERO_INFO.find(h => h.type === this.selectedHeroType)
     const heroColorHex = heroInfo ? '#' + heroInfo.color.toString(16).padStart(6, '0') : '#d4b483'
-
     const navY = py + ph - 18
-    const labels = ['Branch Skills', 'Generic Upgrades']
+    const labels = ['Lore', 'Branches', 'Generics']
 
     labels.forEach((label, idx) => {
       const isActive = this.rightPage === idx
-      const btnX = px + pw * 0.25 + idx * pw * 0.5
+      const btnX = px + pw * ((idx + 0.5) / labels.length)
       const btn = this.add.text(btnX, navY, label, {
         fontFamily: 'monospace', fontSize: '9px',
         color: isActive ? heroColorHex : '#998866',
@@ -415,27 +406,88 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       if (!isActive) {
         btn.on('pointerover', () => btn.setColor('#2a1810'))
-        btn.on('pointerout',  () => btn.setColor('#998866'))
+        btn.on('pointerout', () => btn.setColor('#998866'))
         btn.on('pointerdown', () => {
           this.rightPage = idx
-          const { width: w, height: h } = this.scale
-          const bookW = Math.min(w * 0.9, 900)
-          const bookH = Math.min(h * 0.82, 620)
-          const bookX = (w - bookW) / 2
-          const bookY2 = (h - bookH) / 2
-          const pageW = bookW / 2 - 8
-          const rightPageX = bookX + bookW / 2 + 8
-          this.buildRightPage(rightPageX, bookY2, pageW, bookH)
+          this._rebuild()
         })
       }
       this.rightContainer.add(btn)
     })
 
-    // Decorative separator above nav
+    // Separator above nav
     const navLineG = this.add.graphics()
     navLineG.lineStyle(0.5, 0x2a1810, 0.2)
     navLineG.lineBetween(px + 10, py + ph - 28, px + pw - 10, py + ph - 28)
     this.rightContainer.add(navLineG)
+  }
+
+  // ── Lore page ─────────────────────────────────────────────────────────────
+
+  private buildLorePage(px: number, py: number, pw: number, _ph: number) {
+    const heroType = this.selectedHeroType!
+    const hero = HERO_INFO.find(h => h.type === heroType)!
+    const colorHex = '#' + hero.color.toString(16).padStart(6, '0')
+
+    // Hero name + role
+    this.rightContainer.add(this.add.text(px + pw / 2, py + 20, hero.name, {
+      fontFamily: 'monospace', fontSize: '16px', color: colorHex,
+    }).setOrigin(0.5))
+    this.rightContainer.add(this.add.text(px + pw / 2, py + 38, hero.role, {
+      fontFamily: 'monospace', fontSize: '10px', color: '#665544',
+    }).setOrigin(0.5))
+
+    // Decorative line
+    const lineG = this.add.graphics()
+    lineG.lineStyle(1, hero.color, 0.3)
+    lineG.lineBetween(px + 20, py + 50, px + pw - 20, py + 50)
+    this.rightContainer.add(lineG)
+
+    // Lore text — wrapped
+    const textW = pw - 30
+    this.rightContainer.add(this.add.text(px + 15, py + 58, hero.lore, {
+      fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
+      wordWrap: { width: textW }, lineSpacing: 4,
+    }))
+
+    // Playstyle section
+    const playstyleY = py + 58 + 80
+    const lineG2 = this.add.graphics()
+    lineG2.lineStyle(0.5, 0x2a1810, 0.25)
+    lineG2.lineBetween(px + 20, playstyleY, px + pw - 20, playstyleY)
+    this.rightContainer.add(lineG2)
+
+    this.rightContainer.add(this.add.text(px + 15, playstyleY + 6, 'PLAYSTYLE', {
+      fontFamily: 'monospace', fontSize: '10px', color: colorHex,
+    }))
+    this.rightContainer.add(this.add.text(px + 15, playstyleY + 22, hero.playstyle, {
+      fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
+      wordWrap: { width: textW }, lineSpacing: 4,
+    }))
+
+    // Branch overview — always visible
+    const branches = HERO_BRANCHES[heroType] || []
+    const branchStartY = playstyleY + 22 + 70
+    const lineG3 = this.add.graphics()
+    lineG3.lineStyle(0.5, 0x2a1810, 0.25)
+    lineG3.lineBetween(px + 20, branchStartY, px + pw - 20, branchStartY)
+    this.rightContainer.add(lineG3)
+
+    this.rightContainer.add(this.add.text(px + 15, branchStartY + 6, 'BRANCHES', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#2a1810',
+    }))
+
+    branches.forEach((branch, i) => {
+      const bY = branchStartY + 22 + i * 20
+      const bColorHex = '#' + branch.color.toString(16).padStart(6, '0')
+      // Branch name + first upgrade desc as preview
+      this.rightContainer.add(this.add.text(px + 15, bY, `◆ ${branch.name}`, {
+        fontFamily: 'monospace', fontSize: '9px', color: bColorHex,
+      }))
+      this.rightContainer.add(this.add.text(px + pw - 10, bY, branch.upgrades[0].desc, {
+        fontFamily: 'monospace', fontSize: '8px', color: '#665544',
+      }).setOrigin(1, 0))
+    })
   }
 
   // ── Branch skills page ────────────────────────────────────────────────────
@@ -467,114 +519,49 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     branches.forEach((branch, bi) => {
       const bY = py + 38 + bi * branchH
-      const branchUnlocked = this.encData.branches.includes(branch.name)
       const branchColorHex = '#' + branch.color.toString(16).padStart(6, '0')
 
-      // Branch header background — subtle line
+      // Branch header — always visible with real name and color
       const bHeaderG = this.add.graphics()
-      bHeaderG.lineStyle(0.5, branchUnlocked ? branch.color : 0x888888, 0.35)
+      bHeaderG.lineStyle(0.5, branch.color, 0.35)
       bHeaderG.lineBetween(px + 10, bY + 16, px + pw - 10, bY + 16)
       this.rightContainer.add(bHeaderG)
 
-      // Branch name
-      const bNameText = this.add.text(px + 12, bY + 4, branchUnlocked ? branch.name : '??? Branch', {
-        fontFamily: 'monospace', fontSize: '10px',
-        color: branchUnlocked ? branchColorHex : '#888888',
-      }).setOrigin(0, 0)
-      this.rightContainer.add(bNameText)
+      this.rightContainer.add(this.add.text(px + 12, bY + 4, branch.name, {
+        fontFamily: 'monospace', fontSize: '10px', color: branchColorHex,
+      }))
 
-      // Lock badge for branch
-      if (!branchUnlocked) {
-        if (this.textures.exists('book_sells')) {
-          const lockSlot = this.add.image(px + pw - 18, bY + 7, 'book_sells', 0)
-            .setDisplaySize(16, 16)
-            .setTint(0x555555)
-            .setAlpha(0.8)
-          this.rightContainer.add(lockSlot)
-          const lockTxt = this.add.text(px + pw - 18, bY + 7, '?', {
-            fontFamily: 'monospace', fontSize: '8px', color: '#aaaaaa',
-          }).setOrigin(0.5)
-          this.rightContainer.add(lockTxt)
-        } else {
-          const lockBadge = this.add.text(px + pw - 12, bY + 4, '[?]', {
-            fontFamily: 'monospace', fontSize: '9px', color: '#888888',
-          }).setOrigin(1, 0)
-          this.rightContainer.add(lockBadge)
-        }
-      }
-
-      // Upgrades
+      // Upgrades — names always shown, desc locked until discovered
       const upgradeH = Math.min((branchH - 20) / branch.upgrades.length, 16)
       branch.upgrades.forEach((upgrade, ui) => {
         const uY = bY + 20 + ui * upgradeH
         const upgradeUnlocked = this.encData.upgrades.includes(upgrade.id)
         const iconFrame = (iconBase + bi * 9 + ui) % 90
 
-        if (branchUnlocked && upgradeUnlocked) {
-          // Skill icon
+        // Skill name always visible
+        this.rightContainer.add(this.add.text(px + 22, uY, `· ${upgrade.label}`, {
+          fontFamily: 'monospace', fontSize: '9px',
+          color: upgradeUnlocked ? '#2a1810' : '#999988',
+        }))
+
+        if (upgradeUnlocked) {
+          // Icon + description
           if (this.textures.exists('book_icons')) {
-            const icon = this.add.image(px + 14, uY + upgradeH / 2, 'book_icons', iconFrame)
-              .setDisplaySize(12, 12)
-              .setOrigin(0.5)
-            this.rightContainer.add(icon)
+            this.rightContainer.add(this.add.image(px + 14, uY + upgradeH / 2, 'book_icons', iconFrame)
+              .setDisplaySize(12, 12).setOrigin(0.5))
           }
-
-          const labelText = this.add.text(px + 22, uY, `· ${upgrade.label}`, {
-            fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
-          }).setOrigin(0, 0)
-          this.rightContainer.add(labelText)
-
-          const descText = this.add.text(px + pw - 10, uY, upgrade.desc, {
+          this.rightContainer.add(this.add.text(px + pw - 10, uY, upgrade.desc, {
             fontFamily: 'monospace', fontSize: '8px', color: '#665544',
-          }).setOrigin(1, 0)
-          this.rightContainer.add(descText)
-        } else if (branchUnlocked) {
-          // Branch known but skill locked — dark slot
-          if (this.textures.exists('book_sells')) {
-            const slot = this.add.image(px + 14, uY + upgradeH / 2, 'book_sells', 0)
-              .setDisplaySize(12, 12)
-              .setTint(0x555555)
-              .setAlpha(0.6)
-              .setOrigin(0.5)
-            this.rightContainer.add(slot)
-          }
-
-          const lockedLabel = this.add.text(px + 22, uY, '· ???', {
-            fontFamily: 'monospace', fontSize: '9px', color: '#aaaaaa',
-          }).setOrigin(0, 0)
-          this.rightContainer.add(lockedLabel)
-
-          if (this.textures.exists('book_sells')) {
-            const descSlot = this.add.image(px + pw - 18, uY + upgradeH / 2, 'book_sells', 0)
-              .setDisplaySize(14, 14)
-              .setTint(0x555555)
-              .setAlpha(0.5)
-              .setOrigin(0.5)
-            this.rightContainer.add(descSlot)
-            const descLockTxt = this.add.text(px + pw - 18, uY + upgradeH / 2, '???', {
-              fontFamily: 'monospace', fontSize: '7px', color: '#aaaaaa',
-            }).setOrigin(0.5)
-            this.rightContainer.add(descLockTxt)
-          } else {
-            const lockedDesc = this.add.text(px + pw - 10, uY, '[?]', {
-              fontFamily: 'monospace', fontSize: '8px', color: '#aaaaaa',
-            }).setOrigin(1, 0)
-            this.rightContainer.add(lockedDesc)
-          }
+          }).setOrigin(1, 0))
         } else {
-          // Whole branch locked
+          // Locked slot + ???
           if (this.textures.exists('book_sells')) {
-            const slot = this.add.image(px + 14, uY + upgradeH / 2, 'book_sells', 0)
-              .setDisplaySize(12, 12)
-              .setTint(0x444444)
-              .setAlpha(0.5)
-              .setOrigin(0.5)
-            this.rightContainer.add(slot)
+            this.rightContainer.add(this.add.image(px + 14, uY + upgradeH / 2, 'book_sells', 0)
+              .setDisplaySize(12, 12).setTint(0x555555).setAlpha(0.6).setOrigin(0.5))
           }
-          const lockedLabel = this.add.text(px + 22, uY, '· ???', {
-            fontFamily: 'monospace', fontSize: '9px', color: '#cccccc',
-          }).setOrigin(0, 0)
-          this.rightContainer.add(lockedLabel)
+          this.rightContainer.add(this.add.text(px + pw - 10, uY, '???', {
+            fontFamily: 'monospace', fontSize: '8px', color: '#aaaaaa',
+          }).setOrigin(1, 0))
         }
       })
 
