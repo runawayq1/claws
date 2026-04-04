@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { Player } from '../entities/Player'
 import { UpgradeTracker, getIconFrame, type Upgrade } from '../systems/UpgradeSystem'
+import { unlockUpgrade, unlockBranch } from './EncyclopediaScene'
 
 const CARD_W = 200
 const CARD_H = 220
@@ -233,6 +234,10 @@ export class LevelUpScene extends Phaser.Scene {
       zone.disableInteractive()
       upgrade.apply(this.player)
       this.tracker.pick(upgrade)
+
+      // Encyclopedia tracking
+      unlockUpgrade(upgrade.id)
+      if (upgrade.branch) unlockBranch(upgrade.branch)
 
       const cx = x + cw / 2
       const cy = targetY + ch / 2
@@ -495,6 +500,10 @@ export class LevelUpScene extends Phaser.Scene {
       zone.disableInteractive()
       upgrade.apply(this.player)
       this.tracker.pick(upgrade)
+
+      // Encyclopedia tracking
+      unlockUpgrade(upgrade.id)
+      if (upgrade.branch) unlockBranch(upgrade.branch)
 
       const cx = x + CARD_W / 2
       const cy = targetY + CARD_H / 2

@@ -5,6 +5,7 @@ import { UIScene } from './scenes/UIScene'
 import { LevelUpScene } from './scenes/LevelUpScene'
 import { ProfileScene } from './scenes/ProfileScene'
 import { TestScene } from './scenes/TestScene'
+import { EncyclopediaScene } from './scenes/EncyclopediaScene'
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -19,7 +20,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [StartScene, TestScene, GameScene, UIScene, LevelUpScene, ProfileScene],
+  scene: [StartScene, TestScene, GameScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene],
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,

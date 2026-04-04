@@ -14,7 +14,7 @@ export interface Upgrade {
 // ============================================================
 // GENERIC POOL (G1–G10) — available to all heroes
 // ============================================================
-const GENERIC_POOL: Upgrade[] = [
+export const GENERIC_POOL: Upgrade[] = [
   { id: 'g1', label: 'Sharp Edge',         desc: '+20% attack damage',        icon: 'g1_sharp_edge',   apply: p => { p.damage = Math.ceil(p.damage * 1.2) } },
   { id: 'g2', label: 'Swift Feet',         desc: '+15% move speed',           icon: 'g2_swift_feet',   apply: p => { p.speed = Math.ceil(p.speed * 1.15) } },
   { id: 'g3', label: 'Eagle Eye',          desc: '+20% attack range',         icon: 'g3_eagle_eye',    apply: p => { p.range = Math.ceil(p.range * 1.2) } },
@@ -221,7 +221,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
 ]
 
 // Map hero → branches
-const HERO_BRANCHES: Record<string, BranchDef[]> = {
+export const HERO_BRANCHES: Record<string, BranchDef[]> = {
   ignara: IGNARA_BRANCHES,
   nazar:  NAZAR_BRANCHES,
   // khet removed from playable roster (shared NAZAR_BRANCHES)

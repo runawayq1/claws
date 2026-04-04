@@ -196,7 +196,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private huntressMeleeCombo = false
   shatterPieces = 0  // ice shards split into N fragments on hit
   pierceCount = 2    // max enemies an ice shard can pierce through
-  spearPierceCount = 1  // max enemies a spear can pierce through
+  spearPierceCount = 999  // unlimited pierce by default; Explosive Tips triggers when set lower
   private energyDrainRate = 10     // per second for continuous (lightning)
   private energyDrainPerShot = 8   // per ice shard volley
   private energyRegenRate = 25     // per second for inactive stance
@@ -3462,7 +3462,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const launchSpear = (sa: number, isExtra = false) => {
       const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
-      let pierceLeft = this.spearPierceCount
       let spearDead = false
       const eX = this.cx + Math.cos(sa) * maxDist
       const eY = this.cy + Math.sin(sa) * maxDist
@@ -3495,7 +3494,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (tip.scene) tip.destroy()
       }
 
-      const spearTween = this.scene.tweens.add({
+      this.scene.tweens.add({
         targets: [spear, tip], x: eX, y: eY, duration: flyTime,
         onUpdate: () => {
           if (spearDead) return
@@ -3531,27 +3530,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
                 }).setOrigin(0.5).setDepth(21)
                 this.scene.tweens.add({ targets: ct, y: ct.y - 20, alpha: 0, duration: 500, onComplete: () => ct.destroy() })
               }
-              pierceLeft--
-              if (pierceLeft <= 0) {
-                // Explosive Tips: explode on final pierce
-                if (this.hasExplosiveTips) {
-                  const ex = spear.x, ey = spear.y
-                  const blastR = 50 + this.splashRadius * 0.5
-                  // VFX: orange explosion
-                  const blast = this.scene.add.circle(ex, ey, 10, 0xff6600, 0.6).setDepth(10)
-                  this.scene.tweens.add({ targets: blast, scale: blastR / 10, alpha: 0, duration: 300, onComplete: () => blast.destroy() })
-                  // Damage in radius
-                  for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                    if (!e2.active || hitSet.has(e2)) continue
-                    if (Phaser.Math.Distance.Between(ex, ey, e2.x, e2.y) <= blastR) {
-                      (e2 as any).takeDamage(this.damage * 0.5, 'shockwave')
-                    }
+              // Explosive Tips: small AOE on every hit
+              if (this.hasExplosiveTips) {
+                const blastR = 40 + this.splashRadius * 0.4
+                const blast = this.scene.add.circle(e.x, e.y, 8, 0xff6600, 0.5).setDepth(10)
+                this.scene.tweens.add({ targets: blast, scale: blastR / 8, alpha: 0, duration: 250, onComplete: () => blast.destroy() })
+                for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+                  if (!e2.active || hitSet.has(e2)) continue
+                  if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= blastR) {
+                    (e2 as any).takeDamage(this.damage * 0.35, 'shockwave')
+                    hitSet.add(e2)
                   }
-                  this.scene.cameras.main.shake(40, 0.002)
                 }
-                spearTween.stop()
-                killSpear()
-                return
               }
             }
           }

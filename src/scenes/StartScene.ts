@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { type HeroType } from '../entities/Player'
+import { unlockHero } from './EncyclopediaScene'
 
 interface HeroDef {
   type: HeroType
@@ -106,8 +107,18 @@ export class StartScene extends Phaser.Scene {
       }
     })
 
+    // Encyclopedia button
+    const encBtn = this.add.text(width / 2 - (compact ? 52 : 72), compact ? height - 14 : height * 0.92, 'ENCYCLOPEDIA', {
+      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
+      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
+    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
+    encBtn.on('pointerover', () => encBtn.setColor('#d4b483'))
+    encBtn.on('pointerout', () => encBtn.setColor('#888888'))
+    encBtn.on('pointerdown', () => this.scene.start('EncyclopediaScene'))
+
     // Profile button
-    const profileBtn = this.add.text(width / 2, compact ? height - 14 : height * 0.92, 'PROFILE', {
+    const profileBtn = this.add.text(width / 2 + (compact ? 52 : 72), compact ? height - 14 : height * 0.92, 'PROFILE', {
       fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
       color: '#888888', stroke: '#000000', strokeThickness: 3,
       backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
@@ -202,6 +213,9 @@ export class StartScene extends Phaser.Scene {
             (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {})
           }
         }
+
+        // Save hero to encyclopedia
+        unlockHero(hero.type)
 
         // Brief flash then start
         this.cameras.main.flash(200, 255, 255, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
