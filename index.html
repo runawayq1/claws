@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>CLAWS</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 100%; height: 100vh; height: 100dvh;
+        overflow: hidden; background: #0d0d1a;
+        position: fixed; inset: 0;
+      }
+      canvas { display: block; touch-action: none; }
+      /* Ensure Phaser DOM container (for input fields) is above the canvas */
+      .phaser-dom-container, [id^="phaser"] { z-index: 10 !important; pointer-events: auto !important; }
+
+      /* Rotate-phone overlay — shown only in portrait on mobile */
+      #rotate-overlay {
+        display: none;
+        position: fixed; inset: 0; z-index: 99999;
+        background: #0a0a0e;
+        flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 24px;
+        color: #FFD700;
+        font-family: monospace;
+        text-align: center;
+      }
+      #rotate-overlay .icon {
+        font-size: 64px;
+        animation: wiggle 1.5s ease-in-out infinite;
+      }
+      #rotate-overlay .text {
+        font-size: 20px;
+        letter-spacing: 2px;
+      }
+      #rotate-overlay .sub {
+        font-size: 13px;
+        color: #888;
+      }
+      @keyframes wiggle {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-20deg); }
+        75% { transform: rotate(90deg); }
+      }
+      @media (max-width: 900px) and (orientation: portrait) {
+        #rotate-overlay { display: flex; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="rotate-overlay">
+      <div class="icon">📱</div>
+      <div class="text">ROTATE YOUR DEVICE</div>
+      <div class="sub">CLAWS is best played in landscape mode</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
