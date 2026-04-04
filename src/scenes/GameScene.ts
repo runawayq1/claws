@@ -104,6 +104,37 @@ export class GameScene extends Phaser.Scene {
     this.load.image('deco_tree1', 'assets/terrain/tree1.png')
     this.load.image('deco_tree2', 'assets/terrain/tree2.png')
     this.load.image('deco_tree3', 'assets/terrain/tree3.png')
+
+    // Prop images for zone decorations
+    this.load.image('prop_bush1', 'assets/props/bush1.png')
+    this.load.image('prop_bush2', 'assets/props/bush2.png')
+    this.load.image('prop_bush3', 'assets/props/bush3.png')
+    this.load.image('prop_bush4', 'assets/props/bush4.png')
+    this.load.image('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
+    this.load.image('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
+    this.load.image('prop_grass_tuft4', 'assets/props/grass_tuft4.png')
+    this.load.image('prop_grass_tuft5', 'assets/props/grass_tuft5.png')
+    this.load.image('prop_gravestone1', 'assets/props/gravestone1.png')
+    this.load.image('prop_gravestone2', 'assets/props/gravestone2.png')
+    this.load.image('prop_rubble1', 'assets/props/rubble1.png')
+    this.load.image('prop_rubble2', 'assets/props/rubble2.png')
+    this.load.image('prop_rubble3', 'assets/props/rubble3.png')
+    this.load.image('prop_cross', 'assets/props/cross.png')
+    this.load.image('prop_tombstone_tall', 'assets/props/tombstone_tall.png')
+    this.load.image('prop_tomb_statue', 'assets/props/tomb_statue.png')
+    this.load.image('prop_barrel', 'assets/props/barrel.png')
+    this.load.image('prop_crate_small', 'assets/props/crate_small.png')
+    this.load.image('prop_crate_large', 'assets/props/crate_large.png')
+    this.load.image('prop_signpost', 'assets/props/signpost.png')
+    this.load.image('prop_signpost2', 'assets/props/signpost2.png')
+    this.load.image('prop_fountain', 'assets/props/fountain.png')
+    this.load.image('prop_well', 'assets/props/well.png')
+    this.load.image('prop_stone_small1', 'assets/props/stone_small1.png')
+    this.load.image('prop_stone_small2', 'assets/props/stone_small2.png')
+    this.load.image('prop_stone_small3', 'assets/props/stone_small3.png')
+    this.load.image('prop_stone_small4', 'assets/props/stone_small4.png')
+    this.load.image('prop_stone_small5', 'assets/props/stone_small5.png')
+    this.load.image('prop_vase_small', 'assets/props/vase_small.png')
   }
 
   create(data?: { hero?: HeroType }) {
@@ -308,6 +339,18 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
+  /** Returns the biome zone (0-4) for a world pixel position. */
+  public getZone(px: number, py: number): number {
+    const cx = CONFIG.WORLD_WIDTH / 2
+    const cy = CONFIG.WORLD_HEIGHT / 2
+    const dist = Phaser.Math.Distance.Between(px, py, cx, cy)
+    if (dist < 600) return 0
+    if (dist < 1200) return 1
+    if (dist < 1800) return 2
+    if (dist < 2400) return 3
+    return 4
+  }
+
   private drawTerrain() {
     const tileSize = CONFIG.TILE_SIZE
 
@@ -325,9 +368,10 @@ export class GameScene extends Phaser.Scene {
     const cx = CONFIG.WORLD_WIDTH / 2
     const cy = CONFIG.WORLD_HEIGHT / 2
 
-    // Stone road mask — returns true if this tile should be stone
+    // Stone road mask — returns true if tile should be stone road (zones 0-1 only)
     const ROAD_W = 2.5 // road half-width in tiles
-    const isRoad = (tileCol: number, tileRow: number): boolean => {
+    const isRoad = (tileCol: number, tileRow: number, zone: number): boolean => {
+      if (zone > 1) return false
       const px = tileCol * tileSize + tileSize / 2
       const py = tileRow * tileSize + tileSize / 2
       const dx = (px - cx) / tileSize
@@ -336,9 +380,9 @@ export class GameScene extends Phaser.Scene {
       // Central clearing (radius ~3 tiles)
       if (dx * dx + dy * dy < 12) return true
 
-      // Main cross roads (N-S and E-W)
-      if (Math.abs(dx) < ROAD_W && Math.abs(dy) < 14) return true
-      if (Math.abs(dy) < ROAD_W && Math.abs(dx) < 14) return true
+      // Main cross roads (N-S and E-W) — extend to zone 1 boundary (~1200px = ~18.75 tiles)
+      if (Math.abs(dx) < ROAD_W && Math.abs(dy) < 19) return true
+      if (Math.abs(dy) < ROAD_W && Math.abs(dx) < 19) return true
 
       return false
     }
@@ -347,15 +391,31 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < cols; c++) {
         const px = c * tileSize + tileSize / 2
         const py = r * tileSize + tileSize / 2
+        const zone = this.getZone(px, py)
+        const rand = rng(c, r, 3)
 
-        // Base grass layer
-        const grassFrame = GRASS_FRAMES[Math.floor(rng(c, r, 3) * GRASS_FRAMES.length)]
-        this.add.image(px, py, 'terrain_grass', grassFrame)
-          .setScale(2)
-          .setDepth(0)
+        // Determine if this tile uses stone ground
+        let useStone = false
+        if (zone === 2 && rand < 0.30) useStone = true       // Ruins: 30% stone patches
+        else if (zone === 4 && rand < 0.80) useStone = true  // Wastes: 80% stone
 
-        // Stone road overlay
-        if (isRoad(c, r)) {
+        if (useStone) {
+          const stoneFrame = STONE_FILL[Math.floor(rng(c, r, 7) * STONE_FILL.length)]
+          const tile = this.add.image(px, py, 'terrain_stone', stoneFrame)
+            .setScale(2)
+            .setDepth(0)
+          if (zone === 4) tile.setTint(0xbbaa99)
+          else if (zone === 2) tile.setTint(0xdddddd)
+        } else {
+          const grassFrame = GRASS_FRAMES[Math.floor(rand * GRASS_FRAMES.length)]
+          const tile = this.add.image(px, py, 'terrain_grass', grassFrame)
+            .setScale(2)
+            .setDepth(0)
+          if (zone === 3) tile.setTint(0x889988)
+        }
+
+        // Stone road overlay (zones 0-1)
+        if (isRoad(c, r, zone)) {
           const stoneFrame = STONE_FILL[Math.floor(rng(c, r, 7) * STONE_FILL.length)]
           this.add.image(px, py, 'terrain_stone', stoneFrame)
             .setScale(2)
@@ -370,76 +430,192 @@ export class GameScene extends Phaser.Scene {
   private scatterRocks() {
     this.rocks = this.physics.add.staticGroup()
 
-    const count = 40
     const centerX = CONFIG.WORLD_WIDTH / 2
     const centerY = CONFIG.WORLD_HEIGHT / 2
     const placed: { x: number; y: number }[] = []
     const MIN_ROCK_DIST = 120
     const MIN_TREE_DIST = 100
-    const MAX_ATTEMPTS = 50
+    const MAX_ATTEMPTS = 60
 
-    for (let i = 0; i < count; i++) {
-      let x = 0, y = 0, valid = false
+    // Rocks per zone: [zone0, zone1, zone2, zone3, zone4]
+    const zoneRockCounts = [
+      Phaser.Math.Between(2, 3),
+      Phaser.Math.Between(8, 10),
+      Phaser.Math.Between(10, 12),
+      Phaser.Math.Between(8, 10),
+      Phaser.Math.Between(10, 12),
+    ]
+    // Radial ranges for each zone (inner, outer px)
+    const zoneRanges: [number, number][] = [
+      [200, 590],
+      [620, 1180],
+      [1220, 1780],
+      [1820, 2380],
+      [2420, Math.sqrt(2) * (CONFIG.WORLD_WIDTH / 2) - 80],
+    ]
 
-      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        x = Phaser.Math.Between(80, CONFIG.WORLD_WIDTH - 80)
-        y = Phaser.Math.Between(80, CONFIG.WORLD_HEIGHT - 80)
+    for (let zone = 0; zone < 5; zone++) {
+      const count = zoneRockCounts[zone]
+      const [minDist, maxDist] = zoneRanges[zone]
 
-        if (Phaser.Math.Distance.Between(x, y, centerX, centerY) < 200) continue
-        if (placed.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < MIN_ROCK_DIST)) continue
-        if (this.treePositions.some(t => Phaser.Math.Distance.Between(x, y, t.x, t.y) < MIN_TREE_DIST)) continue
+      for (let i = 0; i < count; i++) {
+        let x = 0, y = 0, valid = false
 
-        valid = true
-        break
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+          const angle = Math.random() * Math.PI * 2
+          const dist = Phaser.Math.FloatBetween(minDist, maxDist)
+          x = centerX + Math.cos(angle) * dist
+          y = centerY + Math.sin(angle) * dist
+
+          if (x < 80 || x > CONFIG.WORLD_WIDTH - 80 || y < 80 || y > CONFIG.WORLD_HEIGHT - 80) continue
+          if (placed.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < MIN_ROCK_DIST)) continue
+          if (this.treePositions.some(t => Phaser.Math.Distance.Between(x, y, t.x, t.y) < MIN_TREE_DIST)) continue
+
+          valid = true
+          break
+        }
+
+        if (!valid) continue
+
+        placed.push({ x, y })
+
+        const key = ROCK_KEYS[Phaser.Math.Between(0, ROCK_KEYS.length - 1)]
+        const rock = this.rocks.create(x, y, key) as Phaser.Physics.Arcade.Sprite
+        rock.setDepth(2)
+        rock.setScale(Phaser.Math.FloatBetween(0.6, 1.2))
+        rock.refreshBody()
+        const body = rock.body as Phaser.Physics.Arcade.StaticBody
+        const dw = rock.displayWidth
+        const dh = rock.displayHeight
+        const scale = rock.scaleX
+        body.setSize(dw * 0.45, dh * 0.4)
+        body.setOffset((rock.width - dw * 0.45 / scale) / 2, (rock.height - dh * 0.4 / scale) / 2)
       }
-
-      if (!valid) continue
-
-      placed.push({ x, y })
-
-      const key = ROCK_KEYS[Phaser.Math.Between(0, ROCK_KEYS.length - 1)]
-      const rock = this.rocks.create(x, y, key) as Phaser.Physics.Arcade.Sprite
-      rock.setDepth(2)
-      rock.setScale(Phaser.Math.FloatBetween(0.6, 1.2))
-      rock.refreshBody()
-      const body = rock.body as Phaser.Physics.Arcade.StaticBody
-      const dw = rock.displayWidth
-      const dh = rock.displayHeight
-      const scale = rock.scaleX
-      body.setSize(dw * 0.45, dh * 0.4)
-      body.setOffset((rock.width - dw * 0.45 / scale) / 2, (rock.height - dh * 0.4 / scale) / 2)
     }
   }
 
   private scatterDecorations() {
     const centerX = CONFIG.WORLD_WIDTH / 2
     const centerY = CONFIG.WORLD_HEIGHT / 2
-    const treeKeys = ['deco_tree1', 'deco_tree2', 'deco_tree3']
     this.treePositions = []
 
-    const MIN_TREE_DIST = 130
-    const MAX_ATTEMPTS = 50
+    const MIN_DIST = 110
+    const MAX_ATTEMPTS = 60
 
-    for (let i = 0; i < 25; i++) {
-      let x = 0, y = 0, valid = false
+    const placed: { x: number; y: number }[] = []
 
+    const tryPlace = (minR: number, maxR: number): { x: number; y: number } | null => {
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        x = Phaser.Math.Between(100, CONFIG.WORLD_WIDTH - 100)
-        y = Phaser.Math.Between(100, CONFIG.WORLD_HEIGHT - 100)
-
-        if (Phaser.Math.Distance.Between(x, y, centerX, centerY) < 250) continue
-        if (this.treePositions.some(t => Phaser.Math.Distance.Between(x, y, t.x, t.y) < MIN_TREE_DIST)) continue
-
-        valid = true
-        break
+        const angle = Math.random() * Math.PI * 2
+        const dist = Phaser.Math.FloatBetween(minR, maxR)
+        const x = centerX + Math.cos(angle) * dist
+        const y = centerY + Math.sin(angle) * dist
+        if (x < 80 || x > CONFIG.WORLD_WIDTH - 80 || y < 80 || y > CONFIG.WORLD_HEIGHT - 80) continue
+        if (placed.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < MIN_DIST)) continue
+        return { x, y }
       }
+      return null
+    }
 
-      if (!valid) continue
-
+    const addProp = (x: number, y: number, key: string, tint?: number) => {
+      placed.push({ x, y })
       this.treePositions.push({ x, y })
-      this.add.image(x, y, treeKeys[i % treeKeys.length])
+      const img = this.add.image(x, y, key)
         .setDepth(3)
-        .setScale(Phaser.Math.FloatBetween(0.8, 1.4))
+        .setScale(Phaser.Math.FloatBetween(0.7, 1.3))
+      if (tint !== undefined) img.setTint(tint)
+    }
+
+    const treeKeys = ['deco_tree1', 'deco_tree2', 'deco_tree3']
+    const bushKeys = ['prop_bush1', 'prop_bush2', 'prop_bush3', 'prop_bush4']
+    const tuftKeys = ['prop_grass_tuft1', 'prop_grass_tuft3', 'prop_grass_tuft4', 'prop_grass_tuft5']
+    const graveKeys = ['prop_gravestone1', 'prop_gravestone2', 'prop_cross', 'prop_tombstone_tall', 'prop_tomb_statue']
+    const rubbleKeys = ['prop_rubble1', 'prop_rubble2', 'prop_rubble3']
+    const crateKeys = ['prop_barrel', 'prop_crate_small', 'prop_crate_large']
+    const stoneKeys = ['prop_stone_small1', 'prop_stone_small2', 'prop_stone_small3', 'prop_stone_small4', 'prop_stone_small5']
+    const pick = (arr: string[]) => arr[Phaser.Math.Between(0, arr.length - 1)]
+
+    // --- Zone 0: Crossroads (0-600px) ---
+    // Well at center
+    this.add.image(centerX, centerY + 60, 'prop_well').setDepth(3).setScale(1.0)
+    placed.push({ x: centerX, y: centerY + 60 })
+    this.treePositions.push({ x: centerX, y: centerY + 60 })
+    // Fountain nearby
+    const fontPos = tryPlace(120, 260)
+    if (fontPos) addProp(fontPos.x, fontPos.y, 'prop_fountain')
+    // 2 signposts near roads
+    for (let i = 0; i < 2; i++) {
+      const p = tryPlace(80, 400)
+      if (p) addProp(p.x, p.y, pick(['prop_signpost', 'prop_signpost2']))
+    }
+    // Couple vases/small props
+    for (let i = 0; i < 2; i++) {
+      const p = tryPlace(100, 550)
+      if (p) addProp(p.x, p.y, 'prop_vase_small')
+    }
+
+    // --- Zone 1: Meadow (600-1200px) ---
+    const z1TreeCount = Phaser.Math.Between(15, 20)
+    for (let i = 0; i < z1TreeCount; i++) {
+      const p = tryPlace(620, 1180)
+      if (p) addProp(p.x, p.y, pick(treeKeys))
+    }
+    const z1BushCount = Phaser.Math.Between(10, 15)
+    for (let i = 0; i < z1BushCount; i++) {
+      const p = tryPlace(620, 1180)
+      if (p) addProp(p.x, p.y, pick(bushKeys))
+    }
+    const z1TuftCount = Phaser.Math.Between(8, 10)
+    for (let i = 0; i < z1TuftCount; i++) {
+      const p = tryPlace(620, 1180)
+      if (p) addProp(p.x, p.y, pick(tuftKeys))
+    }
+
+    // --- Zone 2: Ruins (1200-1800px) — slight gray tint 0xdddddd ---
+    const z2GraveCount = Phaser.Math.Between(8, 10)
+    for (let i = 0; i < z2GraveCount; i++) {
+      const p = tryPlace(1220, 1780)
+      if (p) addProp(p.x, p.y, pick(graveKeys), 0xdddddd)
+    }
+    const z2RubbleCount = Phaser.Math.Between(5, 8)
+    for (let i = 0; i < z2RubbleCount; i++) {
+      const p = tryPlace(1220, 1780)
+      if (p) addProp(p.x, p.y, pick(rubbleKeys), 0xdddddd)
+    }
+    const z2CrateCount = Phaser.Math.Between(3, 5)
+    for (let i = 0; i < z2CrateCount; i++) {
+      const p = tryPlace(1220, 1780)
+      if (p) addProp(p.x, p.y, pick(crateKeys), 0xdddddd)
+    }
+
+    // --- Zone 3: Dark Forest (1800-2400px) — dark tint 0x889988 ---
+    const z3TreeCount = Phaser.Math.Between(20, 30)
+    for (let i = 0; i < z3TreeCount; i++) {
+      const p = tryPlace(1820, 2380)
+      if (p) addProp(p.x, p.y, pick(treeKeys), 0x889988)
+    }
+    const z3BushCount = Phaser.Math.Between(10, 15)
+    for (let i = 0; i < z3BushCount; i++) {
+      const p = tryPlace(1820, 2380)
+      if (p) addProp(p.x, p.y, pick(bushKeys), 0x889988)
+    }
+
+    // --- Zone 4: Wastes (2400px+) — slight brown tint 0xbbaa99 ---
+    const maxWorldDist = Math.sqrt(2) * (CONFIG.WORLD_WIDTH / 2) // corner distance
+    const z4RubbleCount = Phaser.Math.Between(8, 12)
+    for (let i = 0; i < z4RubbleCount; i++) {
+      const p = tryPlace(2420, maxWorldDist - 100)
+      if (p) addProp(p.x, p.y, pick(rubbleKeys), 0xbbaa99)
+    }
+    const z4StoneCount = Phaser.Math.Between(8, 12)
+    for (let i = 0; i < z4StoneCount; i++) {
+      const p = tryPlace(2420, maxWorldDist - 100)
+      if (p) addProp(p.x, p.y, pick(stoneKeys), 0xbbaa99)
+    }
+    const z4VaseCount = Phaser.Math.Between(3, 5)
+    for (let i = 0; i < z4VaseCount; i++) {
+      const p = tryPlace(2420, maxWorldDist - 100)
+      if (p) addProp(p.x, p.y, 'prop_vase_small', 0xbbaa99)
     }
   }
 

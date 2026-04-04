@@ -76,19 +76,38 @@ export class WaveManager {
     const { x, y } = this.getSpawnPos()
     const tier = this.currentWave
 
-    // Pick enemy type based on tier + random chance
-    // Skeleton = basic (always), Goblin = fast (tier 2+), FlyingEye = flying dmg (tier 4+), SandGolem = tank (tier 6+)
+    // Pick enemy type based on zone (distance from world center)
+    // Zone 0 — Crossroads: only Skeleton
+    // Zone 1 — Meadow:     Skeleton 70%, Goblin 30%
+    // Zone 2 — Ruins:      Skeleton 40%, Goblin 30%, FlyingEye 20%, SandGolem 10%
+    // Zone 3 — Dark Forest: Goblin 30%, FlyingEye 30%, SandGolem 25%, Skeleton 15%
+    // Zone 4 — Wastes:     SandGolem 40%, FlyingEye 30%, Goblin 20%, Skeleton 10%
+    const zone: number = (this.scene as any).getZone(x, y)
     const roll = Math.random()
     let mob: Skeleton | Goblin | FlyingEye | SandGolem
 
-    if (tier >= 6 && roll < 0.08) {
-      mob = new SandGolem(this.scene, x, y, this.player, tier)
-    } else if (tier >= 4 && roll < 0.15) {
-      mob = new FlyingEye(this.scene, x, y, this.player, tier)
-    } else if (tier >= 2 && roll < 0.30) {
-      mob = new Goblin(this.scene, x, y, this.player, tier)
-    } else {
+    if (zone <= 0) {
       mob = new Skeleton(this.scene, x, y, this.player, tier)
+    } else if (zone === 1) {
+      mob = roll < 0.30
+        ? new Goblin(this.scene, x, y, this.player, tier)
+        : new Skeleton(this.scene, x, y, this.player, tier)
+    } else if (zone === 2) {
+      if (roll < 0.10) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.30) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      else if (roll < 0.60) mob = new Goblin(this.scene, x, y, this.player, tier)
+      else mob = new Skeleton(this.scene, x, y, this.player, tier)
+    } else if (zone === 3) {
+      if (roll < 0.25) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.55) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      else if (roll < 0.85) mob = new Goblin(this.scene, x, y, this.player, tier)
+      else mob = new Skeleton(this.scene, x, y, this.player, tier)
+    } else {
+      // zone 4 — Wastes
+      if (roll < 0.40) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.70) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      else if (roll < 0.90) mob = new Goblin(this.scene, x, y, this.player, tier)
+      else mob = new Skeleton(this.scene, x, y, this.player, tier)
     }
 
     this.enemies.add(mob)

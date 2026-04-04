@@ -561,6 +561,20 @@ export class UIScene extends Phaser.Scene {
     const scaleX = size / CONFIG.WORLD_WIDTH
     const scaleY = size / CONFIG.WORLD_HEIGHT
 
+    // Zone rings (world center 1500,1500 mapped to minimap coords)
+    const cx = mapX + 1500 * scaleX
+    const cy = mapY + 1500 * scaleY
+    const zoneRings: [number, number, number][] = [
+      [600,  0x888888, 0.3],
+      [1200, 0x448844, 0.3],
+      [1800, 0x888866, 0.3],
+      [2400, 0x446644, 0.3],
+    ]
+    for (const [worldRadius, color, alpha] of zoneRings) {
+      mm.lineStyle(1, color, alpha)
+      mm.strokeCircle(cx, cy, worldRadius * scaleX)
+    }
+
     const gs = this.gameScene
     if (!gs?.player) return
 
