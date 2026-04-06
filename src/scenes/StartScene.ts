@@ -115,6 +115,74 @@ export class StartScene extends Phaser.Scene {
       }
     })
 
+    // Boss demon art — loaded lazily so it doesn't block first frame
+    const bossScale = compact ? 3.5 : 5
+    const bossLeftX = compact ? 80 : 130
+    const bossRightX = width - (compact ? 80 : 130)
+    const bossY = height - (compact ? 5 : 8)
+    let bossOnLeft = true
+    let bossSprite: Phaser.GameObjects.Sprite | null = null
+
+    const initBoss = () => {
+      if (!this.anims.exists('start_boss_idle')) {
+        this.anims.create({ key: 'start_boss_idle', frames: this.anims.generateFrameNumbers('boss_demon', { start: 0, end: 5 }), frameRate: 6, repeat: -1 })
+      }
+      if (!this.anims.exists('start_boss_cleave')) {
+        this.anims.create({ key: 'start_boss_cleave', frames: this.anims.generateFrameNumbers('boss_demon', { start: 18, end: 32 }), frameRate: 10, repeat: 0 })
+      }
+      if (!this.anims.exists('start_boss_death')) {
+        this.anims.create({ key: 'start_boss_death', frames: this.anims.generateFrameNumbers('boss_demon', { start: 38, end: 59 }), frameRate: 8, repeat: 0 })
+      }
+      if (!this.anims.exists('start_boss_spawn')) {
+        this.anims.create({ key: 'start_boss_spawn', frames: this.anims.generateFrameNumbers('boss_demon', { start: 59, end: 38 }), frameRate: 10, repeat: 0 })
+      }
+      bossSprite = this.add.sprite(bossLeftX, bossY, 'boss_demon', 0)
+        .setScale(bossScale).setDepth(1).setAlpha(0)
+        .setOrigin(0.5, 1)
+      playBossLoop()
+    }
+
+    // Loop: spawn → idle 3s → cleave → death → fade → teleport to other side → restart
+    const playBossLoop = () => {
+      if (!bossSprite) return
+      const posX = bossOnLeft ? bossLeftX : bossRightX
+      bossSprite.setPosition(posX, bossY)
+      bossSprite.setFlipX(bossOnLeft)
+      bossOnLeft = !bossOnLeft
+
+      bossSprite.setAlpha(0)
+      bossSprite.play('start_boss_spawn')
+      this.tweens.add({ targets: bossSprite, alpha: 0.3, duration: 600 })
+      bossSprite.once('animationcomplete', () => {
+        if (!bossSprite) return
+        bossSprite.play('start_boss_idle')
+        this.time.delayedCall(3000, () => {
+          if (!bossSprite) return
+          bossSprite.play('start_boss_cleave')
+          bossSprite.once('animationcomplete', () => {
+            if (!bossSprite) return
+            bossSprite.play('start_boss_death')
+            bossSprite.once('animationcomplete', () => {
+              if (!bossSprite) return
+              this.tweens.add({
+                targets: bossSprite, alpha: 0, duration: 800,
+                onComplete: () => { this.time.delayedCall(1500, playBossLoop) },
+              })
+            })
+          })
+        })
+      })
+    }
+
+    // Load boss_demon lazily — don't block first frame
+    if (this.textures.exists('boss_demon')) {
+      this.time.delayedCall(2000, initBoss)
+    } else {
+      this.load.spritesheet('boss_demon', 'assets/boss_demon/spritesheet.png', { frameWidth: 288, frameHeight: 160 })
+      this.load.once('complete', () => { this.time.delayedCall(2000, initBoss) })
+      this.load.start()
+    }
+
     // Encyclopedia book icon (bottom-right) with decorative frame
     const bookSize = compact ? 64 : 90
     const framePad = bookSize / 2 + 16   // enough margin so pentagon + label fits
