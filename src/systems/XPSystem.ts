@@ -54,11 +54,11 @@ export class XPSystem {
   updateMagnet() {
     for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!orb.active) continue
-      const dist = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.x, this.player.y)
+      const dist = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.cx, this.player.cy)
       if (dist < this.magnetRadius) {
         // Accelerate toward player — faster when closer
         const speed = 200 + (1 - dist / this.magnetRadius) * 300
-        this.scene.physics.moveTo(orb, this.player.x, this.player.y, speed)
+        this.scene.physics.moveTo(orb, this.player.cx, this.player.cy, speed)
       }
     }
   }

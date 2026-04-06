@@ -158,18 +158,18 @@ const AMUN_BRANCHES: BranchDef[] = [
   {
     name: 'Wrath', color: 0xff6633,
     upgrades: [
-      { id: 'aw1', label: 'Thorns',          desc: 'When hit: reflect 50% dmg to enemies in 60px, +5% armor', icon: 'ab2_thorns',          apply: p => { p.hasThorns = true; p.armor = Math.min(0.7, p.armor + 0.05) } },
-      { id: 'aw2', label: 'Wrath',           desc: 'When hit: AoE burst 60% dmg in 70px, +10% dmg',          icon: 'as3_wrath',           apply: p => { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.1) } },
-      { id: 'aw3', label: 'Consecration',    desc: 'Aura: pulse 40% dmg in 70px every 1.5s, +25 splash, +3 dmg', icon: 'as2_consecration', apply: p => { p.splashRadius += 25; p.damage += 3; p.dmgAuraActive = true } },
-      { id: 'aw4', label: 'Living Fortress', desc: 'Aura dmg scales 0.5–2× with HP %, +30 max HP',           icon: 'as1_living_fortress', apply: p => { p.hasLivingFortress = true; p.maxHp += 30; p.hp += 30 } },
-      { id: 'aw5', label: 'Divine Judgment', desc: 'Auto-execute enemies below 15% HP in 80+range px, +15% dmg', icon: 'as5_divine_judgment', apply: p => { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.15) } },
+      { id: 'aw1', label: 'Thorns',          desc: 'When hit: reflect 50% dmg to enemies in 60px, +5% armor', icon: 'aq1_titans_pulse',    apply: p => { p.hasThorns = true; p.armor = Math.min(0.7, p.armor + 0.05) } },
+      { id: 'aw2', label: 'Wrath',           desc: 'When hit: AoE burst 60% dmg in 70px, +10% dmg',          icon: 'aq2_earthquake',      apply: p => { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.1) } },
+      { id: 'aw3', label: 'Consecration',    desc: 'Aura: pulse 40% dmg in 70px every 1.5s, +25 splash, +3 dmg', icon: 'aq3_colossus',     apply: p => { p.splashRadius += 25; p.damage += 3; p.dmgAuraActive = true } },
+      { id: 'aw4', label: 'Living Fortress', desc: 'Aura dmg scales 0.5–2× with HP %, +30 max HP',           icon: 'aq4_rally_cry',       apply: p => { p.hasLivingFortress = true; p.maxHp += 30; p.hp += 30 } },
+      { id: 'aw5', label: 'Divine Judgment', desc: 'Auto-execute enemies below 15% HP in 80+range px, +15% dmg', icon: 'aq5_cataclysm',    apply: p => { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.15) } },
     ],
   },
   {
     name: 'Bastion', color: 0x4488ff,
     upgrades: [
       { id: 'ab1', label: 'Fortify',         desc: '+15% armor, activates defense aura visual',       icon: 'ab1_fortify',         apply: p => { p.armor = Math.min(0.7, p.armor + 0.15); p.defenseAuraActive = true } },
-      { id: 'ab2', label: 'Aura of Might',   desc: 'Aura: 3 DPS to all enemies in 60px, +3 dmg',     icon: 'aq1_titans_pulse',    apply: p => { p.hasPassiveAura = true; p.damage += 3 } },
+      { id: 'ab2', label: 'Aura of Might',   desc: 'Aura: 3 DPS to all enemies in 60px, +3 dmg',     icon: 'ab2_thorns',          apply: p => { p.hasPassiveAura = true; p.damage += 3 } },
       { id: 'ab3', label: 'Iron Will',       desc: 'Any single hit capped at 10% max HP, +10% armor', icon: 'ab3_iron_will',       apply: p => { p.hasIronWill = true; p.armor = Math.min(0.7, p.armor + 0.1) } },
       { id: 'ab4', label: 'Regenerate',      desc: 'Below 40% HP: regen ×3, +2 HP/s',               icon: 'ab4_regenerate',      apply: p => { p.hasLowHpRegen = true; p.hpRegen += 2 } },
       { id: 'ab5', label: 'Undying',         desc: 'Revive once at full HP + 100px shockwave, +30 max HP', icon: 'ab5_undying',    apply: p => { p.hasUndying = true; p.maxHp += 30; p.hp += 30 } },
@@ -178,11 +178,83 @@ const AMUN_BRANCHES: BranchDef[] = [
   {
     name: 'Quake', color: 0xffcc44,
     upgrades: [
-      { id: 'aq1', label: "Titan's Pulse",   desc: 'Shockwave: launch boulder 300px, 1.5× dmg AoE, +5 dmg', icon: 'aq1_titans_pulse',  apply: p => { p.hasTitansPulse = true; p.damage += 5; p.splashRadius += 15 } },
-      { id: 'aq2', label: 'Earthquake',      desc: 'Shockwave hit: stun enemies 0.8s, +10% dmg',             icon: 'aq2_earthquake',    apply: p => { p.hasEarthquake = true; p.damage = Math.ceil(p.damage * 1.1) } },
-      { id: 'aq3', label: 'Colossus',        desc: 'Shockwave knockback 500px (vs 200px), +5 dmg',           icon: 'aq3_colossus',      apply: p => { p.hasColossus = true; p.damage += 5 } },
+      { id: 'aq1', label: "Titan's Pulse",   desc: 'Shockwave: launch boulder 300px, 1.5× dmg AoE, +5 dmg', icon: 'as1_living_fortress', apply: p => { p.hasTitansPulse = true; p.damage += 5; p.splashRadius += 15 } },
+      { id: 'aq2', label: 'Earthquake',      desc: 'Shockwave hit: stun enemies 0.8s, +10% dmg',             icon: 'as2_consecration',    apply: p => { p.hasEarthquake = true; p.damage = Math.ceil(p.damage * 1.1) } },
+      { id: 'aq3', label: 'Colossus',        desc: 'Shockwave knockback 500px (vs 200px), +5 dmg',           icon: 'as3_wrath',           apply: p => { p.hasColossus = true; p.damage += 5 } },
       { id: 'aq4', label: 'Gravity Well',    desc: 'Every 2s: pull enemies in 120+range px toward you, +15 range', icon: 'as4_gravity_well', apply: p => { p.hasGravityWell = true; p.range += 15 } },
-      { id: 'aq5', label: 'Cataclysm',       desc: '2nd shockwave 60% dmg at 350ms delay, +15% dmg',        icon: 'aq5_cataclysm',     apply: p => { p.hasCataclysm = true; p.damage = Math.ceil(p.damage * 1.15) } },
+      { id: 'aq5', label: 'Cataclysm',       desc: '2nd shockwave 60% dmg at 350ms delay, +15% dmg',        icon: 'as5_divine_judgment',  apply: p => { p.hasCataclysm = true; p.damage = Math.ceil(p.damage * 1.15) } },
+    ],
+  },
+]
+
+const KHASHIN_GALE_BRANCH: BranchDef = {
+  name: 'Gale', color: 0x88DDFF,
+  upgrades: [
+    { id: 'kw1', label: 'Razor Wind',      desc: 'Wind slash +25% dmg, pierces +1 target',                   icon: 'kw1_razor_wind',      apply: p => { p.damage = Math.ceil(p.damage * 1.25); p.windSlashPierce += 1 } },
+    { id: 'kw2', label: 'Gust Strike',     desc: 'Wind slash knocks back enemies 150px',                     icon: 'kw2_gust_strike',     apply: p => { p.hasGustStrike = true } },
+    { id: 'kw3', label: 'Dust Devil',      desc: 'Every 5th attack spawns a drifting tornado',               icon: 'kw3_dust_devil',      apply: p => { p.hasDustDevil = true } },
+    { id: 'kw4', label: 'Cyclone Surge',   desc: 'Dust Devils +50% bigger, +1s longer; +15% dmg',           icon: 'kw4_cyclone_surge',   apply: p => { p.hasCycloneSurge = true; p.damage = Math.ceil(p.damage * 1.15) } },
+    { id: 'kw5', label: 'Eye of the Storm', desc: 'Anchored tornado every 8s; +20% dmg',                    icon: 'kw5_eye_of_the_storm', apply: p => { p.hasEyeOfTheStorm = true; p.damage = Math.ceil(p.damage * 1.2) } },
+  ],
+}
+
+const KHASHIN_DUNE_BRANCH: BranchDef = {
+  name: 'Dune', color: 0xE8A040,
+  upgrades: [
+    { id: 'kd1', label: 'Choking Sand',    desc: 'Blinded enemies take +35% dmg',                            icon: 'kd1_choking_sand',    apply: p => { p.hasChokingSand = true } },
+    { id: 'kd2', label: 'Sand Armor',      desc: 'Absorb shield 25% max HP, regens 4s after break',          icon: 'kd2_sand_armor',      apply: p => { p.hasSandArmor = true; (p as any)._sandArmorHP = Math.ceil(p.maxHp * 0.25); (p as any)._sandArmorMax = (p as any)._sandArmorHP; (p as any)._sandArmorRegenDelay = 0 } },
+    { id: 'kd3', label: 'Abrasion',        desc: 'Blinded enemies -20% armor; +3 dmg',                       icon: 'kd3_abrasion',        apply: p => { p.hasAbrasion = true; p.damage += 3 } },
+    { id: 'kd4', label: 'Scarab Tide',     desc: 'On kill: 4 seeking scarabs apply Blind',                   icon: 'kd4_scarab_tide',     apply: p => { p.hasScarabTide = true } },
+    { id: 'kd5', label: 'Sandstorm Wall',  desc: 'Haboob arcs spawn lingering sand clouds',                  icon: 'kd5_sandstorm_wall',  apply: p => { p.hasSandstormWall = true } },
+  ],
+}
+
+const KHASHIN_MIRAGE_BRANCH: BranchDef = {
+  name: 'Mirage', color: 0xCCAAFF,
+  upgrades: [
+    { id: 'km1', label: 'Tailwind',        desc: '+20 speed, -10% attack CD',                                icon: 'km1_tailwind',        apply: p => { p.speed += 20; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) } },
+    { id: 'km2', label: 'Phantom Step',    desc: 'Auto-dash 100px away every 6s',                            icon: 'km2_phantom_step',    apply: p => { p.hasPhantomStep = true } },
+    { id: 'km3', label: 'Mirage',          desc: 'Phantom Step leaves a decoy for 2s',                       icon: 'km3_mirage',          apply: p => { p.hasMirage = true } },
+    { id: 'km4', label: 'Drift',           desc: 'Moving leaves slow trails (40% slow)',                     icon: 'km4_drift',           apply: p => { p.hasDrift = true } },
+    { id: 'km5', label: 'Desert Wind',     desc: 'Every 10s: 180px wind burst + 3s DR',                      icon: 'km5_desert_wind',     apply: p => { p.hasDesertWind = true } },
+  ],
+}
+
+const KHASHIN_BRANCHES: BranchDef[] = [
+  KHASHIN_GALE_BRANCH,
+  KHASHIN_DUNE_BRANCH,
+  KHASHIN_MIRAGE_BRANCH,
+]
+
+const MULLER_BRANCHES: BranchDef[] = [
+  {
+    name: 'Shardfall', color: 0x44AAFF,
+    upgrades: [
+      { id: 'cm1', label: 'Coarse Cut',       desc: 'Crystal wave cone +15° wider',                          icon: 'cm1_coarse_cut',      apply: p => { p.crystalWaveConeAngle += 15 } },
+      { id: 'cm2', label: 'Deep Vein',        desc: 'Spikes +30% dmg at max range',                          icon: 'cm2_deep_vein',       apply: p => { p.hasDeepVein = true } },
+      { id: 'cm3', label: 'Shardstorm',       desc: 'Double wave per slam',                                  icon: 'cm3_shardstorm',      apply: p => { p.hasShardstorm = true } },
+      { id: 'cm4', label: 'Crystal Shrapnel', desc: 'Spikes spray 3 shards on death',                        icon: 'cm4_crystal_shrapnel', apply: p => { p.hasCrystalShrapnel = true } },
+      { id: 'cm5', label: 'Tectonic Fury',    desc: 'Every 5th slam: crystal eruption ring',                  icon: 'cm5_tectonic_fury',   apply: p => { p.hasTectonicFury = true } },
+    ],
+  },
+  {
+    name: 'Geode Shell', color: 0x99DDCC,
+    upgrades: [
+      { id: 'cr1', label: 'Stone Skin',       desc: '+2% DR per kill, max 5 stacks',                         icon: 'cr1_stone_skin',      apply: p => { p.hasStoneSkin = true } },
+      { id: 'cr2', label: 'Geode Shell',      desc: 'Below 50% HP: absorb next hit, 20s CD',                 icon: 'cr2_geode_shell',     apply: p => { p.hasGeodeShell = true } },
+      { id: 'cr3', label: 'Crystal Wall',     desc: 'Barrier every 8s blocking enemies',                     icon: 'cr3_crystal_wall',    apply: p => { p.hasCrystalWall = true } },
+      { id: 'cr4', label: 'Resonance Armor',  desc: 'Wave impact grants 0.5s invuln',                        icon: 'cr4_resonance_armor', apply: p => { p.hasResonanceArmor = true } },
+      { id: 'cr5', label: 'Living Geode',     desc: '+25 HP, melee reflect 15 dmg',                          icon: 'cr5_living_geode',    apply: p => { p.hasLivingGeode = true; p.maxHp += 25; p.hp += 25 } },
+    ],
+  },
+  {
+    name: 'Deep Seam', color: 0xCC99FF,
+    upgrades: [
+      { id: 'cf1', label: 'Planted Shard',    desc: 'Slams leave crystal mines',                             icon: 'cf1_planted_shard',   apply: p => { p.hasPlantedShard = true } },
+      { id: 'cf2', label: 'Crystal Pillar',   desc: 'Auto pillar every 12s',                                 icon: 'cf2_crystal_pillar',  apply: p => { p.hasCrystalPillar = true } },
+      { id: 'cf3', label: 'Fault Line',       desc: 'Wave carves 4s ground hazard',                          icon: 'cf3_fault_line',      apply: p => { p.hasFaultLine = true } },
+      { id: 'cf4', label: 'Resonance Field',  desc: 'Structures slow enemies 20%',                           icon: 'cf4_resonance_field', apply: p => { p.hasResonanceField = true } },
+      { id: 'cf5', label: 'The Mother Lode',  desc: 'Massive crystal eruption every 12s',                    icon: 'cf5_mother_lode',     apply: p => { p.hasMotherLode = true } },
     ],
   },
 ]
@@ -211,7 +283,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
   {
     name: 'Warden', color: 0x4488ff,
     upgrades: [
-      { id: 'hw1', label: 'Spear Mastery',    desc: 'Spears pierce +2 extra targets',                              icon: 'sc3_mirror_ice',    apply: p => { p.hasSpearMastery = true; p.spearPierceCount += 2 } },
+      { id: 'hw1', label: 'Heavy Spear',      desc: 'Spears deal +40% dmg and knock enemies back, +5 dmg',        icon: 'sc3_mirror_ice',    apply: p => { p.hasHeavySpear = true; p.damage = Math.ceil(p.damage * 1.4) } },
       { id: 'hw2', label: 'Explosive Tips',   desc: 'On first spear pierce: AoE 35% dmg in 40px, +15 splash',     icon: 'if1_wide_burn',     apply: p => { p.hasExplosiveTips = true; p.splashRadius += 15 } },
       { id: 'hw3', label: 'Splinter Shot',    desc: 'Spear miss: spawns 3 shards 30% dmg in 80px, +4 dmg',        icon: 'ss2_shatter',       apply: p => { p.hasSplinterShot = true; p.damage += 4 } },
       { id: 'hw4', label: 'Spear Wall',       desc: '3 orbiting spears, 20% dmg/s each in 18px, +3 dmg',          icon: 'aq1_titans_pulse',  apply: p => { p.hasSpearWall = true; p.damage += 3 } },
@@ -228,6 +300,8 @@ export const HERO_BRANCHES: Record<string, BranchDef[]> = {
   sifra:  SIFRA_BRANCHES,
   amun:   AMUN_BRANCHES,
   huntress: HUNTRESS_BRANCHES,
+  khashin: KHASHIN_BRANCHES,
+  muller:  MULLER_BRANCHES,
 }
 
 // ============================================================
@@ -253,8 +327,13 @@ export class UpgradeTracker {
    *  - stance 'lightning': Lightning branch + 2 randomly chosen ice branches (3 total)
    *  - stance 'ice': all 3 ice branches (no Lightning)
    *  - no stance / other heroes: show all 3 branches (or randomly pick 3 if more than 3)
+   *
+   * For Khashin:
+   *  - stance 'sirocco': Gale branch + Mirage branch (+ Dune excluded)
+   *  - stance 'haboob': Dune branch + Mirage branch (+ Gale excluded)
+   *  - no stance: all 3 branches
    */
-  getBranchChoices(heroType: HeroType, stance?: 'ice' | 'lightning'): Upgrade[] {
+  getBranchChoices(heroType: HeroType, stance?: string): Upgrade[] {
     let branches = HERO_BRANCHES[heroType] || []
 
     if (heroType === 'sifra') {
@@ -268,6 +347,15 @@ export class UpgradeTracker {
         // No stance — pick 3 from all 4 randomly
         branches = [...SIFRA_BRANCHES].sort(() => Math.random() - 0.5).slice(0, 3)
       }
+    } else if (heroType === 'khashin') {
+      if (stance === 'sirocco') {
+        // Gale (sirocco only) + Mirage (always) — exclude Dune
+        branches = [KHASHIN_GALE_BRANCH, KHASHIN_MIRAGE_BRANCH]
+      } else if (stance === 'haboob') {
+        // Dune (haboob only) + Mirage (always) — exclude Gale
+        branches = [KHASHIN_DUNE_BRANCH, KHASHIN_MIRAGE_BRANCH]
+      }
+      // no stance → show all 3 (falls through to the length>3 guard below, which won't fire)
     }
 
     // For any hero with more than 3 branches, randomly pick 3
@@ -284,7 +372,7 @@ export class UpgradeTracker {
   }
 
   /** Get 3 choices: 2 generic + 1 personal from the chosen branch (or 3 generic if maxed) */
-  getChoices(heroType: HeroType, stance?: 'ice' | 'lightning'): Upgrade[] {
+  getChoices(heroType: HeroType, _stance?: string): Upgrade[] {
     const choices: Upgrade[] = []
 
     // Available generics
@@ -305,25 +393,6 @@ export class UpgradeTracker {
             branchColor: chosenBranchDef.color,
           }
         }
-        // If the chosen branch is fully maxed, personal stays null → fall back to 3 generics
-      }
-    } else {
-      // No branch chosen yet — legacy path: pick 1 personal from a random available branch
-      // (filter by stance for Sifra)
-      let branches = HERO_BRANCHES[heroType] || []
-      if (heroType === 'sifra' && stance) {
-        branches = stance === 'lightning'
-          ? branches.filter(b => b.name === 'Lightning')
-          : branches.filter(b => b.name !== 'Lightning')
-      }
-      const availBranches = branches.filter(b => {
-        const picked = this.branchProgress[b.name] || 0
-        return picked < b.upgrades.length
-      })
-      if (availBranches.length > 0) {
-        const branch = availBranches[Math.floor(Math.random() * availBranches.length)]
-        const idx = this.branchProgress[branch.name] || 0
-        personal = { ...branch.upgrades[idx], branch: branch.name, branchColor: branch.color }
       }
     }
 
@@ -335,12 +404,10 @@ export class UpgradeTracker {
     }
 
     if (personal) {
-      // Insert personal at a random position
       const insertIdx = Math.floor(Math.random() * (choices.length + 1))
       choices.splice(insertIdx, 0, personal)
     }
 
-    // Fill to 3 with remaining generics if needed
     while (choices.length < 3 && shuffledGen.length > choices.length) {
       const next = shuffledGen.find(u => !choices.includes(u))
       if (next) choices.push(next)
@@ -353,7 +420,6 @@ export class UpgradeTracker {
   /** Mark an upgrade as picked */
   pick(upgrade: Upgrade) {
     if (this.isFirstLevel && upgrade.branch) {
-      // First level-up with a branch card = the player is choosing their branch
       this.chosenBranch = upgrade.branch
       this.isFirstLevel = false
     }
@@ -367,26 +433,35 @@ export class UpgradeTracker {
   }
 }
 
-// Icon name → spritesheet frame index
-let _iconMap: Record<string, number> | null = null
-export function getIconFrame(iconName: string): number {
-  if (!_iconMap) {
-    _iconMap = {}
-    const allIcons = [
-      ...GENERIC_POOL.map(u => u.icon),
-      ...IGNARA_BRANCHES.flatMap(b => b.upgrades.map(u => u.icon)),
-      ...NAZAR_BRANCHES.flatMap(b => b.upgrades.map(u => u.icon)),
-      ...SIFRA_BRANCHES.flatMap(b => b.upgrades.map(u => u.icon)),
-      ...AMUN_BRANCHES.flatMap(b => b.upgrades.map(u => u.icon)),
-      ...HUNTRESS_BRANCHES.flatMap(b => b.upgrades.map(u => u.icon)),
-    ]
-    allIcons.forEach((name, idx) => { _iconMap![name] = idx })
-  }
-  return _iconMap[iconName] ?? 0
+// Icon name → spritesheet frame index (matches skill_icons_sheet.png layout)
+const ICON_FRAME_MAP: Record<string, number> = {
+  'g1_sharp_edge': 0, 'g2_swift_feet': 1, 'g3_eagle_eye': 2, 'g4_quick_hands': 3, 'g5_vitality': 4,
+  'g6_regeneration': 5, 'g7_cleave': 6, 'g8_wisdom': 7, 'g9_multistrike': 8, 'g10_iron_skin': 9,
+  'if1_wide_burn': 10, 'if2_inferno_reach': 11, 'if3_white_fire': 12, 'if4_scorched_earth': 13, 'if5_firestorm': 14,
+  'io1_heat_shield': 15, 'io2_pyromaniac': 16, 'io3_molten_skin': 17, 'io4_ember_veil': 18, 'io5_phoenix_heart': 19,
+  'ih1_backdraft': 20, 'ih2_eruption': 21, 'ih3_lava_trail': 22, 'ih4_wildfire': 23, 'ih5_meltdown': 24,
+  'nb1_shadow_step': 25, 'nb2_twin_blades': 26, 'nb3_chain_dash': 27, 'nb4_hemorrhage': 28, 'nb5_assassinate': 29,
+  'nv1_toxic_slash': 30, 'nv2_virulent_strain': 31, 'nv3_pandemic': 32, 'nv4_weakness': 33, 'nv5_necrosis': 34,
+  'ns1_vanish': 35, 'ns2_phantom_trail': 36, 'ns3_smoke_bomb': 37, 'ns4_blood_scent': 38, 'ns5_death_mark': 39,
+  'sf1_deep_freeze': 40, 'sf2_blizzard_aura': 41, 'sf3_frost_nova': 42, 'sf4_absolute_zero': 43, 'sf5_eternal_winter': 44,
+  'ss1_permafrost': 45, 'ss2_shatter': 46, 'ss3_ice_spear': 47, 'ss4_frostbite': 48, 'ss5_avalanche': 49,
+  'sc1_glacial_pierce': 50, 'sc2_ice_armor': 51, 'sc3_mirror_ice': 52, 'sc4_cryo_shield': 53, 'sc5_diamond_dust': 54,
+  'aq1_titans_pulse': 55, 'aq2_earthquake': 56, 'aq3_colossus': 57, 'aq4_rally_cry': 58, 'aq5_cataclysm': 59,
+  'ab1_fortify': 60, 'ab2_thorns': 61, 'ab3_iron_will': 62, 'ab4_regenerate': 63, 'ab5_undying': 64,
+  'as1_living_fortress': 65, 'as2_consecration': 66, 'as3_wrath': 67, 'as4_gravity_well': 68, 'as5_divine_judgment': 69,
+  // Khashin — Gale
+  'kw1_razor_wind': 70, 'kw2_gust_strike': 71, 'kw3_dust_devil': 72, 'kw4_cyclone_surge': 73, 'kw5_eye_of_the_storm': 74,
+  // Khashin — Dune
+  'kd1_choking_sand': 75, 'kd2_sand_armor': 76, 'kd3_abrasion': 77, 'kd4_scarab_tide': 78, 'kd5_sandstorm_wall': 79,
+  // Khashin — Mirage
+  'km1_tailwind': 80, 'km2_phantom_step': 81, 'km3_mirage': 82, 'km4_drift': 83, 'km5_desert_wind': 84,
+  // Muller — Shardfall
+  'cm1_coarse_cut': 85, 'cm2_deep_vein': 86, 'cm3_shardstorm': 87, 'cm4_crystal_shrapnel': 88, 'cm5_tectonic_fury': 89,
+  // Muller — Geode Shell
+  'cr1_stone_skin': 90, 'cr2_geode_shell': 91, 'cr3_crystal_wall': 92, 'cr4_resonance_armor': 93, 'cr5_living_geode': 94,
+  // Muller — Deep Seam
+  'cf1_planted_shard': 95, 'cf2_crystal_pillar': 96, 'cf3_fault_line': 97, 'cf4_resonance_field': 98, 'cf5_mother_lode': 99,
 }
-
-// Backwards compat — old getRandomUpgrades still works for any code using it
-export function getRandomUpgrades(count: number): Upgrade[] {
-  const shuffled = [...GENERIC_POOL].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, count)
+export function getIconFrame(iconName: string): number {
+  return ICON_FRAME_MAP[iconName] ?? 0
 }

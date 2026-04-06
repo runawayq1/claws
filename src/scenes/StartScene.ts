@@ -18,15 +18,19 @@ interface HeroDef {
 
 const HEROES: HeroDef[] = [
   { type: 'ignara', name: 'Ignara', role: 'Fire Mage', color: 0xe84118,
-    asset: 'assets/fire_wizard/Idle.png', fw: 150, fh: 150, scale: 1.1, frames: 8 },
+    asset: 'assets/ignara/Idle.png', fw: 150, fh: 150, scale: 1.1, frames: 8 },
   { type: 'sifra', name: 'Sifra', role: 'Ice Mage', color: 0x82ccdd,
-    asset: 'assets/wizard/Idle.png', fw: 231, fh: 190, scale: 0.65, frames: 6 },
+    asset: 'assets/sifra/Idle.png', fw: 231, fh: 190, scale: 0.65, frames: 6 },
   { type: 'amun', name: 'Amun', role: 'Guardian', color: 0xfff200,
-    asset: 'assets/king/Idle.png', fw: 160, fh: 111, scale: 1.3, frames: 8, yOff: -30 },
+    asset: 'assets/amun/Idle.png', fw: 160, fh: 111, scale: 1.3, frames: 8, yOff: -30 },
   { type: 'nazar', name: 'Nazar', role: 'Samurai', color: 0xc23616,
-    asset: 'assets/martial_hero/Idle.png', fw: 200, fh: 200, scale: 1.0, frames: 8, yOff: 8 },
+    asset: 'assets/nazar/Idle.png', fw: 200, fh: 200, scale: 1.0, frames: 8, yOff: 8 },
   { type: 'huntress', name: 'Lyra', role: 'Spear Thrower', color: 0x2ecc71,
-    asset: 'assets/huntress/Idle.png', fw: 150, fh: 150, scale: 1.1, frames: 8 },
+    asset: 'assets/lyra/Idle.png', fw: 150, fh: 150, scale: 1.265, frames: 8 },
+  { type: 'khashin', name: 'Khashin', role: 'Sand Assassin', color: 0x88ddff,
+    asset: 'assets/khashin/Idle_cropped.png', fw: 48, fh: 42, scale: 1.36, frames: 8 },
+  { type: 'muller', name: 'Givi', role: 'Crystal Gnome', color: 0x44aaff,
+    asset: 'assets/givi/Idle_cropped.png', fw: 51, fh: 44, scale: 1.12, frames: 8, yOff: 10 },
 ]
 
 export class StartScene extends Phaser.Scene {

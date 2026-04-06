@@ -1,11 +1,18 @@
 import Phaser from 'phaser'
 import { CONFIG } from '../config/GameConfig'
+import * as ignara from './heroes/ignara'
+import * as sifra from './heroes/sifra'
+import * as amun from './heroes/amun'
+import * as nazar from './heroes/nazar'
+import * as huntress from './heroes/huntress'
+import * as khashin from './heroes/khashin'
+import * as muller from './heroes/muller'
 
-export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress'
+export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller'
 
 interface HeroDef {
   hp: number; speed: number; damage: number; range: number; cooldown: number
-  color: number; attackType: 'flamethrower' | 'dash' | 'iceshard' | 'shockwave' | 'poison' | 'melee' | 'fireball' | 'spear'
+  color: number; attackType: 'flamethrower' | 'dash' | 'iceshard' | 'shockwave' | 'poison' | 'melee' | 'fireball' | 'spear' | 'windslash' | 'crystalwave'
 }
 
 // Heroes with real spritesheet animations (side-view)
@@ -24,13 +31,15 @@ interface SpriteHeroCfg extends SpriteConfig {
 }
 
 const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
-  ignara: { scale: 1.6, bodyW: 22, bodyH: 31, bodyOffX: 63, bodyOffY: 69, anims: { idle: 8, run: 8, attack: 8, hurt: 4, death: 5 } },
+  ignara: { scale: 1.36, bodyW: 22, bodyH: 31, bodyOffX: 63, bodyOffY: 69, anims: { idle: 8, run: 8, attack: 8, hurt: 4, death: 5 } },
   // khet removed from playable roster (re-add: uncomment and add 'khet' back to HeroType)
   // khet:   { scale: 0.75, bodyW: 40, bodyH: 50, bodyOffX: 105, bodyOffY: 150, anims: { idle: 8, run: 8, attack: 8, hurt: 3, death: 7 }, tint: 0xcc44ff },
-  sifra:  { scale: 0.9, bodyW: 40, bodyH: 58, bodyOffX: 90, bodyOffY: 84, anims: { idle: 6, run: 8, attack: 8, hurt: 4, death: 7 } },
+  sifra:  { scale: 0.77, bodyW: 40, bodyH: 58, bodyOffX: 90, bodyOffY: 84, anims: { idle: 6, run: 8, attack: 8, hurt: 4, death: 7 } },
   nazar:  { scale: 1.25, bodyW: 33, bodyH: 46, bodyOffX: 83, bodyOffY: 77, anims: { idle: 8, run: 8, attack: 6, hurt: 4, death: 6 } },
   amun:   { scale: 1.5, bodyW: 33, bodyH: 46, bodyOffX: 65, bodyOffY: 57, anims: { idle: 8, run: 8, attack: 4, hurt: 4, death: 6 } },
-  huntress: { scale: 1.4, bodyW: 28, bodyH: 38, bodyOffX: 58, bodyOffY: 65, anims: { idle: 8, run: 8, attack: 5, hurt: 3, death: 8 } },
+  huntress: { scale: 1.61, bodyW: 22, bodyH: 34, bodyOffX: 62, bodyOffY: 62, anims: { idle: 8, run: 8, attack: 5, hurt: 3, death: 8 } },
+  khashin:  { scale: 1.65, bodyW: 26, bodyH: 40, bodyOffX: 129, bodyOffY: 88, anims: { idle: 8, run: 8, attack: 8, hurt: 6, death: 19 } },
+  muller:   { scale: 1.35, bodyW: 26, bodyH: 40, bodyOffX: 127, bodyOffY: 87, anims: { idle: 8, run: 8, attack: 7, hurt: 6, death: 15 } },
 }
 
 const HERO_DEFS: Record<HeroType, HeroDef> = {
@@ -41,6 +50,8 @@ const HERO_DEFS: Record<HeroType, HeroDef> = {
   amun:    { hp: 160, speed: 100, damage: 22, range: 80,  cooldown: 1200, color: 0xfff200, attackType: 'shockwave' },
   nazar:   { hp: 90,  speed: 130, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
   huntress: { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
+  khashin:  { hp: 90,  speed: 130, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
+  muller:   { hp: 160, speed: 80,  damage: 52, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
 }
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -60,6 +71,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   strikeCount: number
   armor: number
   heroType: HeroType
+  chosenBranch: string | null = null  // set when player picks a branch on first level-up
 
   // Ignara upgrade mechanic flags
   hasPhoenixHeart = false
@@ -71,7 +83,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasFirestorm = false
   hasPyromaniac = false
   hasMoltenSkin = false
-  private lavaTrailTimer = 0
+  lavaTrailTimer = 0
 
   // Nazar upgrade mechanic flags
   hasChainDash = false
@@ -89,29 +101,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasVirulentStrain = false  // bigger + longer poison puddles
   hasWeakness = false        // poisoned enemies take +30% dmg
   hasNecrosis = false        // poison DPS ramps per tick
-  private phantomTrailTimer = 0
+  phantomTrailTimer = 0
 
   // Sifra ice upgrade mechanic flags
   hasFrostNova = false
-  private frostNovaCounter = 0
+  frostNovaCounter = 0
   hasAbsoluteZero = false
   hasBlizzardAura = false
-  private blizzardAuraGfx: Phaser.GameObjects.Graphics | null = null
+  blizzardAuraGfx: Phaser.GameObjects.Graphics | null = null
   hasDeepFreeze = false         // stronger slow (0.3x)
   hasEternalWinter = false      // permanent damaging frost field
   hasPermafrost = false         // bonus dmg to slowed enemies
   hasIceArmor = false           // absorb shield regens when not hit
   iceArmorHP = 0
   iceArmorMax = 0
-  private iceArmorRegenDelay = 0
+  iceArmorRegenDelay = 0
   hasCryoShield = false         // counter shards when hit
   hasSparkInitiate = false      // chain to 1 extra enemy
   hasArcReach = false           // wider cone + arc outside
   hasOvercharge = false         // chance for 3x burst
   hasBallLightning = false      // orbiting zap ball
-  private ballLightningGfx: Phaser.GameObjects.Graphics | null = null
+  ballLightningGfx: Phaser.GameObjects.Graphics | null = null
   hasStormLord = false          // periodic random lightning strikes
-  private stormLordTimer = 0
+  stormLordTimer = 0
 
   xp = 0
   level = 1
@@ -125,22 +137,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private touchTarget: Phaser.Math.Vector2 | null = null
   private _shadow!: Phaser.GameObjects.Ellipse
   private lastAttackTime = 0
-  private isAttacking = false
+  isAttacking = false
   private isDead = false
   private heroDef: HeroDef
   private poisonEndTime = 0
   private poisonDps = 0
   private hasSprite: boolean
-  private currentAnim = ''
-  private flameAngle = 0
+  currentAnim = ''
   private buffAuraTimer = 0
   defenseAuraActive = false
-  private defenseAuraGfx: Phaser.GameObjects.Graphics | null = null
+  defenseAuraGfx: Phaser.GameObjects.Graphics | null = null
   dmgAuraActive = false
-  private dmgAuraCooldown = 1500  // ms between pulses
-  private dmgAuraLastPulse = 0
-  private passiveAuraGfx: Phaser.GameObjects.Graphics | null = null
-  private dmgAuraGfx: Phaser.GameObjects.Graphics | null = null
+  dmgAuraCooldown = 1500  // ms between pulses
+  dmgAuraLastPulse = 0
+  passiveAuraGfx: Phaser.GameObjects.Graphics | null = null
+  dmgAuraGfx: Phaser.GameObjects.Graphics | null = null
 
   // Amun upgrade mechanic flags
   hasTitansPulse = false      // launches boulder projectile on shockwave
@@ -155,7 +166,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasLivingFortress = false   // aura damage scales with HP %
   hasWrath = false            // damage aura spike when hit
   hasGravityWell = false      // pull enemies toward Amun
-  private gravityWellTimer = 0
+  gravityWellTimer = 0
   hasDivineJudgment = false   // execute enemies below 15% HP in range
 
   // Huntress (Lyra) upgrade mechanic flags
@@ -169,7 +180,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasNetThrow = false            // Stalker: every 8th throw roots enemies
   hasLeap = false                // Stalker: auto-leap away when enemies close
   hasCamouflage = false          // Stalker: invisible for 2s after kill
-  hasSpearMastery = false        // Warden: +2 spear pierce
+  hasHeavySpear = false          // Warden: +40% dmg, knockback on spear hit
   hasExplosiveTips = false       // Warden: spears explode on final pierce
   hasSpearWall = false           // Warden: orbiting spears damage nearby
   hasSplinterShot = false        // Warden: miss spawns splinter shards
@@ -179,10 +190,64 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   killStrideUntil = 0     // timer for Kill Stride speed buff
   battleFrenzyUntil = 0   // timer for Battle Frenzy
   camouflageUntil = 0     // timer for Camouflage
-  private leapCooldown = 0       // cooldown for auto-leap
-  private caltropTimer = 0       // cooldown for caltrops drop
-  private spearWallGfx: Phaser.GameObjects.Graphics | null = null
-  private spearWallAngle = 0     // rotating spear wall angle
+  leapCooldown = 0       // cooldown for auto-leap
+  caltropTimer = 0       // cooldown for caltrops drop
+  spearWallGfx: Phaser.GameObjects.Graphics | null = null
+  spearWallAngle = 0     // rotating spear wall angle
+
+  // Khashin (Wind) upgrade mechanic flags
+  khashinStance: 'sirocco' | 'haboob' = 'sirocco'
+  windEnergy = 100
+  sandEnergy = 100
+  hasRazorWind = false          // +25% dmg, pierce +1
+  hasGustStrike = false         // knockback 150px on slash
+  hasDustDevil = false          // every 5th attack spawns tornado
+  hasCycloneSurge = false       // bigger dust devils, +15% dmg
+  hasEyeOfTheStorm = false      // anchored tornado every 8s
+  hasChokingSand = false        // blinded enemies +35% dmg
+  hasSandArmor = false          // 25% maxHP absorb shield
+  hasAbrasion = false           // blinded enemies -20% armor
+  hasScarabTide = false         // on kill: 4 seeking blind scarabs
+  hasSandstormWall = false      // haboob arcs leave lingering clouds
+  hasTailwind = false           // +20 speed, -10% CD
+  hasPhantomStep = false        // auto-dash every 6s
+  hasMirage = false             // decoy on phantom step
+  hasDrift = false              // movement slow trails
+  hasDesertWind = false         // omni-burst every 10s
+  dustDevilCounter = 0
+  eyeOfStormTimer = 0
+  phantomStepTimer = 0
+  desertWindTimer = 0
+  driftTimer = 0
+  windSlashPierce = 2           // base pierce for wind slash
+
+  // Crystal Muller upgrade mechanic flags
+  mullerStance: 'spike' | 'eruption' = 'spike'
+  crystalEnergy = 100
+  eruptionEnergy = 100
+  hasCoarseCut = false          // wider cone
+  hasDeepVein = false           // +30% dmg at max range
+  hasShardstorm = false         // double wave
+  hasCrystalShrapnel = false    // shrapnel on spike death
+  hasTectonicFury = false       // every 5th slam superwave
+  hasStoneSkin = false          // +2% DR per kill, 5 stacks
+  hasGeodeShell = false         // one-hit absorb below 50%
+  hasCrystalWall = false        // barrier every 8s
+  hasResonanceArmor = false     // 0.5s invuln on wave impact
+  hasLivingGeode = false        // +25 HP + melee reflect
+  hasPlantedShard = false       // mines per slam
+  hasCrystalPillar = false      // periodic pillar
+  hasFaultLine = false          // persistent ground hazard
+  hasResonanceField = false     // debuff aura on structures
+  hasMotherLode = false         // periodic full-screen eruption every 12s
+  private tectonicCounter = 0
+  stoneSkinStacks = 0
+  stoneSkinTimer = 0
+  geodeShellCooldown = 0
+  crystalWallTimer = 0
+  crystalPillarTimer = 0
+  crystalWaveConeAngle = 40     // degrees
+  motherLodeTimer = 0
 
   stance: 'ice' | 'lightning' = 'ice'
   iceEnergy = 100
@@ -198,10 +263,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   shatterPieces = 0  // ice shards split into N fragments on hit
   pierceCount = 2    // max enemies an ice shard can pierce through
   spearPierceCount = 999  // unlimited pierce by default; Explosive Tips triggers when set lower
-  private energyDrainRate = 10     // per second for continuous (lightning)
-  private energyDrainPerShot = 8   // per ice shard volley
-  private energyRegenRate = 25     // per second for inactive stance
-  private lightningAngle = 0
+  energyDrainRate = 10     // per second for continuous (lightning)
+  energyDrainPerShot = 8   // per ice shard volley
+  energyRegenRate = 25     // per second for inactive stance
+  lightningAngle = 0
   // flameGfx removed — using sprite-based flamethrower now
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null
   private wasd: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key } | null = null
@@ -234,8 +299,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.strikeCount = 1
     this.armor = 0
 
+    this.baseSpeed = this.speed
     if (sprCfg && hasSpr) {
       this.setScale(sprCfg.scale)
+      this.baseScale = sprCfg.scale
       this.setBodySize(sprCfg.bodyW, sprCfg.bodyH)
       this.setOffset(sprCfg.bodyOffX, sprCfg.bodyOffY)
       if (sprCfg.tint) this.setTint(sprCfg.tint)
@@ -288,6 +355,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (heroType === 'huntress') {
         scene.input.keyboard.addKey('Q').on('down', () => this.toggleHuntressStance())
       }
+      // Stance toggle for Khashin (Q key)
+      if (heroType === 'khashin') {
+        scene.input.keyboard.addKey('Q').on('down', () => this.toggleKhashinStance())
+      }
+      // Muller has no stance toggle — eruption is an upgrade ability
     }
   }
 
@@ -314,6 +386,42 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.events.emit('huntress-stance-changed', this.huntressStance)
   }
 
+  /** Returns the active stance string for any hero — used by UpgradeSystem */
+  getActiveStance(): string {
+    switch (this.heroType) {
+      case 'sifra': return this.stance
+      case 'nazar': return this.nazarStance
+      case 'huntress': return this.huntressStance
+      case 'khashin': return this.khashinStance
+      case 'muller': return this.mullerStance
+      default: return ''
+    }
+  }
+
+  toggleKhashinStance() {
+    if (this.heroType !== 'khashin') return
+    this.khashinStance = this.khashinStance === 'sirocco' ? 'haboob' : 'sirocco'
+    this.scene.events.emit('khashin-stance-changed', this.khashinStance)
+  }
+
+  private baseScale = 1
+  private baseSpeed = 0
+
+  /** Apply Stone Skin visual: +5% scale, -2% speed per stack */
+  applyStoneSkinVisuals() {
+    const stacks = this.stoneSkinStacks
+    if (this.hasSprite) {
+      this.setScale(this.baseScale * (1 + stacks * 0.05))
+    }
+    this.speed = Math.floor(this.baseSpeed * (1 - stacks * 0.02))
+  }
+
+  toggleMullerStance() {
+    if (this.heroType !== 'muller') return
+    this.mullerStance = this.mullerStance === 'spike' ? 'eruption' : 'spike'
+    this.scene.events.emit('muller-stance-changed', this.mullerStance)
+  }
+
   /** Create spritesheet animations for heroes that have real sprite sheets */
   static createAnimations(scene: Phaser.Scene) {
     for (const [hero, cfg] of Object.entries(SPRITE_HEROES) as [HeroType, SpriteHeroCfg][]) {
@@ -337,6 +445,98 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         })
       }
     }
+    // Khashin air attack (wind stance, 7 frames)
+    if (scene.textures.exists('khashin_air_attack') && !scene.anims.exists('khashin_air_attack')) {
+      scene.anims.create({
+        key: 'khashin_air_attack',
+        frames: scene.anims.generateFrameNumbers('khashin_air_attack', { start: 0, end: 6 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Khashin special (30 frames)
+    if (scene.textures.exists('khashin_special') && !scene.anims.exists('khashin_special')) {
+      scene.anims.create({
+        key: 'khashin_special',
+        frames: scene.anims.generateFrameNumbers('khashin_special', { start: 0, end: 29 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Muller ground slam (eruption stance, 17 frames)
+    if (scene.textures.exists('muller_ground_slam') && !scene.anims.exists('muller_ground_slam')) {
+      scene.anims.create({
+        key: 'muller_ground_slam',
+        frames: scene.anims.generateFrameNumbers('muller_ground_slam', { start: 0, end: 16 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Muller special windup (frames 0-6: spinning arrows)
+    if (scene.textures.exists('muller_special') && !scene.anims.exists('muller_special_windup')) {
+      scene.anims.create({
+        key: 'muller_special_windup',
+        frames: scene.anims.generateFrameNumbers('muller_special', { start: 0, end: 6 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Muller special attack (frames 7-14: crystals erupt from ground)
+    if (scene.textures.exists('muller_special') && !scene.anims.exists('muller_special_attack')) {
+      scene.anims.create({
+        key: 'muller_special_attack',
+        frames: scene.anims.generateFrameNumbers('muller_special', { start: 7, end: 14 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Crystal VFX anims — individual crystals per color
+    for (const key of ['crystal_green_0', 'crystal_green_1', 'crystal_pink_0', 'crystal_pink_1', 'crystal_blue_0', 'crystal_blue_1']) {
+      if (scene.textures.exists(key) && !scene.anims.exists(key)) {
+        scene.anims.create({
+          key,
+          frames: scene.anims.generateFrameNumbers(key, { start: 0, end: 3 }),
+          frameRate: 12,
+          repeat: 0,
+        })
+      }
+    }
+    // Sifra Attack2 (8 frames, alt attack anim)
+    if (scene.textures.exists('sifra_attack2') && !scene.anims.exists('sifra_attack2')) {
+      scene.anims.create({
+        key: 'sifra_attack2',
+        frames: scene.anims.generateFrameNumbers('sifra_attack2', { start: 0, end: 7 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Nazar Attack2 (6 frames, alt attack anim)
+    if (scene.textures.exists('nazar_attack2') && !scene.anims.exists('nazar_attack2')) {
+      scene.anims.create({
+        key: 'nazar_attack2',
+        frames: scene.anims.generateFrameNumbers('nazar_attack2', { start: 0, end: 5 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Amun Attack2 (4 frames, alt attack anim)
+    if (scene.textures.exists('amun_attack2') && !scene.anims.exists('amun_attack2')) {
+      scene.anims.create({
+        key: 'amun_attack2',
+        frames: scene.anims.generateFrameNumbers('amun_attack2', { start: 0, end: 3 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
+    // Amun Attack3 (4 frames, third attack anim)
+    if (scene.textures.exists('amun_attack3') && !scene.anims.exists('amun_attack3')) {
+      scene.anims.create({
+        key: 'amun_attack3',
+        frames: scene.anims.generateFrameNumbers('amun_attack3', { start: 0, end: 3 }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
     // Huntress melee alt anim (Attack2, 5 frames)
     if (scene.textures.exists('huntress_attack2') && !scene.anims.exists('huntress_attack2')) {
       scene.anims.create({
@@ -346,11 +546,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         repeat: 0,
       })
     }
-    // Huntress ranged anim (Attack3, 7 frames)
+    // Huntress ranged anim (Attack3, reversed: wind-up from low to throw)
     if (scene.textures.exists('huntress_ranged') && !scene.anims.exists('huntress_ranged')) {
       scene.anims.create({
         key: 'huntress_ranged',
-        frames: scene.anims.generateFrameNumbers('huntress_ranged', { start: 0, end: 4 }),
+        frames: scene.anims.generateFrameNumbers('huntress_ranged', { start: 4, end: 0 }),
         frameRate: 12,
         repeat: 0,
       })
@@ -361,6 +561,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private get animPrefix(): string {
     const cfg = SPRITE_HEROES[this.heroType]
     return cfg?.reuseFrom || this.heroType
+  }
+
+  /** Returns branch-specific attack anim key, or null for default */
+  private getBranchAttackAnim(): string | null {
+    if (!this.chosenBranch) return null
+    // Branch → alt attack animation mapping
+    const BRANCH_ANIMS: Record<string, string> = {
+      // Sifra ice branches
+      'Shatter':          'sifra_attack2',
+      'Crystal':          'sifra_attack2',
+      // Nazar branches
+      'Way of Venom':     'nazar_attack2',
+      'Way of Shadow':    'nazar_attack2',
+      // Amun branches
+      'Bastion':          'amun_attack2',
+      'Quake':            'amun_attack3',
+    }
+    return BRANCH_ANIMS[this.chosenBranch] || null
   }
 
   private playAnim(name: string) {
@@ -797,7 +1015,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       amount -= this.shieldHp
       this.shieldHp = 0
     }
-    let reduced = amount * (1 - this.armor)
+    // Stone Skin DR: +2% per stack, max 5
+    const stoneSkinDR = this.hasStoneSkin ? this.stoneSkinStacks * 0.02 : 0
+    let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR))
+
+    // Sand Armor (Khashin): absorb shield
+    if (this.hasSandArmor && (this as any)._sandArmorHP > 0) {
+      const absorbed = Math.min(reduced, (this as any)._sandArmorHP)
+      ;(this as any)._sandArmorHP -= absorbed
+      reduced -= absorbed
+      ;(this as any)._sandArmorRegenDelay = 4000
+      if (absorbed > 0) {
+        const fx = this.scene.add.circle(this.x, this.y, 16, 0xe8a040, 0.4).setDepth(10)
+        this.scene.tweens.add({ targets: fx, scale: 2, alpha: 0, duration: 200, onComplete: () => fx.destroy() })
+      }
+    }
+
+    // Geode Shell (Muller): absorb next hit below 50% HP
+    if (this.hasGeodeShell && this.geodeShellCooldown <= 0 && this.hp < this.maxHp * 0.5) {
+      this.geodeShellCooldown = 20000
+      const fx = this.scene.add.circle(this.x, this.y, 20, 0x99ddcc, 0.6).setDepth(10)
+      this.scene.tweens.add({ targets: fx, scale: 3, alpha: 0, duration: 400, onComplete: () => fx.destroy() })
+      return // fully absorbed
+    }
 
     // Ice Armor: absorb damage with shield
     if (this.hasIceArmor && this.iceArmorHP > 0) {
@@ -853,8 +1093,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
     }
 
+    // Living Geode (Muller): reflect 15 damage to melee attackers
+    if (this.hasLivingGeode && reduced >= 1) {
+      const scene = this.scene as any
+      if (scene.enemies) {
+        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e.active) continue
+          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= 60) {
+            ;(e as any).takeDamage?.(15, 'melee')
+          }
+        }
+        const fx = this.scene.add.circle(this.x, this.y, 10, 0x44aaff, 0.4).setDepth(9)
+        this.scene.tweens.add({ targets: fx, scale: 4, alpha: 0, duration: 250, onComplete: () => fx.destroy() })
+      }
+    }
+
     // Wrath: damage aura spike when hit
-    if (this.hasWrath && this.dmgAuraActive && reduced >= 1) {
+    if (this.hasWrath && reduced >= 1) {
       const wrathRadius = 70 + this.splashRadius * 0.8
       const wrathDmg = this.damage * 0.6
       const scene = this.scene as any
@@ -940,13 +1195,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.isDead = true
     this.touchTarget = null
     this.setVelocity(0, 0)
-    if (this.flameSprite) { this.flameSprite.destroy(); this.flameSprite = null }
     if (this.lightningGfx) { this.lightningGfx.destroy(); this.lightningGfx = null }
     if (this.lightningSprite) { this.lightningSprite.destroy(); this.lightningSprite = null }
     if (this.defenseAuraGfx) { this.defenseAuraGfx.destroy(); this.defenseAuraGfx = null }
     if (this.passiveAuraGfx) { this.passiveAuraGfx.destroy(); this.passiveAuraGfx = null }
     if (this.dmgAuraGfx) { this.dmgAuraGfx.destroy(); this.dmgAuraGfx = null }
-    if (this.blizzardAuraGfx) { this.blizzardAuraGfx.destroy(); this.blizzardAuraGfx = null }
+
+    // Givi death: crystal ring burst VFX
+    if (this.heroType === 'muller') {
+      this.crystalRingBurst(this.cx, this.cy)
+    }
 
     if (this.hasSprite) {
       this.playAnim('death')
@@ -968,6 +1226,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.xp >= needed) {
       this.xp -= needed
       this.level++
+      // Base stat growth per level
+      this.damage += 3
+      this.maxHp += 8
+      this.hp = Math.min(this.hp + 8, this.maxHp)
       this.showLevelUpVfx()
       this.scene.events.emit('player-levelup')
     }
@@ -1050,6 +1312,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let searchRange = this.range
     if (this.heroType === 'nazar' && this.nazarStance === 'venom') searchRange += 100
     if (this.heroType === 'huntress' && this.huntressStance === 'melee') searchRange = 80
+    if (this.heroType === 'khashin' && this.khashinStance === 'haboob') searchRange = 90
     let closest: Phaser.Physics.Arcade.Sprite | null = null
     let closestDist = Infinity
     for (const enemy of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
@@ -1065,7 +1328,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.lastAttackTime = time
     this.isAttacking = true
     this.setFlipX(closest.x < this.x)
-    if (this.hasSprite && this.heroType !== 'huntress') this.playAnim('attack')
+    if (this.hasSprite && this.heroType !== 'huntress' && this.heroType !== 'khashin' && this.heroType !== 'muller') {
+      const branchAnim = this.getBranchAttackAnim()
+      if (branchAnim && this.scene.anims.exists(branchAnim)) {
+        this.currentAnim = branchAnim; this.play(branchAnim)
+      } else {
+        this.playAnim('attack')
+      }
+    }
 
     const target = closest
     // Sifra ice energy drain per shot
@@ -1114,6 +1384,66 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           this.attackSpear(target, enemies)
         }
         break
+      case 'windslash':
+        if (this.khashinStance === 'haboob') {
+          if (this.sandEnergy <= 0) {
+            this.toggleKhashinStance()
+            this.isAttacking = false
+            return
+          }
+          this.sandEnergy = Math.max(0, this.sandEnergy - 10)
+          // Haboob stance uses regular attack anim (melee)
+          if (this.hasSprite) {
+            const key = `${this.animPrefix}_attack`
+            this.currentAnim = key; this.play(key)
+          }
+          this.attackSandSwipe(target, enemies)
+        } else {
+          if (this.windEnergy <= 0) {
+            this.toggleKhashinStance()
+            this.isAttacking = false
+            return
+          }
+          this.windEnergy = Math.max(0, this.windEnergy - 8)
+          // Wind stance uses air attack anim (ranged)
+          if (this.hasSprite) {
+            const key = 'khashin_air_attack'
+            this.currentAnim = key; this.play(key)
+          }
+          this.attackWindSlash(target, enemies)
+        }
+        break
+      case 'crystalwave': {
+        // Base attack: crystal wave toward target
+        const isTectonicProc = this.hasTectonicFury && this.tectonicCounter > 0 && (this.tectonicCounter + 1) % 5 === 0
+        if (this.hasSprite) {
+          // Ground slam for regular wave, special attack for Tectonic Fury
+          const key = isTectonicProc && this.scene.anims.exists('muller_special_attack')
+            ? 'muller_special_attack'
+            : this.scene.anims.exists('muller_ground_slam') ? 'muller_ground_slam' : `${this.animPrefix}_attack`
+          this.currentAnim = key; this.play(key)
+        }
+        this.attackCrystalWave(target, enemies)
+        // Tectonic Fury: every 5th attack also triggers eruption ring burst + giant pillar
+        if (this.hasTectonicFury && this.tectonicCounter > 0 && this.tectonicCounter % 5 === 0) {
+          this.attackCrystalEruption(enemies)
+          // Giant crystal pillar at player position
+          const pillar = muller.spawnCrystalSpike(this, this.cx, this.cy, 2.0)
+          if (pillar) {
+            pillar.setDepth(13).setScale(0.01)
+            this.scene.tweens.add({
+              targets: pillar, scaleX: 2.0, scaleY: 2.0,
+              duration: 250, ease: 'Back.easeOut',
+            })
+            this.scene.tweens.add({
+              targets: pillar, alpha: 0, scaleY: 2.5,
+              duration: 600, delay: 500,
+              onComplete: () => pillar.destroy(),
+            })
+          }
+        }
+        break
+      }
       case 'melee':
         if (this.nazarStance === 'venom') {
           if (this.venomEnergy <= 0) {
@@ -1139,1552 +1469,41 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // NAZAR SWORD — Melee slash around player
   private attackMelee(enemies: Phaser.Physics.Arcade.Group) {
-    // Shadow Step: blink 30px toward nearest enemy before slashing
-    if (this.hasShadowStep) {
-      let closest: Phaser.Physics.Arcade.Sprite | null = null
-      let closestDist = Infinity
-      for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active) continue
-        const d = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-        if (d < closestDist && d <= this.range + 40) { closestDist = d; closest = e }
-      }
-      if (closest && closestDist > 20) {
-        const ang = Phaser.Math.Angle.Between(this.x, this.y, closest.x, closest.y)
-        const blinkDist = Math.min(30, closestDist - 15)
-        // Ghost afterimage at old position
-        const ghost = this.scene.add.circle(this.x, this.y, 8, 0x9955dd, 0.4).setDepth(5)
-        this.scene.tweens.add({ targets: ghost, alpha: 0, scale: 2, duration: 250, onComplete: () => ghost.destroy() })
-        this.x += Math.cos(ang) * blinkDist
-        this.y += Math.sin(ang) * blinkDist
-      }
-    }
-    const hitRadius = this.range
-    const dmgRatio = Math.min(this.damage / 18, 4)
-    const slashTint = dmgRatio > 2.5 ? 0xffffff : dmgRatio > 1.5 ? 0xffcccc : 0xcc4444
-
-    // Slash VFX
-    if (this.scene.textures.exists('vfx_slash')) {
-      const slashAngle = this.flipX ? Math.PI : 0
-      for (let i = 0; i < this.strikeCount; i++) {
-        const angleOff = (i - (this.strikeCount - 1) / 2) * 0.4
-        const slash = this.scene.add.image(this.x, this.y, 'vfx_slash')
-          .setScale(2 + hitRadius * 0.02).setRotation(slashAngle + angleOff).setDepth(10)
-          .setBlendMode(Phaser.BlendModes.ADD).setTint(slashTint)
-        this.scene.tweens.add({
-          targets: slash, alpha: 0, scale: 3 + hitRadius * 0.03,
-          duration: 200, delay: i * 30,
-          onComplete: () => slash.destroy(),
-        })
-      }
-    }
-
-    // Count enemies in range for Assassinate
-    const enemiesInRange = (enemies.getChildren() as Phaser.Physics.Arcade.Sprite[])
-      .filter(e => e.active && Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= hitRadius).length
-    const isAssassinating = this.hasAssassinate && enemiesInRange === 1
-    const meleeDmg = isAssassinating ? this.damage * 2 : this.damage
-
-    // Damage all enemies in range
-    for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!e.active) continue
-      if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= hitRadius) {
-        // Weakness: poisoned enemies take +30% damage
-        const weakMult = (this.hasWeakness && (e as any)._poisoned) ? 1.3 : 1
-        for (let i = 0; i < this.strikeCount; i++) (e as any).takeDamage(meleeDmg * weakMult, 'melee')
-        // Hit spark
-        if (this.scene.textures.exists('vfx_hitspark')) {
-          const spark = this.scene.add.image(e.x, e.y, 'vfx_hitspark')
-            .setScale(1.2).setDepth(10).setBlendMode(Phaser.BlendModes.ADD).setTint(slashTint)
-          this.scene.tweens.add({
-            targets: spark, alpha: 0, scale: 2, duration: 150,
-            onComplete: () => spark.destroy(),
-          })
-        }
-
-        // Assassinate VFX — red X on lone target
-        if (isAssassinating) {
-          const xMark = this.scene.add.text(e.x, e.y - 20, '✕', {
-            fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
-            stroke: '#000000', strokeThickness: 3,
-          }).setOrigin(0.5).setDepth(12)
-          this.scene.tweens.add({ targets: xMark, y: xMark.y - 20, alpha: 0, scale: 1.5, duration: 400, onComplete: () => xMark.destroy() })
-        }
-
-        // Hemorrhage — bleed DOT after melee hit
-        if (this.hasHemorrhage && !(e as any)._bleedTimer) {
-          (e as any)._bleedTimer = this.scene.time.addEvent({
-            delay: 500, repeat: 5, callback: () => {
-              if (e.active) (e as any).takeDamage(this.damage * 0.15, 'melee')
-              if (!(e as any)._bleedTimer?.repeatCount) (e as any)._bleedTimer = null
-            }
-          })
-        }
-
-        // Blood Scent — execute enemies below 20% HP
-        if (this.hasBloodScent && (e as any).hp > 0 && (e as any).hp < (e as any).maxHp * 0.2) {
-          (e as any).takeDamage((e as any).hp + 1, 'melee')
-          // VFX: blood splatter
-          for (let b = 0; b < 4; b++) {
-            const ba = Math.random() * Math.PI * 2
-            const bd = Phaser.Math.Between(5, 18)
-            const drop = this.scene.add.circle(e.x + Math.cos(ba) * bd, e.y + Math.sin(ba) * bd, Phaser.Math.Between(2, 4), 0xcc0000, 0.7).setDepth(6)
-            this.scene.tweens.add({ targets: drop, alpha: 0, duration: 800, delay: 200, onComplete: () => drop.destroy() })
-          }
-        }
-
-        // Death Mark — first hit marks, second hit deals +40%
-        if (this.hasDeathMark) {
-          if ((e as any)._deathMarked) {
-            (e as any).takeDamage(this.damage * 0.4, 'melee');
-            (e as any)._deathMarked = false
-          } else {
-            (e as any)._deathMarked = true
-            e.setTint(0xff44ff)
-            this.scene.time.delayedCall(3000, () => { if (e.active) { e.clearTint(); (e as any)._deathMarked = false } })
-          }
-        }
-      }
-    }
-
-    // Smoke Bomb — AoE slow around player on melee
-    if (this.hasSmokeBomb) {
-      const smokeR = 50 + this.splashRadius * 0.3
-      const smoke = this.scene.add.circle(this.x, this.y, 8, 0x553388, 0.4).setDepth(4)
-      this.scene.tweens.add({ targets: smoke, scale: smokeR / 8, alpha: 0, duration: 500, onComplete: () => smoke.destroy() })
-      for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active) continue
-        if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= smokeR) {
-          if ((e as any).speed && (e as any).baseSpeed) (e as any).speed = (e as any).baseSpeed * 0.4
-        }
-      }
-    }
-
-    // Blade Surge (hasChainDash) — forward lunge hits a line of enemies
-    if (this.hasChainDash) {
-      const lungeAngle = this.flipX ? Math.PI : 0
-      const lungeRange = this.range * 1.5
-      for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active) continue
-        const d = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-        if (d > this.range && d <= lungeRange) {
-          const aToE = Phaser.Math.Angle.Between(this.x, this.y, e.x, e.y)
-          if (Math.abs(Phaser.Math.Angle.Wrap(aToE - lungeAngle)) < 0.6) {
-            (e as any).takeDamage(this.damage * 0.7, 'melee')
-          }
-        }
-      }
-      if (this.scene.textures.exists('vfx_slash')) {
-        const s = this.scene.add.image(this.x + Math.cos(lungeAngle) * 30, this.y, 'vfx_slash')
-          .setScale(2.5).setRotation(lungeAngle).setDepth(10).setBlendMode(Phaser.BlendModes.ADD).setTint(0xcc4444)
-        this.scene.tweens.add({ targets: s, alpha: 0, scale: 3.5, duration: 200, onComplete: () => s.destroy() })
-      }
-    }
-
-    this.scene.time.delayedCall(150, () => {
-      this.isAttacking = false
-      // Vanish — brief invulnerability after melee
-      if (this.hasVanish) {
-        this.vanishUntil = this.scene.time.now + 400
-        this.setAlpha(0.5)
-        this.scene.time.delayedCall(400, () => { if (this.active) this.setAlpha(1) })
-      }
-    })
-  }
-
-  // IGNARA — Flamethrower (animated sprite from spritesheet)
-  private flameSprite: Phaser.GameObjects.Sprite | null = null
-  private flameActive = false
-
-  // @ts-ignore — kept for potential future use (Inferno branch upgrades)
-  private attackFlamethrower(enemies: Phaser.Physics.Arcade.Group, delta: number) {
-    // Dynamic scale based on range upgrades (base range 150 → scale 3)
-    const rangeRatio = this.range / 150
-    const flameScale = 3 * rangeRatio
-    // Tint shifts hotter with damage (base 30)
-    const dmgRatio = Math.min(this.damage / 30, 3)
-    const flameTint = dmgRatio > 2 ? 0xaaccff : dmgRatio > 1.5 ? 0xffffcc : 0xffffff
-    // Spread widens with splashRadius
-    const spread = 0.38 + this.splashRadius * 0.003
-
-    // Lazy init flame sprite
-    if (!this.flameSprite) {
-      this.flameSprite = this.scene.add.sprite(this.x, this.y, 'vfx_flame')
-        .setOrigin(0, 0.5)
-        .setDepth(9)
-        .setScale(flameScale)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setVisible(false)
-    }
-
-    // Update flame scale/tint dynamically each frame
-    this.flameSprite.setScale(flameScale, flameScale * (1 + this.splashRadius * 0.005))
-    this.flameSprite.setTint(flameTint)
-
-    // Find nearest enemy to aim at
-    let closest: Phaser.Physics.Arcade.Sprite | null = null
-    let closestDist = Infinity
-    for (const enemy of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!enemy.active) continue
-      const dist = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y)
-      if (dist < this.range && dist < closestDist) {
-        closestDist = dist
-        closest = enemy
-      }
-    }
-
-    // No target — hide flame
-    if (!closest) {
-      if (this.flameActive) {
-        this.flameSprite.setVisible(false)
-        this.flameSprite.stop()
-        this.flameActive = false
-      }
-      return
-    }
-
-    // Smoothly rotate toward target
-    const targetAngle = Phaser.Math.Angle.Between(this.x, this.y, closest.x, closest.y)
-    this.flameAngle = Phaser.Math.Angle.RotateTo(this.flameAngle, targetAngle, 0.15)
-    this.setFlipX(Math.cos(this.flameAngle) < 0)
-
-    // Position and rotate flame sprite
-    this.flameSprite.setPosition(this.x, this.y)
-    this.flameSprite.setRotation(this.flameAngle)
-    this.flameSprite.setVisible(true)
-
-    if (!this.flameActive) {
-      this.flameSprite.play('flame_loop')
-      this.flameActive = true
-    }
-
-    // Meltdown: +50% damage when below 40% HP
-    let meltdownMult = 1
-    if (this.hasMeltdown && this.hp < this.maxHp * 0.4) meltdownMult = 1.5
-
-    // Damage enemies inside the cone
-    const dmgThisFrame = this.damage * (delta / 1000) * meltdownMult
-    for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!e.active) continue
-      const dist = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-      if (dist > this.range) continue
-      const angleToEnemy = Phaser.Math.Angle.Between(this.x, this.y, e.x, e.y)
-      const angleDiff = Phaser.Math.Angle.Wrap(angleToEnemy - this.flameAngle)
-      if (Math.abs(angleDiff) <= spread) {
-        (e as any).takeDamage(dmgThisFrame, 'fire')
-
-        // Scorched Earth: apply burn DOT
-        if (this.hasScorchedEarth && !(e as any)._burnTimer) {
-          const burnDmg = this.damage * 0.3
-          const burnDur = 3000
-          let burnElapsed = 0;
-          (e as any)._burnTimer = this.scene.time.addEvent({
-            delay: 500, repeat: Math.floor(burnDur / 500) - 1,
-            callback: () => {
-              burnElapsed += 500
-              if (e.active) {
-                (e as any).takeDamage(burnDmg * 0.5, 'fire')
-                // Small fire particle
-                const fp = this.scene.add.circle(e.x + Phaser.Math.Between(-8, 8), e.y + Phaser.Math.Between(-8, 8), 3, 0xff6600, 0.7).setDepth(10)
-                this.scene.tweens.add({ targets: fp, alpha: 0, y: fp.y - 12, scale: 0, duration: 300, onComplete: () => fp.destroy() })
-              }
-              if (burnElapsed >= burnDur) (e as any)._burnTimer = null
-            },
-          })
-        }
-      }
-    }
+    nazar.attackMelee(this, enemies)
   }
 
   // IGNARA — Fireball projectile with AOE explosion
   private attackFireball(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
-    const tx = target.x, ty = target.y
-    const dist = Phaser.Math.Distance.Between(this.x, this.y, tx, ty)
-    const dmgRatio = Math.min(this.damage / 30, 4)
-    const ballSize = 6 + dmgRatio * 2
-    const explodeRadius = 40 + this.splashRadius * 0.8
-    const ballTint = dmgRatio > 2.5 ? 0xffffaa : dmgRatio > 1.5 ? 0xff8800 : 0xff4400
-
-    // Meltdown: +50% damage when below 40% HP
-    let effectiveDmg = this.damage
-    if (this.hasMeltdown && this.hp < this.maxHp * 0.4) effectiveDmg = Math.ceil(effectiveDmg * 1.5)
-
-    // Create fireball
-    const ball = this.scene.add.circle(this.x, this.y, ballSize, ballTint).setDepth(9)
-    // Glow trail
-    const glow = this.scene.add.circle(this.x, this.y, ballSize * 1.5, ballTint, 0.3).setDepth(8)
-      .setBlendMode(Phaser.BlendModes.ADD)
-
-    // Trail particles while flying
-    const trailTimer = this.scene.time.addEvent({
-      delay: 30, loop: true,
-      callback: () => {
-        const tp = this.scene.add.circle(
-          ball.x + Phaser.Math.Between(-4, 4),
-          ball.y + Phaser.Math.Between(-4, 4),
-          Phaser.Math.Between(2, 4), 0xff6600, 0.6
-        ).setDepth(8)
-        this.scene.tweens.add({
-          targets: tp, alpha: 0, scale: 0, duration: 200,
-          onComplete: () => tp.destroy(),
-        })
-      },
-    })
-
-    // Fly to target
-    this.scene.tweens.add({
-      targets: [ball, glow],
-      x: tx, y: ty,
-      duration: Math.max(150, (dist / 350) * 1000),
-      onComplete: () => {
-        trailTimer.destroy()
-        ball.destroy()
-        glow.destroy()
-
-        // EXPLOSION
-        // Visual: expanding ring + flash
-        const explosion = this.scene.add.circle(tx, ty, 10, 0xff4400, 0.6).setDepth(10)
-        this.scene.tweens.add({
-          targets: explosion,
-          scale: explodeRadius / 10, alpha: 0, duration: 350,
-          onComplete: () => explosion.destroy(),
-        })
-        // Inner flash
-        const flash = this.scene.add.circle(tx, ty, 8, 0xffff88, 0.8).setDepth(11)
-        this.scene.tweens.add({
-          targets: flash,
-          scale: explodeRadius / 16, alpha: 0, duration: 200,
-          onComplete: () => flash.destroy(),
-        })
-        // Ember particles
-        for (let i = 0; i < 6 + Math.floor(dmgRatio * 2); i++) {
-          const ea = Math.random() * Math.PI * 2
-          const ed = Phaser.Math.Between(10, Math.floor(explodeRadius * 0.8))
-          const ember = this.scene.add.circle(tx, ty, Phaser.Math.Between(2, 4), 0xff8800, 0.7).setDepth(10)
-          this.scene.tweens.add({
-            targets: ember,
-            x: tx + Math.cos(ea) * ed, y: ty + Math.sin(ea) * ed,
-            alpha: 0, scale: 0, duration: 300 + Math.random() * 200,
-            onComplete: () => ember.destroy(),
-          })
-        }
-
-        // Camera shake
-        this.scene.cameras.main.shake(50, 0.003)
-
-        // Damage all enemies in explosion radius
-        for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= explodeRadius) {
-            (e as any).takeDamage(effectiveDmg, 'fire')
-
-            // Base fireball knockback (Backdraft upgrades to 300)
-            const kb = Phaser.Math.Angle.Between(tx, ty, e.x, e.y)
-            const body = e.body as Phaser.Physics.Arcade.Body
-            const kbForce = this.hasBackdraft ? 300 : 120
-            if (body) body.setVelocity(Math.cos(kb) * kbForce, Math.sin(kb) * kbForce)
-
-            // Wildfire: kill triggers mini-explosion on nearby enemies
-            if (this.hasWildfire) {
-              const hpNow = (e as any).hp ?? 0
-              if (hpNow <= 0) {
-                for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                  if (!e2.active || e2 === e) continue
-                  if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= 50) {
-                    (e2 as any).takeDamage(this.damage * 0.4, 'fire')
-                  }
-                }
-                const miniBlast = this.scene.add.circle(e.x, e.y, 8, 0xff6600, 0.5).setDepth(9)
-                this.scene.tweens.add({ targets: miniBlast, scale: 5, alpha: 0, duration: 250, onComplete: () => miniBlast.destroy() })
-              }
-            }
-
-            // Pyromaniac: heal 5 HP per kill
-            if (this.hasPyromaniac && (e as any).hp <= 0) {
-              this.hp = Math.min(this.maxHp, this.hp + 5)
-            }
-
-            // Scorched Earth burn DOT (reuse existing mechanic if hasScorchedEarth)
-            if (this.hasScorchedEarth && !(e as any)._burnTimer) {
-              const burnDmg = effectiveDmg * 0.3
-              let burnElapsed = 0;
-              (e as any)._burnTimer = this.scene.time.addEvent({
-                delay: 500, repeat: 5,
-                callback: () => {
-                  burnElapsed += 500
-                  if (e.active) (e as any).takeDamage(burnDmg * 0.5, 'fire')
-                  if (burnElapsed >= 3000) (e as any)._burnTimer = null
-                },
-              })
-            }
-          }
-        }
-
-        // Firestorm: spawn 2 extra smaller fireballs at random nearby enemies
-        if (this.hasFirestorm) {
-          let extras = 0
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active || extras >= 2) continue
-            if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) > explodeRadius && Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= this.range * 1.5) {
-              extras++
-              const miniball = this.scene.add.circle(tx, ty, 4, 0xff8800, 0.7).setDepth(9)
-              const ex = e.x, ey = e.y
-              this.scene.tweens.add({
-                targets: miniball, x: ex, y: ey, duration: 200,
-                onComplete: () => {
-                  miniball.destroy()
-                  const boom = this.scene.add.circle(ex, ey, 6, 0xff4400, 0.5).setDepth(9)
-                  this.scene.tweens.add({ targets: boom, scale: 4, alpha: 0, duration: 250, onComplete: () => boom.destroy() })
-                  for (const e3 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                    if (!e3.active) continue
-                    if (Phaser.Math.Distance.Between(ex, ey, e3.x, e3.y) <= 35) (e3 as any).takeDamage(this.damage * 0.5, 'fire')
-                  }
-                },
-              })
-            }
-          }
-        }
-
-        this.isAttacking = false
-      },
-    })
+    ignara.attackFireball(this, target, enemies)
   }
 
   // SIFRA LIGHTNING — Cone attack (wide spread, shorter range)
-  private lightningGfx: Phaser.GameObjects.Graphics | null = null
-  private lightningSprite: Phaser.GameObjects.Image | null = null
-  private lightningSparkTimer = 0
+  lightningGfx: Phaser.GameObjects.Graphics | null = null
+  lightningSprite: Phaser.GameObjects.Image | null = null
+  lightningSparkTimer = 0
 
   private attackLightning(enemies: Phaser.Physics.Arcade.Group, delta: number) {
-    const baseRange = 100
-    const rangeRatio = this.range / 160 // Sifra base range
-    const lightRange = baseRange * rangeRatio
-    const dmgRatio = Math.min(this.damage / 12, 5)
-    const spread = 0.6 + this.splashRadius * 0.005
-    const useSheet = this.scene.textures.exists('vfx_lightning_sheet')
-    const useTex = useSheet || this.scene.textures.exists('vfx_lightning')
-
-    // Lazy init
-    if (!this.lightningGfx) {
-      this.lightningGfx = this.scene.add.graphics().setDepth(9)
-    }
-    if (!this.lightningSprite && useTex) {
-      if (useSheet) {
-        // Animated bolt sprite
-        this.lightningSprite = this.scene.add.sprite(this.x, this.y, 'vfx_lightning_sheet', 0) as any
-        this.lightningSprite!.setOrigin(0, 0.5).setDepth(9)
-          .setBlendMode(Phaser.BlendModes.ADD).setVisible(false)
-        if (this.scene.anims.exists('lightning_bolt_loop')) {
-          (this.lightningSprite as any).play('lightning_bolt_loop')
-        }
-      } else {
-        this.lightningSprite = this.scene.add.image(this.x, this.y, 'vfx_lightning')
-          .setOrigin(0, 0.5).setDepth(9)
-          .setBlendMode(Phaser.BlendModes.ADD).setVisible(false)
-      }
-    }
-
-    // Find nearest enemy
-    let closest: Phaser.Physics.Arcade.Sprite | null = null
-    let closestDist = Infinity
-    for (const enemy of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!enemy.active) continue
-      const dist = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y)
-      if (dist < lightRange && dist < closestDist) {
-        closestDist = dist
-        closest = enemy
-      }
-    }
-
-    this.lightningGfx.clear()
-
-    if (!closest) {
-      if (this.lightningSprite) this.lightningSprite.setVisible(false)
-      return
-    }
-
-    // Aim — smooth rotation tracking
-    const targetAngle = Phaser.Math.Angle.Between(this.x, this.y, closest.x, closest.y)
-    this.lightningAngle = Phaser.Math.Angle.RotateTo(this.lightningAngle, targetAngle, 0.2)
-    this.setFlipX(Math.cos(this.lightningAngle) < 0)
-
-    // Animated lightning bolt sprite
-    if (this.lightningSprite) {
-      const sprScale = lightRange / 64 // sheet frame is 64px wide
-      this.lightningSprite.setPosition(this.x, this.y)
-        .setRotation(this.lightningAngle)
-        .setScale(sprScale, sprScale * (1 + this.splashRadius * 0.008))
-        .setVisible(true)
-        .setAlpha(0.7 + Math.random() * 0.3) // flicker
-      const tint = dmgRatio > 3 ? 0xffffff : dmgRatio > 1.5 ? 0xccddff : 0x88aaff
-      this.lightningSprite.setTint(tint)
-    }
-
-    // Impact crackle at the tip — where bolt hits
-    const tipX = this.x + Math.cos(this.lightningAngle) * Math.min(closestDist, lightRange)
-    const tipY = this.y + Math.sin(this.lightningAngle) * Math.min(closestDist, lightRange)
-    const g2 = this.lightningGfx
-    // Small radiating sparks at impact point
-    for (let i = 0; i < 3; i++) {
-      const sa = this.lightningAngle + (Math.random() - 0.5) * 2.5
-      const sl = Phaser.Math.FloatBetween(4, 12)
-      g2.lineStyle(1, 0xccddff, 0.4 + Math.random() * 0.4)
-      g2.beginPath()
-      g2.moveTo(tipX, tipY)
-      g2.lineTo(tipX + Math.cos(sa) * sl, tipY + Math.sin(sa) * sl)
-      g2.strokePath()
-    }
-    // Fading glow dot at tip
-    g2.fillStyle(0xaaccff, 0.25 + Math.random() * 0.2)
-    g2.fillCircle(tipX, tipY, 4 + Math.random() * 3)
-
-    // Secondary jagged arcs in the cone (Graphics layer — extra bolts for beefier feel)
-    const g = this.lightningGfx
-    const boltCount = 1 + Math.floor(dmgRatio * 0.4)
-    for (let b = 0; b < boltCount; b++) {
-      const boltAngle = this.lightningAngle + (Math.random() - 0.5) * spread * 1.5
-      const alpha = 0.3 + Math.random() * 0.35
-      g.lineStyle(Phaser.Math.Between(1, 2), 0xaaccff, alpha)
-      let bx = this.x, by = this.y
-      const segments = Phaser.Math.Between(4, 6)
-      const segLen = lightRange / segments
-      g.beginPath()
-      g.moveTo(bx, by)
-      for (let s = 0; s < segments; s++) {
-        const jitter = (Math.random() - 0.5) * 14
-        bx += Math.cos(boltAngle) * segLen + jitter * Math.sin(boltAngle)
-        by += Math.sin(boltAngle) * segLen - jitter * Math.cos(boltAngle)
-        g.lineTo(bx, by)
-      }
-      g.strokePath()
-
-      // Branch bolts — small forks off main bolt
-      if (Math.random() < 0.4) {
-        const forkSeg = Phaser.Math.Between(1, segments - 1)
-        const forkX = this.x + Math.cos(boltAngle) * segLen * forkSeg
-        const forkY = this.y + Math.sin(boltAngle) * segLen * forkSeg
-        const forkAngle = boltAngle + (Math.random() - 0.5) * 1.2
-        g.lineStyle(1, 0x88aaff, alpha * 0.6)
-        g.beginPath()
-        g.moveTo(forkX, forkY)
-        let fx = forkX, fy = forkY
-        for (let fs = 0; fs < 3; fs++) {
-          fx += Math.cos(forkAngle) * segLen * 0.5 + (Math.random() - 0.5) * 8
-          fy += Math.sin(forkAngle) * segLen * 0.5 + (Math.random() - 0.5) * 8
-          g.lineTo(fx, fy)
-        }
-        g.strokePath()
-      }
-    }
-
-    // Electric spark particles — brighter, more frequent
-    this.lightningSparkTimer += delta
-    if (this.lightningSparkTimer > 45) {
-      this.lightningSparkTimer = 0
-      // Sparks along the bolt path
-      for (let i = 0; i < 2; i++) {
-        const sparkAngle = this.lightningAngle + (Math.random() - 0.5) * spread
-        const sparkDist = Phaser.Math.FloatBetween(15, lightRange * 0.9)
-        const sx = this.x + Math.cos(sparkAngle) * sparkDist
-        const sy = this.y + Math.sin(sparkAngle) * sparkDist
-        const sparkTex = this.scene.textures.exists('vfx_spark_elec') ? 'vfx_spark_elec' : 'vfx_spark'
-        const spark = this.scene.add.image(sx, sy, sparkTex)
-          .setScale(Phaser.Math.FloatBetween(1.2, 3)).setDepth(10)
-          .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.9)
-          .setRotation(Math.random() * Math.PI)
-        this.scene.tweens.add({
-          targets: spark, alpha: 0, scale: 0.2, duration: 150 + Math.random() * 100,
-          onComplete: () => spark.destroy(),
-        })
-      }
-    }
-
-    // Damage enemies inside the wide cone
-    const coneSpread = this.hasArcReach ? spread * 1.5 : spread
-    const dmgThisFrame = this.damage * (delta / 1000)
-    const overcharging = this.hasOvercharge && Math.random() < 0.08 // ~8% per frame = frequent bursts
-    const chainTargets: Phaser.Physics.Arcade.Sprite[] = []
-
-    for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!e.active) continue
-      const dist = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-      if (dist > lightRange) continue
-      const angleToEnemy = Phaser.Math.Angle.Between(this.x, this.y, e.x, e.y)
-      const angleDiff = Phaser.Math.Angle.Wrap(angleToEnemy - this.lightningAngle)
-      if (Math.abs(angleDiff) <= coneSpread) {
-        const dmg = overcharging ? dmgThisFrame * 3 : dmgThisFrame;
-        (e as any).takeDamage(dmg, 'lightning')
-        // Slow enemies
-        if ((e as any).speed && (e as any).baseSpeed) {
-          (e as any).speed = Math.max((e as any).baseSpeed * 0.6, (e as any).speed * 0.98)
-        }
-        if (this.hasSparkInitiate) chainTargets.push(e)
-      }
-    }
-
-    // Overcharge VFX: bright flash
-    if (overcharging) {
-      const flash = this.scene.add.circle(closest.x, closest.y, 12, 0xffffff, 0.7).setDepth(11).setBlendMode(Phaser.BlendModes.ADD)
-      this.scene.tweens.add({ targets: flash, scale: 3, alpha: 0, duration: 150, onComplete: () => flash.destroy() })
-    }
-
-    // Spark Initiate: chain lightning to 1 nearby enemy outside cone
-    if (this.hasSparkInitiate && chainTargets.length > 0) {
-      const src = chainTargets[0]
-      let chainTarget: Phaser.Physics.Arcade.Sprite | null = null
-      let chainDist = Infinity
-      for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active || chainTargets.includes(e)) continue
-        const d = Phaser.Math.Distance.Between(src.x, src.y, e.x, e.y)
-        if (d < 80 && d < chainDist) { chainDist = d; chainTarget = e }
-      }
-      if (chainTarget) {
-        (chainTarget as any).takeDamage(dmgThisFrame * 0.6, 'lightning')
-        // Chain bolt VFX
-        const cg = this.scene.add.graphics().setDepth(10)
-        cg.lineStyle(2, 0xaaddff, 0.7)
-        cg.beginPath(); cg.moveTo(src.x, src.y)
-        const mx = (src.x + chainTarget.x) / 2 + (Math.random() - 0.5) * 20
-        const my = (src.y + chainTarget.y) / 2 + (Math.random() - 0.5) * 20
-        cg.lineTo(mx, my); cg.lineTo(chainTarget.x, chainTarget.y); cg.strokePath()
-        this.scene.tweens.add({ targets: cg, alpha: 0, duration: 100, onComplete: () => cg.destroy() })
-      }
-    }
-
-    // Arc Reach: arc zap to enemies just outside normal cone
-    if (this.hasArcReach) {
-      for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active) continue
-        const dist = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-        if (dist > lightRange || dist <= 0) continue
-        const ae = Phaser.Math.Angle.Between(this.x, this.y, e.x, e.y)
-        const ad = Math.abs(Phaser.Math.Angle.Wrap(ae - this.lightningAngle))
-        if (ad > coneSpread && ad <= coneSpread + 0.4) {
-          (e as any).takeDamage(dmgThisFrame * 0.4, 'lightning')
-        }
-      }
-    }
+    sifra.attackLightning(this, enemies, delta)
   }
 
   // Dash slash (originally Khet — kept for re-use)
   private attackDash(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
-    const ox = this.x, oy = this.y
-    const dashAngle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y)
-
-    // Dynamic: trail count scales with strikeCount, tint shifts with damage
-    const trailCount = 3 + this.strikeCount
-    const hitRadius = 48 + this.splashRadius * 0.5
-    const dmgRatio = Math.min(this.damage / 35, 3)
-    const slashTint = dmgRatio > 2 ? 0xffffff : dmgRatio > 1.5 ? 0xdd99ff : 0xbb88ff
-    const slashScale = 2.5 + (this.range - 48) * 0.02
-
-    // Afterimage trail during dash
-    for (let i = 1; i <= trailCount; i++) {
-      const t = i / (trailCount + 1)
-      const tx = ox + (target.x - ox) * t
-      const ty = oy + (target.y - oy) * t
-      this.scene.time.delayedCall(i * 15, () => {
-        const ghost = this.scene.add.sprite(tx, ty, this.texture.key, this.frame.name)
-          .setScale(this.scaleX, this.scaleY)
-          .setAlpha(0.4)
-          .setTint(slashTint)
-          .setFlipX(this.flipX)
-          .setDepth(8)
-        this.scene.tweens.add({
-          targets: ghost, alpha: 0, scale: this.scaleX * 0.6,
-          duration: 250, onComplete: () => ghost.destroy(),
-        })
-      })
-    }
-
-    // Dash to target
-    this.scene.tweens.add({
-      targets: this, x: target.x, y: target.y,
-      duration: 80,
-      onComplete: () => {
-        // Slash all enemies in hit radius
-        for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= hitRadius) {
-            for (let i = 0; i < this.strikeCount; i++) (e as any).takeDamage(this.damage, 'melee')
-            // Hit spark — size scales with damage
-            if (this.scene.textures.exists('vfx_hitspark')) {
-              const spark = this.scene.add.image(e.x, e.y, 'vfx_hitspark')
-                .setScale(1.5 + dmgRatio * 0.5).setDepth(10)
-                .setBlendMode(Phaser.BlendModes.ADD).setTint(slashTint)
-              this.scene.tweens.add({
-                targets: spark, alpha: 0, scale: 2.5 + dmgRatio, duration: 200,
-                onComplete: () => spark.destroy(),
-              })
-            }
-          }
-        }
-
-        // Smoke Bomb — slow all enemies in radius
-        if (this.hasSmokeBomb) {
-          const smokeRadius = 60 + this.splashRadius * 0.5
-          // Visual: expanding purple smoke
-          const smoke = this.scene.add.circle(this.x, this.y, 10, 0x553388, 0.5).setDepth(4)
-          this.scene.tweens.add({
-            targets: smoke, scale: smokeRadius / 10, alpha: 0, duration: 600,
-            onComplete: () => smoke.destroy(),
-          })
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active) continue
-            if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= smokeRadius) {
-              if ((e as any).speed && (e as any).baseSpeed) {
-                (e as any).speed = (e as any).baseSpeed * 0.4
-              }
-            }
-          }
-        }
-
-        // Slash arc — multiple arcs for strikeCount > 1
-        if (this.scene.textures.exists('vfx_slash')) {
-          for (let s = 0; s < this.strikeCount; s++) {
-            const angleOff = (s - (this.strikeCount - 1) / 2) * 0.3
-            const slash = this.scene.add.image(this.x, this.y, 'vfx_slash')
-              .setScale(slashScale).setRotation(dashAngle + angleOff).setDepth(10)
-              .setBlendMode(Phaser.BlendModes.ADD).setTint(slashTint)
-            this.scene.tweens.add({
-              targets: slash, alpha: 0, scale: slashScale + 1.5,
-              duration: 250, delay: s * 40,
-              onComplete: () => slash.destroy(),
-            })
-          }
-        }
-
-        // Chain Dash — bounce to a second target
-        if (this.hasChainDash) {
-          let chainTarget: Phaser.Physics.Arcade.Sprite | null = null
-          let chainDist = Infinity
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active || e === target) continue
-            const d = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-            if (d < this.range * 1.2 && d < chainDist) { chainDist = d; chainTarget = e }
-          }
-          if (chainTarget) {
-            const ct = chainTarget
-            this.scene.tweens.add({
-              targets: this, x: ct.x, y: ct.y, duration: 60,
-              onComplete: () => {
-                for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                  if (!e.active) continue
-                  if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= hitRadius) {
-                    (e as any).takeDamage(this.damage * 0.7, 'melee')
-                  }
-                }
-                // Slash VFX at chain target
-                if (this.scene.textures.exists('vfx_slash')) {
-                  const chainAngle = Phaser.Math.Angle.Between(target.x, target.y, ct.x, ct.y)
-                  const s = this.scene.add.image(this.x, this.y, 'vfx_slash')
-                    .setScale(slashScale * 0.8).setRotation(chainAngle).setDepth(10)
-                    .setBlendMode(Phaser.BlendModes.ADD).setTint(0xcc88ff)
-                  this.scene.tweens.add({ targets: s, alpha: 0, scale: slashScale + 1, duration: 200, onComplete: () => s.destroy() })
-                }
-                // Return from chain target
-                this.scene.tweens.add({
-                  targets: this, x: ox, y: oy, duration: 80,
-                  onComplete: () => {
-                    this.isAttacking = false
-                    if (this.hasVanish) {
-                      this.vanishUntil = this.scene.time.now + 600
-                      this.setAlpha(0.5)
-                      this.scene.time.delayedCall(600, () => { if (this.active) this.setAlpha(1) })
-                    }
-                  },
-                })
-              },
-            })
-            return  // Skip the normal return tween
-          }
-        }
-
-        // Return
-        this.scene.tweens.add({
-          targets: this, x: ox, y: oy, duration: 80,
-          onComplete: () => {
-            this.isAttacking = false
-            if (this.hasVanish) {
-              this.vanishUntil = this.scene.time.now + 600
-              this.setAlpha(0.5)
-              this.scene.time.delayedCall(600, () => { if (this.active) this.setAlpha(1) })
-            }
-          },
-        })
-      },
-    })
+    nazar.attackDash(this, target, enemies)
   }
 
   // SIFRA — Ice shard (piercing crystal with frost trail)
   private attackIceShard(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
-    const baseAngle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y)
-    const useShard = this.scene.textures.exists('vfx_iceshard')
-    const hasFrost = this.scene.textures.exists('vfx_frost')
-
-    // Dynamic: shard size from damage + splash, hit radius from splash, multi-shard from strikeCount
-    const dmgRatio = Math.min(this.damage / 12, 4)
-    const hitRadius = 24 + this.splashRadius * 0.5
-    const shardScale = 1.5 + dmgRatio * 0.4 + this.splashRadius * 0.025
-    const shatterCount = 3 + Math.floor(this.splashRadius / 15)
-    const shardTint = dmgRatio > 2.5 ? 0xffffff : dmgRatio > 1.5 ? 0xccf0ff : 0x88ddff
-    const shardCount = this.strikeCount
-
-    // Frost Nova: every 4th shot fires a ring burst
-    if (this.hasFrostNova) {
-      this.frostNovaCounter++
-      if (this.frostNovaCounter >= 4) {
-        this.frostNovaCounter = 0
-        // Fire 8 shards in a ring
-        for (let i = 0; i < 8; i++) {
-          const novaAngle = (i / 8) * Math.PI * 2
-          const novaShard = useShard
-            ? this.scene.add.image(this.x, this.y, 'vfx_iceshard').setScale(shardScale * 0.7).setDepth(9)
-                .setBlendMode(Phaser.BlendModes.ADD).setTint(0xaaeeff)
-            : this.scene.add.rectangle(this.x, this.y, 10, 3, 0x88ddff).setDepth(9)
-          novaShard.rotation = novaAngle - Math.PI / 2
-          const novaEndX = this.x + Math.cos(novaAngle) * this.range * 0.7
-          const novaEndY = this.y + Math.sin(novaAngle) * this.range * 0.7
-          const novaHitSet = new Set<Phaser.Physics.Arcade.Sprite>()
-          this.scene.tweens.add({
-            targets: novaShard, x: novaEndX, y: novaEndY, duration: 250,
-            onUpdate: () => {
-              for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                if (!e.active || novaHitSet.has(e)) continue
-                if (Phaser.Math.Distance.Between(novaShard.x, novaShard.y, e.x, e.y) <= hitRadius * 0.8) {
-                  (e as any).takeDamage(this.damage * 0.5, 'ice')
-                  if ((e as any).speed) (e as any).speed *= 0.6
-                  novaHitSet.add(e)
-                }
-              }
-            },
-            onComplete: () => novaShard.destroy(),
-          })
-        }
-        // Ring flash VFX
-        const ring = this.scene.add.circle(this.x, this.y, 10, 0x88ddff, 0.4).setDepth(8)
-        this.scene.tweens.add({
-          targets: ring, scale: this.range * 0.7 / 10, alpha: 0, duration: 400,
-          onComplete: () => ring.destroy(),
-        })
-      }
-    }
-
-    // Fire multiple shards in a spread pattern
-    for (let s = 0; s < shardCount; s++) {
-      const angleOff = (s - (shardCount - 1) / 2) * 0.15
-      const angle = baseAngle + angleOff
-
-      const shard = useShard
-        ? this.scene.add.image(this.x, this.y, 'vfx_iceshard').setScale(shardScale).setDepth(9)
-            .setBlendMode(Phaser.BlendModes.ADD).setTint(shardTint)
-        : this.scene.add.rectangle(this.x, this.y, 12, 4, 0x00d2d3).setDepth(9)
-      shard.rotation = angle - Math.PI / 2
-      const endX = this.x + Math.cos(angle) * this.range
-      const endY = this.y + Math.sin(angle) * this.range
-      const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
-
-      // Frost trail
-      let trailTimer: Phaser.Time.TimerEvent | null = null
-      if (hasFrost) {
-        trailTimer = this.scene.time.addEvent({
-          delay: 25, loop: true,
-          callback: () => {
-            const frost = this.scene.add.image(
-              shard.x + Phaser.Math.Between(-4, 4),
-              shard.y + Phaser.Math.Between(-4, 4),
-              'vfx_frost'
-            ).setScale(Phaser.Math.FloatBetween(1, 1.5 + dmgRatio * 0.3)).setDepth(8)
-              .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.7).setTint(shardTint)
-            this.scene.tweens.add({
-              targets: frost, alpha: 0, scale: 0.3, duration: 300,
-              onComplete: () => frost.destroy(),
-            })
-          },
-        })
-      }
-
-      this.scene.tweens.add({
-        targets: shard, x: endX, y: endY,
-        duration: 300,
-        onUpdate: () => {
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active || hitSet.has(e)) continue
-            if (Phaser.Math.Distance.Between(shard.x, shard.y, e.x, e.y) <= hitRadius) {
-              // Permafrost: bonus dmg to slowed enemies
-              const isSlowed = (e as any).speed && (e as any).baseSpeed && (e as any).speed < (e as any).baseSpeed * 0.9
-              const permaDmg = (this.hasPermafrost && isSlowed) ? this.damage * 1.4 : this.damage;
-              (e as any).takeDamage(permaDmg, 'ice')
-              // Deep Freeze: stronger slow (0.3x vs 0.7x)
-              const slowMult = this.hasDeepFreeze ? 0.3 : 0.7
-              if ((e as any).speed) (e as any).speed *= slowMult
-              // Absolute Zero: freeze stun if very slow
-              if (this.hasAbsoluteZero && (e as any).speed && (e as any).baseSpeed) {
-                if ((e as any).speed < (e as any).baseSpeed * 0.35 && !(e as any)._frozenUntil) {
-                  (e as any)._frozenUntil = this.scene.time.now + 2000;
-                  (e as any).speed = 0
-                  e.setTintFill(0x88ccff)
-                  this.scene.time.delayedCall(2000, () => {
-                    if (e.active) {
-                      e.clearTint()
-                      ;(e as any)._frozenUntil = 0
-                      ;(e as any).speed = (e as any).baseSpeed * 0.5
-                    }
-                  })
-                }
-              }
-              hitSet.add(e)
-              // Cosmetic ice burst particles
-              for (let i = 0; i < shatterCount; i++) {
-                const sa = Math.random() * Math.PI * 2
-                const sd = Phaser.Math.Between(8, 15 + Math.floor(this.splashRadius * 0.3))
-                const sp = this.scene.add.image(e.x, e.y, hasFrost ? 'vfx_frost' : 'vfx_spark')
-                  .setScale(Phaser.Math.FloatBetween(1, 2 + dmgRatio * 0.3)).setDepth(10).setAlpha(0.8)
-                  .setBlendMode(Phaser.BlendModes.ADD).setTint(shardTint)
-                this.scene.tweens.add({
-                  targets: sp,
-                  x: e.x + Math.cos(sa) * sd, y: e.y + Math.sin(sa) * sd,
-                  alpha: 0, scale: 0.2, duration: 250,
-                  onComplete: () => sp.destroy(),
-                })
-              }
-              // Shatter mechanic — split into mini-shards that seek nearby mobs
-              if (this.shatterPieces > 0) {
-                this.spawnShatterShards(e, enemies, hitSet, useShard, hasFrost, shardTint, dmgRatio)
-              }
-              // Pierce limit reached — destroy shard early
-              if (hitSet.size >= this.pierceCount) {
-                if (trailTimer) { trailTimer.destroy(); trailTimer = null }
-                shard.destroy()
-                if (s === shardCount - 1) this.isAttacking = false
-                return
-              }
-            }
-          }
-        },
-        onComplete: () => {
-          if (trailTimer) trailTimer.destroy()
-          if (shard.scene) shard.destroy()  // guard: may already be destroyed by pierce limit
-          if (s === shardCount - 1) this.isAttacking = false
-        },
-      })
-    }
-  }
-
-  /** Shatter: on-hit ice shard splits into mini-shards that fly to nearby mobs */
-  private spawnShatterShards(
-    hitEnemy: Phaser.Physics.Arcade.Sprite,
-    enemies: Phaser.Physics.Arcade.Group,
-    parentHitSet: Set<Phaser.Physics.Arcade.Sprite>,
-    useShard: boolean, hasFrost: boolean,
-    tint: number, dmgRatio: number,
-  ) {
-    // Find nearby targets (not already hit by parent shard)
-    const nearby: Phaser.Physics.Arcade.Sprite[] = []
-    const seekRange = 80 + this.splashRadius * 0.5
-    for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!e.active || e === hitEnemy || parentHitSet.has(e)) continue
-      if (Phaser.Math.Distance.Between(hitEnemy.x, hitEnemy.y, e.x, e.y) <= seekRange) {
-        nearby.push(e)
-      }
-    }
-    // Shuffle and take up to shatterPieces targets
-    nearby.sort(() => Math.random() - 0.5)
-    const targets = nearby.slice(0, this.shatterPieces)
-    const shatterDmg = Math.ceil(this.damage * 0.5)
-    const miniScale = 0.8 + dmgRatio * 0.2
-
-    for (const t of targets) {
-      const mini = useShard
-        ? this.scene.add.image(hitEnemy.x, hitEnemy.y, 'vfx_iceshard')
-            .setScale(miniScale).setDepth(9).setAlpha(0.85)
-            .setBlendMode(Phaser.BlendModes.ADD).setTint(tint)
-        : this.scene.add.rectangle(hitEnemy.x, hitEnemy.y, 8, 3, 0x88ddff).setDepth(9)
-      const ang = Phaser.Math.Angle.Between(hitEnemy.x, hitEnemy.y, t.x, t.y)
-      mini.rotation = ang - Math.PI / 2
-
-      this.scene.tweens.add({
-        targets: mini,
-        x: t.x, y: t.y,
-        duration: 180,
-        onComplete: () => {
-          mini.destroy()
-          if (t.active) {
-            (t as any).takeDamage(shatterDmg, 'ice')
-            if ((t as any).speed) (t as any).speed *= 0.8
-            parentHitSet.add(t)
-            // Small burst on impact
-            for (let i = 0; i < 3; i++) {
-              const sa = Math.random() * Math.PI * 2
-              const sp = this.scene.add.image(t.x, t.y, hasFrost ? 'vfx_frost' : 'vfx_spark')
-                .setScale(Phaser.Math.FloatBetween(0.5, 1.2)).setDepth(10).setAlpha(0.7)
-                .setBlendMode(Phaser.BlendModes.ADD).setTint(tint)
-              this.scene.tweens.add({
-                targets: sp,
-                x: t.x + Math.cos(sa) * 10, y: t.y + Math.sin(sa) * 10,
-                alpha: 0, scale: 0.1, duration: 200,
-                onComplete: () => sp.destroy(),
-              })
-            }
-          }
-        },
-      })
-    }
+    sifra.attackIceShard(this, target, enemies)
   }
 
   // AMUN — Shockwave ring
   private attackShockwave(enemies: Phaser.Physics.Arcade.Group) {
-    const cx = this.x, cy = this.y
-    const useRing = this.scene.textures.exists('vfx_shockring')
-    const useSpark = this.scene.textures.exists('vfx_hitspark')
-
-    // Dynamic: ring size from range, particles from splash, multi-ring from strikeCount
-    const rangeRatio = this.range / 80
-    const maxScale = (useRing ? 4 : 8) * rangeRatio
-    const dmgRatio = Math.min(this.damage / 10, 4)
-    const dustCount = 6 + Math.floor(this.splashRadius / 10)
-    const ringCount = this.strikeCount
-    const ringTint = dmgRatio > 2.5 ? 0xffffff : dmgRatio > 1.5 ? 0xffffaa : 0xfff200
-    const kbForce = (this.hasColossus ? 500 : 200) + this.splashRadius * 2
-
-    // Center flash — bigger with damage
-    if (useSpark) {
-      const flash = this.scene.add.image(cx, cy, 'vfx_hitspark')
-        .setScale(2 + dmgRatio).setDepth(10).setBlendMode(Phaser.BlendModes.ADD).setTint(ringTint)
-      this.scene.tweens.add({
-        targets: flash, alpha: 0, scale: 4 + dmgRatio, duration: 300,
-        onComplete: () => flash.destroy(),
-      })
-    }
-
-    // Ground dust particles — count scales with splash
-    for (let i = 0; i < dustCount; i++) {
-      const a = (i / dustCount) * Math.PI * 2
-      const dustDist = Phaser.Math.Between(30, 50) * rangeRatio
-      const dust = this.scene.add.circle(cx, cy, Phaser.Math.Between(2, 4), 0xccaa55, 0.6).setDepth(8)
-      this.scene.tweens.add({
-        targets: dust,
-        x: cx + Math.cos(a) * dustDist,
-        y: cy + Math.sin(a) * dustDist,
-        alpha: 0, scale: 0.3, duration: 400,
-        onComplete: () => dust.destroy(),
-      })
-    }
-
-    // Ground crack lines when range is boosted (Titan's Pulse visual)
-    if (rangeRatio > 1.2) {
-      const crackG = this.scene.add.graphics().setDepth(7)
-      const crackCount = Math.floor(rangeRatio * 4)
-      crackG.lineStyle(2, 0xccaa44, 0.5)
-      for (let i = 0; i < crackCount; i++) {
-        const a = (i / crackCount) * Math.PI * 2 + Math.random() * 0.3
-        const len = (40 + Math.random() * 30) * rangeRatio
-        crackG.beginPath()
-        crackG.moveTo(cx + Math.cos(a) * 10, cy + Math.sin(a) * 10)
-        // Jagged line with mid-point offset
-        const mx = cx + Math.cos(a) * len * 0.5 + (Math.random() - 0.5) * 8
-        const my = cy + Math.sin(a) * len * 0.5 + (Math.random() - 0.5) * 8
-        crackG.lineTo(mx, my)
-        crackG.lineTo(cx + Math.cos(a) * len, cy + Math.sin(a) * len)
-        crackG.strokePath()
-      }
-      this.scene.tweens.add({
-        targets: crackG, alpha: 0, duration: 600,
-        onComplete: () => crackG.destroy(),
-      })
-    }
-
-    // Titan's Pulse: launch a boulder projectile toward nearest enemy
-    if (this.hasTitansPulse) {
-      let nearest: Phaser.Physics.Arcade.Sprite | null = null
-      let nearDist = Infinity
-      for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active) continue
-        const d = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
-        if (d < nearDist) { nearDist = d; nearest = e }
-      }
-      if (nearest) {
-        const angle = Phaser.Math.Angle.Between(cx, cy, nearest.x, nearest.y)
-        const boulderRadius = 18
-        const boulderSpeed = 320
-        const boulderRange = 300
-        const boulderDmg = this.damage * 1.5
-        const splashR = 60 + this.splashRadius * 0.5
-
-        // Create boulder graphics
-        const boulder = this.scene.add.graphics().setDepth(11)
-        boulder.fillStyle(0x887744, 1)
-        boulder.fillCircle(0, 0, boulderRadius)
-        boulder.fillStyle(0xaa9966, 0.7)
-        boulder.fillCircle(-4, -5, boulderRadius * 0.6)
-        boulder.lineStyle(2, 0x665533, 0.8)
-        boulder.strokeCircle(0, 0, boulderRadius)
-        boulder.setPosition(cx, cy)
-
-        const startX = cx, startY = cy
-        const vx = Math.cos(angle) * boulderSpeed
-        const vy = Math.sin(angle) * boulderSpeed
-        const boulderHitSet = new Set<Phaser.Physics.Arcade.Sprite>()
-
-        const boulderUpdate = this.scene.time.addEvent({
-          delay: 16, loop: true,
-          callback: () => {
-            boulder.x += vx * 0.016
-            boulder.y += vy * 0.016
-            boulder.rotation += 0.15
-
-            // Check if out of range
-            const traveled = Phaser.Math.Distance.Between(startX, startY, boulder.x, boulder.y)
-            if (traveled > boulderRange) {
-              // Explode at end
-              this.boulderExplode(boulder.x, boulder.y, splashR, boulderDmg, enemies, boulderHitSet)
-              boulder.destroy()
-              boulderUpdate.destroy()
-              return
-            }
-
-            // Check hit with enemies
-            for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-              if (!e.active || boulderHitSet.has(e)) continue
-              const d = Phaser.Math.Distance.Between(boulder.x, boulder.y, e.x, e.y)
-              if (d < boulderRadius + 20) {
-                // Explode on contact
-                this.boulderExplode(boulder.x, boulder.y, splashR, boulderDmg, enemies, boulderHitSet)
-                boulder.destroy()
-                boulderUpdate.destroy()
-                return
-              }
-            }
-          },
-        })
-      }
-    }
-
-    // Multi-ring: spawn staggered rings
-    const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
-    let ringsFinished = 0
-
-    for (let r = 0; r < ringCount; r++) {
-      this.scene.time.delayedCall(r * 120, () => {
-        const ring = useRing
-          ? this.scene.add.image(cx, cy, 'vfx_shockring')
-              .setScale(0.5).setDepth(9).setBlendMode(Phaser.BlendModes.ADD).setTint(ringTint)
-          : this.scene.add.circle(cx, cy, 10, ringTint, 0.6).setDepth(9)
-
-        this.scene.tweens.add({
-          targets: ring,
-          scale: maxScale,
-          alpha: 0,
-          duration: 400,
-          onUpdate: () => {
-            const radius = useRing ? ring.scale * 24 : ring.scale * 10
-            const band = 25 + this.splashRadius * 0.3
-            for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-              if (!e.active || hitSet.has(e)) continue
-              const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
-              if (dist <= radius && dist >= radius - band) {
-                (e as any).takeDamage(this.damage, 'shockwave')
-                hitSet.add(e)
-                const kbAngle = Phaser.Math.Angle.Between(cx, cy, e.x, e.y);
-                (e.body as Phaser.Physics.Arcade.Body).setVelocity(
-                  Math.cos(kbAngle) * kbForce, Math.sin(kbAngle) * kbForce
-                )
-
-                // Earthquake: stun enemies for 0.8s
-                if (this.hasEarthquake && (e as any).speed !== undefined) {
-                  const origSpeed = (e as any).baseSpeed || (e as any).speed
-                  ;(e as any).speed = 0
-                  // VFX: stun indicator — spinning star above enemy
-                  const starGfx = this.scene.add.graphics().setDepth(12)
-                  const stunEvt = this.scene.time.addEvent({
-                    delay: 16, loop: true,
-                    callback: () => {
-                      if (!e.active) { starGfx.destroy(); stunEvt.destroy(); return }
-                      starGfx.clear()
-                      const st = this.scene.time.now
-                      const sr = 6
-                      for (let s = 0; s < 3; s++) {
-                        const sa = (st / 200) + s * Math.PI * 2 / 3
-                        starGfx.fillStyle(0xffff66, 0.8)
-                        starGfx.fillCircle(
-                          e.x + Math.cos(sa) * sr,
-                          e.y - 20 + Math.sin(sa) * sr * 0.5,
-                          2
-                        )
-                      }
-                    },
-                  })
-                  this.scene.time.delayedCall(800, () => {
-                    if (e.active) (e as any).speed = origSpeed
-                    starGfx.destroy()
-                    stunEvt.destroy()
-                  })
-                }
-
-                if (useSpark) {
-                  const hs = this.scene.add.image(e.x, e.y, 'vfx_hitspark')
-                    .setScale(1 + dmgRatio * 0.5).setDepth(10)
-                    .setBlendMode(Phaser.BlendModes.ADD).setTint(ringTint)
-                  this.scene.tweens.add({
-                    targets: hs, alpha: 0, scale: 2 + dmgRatio, duration: 200,
-                    onComplete: () => hs.destroy(),
-                  })
-                }
-              }
-            }
-          },
-          onComplete: () => {
-            ring.destroy()
-            ringsFinished++
-            if (ringsFinished >= ringCount) this.isAttacking = false
-          },
-        })
-      })
-    }
-
-    // Cataclysm: second delayed shockwave burst
-    if (this.hasCataclysm) {
-      this.scene.time.delayedCall(350, () => {
-        const hitSet2 = new Set<Phaser.Physics.Arcade.Sprite>()
-        const ring2 = useRing
-          ? this.scene.add.image(cx, cy, 'vfx_shockring')
-              .setScale(0.5).setDepth(9).setBlendMode(Phaser.BlendModes.ADD).setTint(0xff8800)
-          : this.scene.add.circle(cx, cy, 10, 0xff8800, 0.6).setDepth(9)
-        this.scene.tweens.add({
-          targets: ring2, scale: maxScale * 1.2, alpha: 0, duration: 450,
-          onUpdate: () => {
-            const radius = useRing ? ring2.scale * 24 : ring2.scale * 10
-            const band = 25 + this.splashRadius * 0.3
-            for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-              if (!e.active || hitSet2.has(e)) continue
-              const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
-              if (dist <= radius && dist >= radius - band) {
-                (e as any).takeDamage(this.damage * 0.6, 'shockwave')
-                hitSet2.add(e)
-                const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y);
-                (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * kbForce * 0.6, Math.sin(kb) * kbForce * 0.6)
-              }
-            }
-          },
-          onComplete: () => ring2.destroy(),
-        })
-      })
-    }
-  }
-
-  // Titan's Pulse boulder explosion
-  private boulderExplode(bx: number, by: number, radius: number, dmg: number, enemies: Phaser.Physics.Arcade.Group, hitSet: Set<Phaser.Physics.Arcade.Sprite>) {
-    // AOE damage
-    for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!e.active || hitSet.has(e)) continue
-      const d = Phaser.Math.Distance.Between(bx, by, e.x, e.y)
-      if (d < radius) {
-        (e as any).takeDamage(dmg, 'shockwave')
-        hitSet.add(e)
-        const kb = Phaser.Math.Angle.Between(bx, by, e.x, e.y);
-        (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * 250, Math.sin(kb) * 250)
-      }
-    }
-    // VFX: explosion ring
-    const ring = this.scene.add.circle(bx, by, 8, 0xffcc44, 0.7).setDepth(11)
-    this.scene.tweens.add({
-      targets: ring, scale: radius / 8, alpha: 0, duration: 350,
-      onComplete: () => ring.destroy(),
-    })
-    // Debris particles
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2
-      const dist = 30 + Math.random() * 30
-      const debris = this.scene.add.circle(bx, by, 3 + Math.random() * 3, 0x887744, 0.9).setDepth(12)
-      this.scene.tweens.add({
-        targets: debris,
-        x: bx + Math.cos(a) * dist, y: by + Math.sin(a) * dist,
-        alpha: 0, scale: 0.3, duration: 300 + Math.random() * 150,
-        onComplete: () => debris.destroy(),
-      })
-    }
-    // Screen shake
-    this.scene.cameras.main.shake(80, 0.005)
+    amun.attackShockwave(this, enemies)
   }
 
   // NAZAR — Poison cloud (animated expanding puffs → ring → dissipate)
   private attackPoison(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
-    const tx = target.x, ty = target.y
-    // Dynamic: vial size scales with damage
-    const dmgRatio = Math.min(this.damage / 6, 4)
-    const vialSize = 3 + dmgRatio
-    const vialColor = dmgRatio > 2.5 ? 0xddff44 : dmgRatio > 1.5 ? 0x88ee33 : 0xa3cb38
-    const vial = this.scene.add.circle(this.x, this.y, vialSize, vialColor).setDepth(9)
-    const dist = Phaser.Math.Distance.Between(this.x, this.y, tx, ty)
-
-    this.scene.tweens.add({
-      targets: vial, x: tx, y: ty,
-      duration: (dist / 250) * 1000,
-      onComplete: () => {
-        vial.destroy()
-        this.spawnPoisonCloud(tx, ty, enemies)
-        this.isAttacking = false
-      },
-    })
-  }
-
-  private spawnPoisonCloud(cx: number, cy: number, enemies: Phaser.Physics.Arcade.Group) {
-    const cloudGfx = this.scene.add.graphics().setDepth(9)
-    // Dynamic: pool radius scales with splashRadius, duration with damage
-    const dmgRatio = Math.min(this.damage / 6, 4)
-    const poolRadius = 48 + this.splashRadius * 0.8
-    const totalDuration = 4000 + Math.floor(dmgRatio * 500)
-    const startTime = this.scene.time.now
-
-    // Puff count scales with stats
-    const numPuffs = 6 + Math.floor(dmgRatio * 2) + Math.floor(this.splashRadius / 20)
-    const puffs: { angle: number; dist: number; size: number; phase: number; speed: number }[] = []
-    for (let i = 0; i < numPuffs; i++) {
-      puffs.push({
-        angle: (i / numPuffs) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.2, 0.2),
-        dist: 0,
-        size: Phaser.Math.FloatBetween(10, 16),
-        phase: Phaser.Math.FloatBetween(0, Math.PI * 2),
-        speed: Phaser.Math.FloatBetween(0.8, 1.2),
-      })
-    }
-
-    // Small wisp fragments that appear during dissipation
-    const wisps: { angle: number; dist: number; size: number; phase: number }[] = []
-    for (let i = 0; i < 6; i++) {
-      wisps.push({
-        angle: (i / 6) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.3, 0.3),
-        dist: poolRadius * 0.6,
-        size: Phaser.Math.FloatBetween(4, 7),
-        phase: Phaser.Math.FloatBetween(0, Math.PI * 2),
-      })
-    }
-
-    // Damage timer — tick every 500ms
-    let tickCount = 0
-    this.scene.time.addEvent({
-      delay: 500,
-      repeat: 7,
-      callback: () => {
-        tickCount++
-        for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= poolRadius) {
-            const hpBefore = (e as any).hp || 0
-            // Necrosis: poison DPS ramps +20% per tick
-            const necroMult = this.hasNecrosis ? (1 + tickCount * 0.2) : 1;
-            (e as any).takeDamage(this.damage * necroMult, 'poison')
-            // Tag as poisoned for Weakness
-            ;(e as any)._poisoned = true
-            e.setTint(0x88ff88)
-            // Clear poison tag after 3s
-            if (!(e as any)._poisonClearTimer) {
-              (e as any)._poisonClearTimer = this.scene.time.delayedCall(3000, () => {
-                if (e.active) { (e as any)._poisoned = false; e.clearTint() }
-                ;(e as any)._poisonClearTimer = null
-              })
-            }
-            // Pandemic: spread mini-cloud on kill
-            if (this.hasPandemic && hpBefore > 0 && ((e as any).hp <= 0 || !e.active)) {
-              const miniRadius = poolRadius * 0.5
-              const miniGfx = this.scene.add.circle(e.x, e.y, miniRadius * 0.3, 0x44cc44, 0.3).setDepth(3)
-              this.scene.tweens.add({ targets: miniGfx, scale: 2, alpha: 0, duration: 1500, onComplete: () => miniGfx.destroy() })
-              // Mini cloud damage
-              let miniTicks = 0
-              this.scene.time.addEvent({
-                delay: 500, repeat: 3,
-                callback: () => {
-                  miniTicks++
-                  for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                    if (!e2.active) continue
-                    if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= miniRadius) {
-                      (e2 as any).takeDamage(this.damage * 0.5, 'poison')
-                    }
-                  }
-                },
-              })
-            }
-          }
-        }
-      },
-    })
-
-    // Toxic Slash: lingering poison puddle at hit location
-    if (this.hasToxicSlash) {
-      const puddleR = this.hasVirulentStrain ? poolRadius * 0.8 : poolRadius * 0.5
-      const puddleDur = this.hasVirulentStrain ? 5000 : 3000
-      const puddleGfx = this.scene.add.graphics().setDepth(2)
-      const puddleStart = this.scene.time.now
-      // Puddle damage tick
-      this.scene.time.addEvent({
-        delay: 400, repeat: Math.floor(puddleDur / 400),
-        callback: () => {
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active) continue
-            if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= puddleR) {
-              (e as any).takeDamage(this.damage * 0.3, 'poison')
-              ;(e as any)._poisoned = true
-            }
-          }
-        },
-      })
-      // Puddle visual animation
-      const puddleVfx = this.scene.time.addEvent({
-        delay: 16, loop: true,
-        callback: () => {
-          const el = this.scene.time.now - puddleStart
-          if (el >= puddleDur) { puddleGfx.destroy(); puddleVfx.destroy(); return }
-          const fade = 1 - el / puddleDur
-          puddleGfx.clear()
-          puddleGfx.fillStyle(0x33aa33, fade * 0.25)
-          puddleGfx.fillEllipse(cx, cy, puddleR * 2, puddleR * 1.2)
-          puddleGfx.lineStyle(1, 0x44cc44, fade * 0.4)
-          puddleGfx.strokeEllipse(cx, cy, puddleR * 2, puddleR * 1.2)
-          // Bubbles
-          if (Math.random() < 0.15) {
-            const ba = Math.random() * Math.PI * 2
-            const bd = Math.random() * puddleR * 0.7
-            const bubble = this.scene.add.circle(cx + Math.cos(ba) * bd, cy + Math.sin(ba) * bd * 0.6, 2, 0x66ee66, 0.5).setDepth(3)
-            this.scene.tweens.add({ targets: bubble, y: bubble.y - 10, alpha: 0, duration: 400, onComplete: () => bubble.destroy() })
-          }
-        },
-      })
-    }
-
-    // Animation loop
-    const updateEvent = this.scene.time.addEvent({
-      delay: 16,
-      loop: true,
-      callback: () => {
-        const elapsed = this.scene.time.now - startTime
-        const progress = Math.min(elapsed / totalDuration, 1)
-
-        cloudGfx.clear()
-
-        if (progress >= 1) {
-          cloudGfx.destroy()
-          updateEvent.destroy()
-          return
-        }
-
-        const t = elapsed / 1000
-
-        // Phase 1 (0-0.15): small cloud appears, puffs grow from center
-        // Phase 2 (0.15-0.5): puffs expand outward into a ring, center darkens
-        // Phase 3 (0.5-0.75): ring fully formed, bubbling animation
-        // Phase 4 (0.75-1.0): ring breaks apart, wisps scatter, fade out
-
-        let ringProgress: number // how far puffs are from center (0=center, 1=ring)
-        let overallAlpha: number
-        let centerHole: number // 0 = no hole, 1 = full hole
-
-        if (progress < 0.15) {
-          // Growing from center
-          ringProgress = 0
-          overallAlpha = progress / 0.15
-          centerHole = 0
-        } else if (progress < 0.5) {
-          // Expanding into ring
-          const p = (progress - 0.15) / 0.35
-          ringProgress = p
-          overallAlpha = 1
-          centerHole = p * 0.8
-        } else if (progress < 0.75) {
-          // Full ring, bubbling
-          ringProgress = 1
-          overallAlpha = 1
-          centerHole = 0.8 + ((progress - 0.5) / 0.25) * 0.2
-        } else {
-          // Dissipating
-          const p = (progress - 0.75) / 0.25
-          ringProgress = 1 + p * 0.5
-          overallAlpha = 1 - p
-          centerHole = 1
-        }
-
-        // Draw center fill (dark green, fading as hole opens)
-        if (centerHole < 0.9) {
-          const centerAlpha = overallAlpha * (1 - centerHole) * 0.25
-          cloudGfx.fillStyle(0x2d5a1e, centerAlpha)
-          const cSize = poolRadius * (0.3 + ringProgress * 0.4) * (1 - centerHole * 0.6)
-          cloudGfx.fillCircle(cx, cy, cSize)
-        }
-
-        // Draw puffs
-        for (const puff of puffs) {
-          const pDist = ringProgress * poolRadius * puff.speed
-          const wobble = Math.sin(t * 4 + puff.phase) * 4
-          const px = cx + Math.cos(puff.angle) * (pDist + wobble)
-          const py = cy + Math.sin(puff.angle) * (pDist + wobble)
-
-          // Puff size: grows during expansion, shrinks during dissipation
-          let pSize = puff.size
-          if (progress < 0.15) {
-            pSize *= progress / 0.15
-          } else if (progress > 0.75) {
-            pSize *= (1 - (progress - 0.75) / 0.25)
-          }
-          // Breathing effect
-          pSize += Math.sin(t * 6 + puff.phase) * 2
-
-          if (pSize <= 0) continue
-
-          // Color shifts with damage ratio (more toxic = brighter/yellower)
-          const glowColor = dmgRatio > 2.5 ? 0x88aa22 : 0x4a8b2c
-          const mainColor = dmgRatio > 2.5 ? 0xaaee33 : dmgRatio > 1.5 ? 0x88dd33 : 0x6fbf3b
-          const hlColor = dmgRatio > 2.5 ? 0xddff66 : dmgRatio > 1.5 ? 0xaaff44 : 0x8fef5b
-
-          // Outer glow
-          cloudGfx.fillStyle(glowColor, overallAlpha * 0.15)
-          cloudGfx.fillCircle(px, py, pSize * 1.5)
-
-          // Main puff
-          cloudGfx.fillStyle(mainColor, overallAlpha * 0.5)
-          cloudGfx.fillCircle(px, py, pSize)
-
-          // Bright highlight
-          const hlOff = Math.sin(t * 3 + puff.phase) * 2
-          cloudGfx.fillStyle(hlColor, overallAlpha * 0.35)
-          cloudGfx.fillCircle(px - pSize * 0.25 + hlOff, py - pSize * 0.3, pSize * 0.5)
-
-          // Dark inner shadow (gives depth)
-          cloudGfx.fillStyle(0x2d5a1e, overallAlpha * 0.3)
-          cloudGfx.fillCircle(px + pSize * 0.15, py + pSize * 0.2, pSize * 0.45)
-        }
-
-        // Draw wisps (small fragments during dissipation phase)
-        if (progress > 0.6) {
-          const wispAlpha = overallAlpha * Math.min((progress - 0.6) / 0.15, 1)
-          for (const wisp of wisps) {
-            const wDist = wisp.dist + (progress - 0.6) * poolRadius * 1.5
-            const wAngle = wisp.angle + t * 0.5
-            const wx = cx + Math.cos(wAngle) * wDist
-            const wy = cy + Math.sin(wAngle) * wDist
-            const wSize = wisp.size * (1 - (progress - 0.6) / 0.4)
-            if (wSize <= 0) continue
-
-            cloudGfx.fillStyle(0x6fbf3b, wispAlpha * 0.4)
-            cloudGfx.fillCircle(wx, wy, wSize)
-            cloudGfx.fillStyle(0x8fef5b, wispAlpha * 0.2)
-            cloudGfx.fillCircle(wx, wy, wSize * 0.5)
-          }
-        }
-
-        // Subtle toxic particle sparks
-        if (progress < 0.85 && Math.random() < 0.4) {
-          const sparkAngle = Math.random() * Math.PI * 2
-          const sparkDist = Phaser.Math.FloatBetween(5, poolRadius * ringProgress)
-          const sx = cx + Math.cos(sparkAngle) * sparkDist
-          const sy = cy + Math.sin(sparkAngle) * sparkDist
-          const spark = this.scene.add.circle(sx, sy, Phaser.Math.Between(1, 3), 0xaaff44, 0.7).setDepth(9)
-          this.scene.tweens.add({
-            targets: spark,
-            alpha: 0, y: sy - Phaser.Math.Between(10, 25), scale: 0.2,
-            duration: Phaser.Math.Between(200, 500),
-            onComplete: () => spark.destroy(),
-          })
-        }
-      },
-    })
+    nazar.attackPoison(this, target, enemies)
   }
 
   private spawnBuffParticles() {
@@ -2732,208 +1551,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.hp = Math.min(this.maxHp, this.hp + this.hpRegen * (delta / 1000))
     }
 
-    // Sifra stance energy regen — inactive stance recharges
-    if (this.heroType === 'sifra') {
-      const regenAmt = this.energyRegenRate * (delta / 1000)
-      if (this.stance === 'ice') {
-        this.lightningEnergy = Math.min(this.maxEnergy, this.lightningEnergy + regenAmt)
-      } else {
-        this.iceEnergy = Math.min(this.maxEnergy, this.iceEnergy + regenAmt)
-      }
-    }
+    // Hero-specific energy regen
+    if (this.heroType === 'sifra') sifra.updateSifraEnergy(this, delta)
+    if (this.heroType === 'nazar') nazar.updateNazarEnergy(this, delta)
+    if (this.heroType === 'huntress') huntress.updateHuntressEnergy(this, delta)
 
-    // Nazar stance energy regen — inactive stance recharges
-    if (this.heroType === 'nazar') {
-      const regenAmt = this.energyRegenRate * (delta / 1000)
-      if (this.nazarStance === 'sword') {
-        this.venomEnergy = Math.min(this.maxEnergy, this.venomEnergy + regenAmt)
-      } else {
-        this.swordEnergy = Math.min(this.maxEnergy, this.swordEnergy + regenAmt)
-      }
-    }
-
-    // Huntress stance energy regen — inactive stance recharges
-    if (this.heroType === 'huntress') {
-      const regenAmt = this.energyRegenRate * (delta / 1000)
-      if (this.huntressStance === 'melee') {
-        this.spearEnergy = Math.min(this.maxEnergy, this.spearEnergy + regenAmt)
-      } else {
-        this.meleeEnergy = Math.min(this.maxEnergy, this.meleeEnergy + regenAmt)
-      }
-    }
-
-    // === Huntress skill timers & passive mechanics ===
-    if (this.heroType === 'huntress') {
-      const now = this.scene.time.now
-
-      // Battle Frenzy: temporary attack speed boost
-      if (this.hasBattleFrenzy && this.battleFrenzyUntil > now) {
-        // Frenzy is active — cooldown reduction applied in attack via lastAttackTime offset
-      }
-
-      // Kill Stride: +20% speed while active
-      if (this.hasKillStride && this.killStrideUntil > now) {
-        // Speed buff already applied on kill, decays naturally
-      } else if (this.hasKillStride && this.killStrideUntil > 0 && this.killStrideUntil <= now) {
-        this.killStrideUntil = 0
-        this.speed = Math.ceil(this.speed / 1.2)
-      }
-
-      // Camouflage: alpha while invisible, enemies can't target
-      if (this.hasCamouflage && this.camouflageUntil > now) {
-        this.setAlpha(0.3)
-      } else if (this.hasCamouflage && this.camouflageUntil > 0 && this.camouflageUntil <= now) {
-        this.camouflageUntil = 0
-        this.setAlpha(1)
-      }
-
-      // Caltrops: drop spike zone behind while moving
-      if (this.hasCaltrops) {
-        this.caltropTimer += delta
-        if (this.caltropTimer >= 800) {
-          const pBody2 = this.body as Phaser.Physics.Arcade.Body
-          const isMoving = Math.abs(pBody2.velocity.x) > 10 || Math.abs(pBody2.velocity.y) > 10
-          if (isMoving) {
-            this.caltropTimer = 0
-            const cx = this.x, cy = this.y
-            // VFX: small spike cluster
-            const calt = this.scene.add.circle(cx, cy, 10, 0x44cc44, 0.3).setDepth(3)
-            // Spike marks
-            for (let i = 0; i < 3; i++) {
-              const sp = this.scene.add.rectangle(
-                cx + Phaser.Math.Between(-8, 8), cy + Phaser.Math.Between(-8, 8),
-                3, 3, 0x228822, 0.6
-              ).setDepth(3).setRotation(Math.random() * Math.PI)
-              this.scene.tweens.add({ targets: sp, alpha: 0, duration: 3000, delay: 500, onComplete: () => sp.destroy() })
-            }
-            // Damage + slow enemies over time
-            let ticks = 0
-            const caltTimer = this.scene.time.addEvent({
-              delay: 300, repeat: 10,
-              callback: () => {
-                ticks++
-                const scn = this.scene as any
-                if (scn.enemies) {
-                  for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                    if (!e.active) continue
-                    if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= 18) {
-                      (e as any).takeDamage(this.damage * 0.15, 'melee')
-                      if ((e as any).speed && (e as any).baseSpeed) {
-                        (e as any).speed = (e as any).baseSpeed * 0.5
-                      }
-                    }
-                  }
-                }
-                if (ticks >= 10) { calt.destroy(); caltTimer.destroy() }
-              },
-            })
-            this.scene.tweens.add({ targets: calt, alpha: 0, duration: 3500 })
-          }
-        }
-      }
-
-      // Leap: auto-leap away when 4+ enemies within 50px
-      if (this.hasLeap) {
-        this.leapCooldown -= delta
-        if (this.leapCooldown <= 0) {
-          const scn = this.scene as any
-          if (scn.enemies) {
-            let nearCount = 0
-            let avgAngle = 0
-            for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-              if (!e.active) continue
-              const d = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-              if (d <= 50) {
-                nearCount++
-                avgAngle += Phaser.Math.Angle.Between(e.x, e.y, this.x, this.y)
-              }
-            }
-            if (nearCount >= 4) {
-              this.leapCooldown = 4000 // 4s cooldown
-              avgAngle /= nearCount
-              const leapDist = 120
-              // Ghost at old position
-              const ghost = this.scene.add.circle(this.x, this.y, 10, 0x44cc44, 0.4).setDepth(5)
-              this.scene.tweens.add({ targets: ghost, alpha: 0, scale: 3, duration: 300, onComplete: () => ghost.destroy() })
-              this.x += Math.cos(avgAngle) * leapDist
-              this.y += Math.sin(avgAngle) * leapDist
-              // Landing dust
-              const dust = this.scene.add.circle(this.x, this.y, 8, 0x888888, 0.3).setDepth(3)
-              this.scene.tweens.add({ targets: dust, scale: 3, alpha: 0, duration: 300, onComplete: () => dust.destroy() })
-            }
-          }
-        }
-      }
-
-      // Headhunter: execute enemies below 15% HP in range
-      if (this.hasHeadhunter) {
-        const execR = 100 + this.range * 0.3
-        const scn = this.scene as any
-        if (scn.enemies) {
-          for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active) continue
-            if ((e as any).hp > 0 && (e as any).maxHp && (e as any).hp < (e as any).maxHp * 0.15) {
-              if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= execR) {
-                (e as any).takeDamage((e as any).hp + 1, 'melee')
-                // VFX: red slash mark
-                const xMark = this.scene.add.text(e.x, e.y - 10, '✕', {
-                  fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
-                  stroke: '#000', strokeThickness: 2,
-                }).setOrigin(0.5).setDepth(21)
-                this.scene.tweens.add({ targets: xMark, y: xMark.y - 20, alpha: 0, scale: 2, duration: 400, onComplete: () => xMark.destroy() })
-              }
-            }
-          }
-        }
-      }
-
-      // Spear Wall: orbiting spears that damage nearby enemies
-      if (this.hasSpearWall) {
-        this.spearWallAngle += 2.5 * (delta / 1000) // ~2.5 rad/s rotation
-        if (!this.spearWallGfx) this.spearWallGfx = this.scene.add.graphics().setDepth(9)
-        this.spearWallGfx.clear()
-        const orbitR = 55
-        const spearCount = 3
-        const scn = this.scene as any
-        for (let i = 0; i < spearCount; i++) {
-          const a = this.spearWallAngle + (i * Math.PI * 2 / spearCount)
-          const sx = this.x + Math.cos(a) * orbitR
-          const sy = this.y + Math.sin(a) * orbitR
-          // Draw spear
-          this.spearWallGfx.lineStyle(3, 0x2ecc71, 0.7)
-          this.spearWallGfx.beginPath()
-          this.spearWallGfx.moveTo(sx - Math.cos(a) * 8, sy - Math.sin(a) * 8)
-          this.spearWallGfx.lineTo(sx + Math.cos(a) * 8, sy + Math.sin(a) * 8)
-          this.spearWallGfx.strokePath()
-          // Tip
-          this.spearWallGfx.fillStyle(0xeeeeee, 0.8)
-          this.spearWallGfx.fillCircle(sx + Math.cos(a) * 10, sy + Math.sin(a) * 10, 2)
-          // Damage enemies
-          if (scn.enemies) {
-            for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-              if (!e.active) continue
-              if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) <= 18) {
-                (e as any).takeDamage(this.damage * 0.2 * (delta / 1000), 'melee')
-              }
-            }
-          }
-        }
-      } else if (this.spearWallGfx) {
-        this.spearWallGfx.clear()
-      }
-
-      // Mark timer decay on enemies
-      const scn2 = this.scene as any
-      if (this.hasMarkedTarget && scn2.enemies) {
-        for (const e of scn2.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active || !(e as any).isMarked) continue
-          ;(e as any).markTimer -= delta
-          if ((e as any).markTimer <= 0) {
-            (e as any).isMarked = false
-          }
-        }
-      }
-    }
+    // Hero-specific passive mechanics
+    if (this.heroType === 'huntress') huntress.updateHuntressPassives(this, delta)
 
     // Shield timer decay
     if (this.shieldTimer > 0) {
@@ -2964,324 +1588,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.spawnBuffParticles()
     }
 
-    // Amun defense aura visual (Bastion)
-    if (this.heroType === 'amun' && this.defenseAuraActive) {
-      if (!this.defenseAuraGfx) {
-        this.defenseAuraGfx = this.scene.add.graphics().setDepth(4)
-      }
-      this.defenseAuraGfx.clear()
-      const auraRadius = 45 + this.armor * 40  // grows with armor
-      const pulse = 0.15 + Math.sin(this.scene.time.now / 600) * 0.05
-      // Outer glow ring
-      this.defenseAuraGfx.lineStyle(3, 0x4488ff, pulse + 0.1)
-      this.defenseAuraGfx.strokeCircle(this.x, this.y, auraRadius)
-      // Inner fill
-      this.defenseAuraGfx.fillStyle(0x2266cc, pulse * 0.5)
-      this.defenseAuraGfx.fillCircle(this.x, this.y, auraRadius)
-      // Bright inner ring
-      this.defenseAuraGfx.lineStyle(1, 0x88bbff, pulse + 0.15)
-      this.defenseAuraGfx.strokeCircle(this.x, this.y, auraRadius * 0.6)
-    }
-
-    // Amun passive aura (3 dmg/s in 60px — requires Aura of Might skill)
-    if (this.heroType === 'amun' && this.hasPassiveAura) {
-      const hpScale = this.hasLivingFortress ? (0.5 + (this.hp / this.maxHp) * 1.5) : 1
-      const auraDps = 3 * hpScale
-      const auraR = 60
-      const scene = this.scene as any
-      if (scene.enemies) {
-        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= auraR) {
-            (e as any).takeDamage(auraDps * (delta / 1000), 'shockwave')
-          }
-        }
-      }
-
-      // Persistent passive aura visual — golden ring centered on player
-      if (!this.passiveAuraGfx) {
-        this.passiveAuraGfx = this.scene.add.graphics().setDepth(3)
-      }
-      this.passiveAuraGfx.clear()
-      const t = this.scene.time.now
-      const pulse = 0.10 + Math.sin(t / 500) * 0.04
-      const breathe = auraR + Math.sin(t / 800) * 3
-      // Outer ring
-      this.passiveAuraGfx.lineStyle(2, 0xfff200, pulse + 0.12)
-      this.passiveAuraGfx.strokeCircle(this.cx, this.cy, breathe)
-      // Inner fill
-      this.passiveAuraGfx.fillStyle(0xffcc00, pulse * 0.3)
-      this.passiveAuraGfx.fillCircle(this.cx, this.cy, breathe)
-      // Rotating accent segments (4 small arcs)
-      const rot = (t / 1200) % (Math.PI * 2)
-      this.passiveAuraGfx.lineStyle(1.5, 0xffe066, pulse + 0.08)
-      for (let i = 0; i < 4; i++) {
-        const a = rot + i * Math.PI / 2
-        this.passiveAuraGfx.beginPath()
-        this.passiveAuraGfx.arc(this.cx, this.cy, breathe - 4, a, a + 0.4)
-        this.passiveAuraGfx.strokePath()
-      }
-    }
-
-    // Amun Low HP Regen: ×3 regen when below 40% HP
-    if (this.hasLowHpRegen && this.hp < this.maxHp * 0.4 && this.hp > 0) {
-      this.hp = Math.min(this.maxHp, this.hp + this.hpRegen * 2 * (delta / 1000))
-      // VFX: periodic green healing sparkle
-      if (Math.random() < delta / 300) {
-        const angle = Math.random() * Math.PI * 2
-        const dist = Phaser.Math.Between(5, 15)
-        const spark = this.scene.add.circle(
-          this.x + Math.cos(angle) * dist,
-          this.y + Math.sin(angle) * dist,
-          2, 0x44ff66, 0.7
-        ).setDepth(10)
-        this.scene.tweens.add({
-          targets: spark, y: spark.y - 18, alpha: 0, scale: 0.3,
-          duration: 500, onComplete: () => spark.destroy(),
-        })
-      }
-    }
-
-    // Amun Gravity Well: pull enemies toward player every 2s
-    if (this.hasGravityWell) {
-      this.gravityWellTimer += delta
-      if (this.gravityWellTimer >= 2000) {
-        this.gravityWellTimer = 0
-        const pullRadius = 120 + this.range
-        const scene2 = this.scene as any
-        if (scene2.enemies) {
-          for (const e of scene2.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active) continue
-            const dist = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
-            if (dist <= pullRadius && dist > 20) {
-              const angle = Phaser.Math.Angle.Between(e.x, e.y, this.x, this.y);
-              (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150)
-            }
-          }
-        }
-        // VFX: inward pulse
-        const pullRing = this.scene.add.circle(this.x, this.y, pullRadius, 0x9966ff, 0.2).setDepth(4)
-        this.scene.tweens.add({ targets: pullRing, scale: 0.1, alpha: 0, duration: 400, onComplete: () => pullRing.destroy() })
-      }
-    }
-
-    // Amun Divine Judgment: execute enemies below 15% HP in range
-    if (this.hasDivineJudgment) {
-      const execRadius = 80 + this.range
-      const scene3 = this.scene as any
-      if (scene3.enemies) {
-        for (const e of scene3.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if ((e as any).hp > 0 && (e as any).maxHp && (e as any).hp < (e as any).maxHp * 0.15) {
-            if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= execRadius) {
-              (e as any).takeDamage((e as any).hp + 1, 'shockwave')
-              // VFX: golden beam
-              const beam = this.scene.add.rectangle(
-                (this.x + e.x) / 2, (this.y + e.y) / 2,
-                Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y), 3,
-                0xfff200, 0.7
-              ).setDepth(10).setRotation(Phaser.Math.Angle.Between(this.x, this.y, e.x, e.y))
-              this.scene.tweens.add({ targets: beam, alpha: 0, scaleY: 3, duration: 200, onComplete: () => beam.destroy() })
-            }
-          }
-        }
-      }
-    }
-
-    // Sifra Blizzard Aura — slow nearby enemies passively
-    if (this.heroType === 'sifra' && this.hasBlizzardAura && this.stance === 'ice') {
-      const auraRadius = 60 + this.splashRadius * 0.3
-      // Visual
-      if (!this.blizzardAuraGfx) {
-        this.blizzardAuraGfx = this.scene.add.graphics().setDepth(4)
-      }
-      this.blizzardAuraGfx.clear()
-      const pulse = 0.12 + Math.sin(this.scene.time.now / 500) * 0.04
-      this.blizzardAuraGfx.fillStyle(0x55aaff, pulse)
-      this.blizzardAuraGfx.fillCircle(this.x, this.y, auraRadius)
-      this.blizzardAuraGfx.lineStyle(1, 0x88ddff, pulse + 0.1)
-      this.blizzardAuraGfx.strokeCircle(this.x, this.y, auraRadius)
-
-      // Slow enemies in range
-      const sifraScene = this.scene as any
-      if (sifraScene.enemies) {
-        for (const e of sifraScene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= auraRadius) {
-            if ((e as any).speed && (e as any).baseSpeed) {
-              const blizSlow = this.hasDeepFreeze ? 0.3 : 0.6
-              ;(e as any).speed = Math.min((e as any).speed, (e as any).baseSpeed * blizSlow)
-            }
-          }
-        }
-      }
-    } else if (this.blizzardAuraGfx) {
-      this.blizzardAuraGfx.clear()
-    }
-
-    // Sifra Eternal Winter — permanent damaging frost field
-    if (this.heroType === 'sifra' && this.hasEternalWinter && this.stance === 'ice') {
-      const frostR = 55 + this.splashRadius * 0.3
-      const scene = this.scene as any
-      if (scene.enemies) {
-        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= frostR) {
-            (e as any).takeDamage(this.damage * 0.2 * (delta / 1000), 'ice')
-            if ((e as any).speed && (e as any).baseSpeed) (e as any).speed = (e as any).baseSpeed * 0.4
-          }
-        }
-      }
-      // VFX: frost particles on ground
-      if (Math.random() < delta / 200) {
-        const a = Math.random() * Math.PI * 2
-        const d = Math.random() * frostR
-        const flake = this.scene.add.circle(this.x + Math.cos(a) * d, this.y + Math.sin(a) * d, 2, 0xaaddff, 0.5).setDepth(3)
-        this.scene.tweens.add({ targets: flake, alpha: 0, y: flake.y - 8, duration: 600, onComplete: () => flake.destroy() })
-      }
-    }
-
-    // Sifra Ball Lightning — orbiting electric ball
-    if (this.heroType === 'sifra' && this.hasBallLightning && this.stance === 'lightning') {
-      if (!this.ballLightningGfx) this.ballLightningGfx = this.scene.add.graphics().setDepth(9)
-      this.ballLightningGfx.clear()
-      const orbitR = 45
-      const orbitAngle = (this.scene.time.now / 600) % (Math.PI * 2)
-      const bx = this.x + Math.cos(orbitAngle) * orbitR
-      const by = this.y + Math.sin(orbitAngle) * orbitR
-      // Ball glow
-      this.ballLightningGfx.fillStyle(0x9966ff, 0.6)
-      this.ballLightningGfx.fillCircle(bx, by, 8)
-      this.ballLightningGfx.fillStyle(0xccbbff, 0.8)
-      this.ballLightningGfx.fillCircle(bx, by, 4)
-      this.ballLightningGfx.lineStyle(1, 0xbb99ff, 0.4)
-      this.ballLightningGfx.strokeCircle(bx, by, 12)
-      // Zap nearby enemies
-      const scene2 = this.scene as any
-      if (scene2.enemies) {
-        for (const e of scene2.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(bx, by, e.x, e.y) <= 40) {
-            (e as any).takeDamage(this.damage * 0.3 * (delta / 1000), 'lightning')
-            // Mini bolt
-            if (Math.random() < 0.1) {
-              const mg = this.scene.add.graphics().setDepth(10)
-              mg.lineStyle(1, 0xccddff, 0.6)
-              mg.beginPath(); mg.moveTo(bx, by); mg.lineTo(e.x, e.y); mg.strokePath()
-              this.scene.tweens.add({ targets: mg, alpha: 0, duration: 80, onComplete: () => mg.destroy() })
-            }
-          }
-        }
-      }
-    } else if (this.ballLightningGfx) {
-      this.ballLightningGfx.clear()
-    }
-
-    // Sifra Storm Lord — random lightning strikes every 2s
-    if (this.heroType === 'sifra' && this.hasStormLord && this.stance === 'lightning') {
-      this.stormLordTimer += delta
-      if (this.stormLordTimer >= 2000) {
-        this.stormLordTimer = 0
-        const scene3 = this.scene as any
-        if (scene3.enemies) {
-          const alive = (scene3.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]).filter((e: any) => e.active)
-          if (alive.length > 0) {
-            const target = alive[Math.floor(Math.random() * alive.length)]
-            ;(target as any).takeDamage(this.damage * 2, 'lightning')
-            // Lightning strike VFX
-            const strikeG = this.scene.add.graphics().setDepth(11)
-            strikeG.lineStyle(3, 0xeeddff, 0.9)
-            let sx = target.x + (Math.random() - 0.5) * 10
-            let sy = target.y - 200
-            strikeG.beginPath(); strikeG.moveTo(sx, sy)
-            for (let s = 0; s < 5; s++) {
-              sx += (Math.random() - 0.5) * 20
-              sy += 40
-              strikeG.lineTo(sx, sy)
-            }
-            strikeG.lineTo(target.x, target.y); strikeG.strokePath()
-            // Impact flash
-            const imp = this.scene.add.circle(target.x, target.y, 10, 0xffffff, 0.8).setDepth(11).setBlendMode(Phaser.BlendModes.ADD)
-            this.scene.tweens.add({ targets: imp, scale: 3, alpha: 0, duration: 200, onComplete: () => imp.destroy() })
-            this.scene.tweens.add({ targets: strikeG, alpha: 0, duration: 250, onComplete: () => strikeG.destroy() })
-          }
-        }
-      }
-    }
-
-    // Sifra Ice Armor — absorb shield
-    if (this.heroType === 'sifra' && this.hasIceArmor) {
-      this.iceArmorRegenDelay -= delta
-      if (this.iceArmorRegenDelay <= 0 && this.iceArmorHP < this.iceArmorMax) {
-        this.iceArmorHP = Math.min(this.iceArmorMax, this.iceArmorHP + this.iceArmorMax * 0.1 * (delta / 1000))
-      }
-    }
-
-    // Amun pulsing damage aura (Sovereign — Consecration)
-    if (this.heroType === 'amun' && this.dmgAuraActive) {
-      const dmgR = 70 + this.splashRadius * 0.8
-      // Persistent orange ring visual
-      if (!this.dmgAuraGfx) {
-        this.dmgAuraGfx = this.scene.add.graphics().setDepth(3)
-      }
-      this.dmgAuraGfx.clear()
-      const dt = this.scene.time.now
-      const dPulse = 0.12 + Math.sin(dt / 400) * 0.06
-      const dBreathe = dmgR + Math.sin(dt / 600) * 4
-      this.dmgAuraGfx.lineStyle(2, 0xff8800, dPulse + 0.1)
-      this.dmgAuraGfx.strokeCircle(this.cx, this.cy, dBreathe)
-      this.dmgAuraGfx.fillStyle(0xff6600, dPulse * 0.2)
-      this.dmgAuraGfx.fillCircle(this.cx, this.cy, dBreathe)
-      // Flame-like segments rotating
-      const dRot = (dt / 900) % (Math.PI * 2)
-      this.dmgAuraGfx.lineStyle(2, 0xffaa33, dPulse + 0.15)
-      for (let i = 0; i < 6; i++) {
-        const a = dRot + i * Math.PI / 3
-        this.dmgAuraGfx.beginPath()
-        this.dmgAuraGfx.arc(this.cx, this.cy, dBreathe - 5, a, a + 0.3)
-        this.dmgAuraGfx.strokePath()
-      }
-
-      this.dmgAuraLastPulse += delta
-      if (this.dmgAuraLastPulse >= this.dmgAuraCooldown) {
-        this.dmgAuraLastPulse = 0
-        const pulseRadius = 70 + this.splashRadius * 0.8
-        const pulseDmg = this.damage * 0.4
-
-        // Visual: expanding ring
-        const ring = this.scene.add.graphics().setDepth(4)
-        let currentR = 10
-        const expandSpeed = pulseRadius / 400  // pixels per ms
-        const pulseEvent = this.scene.time.addEvent({
-          delay: 16, loop: true,
-          callback: () => {
-            currentR += expandSpeed * 16
-            ring.clear()
-            const alpha = 1 - (currentR / pulseRadius)
-            if (alpha <= 0 || currentR >= pulseRadius) {
-              ring.destroy()
-              pulseEvent.destroy()
-              return
-            }
-            ring.lineStyle(3, 0xffaa33, alpha * 0.7)
-            ring.strokeCircle(this.x, this.y, currentR)
-            ring.fillStyle(0xff8800, alpha * 0.15)
-            ring.fillCircle(this.x, this.y, currentR)
-          },
-        })
-
-        // Damage enemies in range
-        const scene = this.scene as any
-        if (scene.enemies) {
-          for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active) continue
-            if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= pulseRadius) {
-              (e as any).takeDamage(pulseDmg, 'shockwave')
-            }
-          }
-        }
-      }
-    }
+    // Hero-specific aura/passive updates
+    if (this.heroType === 'amun') amun.updateAmunPassives(this, delta)
+    if (this.heroType === 'sifra') sifra.updateSifraPassives(this, delta)
 
     const pBody = this.body as Phaser.Physics.Arcade.Body
 
@@ -3324,59 +1633,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       pBody.setVelocity(0, 0)
     }
 
-    // Lava Trail — drop fire pools while moving
-    if (this.hasLavaTrail && moving) {
-      this.lavaTrailTimer += delta
-      if (this.lavaTrailTimer >= 300) {
-        this.lavaTrailTimer = 0
-        const lx = this.x, ly = this.y
-        const lava = this.scene.add.circle(lx, ly, 8, 0xff4400, 0.5).setDepth(3)
-        // Damage enemies that walk over it
-        let lavaTicks = 0
-        const lavaTimer = this.scene.time.addEvent({
-          delay: 300, repeat: 6,
-          callback: () => {
-            lavaTicks++
-            const scene = this.scene as any
-            if (scene.enemies) {
-              for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                if (!e.active) continue
-                if (Phaser.Math.Distance.Between(lx, ly, e.x, e.y) <= 12) {
-                  (e as any).takeDamage(this.damage * 0.2, 'fire')
-                }
-              }
-            }
-            if (lavaTicks >= 6) { lava.destroy(); lavaTimer.destroy() }
-          },
-        })
-        this.scene.tweens.add({ targets: lava, alpha: 0, scale: 0.3, duration: 2100, delay: 0 })
-      }
-    }
+    // Hero-specific movement-based passives
+    if (this.hasLavaTrail && moving) ignara.updateLavaTrail(this, delta)
+    if (this.hasPhantomTrail && moving) nazar.updatePhantomTrail(this, delta, moving)
 
-    // Phantom Trail — damage trail while moving
-    if (this.hasPhantomTrail && moving) {
-      this.phantomTrailTimer += delta
-      if (this.phantomTrailTimer >= 250) {
-        this.phantomTrailTimer = 0
-        const tx = this.x, ty = this.y
-        const trail = this.scene.add.circle(tx, ty, 6, 0x9955dd, 0.4).setDepth(3)
-        let ticks = 0
-        const trailTimer = this.scene.time.addEvent({
-          delay: 300, repeat: 4, callback: () => {
-            ticks++
-            const scene = this.scene as any
-            if (scene.enemies) {
-              for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                if (!e.active) continue
-                if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= 15) (e as any).takeDamage(this.damage * 0.15, 'melee')
-              }
-            }
-            if (ticks >= 4) { trail.destroy(); trailTimer.destroy() }
-          }
-        })
-        this.scene.tweens.add({ targets: trail, alpha: 0, scale: 0.3, duration: 1500 })
-      }
-    }
+    // Hero-specific passive mechanics (per-hero)
+    if (this.heroType === 'khashin') khashin.updateKhashinPassives(this, delta, moving)
+    if (this.heroType === 'muller') muller.updateMullerPassives(this, delta)
 
     // Animation state (spritesheet heroes only)
     if (this.hasSprite && !this.isAttacking) {
@@ -3386,238 +1649,48 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // HUNTRESS MELEE — quick stab around player
   private attackHuntressMelee(enemies: Phaser.Physics.Arcade.Group) {
-    const hitRadius = 80
-    const dmgRatio = Math.min(this.damage / 18, 4)
-    const slashTint = dmgRatio > 2.5 ? 0xffffff : dmgRatio > 1.5 ? 0x7bed9f : 0x2ecc71
-
-    // Stab VFX — short line in facing direction
-    const stabAngle = this.flipX ? Math.PI : 0
-    const stabX = this.cx + Math.cos(stabAngle) * 25
-    const stabY = this.cy + Math.sin(stabAngle) * 25
-    const stab = this.scene.add.rectangle(stabX, stabY, 20, 3, slashTint).setDepth(10).setRotation(stabAngle)
-    this.scene.tweens.add({
-      targets: stab, alpha: 0, scaleX: 2, duration: 150,
-      onComplete: () => stab.destroy(),
-    })
-
-    for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!e.active) continue
-      if (Phaser.Math.Distance.Between(this.cx, this.cy, e.x, e.y) <= hitRadius) {
-        let dmg = this.damage
-        // Critical Strike: 20% chance for 2x damage
-        const isCrit = this.hasCriticalStrike && Math.random() < 0.2
-        if (isCrit) dmg *= 2
-        // Marked Target: +30% damage to marked enemies
-        if (this.hasMarkedTarget && (e as any).isMarked) dmg *= 1.3
-        ;(e as any).takeDamage(dmg, 'melee')
-        // Mark enemy on hit
-        if (this.hasMarkedTarget) {
-          (e as any).isMarked = true
-          ;(e as any).markTimer = 5000
-        }
-        this.spearHitVfx(e.x, e.y, isCrit ? 0xff4444 : slashTint)
-        // Crit text
-        if (isCrit) {
-          const ct = this.scene.add.text(e.x, e.y - 30, 'CRIT!', {
-            fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
-            stroke: '#000', strokeThickness: 2,
-          }).setOrigin(0.5).setDepth(21)
-          this.scene.tweens.add({ targets: ct, y: ct.y - 20, alpha: 0, duration: 500, onComplete: () => ct.destroy() })
-        }
-      }
-    }
-
-    // Earth Slam: melee creates shockwave line in facing direction
-    if (this.hasEarthSlam) {
-      const slamAngle = this.flipX ? Math.PI : 0
-      const slamLen = 150
-      const slamW = 20
-      const hitEnemies = new Set<Phaser.Physics.Arcade.Sprite>()
-      // VFX: expanding ground crack
-      for (let i = 0; i < 5; i++) {
-        const dist = (i + 1) * (slamLen / 5)
-        const sx = this.cx + Math.cos(slamAngle) * dist
-        const sy = this.cy + Math.sin(slamAngle) * dist
-        this.scene.time.delayedCall(i * 40, () => {
-          if (!this.scene) return
-          const crack = this.scene.add.rectangle(sx, sy, 16, 6, 0x8b7355, 0.7).setDepth(3).setRotation(slamAngle)
-          this.scene.tweens.add({ targets: crack, scaleX: 2, alpha: 0, duration: 400, onComplete: () => crack.destroy() })
-          // Damage enemies along the line
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active || hitEnemies.has(e)) continue
-            if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) <= slamW) {
-              (e as any).takeDamage(this.damage * 0.6, 'shockwave')
-              hitEnemies.add(e)
-            }
-          }
-        })
-      }
-      this.scene.cameras.main.shake(60, 0.003)
-    }
-
-    // Hold isAttacking for anim duration
-    this.scene.time.delayedCall(350, () => { this.isAttacking = false })
+    huntress.attackHuntressMelee(this, enemies)
   }
 
   // HUNTRESS RANGED — spear flies across visible zone with pierce limit
   private attackSpear(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
-    const angle = Phaser.Math.Angle.Between(this.cx, this.cy, target.x, target.y)
-    const cam = this.scene.cameras.main
-    const maxDist = Math.sqrt(cam.width * cam.width + cam.height * cam.height)
-    const spearSpeed = 350
-    const flyTime = (maxDist / spearSpeed) * 1000
-    const hitRadius = 22 + this.splashRadius * 0.4
-    const dmgRatio = Math.min(this.damage / 18, 4)
-    const spearLen = 28 + dmgRatio * 4
-    const spearW = 3
-    const spearTint = dmgRatio > 2.5 ? 0xffffff : dmgRatio > 1.5 ? 0x7bed9f : 0x2ecc71
+    huntress.attackSpear(this, target, enemies)
+  }
 
-    // Volley counter: every 5th throw fires 3 spears
-    this.volleyCounter++
-    const isVolley = this.hasVolley && this.volleyCounter % 5 === 0
+  // -----------------------------------------------------------------------
+  // Khashin — Wind Slash (ranged, sirocco stance)
+  // -----------------------------------------------------------------------
+  private attackWindSlash(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
+    khashin.attackWindSlash(this, target, enemies)
+  }
 
-    // Net counter: every 8th throw roots enemies
-    this.netCounter++
-    const isNetThrow = this.hasNetThrow && this.netCounter % 8 === 0
+  // Khashin — Sand Swipe (melee, haboob stance)
+  // -----------------------------------------------------------------------
+  private attackSandSwipe(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
+    khashin.attackSandSwipe(this, target, enemies)
+  }
 
-    const launchSpear = (sa: number, isExtra = false) => {
-      const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
-      let spearDead = false
-      const eX = this.cx + Math.cos(sa) * maxDist
-      const eY = this.cy + Math.sin(sa) * maxDist
 
-      const spear = this.scene.add.rectangle(this.cx, this.cy, spearLen, spearW, spearTint).setDepth(9)
-      spear.rotation = sa
-      const tip = this.scene.add.triangle(this.cx, this.cy, 0, -3, 8, 0, 0, 3, 0xeeeeee).setDepth(10)
-      tip.rotation = sa
+  // -----------------------------------------------------------------------
+  // Crystal Muller — Crystal Wave attack (directional cone)
+  // -----------------------------------------------------------------------
+  private attackCrystalWave(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
+    muller.attackCrystalWave(this, target, enemies)
+  }
 
-      const trailTimer = this.scene.time.addEvent({
-        delay: 30, loop: true,
-        callback: () => {
-          if (!spear.scene || spearDead) return
-          const tp = this.scene.add.rectangle(
-            spear.x + Phaser.Math.Between(-2, 2),
-            spear.y + Phaser.Math.Between(-2, 2),
-            8, 1.5, isNetThrow ? 0x44cc44 : spearTint, 0.4
-          ).setDepth(8).setRotation(sa)
-          this.scene.tweens.add({
-            targets: tp, alpha: 0, scale: 0, duration: 200,
-            onComplete: () => tp.destroy(),
-          })
-        },
-      })
+  /** Shared crystal ring burst VFX — crystals evenly spaced by angle, all fly outward from epicenter simultaneously.
+   *  Used by eruption attack and death. radius scales crystals proportionally. */
+  private crystalRingBurst(cx: number, cy: number, radius = 80) {
+    return muller.crystalRingBurst(this, cx, cy, radius)
+  }
 
-      const killSpear = () => {
-        spearDead = true
-        trailTimer.destroy()
-        if (spear.scene) spear.destroy()
-        if (tip.scene) tip.destroy()
-      }
-
-      this.scene.tweens.add({
-        targets: [spear, tip], x: eX, y: eY, duration: flyTime,
-        onUpdate: () => {
-          if (spearDead) return
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active || hitSet.has(e)) continue
-            if (Phaser.Math.Distance.Between(spear.x, spear.y, e.x, e.y) <= hitRadius) {
-              let dmg = isExtra ? this.damage * 0.6 : this.damage
-              // Critical Strike
-              const isCrit = this.hasCriticalStrike && Math.random() < 0.2
-              if (isCrit) dmg *= 2
-              // Marked Target bonus
-              if (this.hasMarkedTarget && (e as any).isMarked) dmg *= 1.3
-              ;(e as any).takeDamage(dmg, 'melee')
-              hitSet.add(e)
-              // Mark enemy
-              if (this.hasMarkedTarget) {
-                (e as any).isMarked = true
-                ;(e as any).markTimer = 5000
-              }
-              // Net Throw: root enemies
-              if (isNetThrow) {
-                (e as any).isRooted = true
-                ;(e as any).rootTimer = 1500
-                // Net VFX
-                const net = this.scene.add.circle(e.x, e.y, 14, 0x44cc44, 0.3).setDepth(9)
-                this.scene.tweens.add({ targets: net, alpha: 0, scale: 2, duration: 1500, onComplete: () => net.destroy() })
-              }
-              this.spearHitVfx(e.x, e.y, isCrit ? 0xff4444 : spearTint)
-              if (isCrit) {
-                const ct = this.scene.add.text(e.x, e.y - 30, 'CRIT!', {
-                  fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
-                  stroke: '#000', strokeThickness: 2,
-                }).setOrigin(0.5).setDepth(21)
-                this.scene.tweens.add({ targets: ct, y: ct.y - 20, alpha: 0, duration: 500, onComplete: () => ct.destroy() })
-              }
-              // Explosive Tips: AOE on first hit only
-              if (this.hasExplosiveTips && hitSet.size === 1) {
-                const blastR = 40 + this.splashRadius * 0.4
-                const blast = this.scene.add.circle(e.x, e.y, 8, 0xff6600, 0.5).setDepth(10)
-                this.scene.tweens.add({ targets: blast, scale: blastR / 8, alpha: 0, duration: 250, onComplete: () => blast.destroy() })
-                for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                  if (!e2.active || hitSet.has(e2)) continue
-                  if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= blastR) {
-                    (e2 as any).takeDamage(this.damage * 0.35, 'shockwave')
-                    hitSet.add(e2)
-                  }
-                }
-              }
-            }
-          }
-        },
-        onComplete: () => {
-          // Splinter Shot: if spear reached end, spawn splinter shards
-          if (this.hasSplinterShot && !spearDead && hitSet.size === 0) {
-            const sx = spear.x, sy = spear.y
-            for (let i = 0; i < 3; i++) {
-              const shardAngle = sa + (i - 1) * 0.5
-              const shard = this.scene.add.rectangle(sx, sy, 10, 2, 0x7bed9f, 0.8).setDepth(8).setRotation(shardAngle)
-              const sdx = sx + Math.cos(shardAngle) * 80
-              const sdy = sy + Math.sin(shardAngle) * 80
-              this.scene.tweens.add({
-                targets: shard, x: sdx, y: sdy, alpha: 0, duration: 300,
-                onUpdate: () => {
-                  for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                    if (!e.active) continue
-                    if (Phaser.Math.Distance.Between(shard.x, shard.y, e.x, e.y) <= 18) {
-                      (e as any).takeDamage(this.damage * 0.3, 'melee')
-                    }
-                  }
-                },
-                onComplete: () => shard.destroy(),
-              })
-            }
-          }
-          killSpear()
-        },
-      })
-    }
-
-    // Main spear
-    launchSpear(angle)
-
-    // Extra spears from Multistrike
-    for (let s = 1; s < this.strikeCount; s++) {
-      const angleOff = (s - (this.strikeCount - 1) / 2) * 0.12
-      launchSpear(angle + angleOff)
-    }
-
-    // Volley: fire 2 extra spears at slight angles
-    if (isVolley) {
-      launchSpear(angle - 0.25, true)
-      launchSpear(angle + 0.25, true)
-      // VFX: volley flash
-      const flash = this.scene.add.circle(this.cx, this.cy, 15, 0xff4444, 0.4).setDepth(10)
-      this.scene.tweens.add({ targets: flash, scale: 3, alpha: 0, duration: 200, onComplete: () => flash.destroy() })
-    }
-
-    // Hold isAttacking for ranged anim duration
-    this.scene.time.delayedCall(580, () => { this.isAttacking = false })
+  // Crystal Muller — Eruption stance (AoE around self)
+  private attackCrystalEruption(enemies: Phaser.Physics.Arcade.Group) {
+    muller.attackCrystalEruption(this, enemies)
   }
 
   /** Small impact burst when spear hits an enemy */
-  private spearHitVfx(x: number, y: number, tint: number) {
+  spearHitVfx(x: number, y: number, tint: number) {
     for (let i = 0; i < 4; i++) {
       const a = Math.random() * Math.PI * 2
       const d = Phaser.Math.Between(6, 14)

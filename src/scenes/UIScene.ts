@@ -3,8 +3,14 @@ import { CONFIG } from '../config/GameConfig'
 import { GameScene } from './GameScene'
 import { FlyingEye } from '../entities/Scorpion'
 import { SandGolem } from '../entities/SandGolem'
+import { GENERIC_POOL, HERO_BRANCHES } from '../systems/UpgradeSystem'
 import { MetaProgress, type SessionRecord } from '../systems/MetaProgress'
 import { SessionLogger } from '../systems/SessionLogger'
+
+const HERO_DISPLAY_NAMES: Record<string, string> = {
+  huntress: 'Lyra', muller: 'Givi', ignara: 'Ignara',
+  sifra: 'Sifra', amun: 'Amun', nazar: 'Nazar', khashin: 'Khashin',
+}
 
 export class UIScene extends Phaser.Scene {
   private gameScene!: GameScene
@@ -25,6 +31,7 @@ export class UIScene extends Phaser.Scene {
   private pauseBtn!: Phaser.GameObjects.Text
   private stanceBtn: Phaser.GameObjects.Text | null = null
   private stanceIcon: Phaser.GameObjects.Graphics | null = null
+  private _buffLabels: (Phaser.GameObjects.Text | null)[] = []
 
   constructor() {
     super({ key: 'UIScene' })
@@ -272,47 +279,227 @@ export class UIScene extends Phaser.Scene {
     const { width, height } = this.scale
 
     if (this.isPaused) {
-      // Pause the game scene
-      this.scene.pause('GameScene')
+      this.scene.pause(this.gameScene.scene.key)
       this.pauseBtn.setText('▶').setColor('#66ff66')
 
-      // Dark overlay
+      const gs = this.gameScene
+      const p = gs.player
+      const tracker = gs.upgradeTracker
+      const compact = height < 500
+      const dep = 29
+      const objs: Phaser.GameObjects.GameObject[] = []
+
+      // ── Dark overlay with vignette ──
       this.pauseOverlay.clear()
-      this.pauseOverlay.fillStyle(0x000000, 0.6)
+      this.pauseOverlay.fillStyle(0x000000, 0.75)
       this.pauseOverlay.fillRect(0, 0, width, height)
       this.pauseOverlay.setAlpha(1)
 
-      // Pause text
-      const t1 = this.add.text(width / 2, height * 0.35, 'PAUSED', {
-        fontFamily: 'monospace', fontSize: '36px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 6,
-      }).setOrigin(0.5).setDepth(29)
+      // ── Central panel ──
+      const panelW = Math.min(width - 40, compact ? 500 : 680)
+      const panelH = Math.min(height - 30, compact ? 320 : 480)
+      const px = (width - panelW) / 2
+      const py = (height - panelH) / 2
+      const panelG = this.add.graphics().setDepth(dep)
+      objs.push(panelG)
 
-      const t2 = this.add.text(width / 2, height * 0.35 + 50, 'SPACE or tap || to resume', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#888888',
-        stroke: '#000000', strokeThickness: 2,
-      }).setOrigin(0.5).setDepth(29)
+      // Panel background with rounded corners
+      panelG.fillStyle(0x12121e, 0.95)
+      panelG.fillRoundedRect(px, py, panelW, panelH, 16)
+      // Inner border
+      panelG.lineStyle(1, 0x334466, 0.6)
+      panelG.strokeRoundedRect(px + 4, py + 4, panelW - 8, panelH - 8, 12)
+      // Outer glow border
+      panelG.lineStyle(2, 0xffd700, 0.3)
+      panelG.strokeRoundedRect(px, py, panelW, panelH, 16)
 
-      // Choose Hero button in pause
-      const t3 = this.add.text(width / 2, height * 0.35 + 100, 'Choose Hero', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa',
+      // ── Top accent line ──
+      const heroColors: Record<string, number> = { huntress: 0x2ecc71, muller: 0x44aaff, ignara: 0xe84118, sifra: 0x82ccdd, amun: 0xfff200, nazar: 0xc23616, khashin: 0x88ddff }
+      const accentColor = heroColors[p.heroType] || 0xffd700
+      panelG.fillStyle(accentColor, 0.25)
+      panelG.fillRoundedRect(px, py, panelW, compact ? 36 : 48, { tl: 16, tr: 16, bl: 0, br: 0 })
+      panelG.fillStyle(accentColor, 0.08)
+      panelG.fillRect(px, py + (compact ? 36 : 48), panelW, 1)
+
+      // ── Header ──
+      const heroName = HERO_DISPLAY_NAMES[p.heroType] || p.heroType
+      const accentHex = '#' + accentColor.toString(16).padStart(6, '0')
+      const header = this.add.text(width / 2, py + (compact ? 18 : 24), `⏸  ${heroName.toUpperCase()}`, {
+        fontFamily: 'monospace', fontSize: compact ? '16px' : '22px', color: accentHex,
         stroke: '#000000', strokeThickness: 3,
-        backgroundColor: '#2a2a4e', padding: { x: 16, y: 8 },
-      } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive().setDepth(29)
-      t3.on('pointerover', () => t3.setColor('#ffffff'))
-      t3.on('pointerout', () => t3.setColor('#aaaaaa'))
-      t3.on('pointerdown', () => {
+      }).setOrigin(0.5).setDepth(dep)
+      objs.push(header)
+
+      // Info bar under header
+      const mins = Math.floor(gs.gameTime / 60000)
+      const secs = Math.floor((gs.gameTime % 60000) / 1000)
+      const barH = compact ? 22 : 28
+      const barY = py + (compact ? 36 : 48)
+      panelG.fillStyle(0x000000, 0.35)
+      panelG.fillRect(px + 8, barY, panelW - 16, barH)
+      panelG.lineStyle(1, 0x334466, 0.3)
+      panelG.strokeRect(px + 8, barY, panelW - 16, barH)
+      const infoStr = `${mins}:${secs.toString().padStart(2, '0')}   ·   LV ${p.level}   ·   ${p.kills} kills`
+      objs.push(this.add.text(width / 2, barY + barH / 2, infoStr, {
+        fontFamily: 'monospace', fontSize: compact ? '10px' : '13px', color: '#aabbcc',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(dep))
+
+      // ── Content area ──
+      const contentTop = py + (compact ? 62 : 82)
+      const contentBot = py + panelH - (compact ? 44 : 60)
+      const midX = px + panelW / 2
+
+      // ── Divider line ──
+      panelG.lineStyle(1, 0x334466, 0.4)
+      panelG.lineBetween(midX, contentTop + 4, midX, contentBot - 4)
+
+      // ── Left: Stats ──
+      const leftX = px + (compact ? 16 : 28)
+      let sy = contentTop
+      const sf = compact ? '10px' : '12px'
+      const sGap = compact ? 14 : 18
+
+      const sectionTitle = (x: number, y: number, text: string) => {
+        const t = this.add.text(x, y, text, {
+          fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#8899aa',
+          stroke: '#000000', strokeThickness: 2,
+        }).setDepth(dep)
+        objs.push(t)
+        panelG.lineStyle(1, 0x445566, 0.3)
+        panelG.lineBetween(x, y + (compact ? 13 : 16), x + (compact ? 100 : 140), y + (compact ? 13 : 16))
+      }
+
+      sectionTitle(leftX, sy, '◆ STATS')
+      sy += compact ? 18 : 24
+
+      const valColor = '#ccddee'
+      const statRow = (label: string, val: string) => {
+        objs.push(this.add.text(leftX, sy, label, {
+          fontFamily: 'monospace', fontSize: sf, color: '#667788', stroke: '#000000', strokeThickness: 1,
+        }).setDepth(dep))
+        objs.push(this.add.text(leftX + (compact ? 72 : 100), sy, val, {
+          fontFamily: 'monospace', fontSize: sf, color: valColor, stroke: '#000000', strokeThickness: 1,
+        }).setDepth(dep))
+        sy += sGap
+      }
+
+      statRow('HP', `${Math.ceil(p.hp)} / ${p.maxHp}`)
+      statRow('Damage', `${Math.ceil(p.damage)}`)
+      statRow('Speed', `${Math.ceil(p.speed)}`)
+      statRow('Range', `${Math.ceil(p.range)}px`)
+      statRow('Cooldown', `${p.attackCooldown}ms`)
+      statRow('Armor', `${Math.round(p.armor * 100)}%`)
+      statRow('HP Regen', `${p.hpRegen}/s`)
+      statRow('Splash', `${p.splashRadius}px`)
+      statRow('Strikes', `${p.strikeCount}`)
+      if (tracker.chosenBranch) {
+        statRow('Branch', tracker.chosenBranch)
+      }
+
+      // ── Right: Skills ──
+      const rightX = midX + (compact ? 12 : 20)
+      let ry = contentTop
+
+      sectionTitle(rightX, ry, '◆ SKILLS')
+      ry += compact ? 18 : 24
+
+      // Collect picked skills
+      const pickedSkills: { label: string; desc: string }[] = []
+      for (const id of tracker.pickedPersonal) {
+        const branches = HERO_BRANCHES[p.heroType] || []
+        for (const b of branches) {
+          const skill = b.upgrades.find(u => u.id === id)
+          if (skill) { pickedSkills.push({ label: skill.label, desc: skill.desc }); break }
+        }
+      }
+      for (const id of tracker.pickedGeneric) {
+        const skill = GENERIC_POOL.find(u => u.id === id)
+        if (skill) pickedSkills.push({ label: skill.label, desc: skill.desc })
+      }
+
+      if (pickedSkills.length === 0) {
+        objs.push(this.add.text(rightX, ry, 'No skills yet', {
+          fontFamily: 'monospace', fontSize: sf, color: '#445566', stroke: '#000000', strokeThickness: 1,
+        }).setDepth(dep))
+      } else {
+        const maxSkills = compact ? 8 : 12
+        const skillGap = compact ? 22 : 28
+        for (let i = 0; i < Math.min(pickedSkills.length, maxSkills); i++) {
+          const s = pickedSkills[i]
+          objs.push(this.add.text(rightX, ry, s.label, {
+            fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ccddee',
+            stroke: '#000000', strokeThickness: 2,
+          }).setDepth(dep))
+          objs.push(this.add.text(rightX, ry + (compact ? 11 : 14), s.desc, {
+            fontFamily: 'monospace', fontSize: compact ? '7px' : '9px', color: '#556666',
+            stroke: '#000000', strokeThickness: 1,
+            wordWrap: { width: midX - rightX + (panelW / 2) - (compact ? 28 : 48) },
+          }).setDepth(dep))
+          ry += skillGap
+        }
+        if (pickedSkills.length > maxSkills) {
+          objs.push(this.add.text(rightX, ry, `+${pickedSkills.length - maxSkills} more...`, {
+            fontFamily: 'monospace', fontSize: '9px', color: '#445566', stroke: '#000000', strokeThickness: 1,
+          }).setDepth(dep))
+        }
+      }
+
+      // ── Bottom buttons ──
+      const btnY = py + panelH - (compact ? 26 : 36)
+      const btnW = compact ? 90 : 120
+      const btnH = compact ? 24 : 32
+      const btnGap = compact ? 16 : 24
+
+      // Resume button
+      const resumeG = this.add.graphics().setDepth(dep)
+      objs.push(resumeG)
+      resumeG.fillStyle(0x226633, 0.8).fillRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8)
+      resumeG.lineStyle(1, 0x44ff66, 0.4).strokeRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8)
+      const resumeBtn = this.add.text(midX - btnGap / 2 - btnW / 2, btnY, '▶  RESUME', {
+        fontFamily: 'monospace', fontSize: compact ? '11px' : '13px', color: '#66ff88',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(dep)
+      objs.push(resumeBtn)
+      const resumeZone = this.add.zone(midX - btnGap / 2 - btnW / 2, btnY, btnW, btnH).setInteractive({ useHandCursor: true }).setDepth(dep)
+      objs.push(resumeZone)
+      resumeZone.on('pointerover', () => { resumeBtn.setColor('#ffffff'); resumeG.clear().fillStyle(0x338844, 0.9).fillRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8).lineStyle(1, 0x66ff88, 0.6).strokeRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8) })
+      resumeZone.on('pointerout', () => { resumeBtn.setColor('#66ff88'); resumeG.clear().fillStyle(0x226633, 0.8).fillRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8).lineStyle(1, 0x44ff66, 0.4).strokeRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8) })
+      resumeZone.on('pointerdown', () => this.togglePause())
+
+      // Quit button
+      const quitG = this.add.graphics().setDepth(dep)
+      objs.push(quitG)
+      quitG.fillStyle(0x442222, 0.8).fillRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8)
+      quitG.lineStyle(1, 0xff4444, 0.3).strokeRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8)
+      const quitBtn = this.add.text(midX + btnGap / 2 + btnW / 2, btnY, '✕  QUIT', {
+        fontFamily: 'monospace', fontSize: compact ? '11px' : '13px', color: '#ff6666',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(dep)
+      objs.push(quitBtn)
+      const quitZone = this.add.zone(midX + btnGap / 2 + btnW / 2, btnY, btnW, btnH).setInteractive({ useHandCursor: true }).setDepth(dep)
+      objs.push(quitZone)
+      quitZone.on('pointerover', () => { quitBtn.setColor('#ffffff'); quitG.clear().fillStyle(0x663333, 0.9).fillRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8).lineStyle(1, 0xff6666, 0.5).strokeRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8) })
+      quitZone.on('pointerout', () => { quitBtn.setColor('#ff6666'); quitG.clear().fillStyle(0x442222, 0.8).fillRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8).lineStyle(1, 0xff4444, 0.3).strokeRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8) })
+      quitZone.on('pointerdown', () => {
+        const sceneKey = this.gameScene.scene.key
         this.clearPause()
         this.cleanup()
         const sm = this.game.scene
-        sm.stop('LevelUpScene'); sm.stop('GameScene'); sm.stop('UIScene')
+        sm.stop('LevelUpScene'); sm.stop(sceneKey); sm.stop('UIScene')
         sm.start('StartScene')
       })
 
-      this.pauseTexts = [t1, t2, t3]
+      // SPACE hint
+      objs.push(this.add.text(width / 2, py + panelH + (compact ? 8 : 14), 'SPACE', {
+        fontFamily: 'monospace', fontSize: '9px', color: '#334455',
+        stroke: '#000000', strokeThickness: 1,
+      }).setOrigin(0.5).setDepth(dep))
+
+      this.pauseTexts = objs as Phaser.GameObjects.Text[]
     } else {
       this.clearPause()
-      this.scene.resume('GameScene')
+      this.scene.resume(this.gameScene.scene.key)
     }
   }
 
@@ -439,7 +626,7 @@ export class UIScene extends Phaser.Scene {
       const isNew = i === board.findIndex(e => e.kills === gs.player.kills && e.time === survived)
       const color = isNew ? '#ffdd44' : '#888888'
       const txt = this.add.text(cx, lbY + 32 + i * 24,
-        `${i + 1}. ${entry.hero.padEnd(7)} ${String(entry.kills).padStart(4)} kills  ${t}  Lv${entry.level}`,
+        `${i + 1}. ${(HERO_DISPLAY_NAMES[entry.hero] || entry.hero).padEnd(7)} ${String(entry.kills).padStart(4)} kills  ${t}  Lv${entry.level}`,
         { fontFamily: 'monospace', fontSize: '12px', color, stroke: '#000000', strokeThickness: 1 }
       ).setOrigin(0.5).setDepth(32)
       lbEntries.push(txt)
@@ -459,10 +646,11 @@ export class UIScene extends Phaser.Scene {
     t5.on('pointerout', () => t5.setColor('#FFD700'))
     t5.on('pointerdown', () => {
       const hero = gs.player.heroType
+      const sceneKey = gs.scene.key
       this.cleanup()
       const sm = this.game.scene
-      sm.stop('LevelUpScene'); sm.stop('GameScene'); sm.stop('UIScene')
-      sm.start('GameScene', { hero })
+      sm.stop('LevelUpScene'); sm.stop(sceneKey); sm.stop('UIScene')
+      sm.start(sceneKey, { hero })
     })
 
     const t6 = this.add.text(cx, btnY + 46, 'Choose Hero', {
@@ -472,9 +660,10 @@ export class UIScene extends Phaser.Scene {
     t6.on('pointerover', () => t6.setColor('#ffffff'))
     t6.on('pointerout', () => t6.setColor('#aaaaaa'))
     t6.on('pointerdown', () => {
+      const sceneKey = gs.scene.key
       this.cleanup()
       const sm = this.game.scene
-      sm.stop('LevelUpScene'); sm.stop('GameScene'); sm.stop('UIScene')
+      sm.stop('LevelUpScene'); sm.stop(sceneKey); sm.stop('UIScene')
       sm.start('StartScene')
     })
 
@@ -774,37 +963,145 @@ export class UIScene extends Phaser.Scene {
       g.strokeRect(sX, ebY, ebW, ebH)
     }
 
-    // === AMUN BUFF INDICATORS (below HP/XP panel) ===
-    if (p.heroType === 'amun') {
+    // === KHASHIN ENERGY BARS (below HP/XP panel) ===
+    if (p.heroType === 'khashin') {
+      const ebX = 14, ebY = 80, ebW = 95, ebH = 6, ebGap = 3
+      g.fillStyle(0x0a0a1a, 0.7)
+      g.fillRoundedRect(ebX, ebY - 2, ebW * 2 + ebGap + 8, ebH + 4, 4)
+
+      // Wind energy bar (left — sirocco/ranged)
+      const windRatio = p.windEnergy / p.maxEnergy
+      g.fillStyle(0x0a1a2a)
+      g.fillRect(ebX + 3, ebY, ebW, ebH)
+      if (windRatio > 0) {
+        g.fillStyle(p.khashinStance === 'sirocco' ? 0x88ddff : 0x446688)
+        g.fillRect(ebX + 3, ebY, ebW * windRatio, ebH)
+      }
+      g.lineStyle(1, 0x335577)
+      g.strokeRect(ebX + 3, ebY, ebW, ebH)
+
+      // Sand energy bar (right — haboob/melee)
+      const sandRatio = p.sandEnergy / p.maxEnergy
+      const sX = ebX + 3 + ebW + ebGap
+      g.fillStyle(0x1a1000)
+      g.fillRect(sX, ebY, ebW, ebH)
+      if (sandRatio > 0) {
+        g.fillStyle(p.khashinStance === 'haboob' ? 0xddaa44 : 0x6e5522)
+        g.fillRect(sX, ebY, ebW * sandRatio, ebH)
+      }
+      g.lineStyle(1, 0x554411)
+      g.strokeRect(sX, ebY, ebW, ebH)
+    }
+
+    // === UNIVERSAL BUFF PANEL (below HP/XP panel, all heroes) ===
+    {
       const buffY = 82
       const buffX = 14
-      const buffSize = 12
+      const buffSize = 14
       const buffGap = 3
       let bi = 0
 
-      const drawBuff = (active: boolean, color: number) => {
+      const drawBuff = (active: boolean, color: number, label?: string, stacks?: number) => {
+        if (!active) return
         const bx = buffX + bi * (buffSize + buffGap)
-        g.fillStyle(active ? color : 0x222233, active ? 0.8 : 0.3)
-        g.fillRoundedRect(bx, buffY, buffSize, buffSize, 2)
-        g.lineStyle(1, active ? color : 0x333344, active ? 0.8 : 0.3)
-        g.strokeRoundedRect(bx, buffY, buffSize, buffSize, 2)
+        g.fillStyle(color, 0.75)
+        g.fillRoundedRect(bx, buffY, buffSize, buffSize, 3)
+        g.lineStyle(1, 0xffffff, 0.3)
+        g.strokeRoundedRect(bx, buffY, buffSize, buffSize, 3)
+        if (label && !this._buffLabels[bi]) {
+          this._buffLabels[bi] = this.add.text(0, 0, '', {
+            fontFamily: 'monospace', fontSize: '8px', color: '#ffffff',
+            stroke: '#000000', strokeThickness: 2,
+          }).setDepth(3).setOrigin(0.5)
+        }
+        const lbl = this._buffLabels[bi]
+        if (lbl) {
+          lbl.setPosition(bx + buffSize / 2, buffY + buffSize / 2).setOrigin(0.5)
+          lbl.setText(stacks !== undefined ? `${stacks}` : (label || ''))
+          lbl.setVisible(true)
+        }
         bi++
       }
 
-      if (p.defenseAuraActive !== undefined) drawBuff(p.defenseAuraActive, 0x4488ff)
-      if (p.hasPassiveAura)                  drawBuff(p.hasPassiveAura, 0xfff200)
-      if (p.dmgAuraActive !== undefined)     drawBuff(p.dmgAuraActive, 0xff8800)
-      if (p.hasUndying)                      drawBuff(p.hasUndying, 0xffee88)
-      if (p.hasThorns)                       drawBuff(p.hasThorns, 0xffdd44)
-      if (p.hasIronWill)                     drawBuff(p.hasIronWill, 0x88aacc)
-      if (p.hasEarthquake)                   drawBuff(p.hasEarthquake, 0xccaa55)
-      if (p.hasGravityWell)                  drawBuff(p.hasGravityWell, 0x9966ff)
-      if (p.hasDivineJudgment)               drawBuff(p.hasDivineJudgment, 0xfff200)
-      if (p.hasColossus)                     drawBuff(p.hasColossus, 0xffcc44)
-      if (p.hasCataclysm)                    drawBuff(p.hasCataclysm, 0xff6600)
-      if (p.hasLowHpRegen)                   drawBuff(p.hasLowHpRegen, 0x44ff88)
-      if (p.hasLivingFortress)               drawBuff(p.hasLivingFortress, 0xaaccff)
-      if (p.hasWrath)                        drawBuff(p.hasWrath, 0xff3333)
+      // Hide all previous buff labels
+      for (const lbl of this._buffLabels) if (lbl) lbl.setVisible(false)
+
+      // --- Universal buffs ---
+      if ((p as any).hasCriticalStrike)     drawBuff(true, 0xff4444, 'C')
+      if ((p as any).hasMarkedTarget)       drawBuff(true, 0xff8844, 'M')
+      if ((p as any).hasBattleFrenzy && (p as any).battleFrenzyUntil > this.gameScene.time.now)
+                                            drawBuff(true, 0xff6666, 'F')
+      if ((p as any).hasKillStride && (p as any).killStrideUntil > this.gameScene.time.now)
+                                            drawBuff(true, 0x44cc44, 'S')
+      if ((p as any).hasCamouflage && (p as any).vanishUntil > this.gameScene.time.now)
+                                            drawBuff(true, 0x8888ff, 'I')
+
+      // Amun
+      if (p.defenseAuraActive)              drawBuff(true, 0x4488ff, 'D')
+      if (p.hasPassiveAura)                 drawBuff(true, 0xfff200, 'A')
+      if (p.dmgAuraActive)                  drawBuff(true, 0xff8800, 'W')
+      if (p.hasUndying)                     drawBuff(true, 0xffee88, 'U')
+      if (p.hasThorns)                      drawBuff(true, 0xffdd44, 'T')
+      if (p.hasIronWill)                    drawBuff(true, 0x88aacc, 'I')
+      if (p.hasEarthquake)                  drawBuff(true, 0xccaa55, 'E')
+      if (p.hasGravityWell)                 drawBuff(true, 0x9966ff, 'G')
+      if (p.hasDivineJudgment)              drawBuff(true, 0xfff200, 'J')
+      if (p.hasColossus)                    drawBuff(true, 0xffcc44, 'C')
+      if (p.hasCataclysm)                   drawBuff(true, 0xff6600, '2')
+      if (p.hasLowHpRegen)                  drawBuff(true, 0x44ff88, 'R')
+      if (p.hasLivingFortress)              drawBuff(true, 0xaaccff, 'L')
+      if (p.hasWrath)                       drawBuff(true, 0xff3333, 'W')
+
+      // Givi / Crystal Muller
+      if (p.hasStoneSkin)                   drawBuff(true, 0x99ddcc, undefined, p.stoneSkinStacks)
+      if ((p as any).hasGeodeShell)         drawBuff(true, 0x66bbaa, 'G')
+      if ((p as any).hasCrystalWall)        drawBuff(true, 0x44aaff, 'W')
+      if ((p as any).hasResonanceArmor)     drawBuff(true, 0x88ccff, 'R')
+      if ((p as any).hasLivingGeode)        drawBuff(true, 0x55ccaa, 'L')
+      if ((p as any).hasDeepVein)           drawBuff(true, 0x4488ff, 'D')
+      if ((p as any).hasShardstorm)         drawBuff(true, 0x66aaff, '2')
+      if ((p as any).hasCrystalShrapnel)    drawBuff(true, 0x88ddff, 'S')
+      if ((p as any).hasTectonicFury)       drawBuff(true, 0xff6644, 'T')
+      if ((p as any).hasCrystalPillar)      drawBuff(true, 0x6688cc, 'P')
+      if ((p as any).hasFaultLine)          drawBuff(true, 0x4466aa, 'F')
+      if ((p as any).hasResonanceField)     drawBuff(true, 0x7799cc, 'R')
+      if ((p as any).hasMotherLode)         drawBuff(true, 0xcc99ff, 'M')
+      if ((p as any).hasPlantedShard)       drawBuff(true, 0x5577aa, 'P')
+
+      // Khashin
+      if ((p as any).hasGustStrike)         drawBuff(true, 0x88ddff, 'G')
+      if ((p as any).hasDustDevil)          drawBuff(true, 0xaaddff, 'D')
+      if ((p as any).hasEyeOfTheStorm)      drawBuff(true, 0x66ccff, 'E')
+      if ((p as any).hasChokingSand)        drawBuff(true, 0xe8a040, 'C')
+      if ((p as any).hasSandArmor)          drawBuff(true, 0xccaa66, 'A')
+      if ((p as any).hasScarabTide)         drawBuff(true, 0xddbb44, 'S')
+      if ((p as any).hasPhantomStep)        drawBuff(true, 0xccaaff, 'P')
+      if ((p as any).hasMirage)             drawBuff(true, 0xbb99ee, 'M')
+      if ((p as any).hasDrift)              drawBuff(true, 0xaa88dd, 'D')
+      if ((p as any).hasDesertWind)         drawBuff(true, 0x9977cc, 'W')
+
+      // Ignara
+      if ((p as any).hasPyromaniac)         drawBuff(true, 0xff4400, 'P')
+      if ((p as any).hasPhoenixHeart)       drawBuff(true, 0xff8800, 'H')
+
+      // Sifra
+      if ((p as any).hasBlizzardAura)       drawBuff(true, 0x55aaff, 'B')
+      if ((p as any).hasIceArmor)           drawBuff(true, 0x88ccff, 'I')
+      if ((p as any).hasBallLightning)      drawBuff(true, 0x9966ff, 'L')
+
+      // Nazar
+      if ((p as any).hasShadowStep)         drawBuff(true, 0x663333, 'S')
+      if ((p as any).hasVanish)             drawBuff(true, 0x444466, 'V')
+      if ((p as any).hasAssassinate)        drawBuff(true, 0xcc2222, 'A')
+
+      // Lyra / Huntress
+      if ((p as any).hasHeavySpear)         drawBuff(true, 0x4488ff, 'H')
+      if ((p as any).hasExplosiveTips)      drawBuff(true, 0xff6644, 'E')
+      if ((p as any).hasSpearWall)          drawBuff(true, 0x44cc88, 'W')
+      if ((p as any).hasCaltrops)           drawBuff(true, 0xaa6633, 'C')
+      if ((p as any).hasNetThrow)           drawBuff(true, 0x669944, 'N')
+      if ((p as any).hasLeap)               drawBuff(true, 0x44aa88, 'L')
+
     }
 
     // === TOP-RIGHT: Kills & Tier (panel above minimap) ===

@@ -5,6 +5,8 @@ import { Skeleton } from '../entities/Skeleton'
 import { Goblin } from '../entities/Zergling'
 import { FlyingEye } from '../entities/Scorpion'
 import { SandGolem } from '../entities/SandGolem'
+import { Skeleton2 } from '../entities/Skeleton2'
+import { Vampire } from '../entities/Vampire'
 
 export class WaveManager {
   private scene: Phaser.Scene
@@ -84,7 +86,7 @@ export class WaveManager {
     // Zone 4 — Wastes:     SandGolem 40%, FlyingEye 30%, Goblin 20%, Skeleton 10%
     const zone: number = (this.scene as any).getZone(x, y)
     const roll = Math.random()
-    let mob: Skeleton | Goblin | FlyingEye | SandGolem
+    let mob: Skeleton | Goblin | FlyingEye | SandGolem | Skeleton2 | Vampire
 
     if (zone <= 0) {
       mob = new Skeleton(this.scene, x, y, this.player, tier)
@@ -93,19 +95,26 @@ export class WaveManager {
         ? new Goblin(this.scene, x, y, this.player, tier)
         : new Skeleton(this.scene, x, y, this.player, tier)
     } else if (zone === 2) {
+      // Zone 2 — Ruins: Skeleton2 appears
       if (roll < 0.10) mob = new SandGolem(this.scene, x, y, this.player, tier)
-      else if (roll < 0.30) mob = new FlyingEye(this.scene, x, y, this.player, tier)
-      else if (roll < 0.60) mob = new Goblin(this.scene, x, y, this.player, tier)
+      else if (roll < 0.25) mob = new Skeleton2(this.scene, x, y, this.player, tier)
+      else if (roll < 0.40) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      else if (roll < 0.65) mob = new Goblin(this.scene, x, y, this.player, tier)
       else mob = new Skeleton(this.scene, x, y, this.player, tier)
     } else if (zone === 3) {
-      if (roll < 0.25) mob = new SandGolem(this.scene, x, y, this.player, tier)
-      else if (roll < 0.55) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      // Zone 3 — Dark Forest: Skeleton2 + Vampire appear
+      if (roll < 0.15) mob = new Vampire(this.scene, x, y, this.player, tier)
+      else if (roll < 0.30) mob = new Skeleton2(this.scene, x, y, this.player, tier)
+      else if (roll < 0.50) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.70) mob = new FlyingEye(this.scene, x, y, this.player, tier)
       else if (roll < 0.85) mob = new Goblin(this.scene, x, y, this.player, tier)
       else mob = new Skeleton(this.scene, x, y, this.player, tier)
     } else {
-      // zone 4 — Wastes
-      if (roll < 0.40) mob = new SandGolem(this.scene, x, y, this.player, tier)
-      else if (roll < 0.70) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      // zone 4 — Wastes: high Vampire + Skeleton2 density
+      if (roll < 0.20) mob = new Vampire(this.scene, x, y, this.player, tier)
+      else if (roll < 0.35) mob = new Skeleton2(this.scene, x, y, this.player, tier)
+      else if (roll < 0.55) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.75) mob = new FlyingEye(this.scene, x, y, this.player, tier)
       else if (roll < 0.90) mob = new Goblin(this.scene, x, y, this.player, tier)
       else mob = new Skeleton(this.scene, x, y, this.player, tier)
     }

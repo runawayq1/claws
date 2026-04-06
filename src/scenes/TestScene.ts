@@ -18,41 +18,70 @@ export class TestScene extends Phaser.Scene {
     this.load.spritesheet('flyingeye_attack', 'assets/flying_eye/Attack3.png', { frameWidth: 150, frameHeight: 150 })
 
     // Ignara hero — Evil Wizard 1 (150x150 frames)
-    this.load.spritesheet('ignara_idle', 'assets/fire_wizard/Idle.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('ignara_run', 'assets/fire_wizard/Move.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('ignara_attack', 'assets/fire_wizard/Attack.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('ignara_hurt', 'assets/fire_wizard/Take Hit.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('ignara_death', 'assets/fire_wizard/Death.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('ignara_idle', 'assets/ignara/Idle.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('ignara_run', 'assets/ignara/Move.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('ignara_attack', 'assets/ignara/Attack.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('ignara_hurt', 'assets/ignara/Take Hit.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('ignara_death', 'assets/ignara/Death.png', { frameWidth: 150, frameHeight: 150 })
 
     // Sifra hero — Wizard Pack (231x190 frames)
-    this.load.spritesheet('sifra_idle', 'assets/wizard/Idle.png', { frameWidth: 231, frameHeight: 190 })
-    this.load.spritesheet('sifra_run', 'assets/wizard/Run.png', { frameWidth: 231, frameHeight: 190 })
-    this.load.spritesheet('sifra_attack', 'assets/wizard/Attack1.png', { frameWidth: 231, frameHeight: 190 })
-    this.load.spritesheet('sifra_hurt', 'assets/wizard/Hit.png', { frameWidth: 231, frameHeight: 190 })
-    this.load.spritesheet('sifra_death', 'assets/wizard/Death.png', { frameWidth: 231, frameHeight: 190 })
+    this.load.spritesheet('sifra_idle', 'assets/sifra/Idle.png', { frameWidth: 231, frameHeight: 190 })
+    this.load.spritesheet('sifra_run', 'assets/sifra/Run.png', { frameWidth: 231, frameHeight: 190 })
+    this.load.spritesheet('sifra_attack', 'assets/sifra/Attack1.png', { frameWidth: 231, frameHeight: 190 })
+    this.load.spritesheet('sifra_hurt', 'assets/sifra/Hit.png', { frameWidth: 231, frameHeight: 190 })
+    this.load.spritesheet('sifra_death', 'assets/sifra/Death.png', { frameWidth: 231, frameHeight: 190 })
 
     // Nazar hero — Martial Hero (200x200 frames)
-    this.load.spritesheet('nazar_idle', 'assets/martial_hero/Idle.png', { frameWidth: 200, frameHeight: 200 })
-    this.load.spritesheet('nazar_run', 'assets/martial_hero/Run.png', { frameWidth: 200, frameHeight: 200 })
-    this.load.spritesheet('nazar_attack', 'assets/martial_hero/Attack1.png', { frameWidth: 200, frameHeight: 200 })
-    this.load.spritesheet('nazar_hurt', 'assets/martial_hero/Take Hit.png', { frameWidth: 200, frameHeight: 200 })
-    this.load.spritesheet('nazar_death', 'assets/martial_hero/Death.png', { frameWidth: 200, frameHeight: 200 })
+    this.load.spritesheet('nazar_idle', 'assets/nazar/Idle.png', { frameWidth: 200, frameHeight: 200 })
+    this.load.spritesheet('nazar_run', 'assets/nazar/Run.png', { frameWidth: 200, frameHeight: 200 })
+    this.load.spritesheet('nazar_attack', 'assets/nazar/Attack1.png', { frameWidth: 200, frameHeight: 200 })
+    this.load.spritesheet('nazar_hurt', 'assets/nazar/Take Hit.png', { frameWidth: 200, frameHeight: 200 })
+    this.load.spritesheet('nazar_death', 'assets/nazar/Death.png', { frameWidth: 200, frameHeight: 200 })
 
     // Amun hero — Medieval King (160x111 frames)
-    this.load.spritesheet('amun_idle', 'assets/king/Idle.png', { frameWidth: 160, frameHeight: 111 })
-    this.load.spritesheet('amun_run', 'assets/king/Run.png', { frameWidth: 160, frameHeight: 111 })
-    this.load.spritesheet('amun_attack', 'assets/king/Attack1.png', { frameWidth: 160, frameHeight: 111 })
-    this.load.spritesheet('amun_hurt', 'assets/king/Take Hit.png', { frameWidth: 160, frameHeight: 111 })
-    this.load.spritesheet('amun_death', 'assets/king/Death.png', { frameWidth: 160, frameHeight: 111 })
+    this.load.spritesheet('amun_idle', 'assets/amun/Idle.png', { frameWidth: 160, frameHeight: 111 })
+    this.load.spritesheet('amun_run', 'assets/amun/Run.png', { frameWidth: 160, frameHeight: 111 })
+    this.load.spritesheet('amun_attack', 'assets/amun/Attack1.png', { frameWidth: 160, frameHeight: 111 })
+    this.load.spritesheet('amun_hurt', 'assets/amun/Take Hit.png', { frameWidth: 160, frameHeight: 111 })
+    this.load.spritesheet('amun_death', 'assets/amun/Death.png', { frameWidth: 160, frameHeight: 111 })
 
     // Huntress hero (150x150 frames)
-    this.load.spritesheet('huntress_idle', 'assets/huntress/Idle.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('huntress_run', 'assets/huntress/Run.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('huntress_attack', 'assets/huntress/Attack1.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('huntress_attack2', 'assets/huntress/Attack2.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('huntress_ranged', 'assets/huntress/Attack3.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('huntress_hurt', 'assets/huntress/Take hit.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('huntress_death', 'assets/huntress/Death.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('huntress_idle', 'assets/lyra/Idle.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('huntress_run', 'assets/lyra/Run.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('huntress_attack', 'assets/lyra/Attack1.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('huntress_attack2', 'assets/lyra/Attack2.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('huntress_ranged', 'assets/lyra/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('huntress_hurt', 'assets/lyra/Take hit.png', { frameWidth: 150, frameHeight: 150 })
+    this.load.spritesheet('huntress_death', 'assets/lyra/Death.png', { frameWidth: 150, frameHeight: 150 })
+
+    // Khashin hero (288x128 frames)
+    this.load.spritesheet('khashin_idle', 'assets/khashin/Idle.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('khashin_run', 'assets/khashin/Run.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('khashin_attack', 'assets/khashin/Attack.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('khashin_air_attack', 'assets/khashin/Air_attack.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('khashin_special', 'assets/khashin/Special.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('khashin_hurt', 'assets/khashin/Take_hit.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('khashin_death', 'assets/khashin/Death.png', { frameWidth: 288, frameHeight: 128 })
+
+    // Crystal Muller hero (288x128 frames)
+    this.load.spritesheet('muller_idle', 'assets/givi/Idle.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('muller_run', 'assets/givi/Run.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('muller_attack', 'assets/givi/Attack.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('muller_ground_slam', 'assets/givi/Ground_slam.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('muller_special', 'assets/givi/Special.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('muller_hurt', 'assets/givi/Take_hit.png', { frameWidth: 288, frameHeight: 128 })
+    this.load.spritesheet('muller_death', 'assets/givi/Death.png', { frameWidth: 288, frameHeight: 128 })
+
+    // Givi individual crystal VFX sprites
+    this.load.spritesheet('crystal_green_0', 'assets/givi/crystal_green_0.png', { frameWidth: 75, frameHeight: 78 })
+    this.load.spritesheet('crystal_green_1', 'assets/givi/crystal_green_1.png', { frameWidth: 65, frameHeight: 41 })
+    this.load.spritesheet('crystal_pink_0', 'assets/givi/crystal_pink_0.png', { frameWidth: 63, frameHeight: 61 })
+    this.load.spritesheet('crystal_pink_1', 'assets/givi/crystal_pink_1.png', { frameWidth: 30, frameHeight: 21 })
+    this.load.spritesheet('crystal_blue_0', 'assets/givi/crystal_blue_0.png', { frameWidth: 54, frameHeight: 51 })
+    this.load.spritesheet('crystal_blue_1', 'assets/givi/crystal_blue_1.png', { frameWidth: 43, frameHeight: 27 })
+
+    // Boss demon slime (288x160 frames)
+    this.load.spritesheet('boss_demon', 'assets/boss_demon/spritesheet.png', { frameWidth: 288, frameHeight: 160 })
 
     // Rock images
     this.load.image('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
@@ -116,8 +145,8 @@ export class TestScene extends Phaser.Scene {
     // -----------------------------------------------------------------------
     // ROW 1: Heroes (y=150)
     // -----------------------------------------------------------------------
-    const heroTypes: HeroType[] = ['ignara', 'sifra', 'nazar', 'amun']
-    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun']
+    const heroTypes: HeroType[] = ['ignara', 'sifra', 'nazar', 'amun', 'huntress', 'khashin', 'muller']
+    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun', 'Lyra', 'Khashin', 'Muller']
 
     const totalHeroes = heroTypes.length
     const heroSpacing = 150
@@ -244,10 +273,64 @@ export class TestScene extends Phaser.Scene {
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
+    // -----------------------------------------------------------------------
+    // ROW 4: Boss (y=700)
+    // -----------------------------------------------------------------------
+    this.add.text(20, 640, 'BOSS', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#ff4444', stroke: '#000000', strokeThickness: 2,
+    }).setDepth(20)
+
+    // Create boss animations
+    const bossAnims: { key: string; start: number; end: number; rate: number; repeat: number }[] = [
+      { key: 'boss_idle', start: 0, end: 5, rate: 8, repeat: -1 },
+      { key: 'boss_walk', start: 22, end: 33, rate: 10, repeat: -1 },
+      { key: 'boss_cleave', start: 44, end: 58, rate: 12, repeat: -1 },
+    ]
+    bossAnims.forEach((a) => {
+      if (!this.anims.exists(a.key)) {
+        this.anims.create({
+          key: a.key,
+          frames: this.anims.generateFrameNumbers('boss_demon', { start: a.start, end: a.end }),
+          frameRate: a.rate,
+          repeat: a.repeat,
+        })
+      }
+    })
+
+    const bossLabels = ['IDLE', 'WALK', 'CLEAVE']
+    const bossSpacing = 200
+    const bossStartX = width / 2 - ((bossAnims.length - 1) * bossSpacing) / 2
+    const bossRowY = 720
+
+    bossAnims.forEach((a, i) => {
+      const x = bossStartX + i * bossSpacing
+      const sprite = this.add.sprite(x, bossRowY, 'boss_demon').setScale(2).setDepth(10)
+      sprite.play(a.key)
+      this.add.text(x, bossRowY + 80, bossLabels[i], {
+        fontFamily: 'monospace', fontSize: '11px', color: '#ff8888',
+        stroke: '#000000', strokeThickness: 2, align: 'center',
+      }).setOrigin(0.5, 0).setDepth(20)
+    })
+
     // Section dividers
     const gfx = this.add.graphics().setDepth(1)
     gfx.lineStyle(1, 0x333333, 0.8)
     gfx.lineBetween(0, 255, width, 255)
     gfx.lineBetween(0, 450, width, 450)
+    gfx.lineBetween(0, 635, width, 635)
+
+    // Boss Test button
+    const bossBtn = this.add.text(width - 16, 16, 'BOSS TEST >', {
+      fontFamily: 'monospace',
+      fontSize: '14px',
+      color: '#ff4444',
+      stroke: '#000000',
+      strokeThickness: 3,
+      backgroundColor: '#1a1a2e',
+      padding: { x: 10, y: 6 },
+    }).setOrigin(1, 0).setDepth(20).setInteractive({ useHandCursor: true })
+    bossBtn.on('pointerover', () => bossBtn.setColor('#FFD700'))
+    bossBtn.on('pointerout', () => bossBtn.setColor('#ff4444'))
+    bossBtn.on('pointerdown', () => this.scene.start('BossTestScene'))
   }
 }

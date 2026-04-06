@@ -14,18 +14,35 @@ export interface EncyclopediaData {
 const STORAGE_KEY = 'claws_encyclopedia'
 
 export function loadEncyclopedia(): EncyclopediaData {
+  // Always return all heroes, upgrades, and branches as unlocked so the
+  // encyclopedia is fully browsable regardless of save state.
+  const allHeroes = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
+  const allUpgrades: string[] = []
+  const allBranches: string[] = []
+  for (const [, branches] of Object.entries(HERO_BRANCHES)) {
+    for (const branch of branches) {
+      allBranches.push(branch.name)
+      for (const upgrade of branch.upgrades) allUpgrades.push(upgrade.id)
+    }
+  }
+  for (const upgrade of GENERIC_POOL) allUpgrades.push(upgrade.id)
+
+  // Merge with any existing save data so earned progress is preserved too.
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
+      const savedHeroes:   string[] = Array.isArray(parsed.heroes)   ? parsed.heroes   : []
+      const savedUpgrades: string[] = Array.isArray(parsed.upgrades) ? parsed.upgrades : []
+      const savedBranches: string[] = Array.isArray(parsed.branches) ? parsed.branches : []
       return {
-        heroes:   Array.isArray(parsed.heroes)   ? parsed.heroes   : [],
-        upgrades: Array.isArray(parsed.upgrades) ? parsed.upgrades : [],
-        branches: Array.isArray(parsed.branches) ? parsed.branches : [],
+        heroes:   [...new Set([...allHeroes,   ...savedHeroes])],
+        upgrades: [...new Set([...allUpgrades, ...savedUpgrades])],
+        branches: [...new Set([...allBranches, ...savedBranches])],
       }
     }
   } catch (_) { /* ignore */ }
-  return { heroes: [], upgrades: [], branches: [] }
+  return { heroes: allHeroes, upgrades: allUpgrades, branches: allBranches }
 }
 
 export function saveEncyclopedia(data: EncyclopediaData): void {
@@ -93,6 +110,14 @@ const HERO_INFO: HeroInfo[] = [
     lore: 'Raised by the forest wardens of the Green Veil, Lyra learned to throw before she could speak. Her spears fly true across any distance, and in close quarters her blade work is equally deadly.',
     playstyle: 'Dual-stance fighter. Spear stance hurls piercing projectiles across the screen. Melee stance delivers fast combo strikes. Branches: Predator (crits and marks), Stalker (mobility and traps), or Warden (spear mastery and AoE).',
   },
+  { type: 'khashin', name: 'Khashin', role: 'Sand Assassin', color: 0xf39c12,
+    lore: 'Khashin has no origin that the desert remembers. The nomads who cross the Kharan Wastes speak of a figure glimpsed at dusk — walking against the wind when there is no wind, leaving no footprints in the sand. Some say he was a court sorcerer who bound the spirit of a dying sandstorm into his own body to survive a betrayal. Others say he is the storm, and the man-shape is simply the eye of it.',
+    playstyle: 'Khashin rewards players who treat survival as a geometry problem. His exceptional base speed and auto-dash tools mean he is rarely where the horde expects him to be — but low HP punishes anyone who stands still. Toggle between Sirocco (cutting wind arcs) and Haboob (blinding sand) with Q.',
+  },
+  { type: 'muller', name: 'Givi', role: 'Crystal Gnome', color: 0x9b59b6,
+    lore: 'Givi was born three levels below the surface, in a mining settlement so deep that sunlight was a rumor. She spent her first forty years cracking open rock faces with a hammer twice her height, and it was during a routine deep-bore operation that she broke through into a vein of living crystal — formations that pulsed with warmth, that grew toward her lantern.',
+    playstyle: 'Givi does not cast spells — she reads the ground. Her hammer drives crystal shards erupting from the earth in a chain toward enemies. With Tectonic Fury, every 5th slam detonates a ring of massive crystals outward from a dark impact core. Upgrades leave crystal mines, walls, and pillars across the battlefield.',
+  },
 ]
 
 // ============================================================
@@ -105,6 +130,46 @@ const HERO_MEDALLION: Record<string, [number, number, number, number]> = {
   amun:     [146, 13, 120, 101],  // earth medallion (warm brown)
   nazar:    [226, 13,  93, 100],  // dark element (navy blue)
   huntress: [14, 136,  91, 121],  // nature/leaf art (green)
+}
+
+// ============================================================
+// Hero sprite definitions for animated portraits
+// ============================================================
+const HERO_SPRITE_DEFS: Record<string, { asset: string; fw: number; fh: number; scale: number; frames: number; yOff?: number }> = {
+  ignara:   { asset: 'assets/ignara/Idle.png',     fw: 150, fh: 150, scale: 1.1,   frames: 8 },
+  sifra:    { asset: 'assets/sifra/Idle.png',          fw: 231, fh: 190, scale: 0.65,  frames: 6 },
+  amun:     { asset: 'assets/amun/Idle.png',            fw: 160, fh: 111, scale: 1.3,   frames: 8, yOff: -30 },
+  nazar:    { asset: 'assets/nazar/Idle.png',    fw: 200, fh: 200, scale: 1.0,   frames: 8, yOff: 8 },
+  huntress: { asset: 'assets/lyra/Idle.png',        fw: 150, fh: 150, scale: 1.265, frames: 8 },
+}
+
+// ============================================================
+// Icon frame helpers
+// ============================================================
+
+// Per-hero icon base frames for the branch overview and skills pages.
+// For most heroes the formula is: iconBase + branchIdx * 9 + skillIdx
+// Amun's branches are packed 5-apart (not 9), so we use explicit per-branch bases.
+const HERO_ICON_BASE: Record<string, number> = {
+  ignara: 0, sifra: 27, nazar: 18, huntress: 9,
+  // khashin/muller branches start at 70/85 but use the generic formula too
+  khashin: 70, muller: 85,
+}
+
+// For heroes with non-uniform branch spacing, list each branch's icon base explicitly.
+const HERO_BRANCH_ICON_BASES: Record<string, number[]> = {
+  amun: [55, 60, 65], // Wrath(55-59), Bastion(60-64), Quake(65-69)
+}
+
+/** Return the icon frame for a given hero's branch + skill. */
+function branchIconFrame(heroType: string, branchIdx: number, skillIdx: number): number {
+  const perBranch = HERO_BRANCH_ICON_BASES[heroType]
+  if (perBranch) {
+    const base = perBranch[branchIdx] ?? 0
+    return base + skillIdx
+  }
+  const base = HERO_ICON_BASE[heroType] ?? 0
+  return (base + branchIdx * 9 + skillIdx) % 90
 }
 
 // ============================================================
@@ -151,9 +216,31 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.load.spritesheet('book_icons',     'assets/book/Icons.png',      { frameWidth: 32, frameHeight: 32 })
     this.load.spritesheet('book_sells',     'assets/book/sells_full.png', { frameWidth: 32, frameHeight: 24 })
     this.load.spritesheet('book_bookmarks', 'assets/book/bookmarks.png',  { frameWidth: 32, frameHeight: 28 })
+
+    // Hero idle spritesheets — reuse StartScene texture keys (already loaded)
+    for (const [, def] of Object.entries(HERO_SPRITE_DEFS)) {
+      const texKey = def.asset.replace(/[^a-z0-9]/gi, '_')
+      if (!this.textures.exists(texKey)) {
+        this.load.spritesheet(texKey, def.asset, { frameWidth: def.fw, frameHeight: def.fh })
+      }
+    }
   }
 
   create() {
+    // Create idle animations for hero portraits (reuse StartScene texture keys)
+    for (const [type, def] of Object.entries(HERO_SPRITE_DEFS)) {
+      const animKey = `enc_idle_${type}`
+      const texKey = def.asset.replace(/[^a-z0-9]/gi, '_')
+      if (!this.anims.exists(animKey) && this.textures.exists(texKey)) {
+        this.anims.create({
+          key: animKey,
+          frames: this.anims.generateFrameNumbers(texKey, { start: 0, end: def.frames - 1 }),
+          frameRate: 8,
+          repeat: -1,
+        })
+      }
+    }
+
     this.encData = loadEncyclopedia()
     const { width, height } = this.scale
 
@@ -690,30 +777,44 @@ export class EncyclopediaScene extends Phaser.Scene {
     const hero = HERO_INFO.find(h => h.type === heroType)!
     const colorHex = '#' + hero.color.toString(16).padStart(6, '0')
 
-    // Hero element medallion portrait — displayed at top-right of page
-    const medallion = HERO_MEDALLION[heroType]
-    if (medallion && this.textures.exists('book_content')) {
-      const [cx, cy, cw, ch] = medallion
-      const portraitSize = Math.min(pw * 0.28, 68)
-      const portrait = this.add.image(px + pw - 12, py + 12, 'book_content')
-        .setOrigin(1, 0)
-        .setCrop(cx, cy, cw, ch)
-        .setDisplaySize(portraitSize, portraitSize)
-        .setAlpha(0.85)
-      this.rightContainer.add(portrait)
+    // Animated hero portrait in circle frame — top-right of page
+    const spriteDef = HERO_SPRITE_DEFS[heroType]
+    const animKey = `enc_idle_${heroType}`
+    const texKey = spriteDef ? spriteDef.asset.replace(/[^a-z0-9]/gi, '_') : ''
+    const r = 48
+    const circleCX = px + pw - r - 8
+    const circleCY = py + r + 8
 
-      // Subtle frame around portrait using sell slot
-      if (this.textures.exists('book_sells')) {
-        const portraitFrame = this.add.image(px + pw - 12 - portraitSize / 2, py + 12 + portraitSize / 2, 'book_sells', 7)
-          .setDisplaySize(portraitSize + 8, portraitSize + 8)
-          .setTint(hero.color)
-          .setAlpha(0.3)
-          .setOrigin(0.5)
-        this.rightContainer.add(portraitFrame)
-        // Bring portrait above frame
-        portrait.setDepth(1)
-      }
+    // Circle background (dark fill)
+    const circleBg = this.add.graphics()
+    circleBg.fillStyle(0x111122, 1)
+    circleBg.fillCircle(circleCX, circleCY, r)
+    this.rightContainer.add(circleBg)
+
+    // Animated sprite with circular mask
+    if (spriteDef && this.textures.exists(texKey)) {
+      const sprite = this.add.sprite(circleCX, circleCY + (spriteDef.yOff || 0), texKey)
+        .setScale(spriteDef.scale * 1.0)
+        .setOrigin(0.5)
+      if (this.anims.exists(animKey)) sprite.play(animKey)
+
+      // Circular geometry mask — use world coordinates (rightContainer is at 0,0)
+      const maskShape = this.make.graphics()
+      maskShape.fillStyle(0xffffff)
+      maskShape.fillCircle(circleCX, circleCY, r - 3)
+      sprite.setMask(maskShape.createGeometryMask())
+
+      this.rightContainer.add(sprite)
     }
+
+    // Circle border (hero-colored)
+    const circleBorder = this.add.graphics()
+    circleBorder.lineStyle(2, hero.color, 0.6)
+    circleBorder.strokeCircle(circleCX, circleCY, r)
+    // Inner ring
+    circleBorder.lineStyle(1, hero.color, 0.2)
+    circleBorder.strokeCircle(circleCX, circleCY, r - 4)
+    this.rightContainer.add(circleBorder)
 
     // Hero name + role
     this.rightContainer.add(this.add.text(px + 12, py + 18, hero.name, {
@@ -723,21 +824,21 @@ export class EncyclopediaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '10px', color: '#665544',
     }).setOrigin(0, 0))
 
-    // Decorative line below header — use hero color
+    // Decorative line below header — shifted below circle bottom (circleCY + r = py + 104)
     const lineG = this.add.graphics()
     lineG.lineStyle(1.5, hero.color, 0.45)
-    lineG.lineBetween(px + 12, py + 54, px + pw - 12, py + 54)
+    lineG.lineBetween(px + 12, py + 108, px + pw - 12, py + 108)
     this.rightContainer.add(lineG)
 
-    // Lore text — wrapped
-    const textW = pw - 30
-    this.rightContainer.add(this.add.text(px + 15, py + 60, hero.lore, {
+    // Lore text — wrapped, starts just below the line
+    const textW = pw - 24
+    this.rightContainer.add(this.add.text(px + 15, py + 114, hero.lore, {
       fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
     }))
 
     // Playstyle section
-    const playstyleY = py + 60 + 80
+    const playstyleY = py + 114 + 80
     const lineG2 = this.add.graphics()
     lineG2.lineStyle(0.5, 0x2a1810, 0.25)
     lineG2.lineBetween(px + 20, playstyleY, px + pw - 20, playstyleY)
@@ -763,19 +864,14 @@ export class EncyclopediaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '10px', color: '#2a1810',
     }))
 
-    const iconBaseMap: Record<string, number> = {
-      ignara: 0, sifra: 27, amun: 18, nazar: 18, huntress: 9,
-    }
-    const iconBase = iconBaseMap[heroType] ?? 0
-
     branches.forEach((branch, i) => {
       const bY = branchStartY + 22 + i * 22
       const bColorHex = '#' + branch.color.toString(16).padStart(6, '0')
       const branchUnlocked = this.encData.branches.includes(branch.name)
 
-      // Small branch icon
+      // Small branch icon — use the first skill's icon frame for the branch
       if (this.textures.exists('book_icons')) {
-        const iconFrame = (iconBase + i * 9) % 90
+        const iconFrame = branchIconFrame(heroType, i, 0)
         const branchIcon = this.add.image(px + 16, bY + 9, 'book_icons', iconFrame)
           .setDisplaySize(14, 14)
           .setOrigin(0.5)
@@ -819,11 +915,6 @@ export class EncyclopediaScene extends Phaser.Scene {
     const branches = HERO_BRANCHES[heroType] || []
     if (this.selectedBranchIdx >= branches.length) this.selectedBranchIdx = 0
 
-    const iconBaseMap: Record<string, number> = {
-      ignara: 0, sifra: 27, amun: 18, nazar: 18, huntress: 9,
-    }
-    const iconBase = iconBaseMap[heroType] ?? 0
-
     // ── Compact branch tabs (35px) ───────────────────────────────────
     const tabH = 34
     const tabGap = 4
@@ -849,8 +940,8 @@ export class EncyclopediaScene extends Phaser.Scene {
       }
       this.rightContainer.add(tabG)
 
-      // Small icon + name on one line
-      const iconFrame = (iconBase + bi * 9) % 90
+      // Small icon + name on one line — use first skill's icon for tab
+      const iconFrame = branchIconFrame(heroType, bi, 0)
       if (this.textures.exists('book_icons')) {
         const iconImg = this.add.image(tabX + 10, tabY + tabH / 2 + (isActive ? 0 : 1), 'book_icons', iconFrame)
           .setDisplaySize(isActive ? 18 : 14, isActive ? 18 : 14).setOrigin(0.5)
@@ -938,7 +1029,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       const cellCX = cellX + cellDisplayW / 2
       const cellCY = gridStartY + cellDisplayH / 2
       const unlocked = this.encData.upgrades.includes(upgrade.id)
-      const iconFrame = (iconBase + this.selectedBranchIdx * 9 + ui) % 90
+      const iconFrame = branchIconFrame(heroType, this.selectedBranchIdx, ui)
       const isSelectedSkill = ui === this.selectedSkillIdx
 
       // Slot frame background from sells_full.png (32x24 per frame, use frame 0 unlocked / frame 6 locked)
@@ -1004,7 +1095,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     if (this.selectedSkillIdx >= 0 && this.selectedSkillIdx < activeBranch.upgrades.length) {
       const skill = activeBranch.upgrades[this.selectedSkillIdx]
       const unlocked = this.encData.upgrades.includes(skill.id)
-      const iconFrame = (iconBase + this.selectedBranchIdx * 9 + this.selectedSkillIdx) % 90
+      const iconFrame = branchIconFrame(heroType, this.selectedBranchIdx, this.selectedSkillIdx)
       const cardW = pw - 16
       const cardX = px + 8
       const cardH = ph - (cardStartY - py) - 34  // leave room for nav

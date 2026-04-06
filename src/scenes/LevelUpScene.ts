@@ -3,20 +3,20 @@ import { Player } from '../entities/Player'
 import { UpgradeTracker, getIconFrame, type Upgrade } from '../systems/UpgradeSystem'
 import { unlockUpgrade, unlockBranch } from './EncyclopediaScene'
 
-const CARD_W = 200
-const CARD_H = 220
-const GAP = 16
+const CARD_W = 280
+const CARD_H = 340
+const GAP = 20
 const STRIP_H = 28
-const ICON_SIZE = 44
+const ICON_SIZE = 128
 const DOT_RADIUS = 4
 const DOT_COUNT = 5
 const DOT_SPACING = 12
 
 // Branch selection mode — bigger, bolder cards
-const BRANCH_CARD_W = 280
-const BRANCH_CARD_H = 380
-const BRANCH_GAP = 24
-const BRANCH_ICON_SIZE = 80
+const BRANCH_CARD_W = 340
+const BRANCH_CARD_H = 480
+const BRANCH_GAP = 28
+const BRANCH_ICON_SIZE = 128
 
 export class LevelUpScene extends Phaser.Scene {
   private player!: Player
@@ -38,8 +38,8 @@ export class LevelUpScene extends Phaser.Scene {
     overlay.fillRect(0, 0, width, height)
 
     const upgrades = isBranch
-      ? this.tracker.getBranchChoices(this.player.heroType, this.player.stance)
-      : this.tracker.getChoices(this.player.heroType, this.player.stance)
+      ? this.tracker.getBranchChoices(this.player.heroType, this.player.getActiveStance())
+      : this.tracker.getChoices(this.player.heroType, this.player.getActiveStance())
 
     if (isBranch) {
       // ── Branch selection: big dramatic layout ──────────────────────────
@@ -71,7 +71,7 @@ export class LevelUpScene extends Phaser.Scene {
       // ── Normal level-up: compact cards ─────────────────────────────────
       const headerBlockH = 32 + 8 + 14 + 20
       const totalBlockH = headerBlockH + CARD_H
-      const blockTop = height / 2 - totalBlockH / 2
+      const blockTop = height / 2 - totalBlockH / 2 - 60
 
       this.add.text(width / 2, blockTop + 16, 'LEVEL UP', {
         fontFamily: 'monospace',
@@ -150,10 +150,10 @@ export class LevelUpScene extends Phaser.Scene {
     container.add(branchLabel)
 
     // Big icon with glow
-    const iconY = ly + 100
+    const iconY = ly + 150
     const iconGlow = this.add.graphics()
     iconGlow.fillStyle(borderColor, 0.12)
-    iconGlow.fillCircle(0, iconY, 50)
+    iconGlow.fillCircle(0, iconY, 110)
     container.add(iconGlow)
     const icon = this.add.image(0, iconY, 'skill_icons', getIconFrame(upgrade.icon))
       .setDisplaySize(BRANCH_ICON_SIZE, BRANCH_ICON_SIZE)
@@ -234,6 +234,7 @@ export class LevelUpScene extends Phaser.Scene {
       zone.disableInteractive()
       upgrade.apply(this.player)
       this.tracker.pick(upgrade)
+      if (upgrade.branch && !this.player.chosenBranch) this.player.chosenBranch = upgrade.branch
 
       // Encyclopedia tracking
       unlockUpgrade(upgrade.id)
@@ -391,12 +392,12 @@ export class LevelUpScene extends Phaser.Scene {
     // Normal mode: icon starts below strip/dots area
     const iconOffsetY = isBranchMode
       ? ly + 36 + ICON_SIZE / 2
-      : (isPersonal ? ly + STRIP_H + 34 : ly + 36)
+      : ly + 36 + ICON_SIZE / 2
     // Soft glow circle behind icon (drawn before icon so it sits beneath)
     if (isPersonal) {
       const glowG = this.add.graphics()
       glowG.fillStyle(borderColor, 0.15)
-      glowG.fillCircle(0, iconOffsetY, 28)
+      glowG.fillCircle(0, iconOffsetY, 44)
       container.add(glowG)
     }
     const icon = this.add.image(0, iconOffsetY, 'skill_icons', getIconFrame(upgrade.icon))
@@ -489,6 +490,7 @@ export class LevelUpScene extends Phaser.Scene {
       zone.disableInteractive()
       upgrade.apply(this.player)
       this.tracker.pick(upgrade)
+      if (upgrade.branch && !this.player.chosenBranch) this.player.chosenBranch = upgrade.branch
 
       // Encyclopedia tracking
       unlockUpgrade(upgrade.id)

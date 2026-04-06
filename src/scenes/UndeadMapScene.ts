@@ -123,19 +123,8 @@ export class UndeadMapScene extends GameScene {
     return false
   }
 
-  // Get which island index this point is closest to (for themed decorations)
-  private getIslandIdx(px: number, py: number): number {
-    const cx = CONFIG.WORLD_WIDTH / 2
-    const cy = CONFIG.WORLD_HEIGHT / 2
-    let bestIdx = 0, bestDist = Infinity
-    for (let i = 0; i < ISLANDS.length; i++) {
-      const d = Phaser.Math.Distance.Between(px, py, cx + ISLANDS[i].ox, cy + ISLANDS[i].oy)
-      if (d < bestDist) { bestDist = d; bestIdx = i }
-    }
-    return bestIdx
-  }
-
-  protected drawTerrain() {
+  protected drawTerrainChunk(pack: number) {
+    if (pack !== 0) return  // undead map draws everything in one pass
     const tileSize = CONFIG.TILE_SIZE
 
     const rng = (x: number, y: number, salt: number) => {
@@ -144,22 +133,17 @@ export class UndeadMapScene extends GameScene {
     }
 
     // Ground_rocks (Tiled layout): 26 cols × 87 rows, 16x16 tiles
-    // Verified fill frames from TMX analysis:
-    //   Light fill (mean=111, var=14): 54, 253, 256, 433
-    //   Light varied (var=41): 235, 239, 339, 342, 345
-    //   Dark fill (mean=86, var=14): 1495
     const FILL_LIGHT = [54, 253, 256, 433]
     const FILL_VARIED = [235, 239, 339, 342, 345]
-    const FILL_DARK = [1495]
 
     const cols = Math.ceil(CONFIG.WORLD_WIDTH / tileSize)
     const rows = Math.ceil(CONFIG.WORLD_HEIGHT / tileSize)
 
-    // Dark void background
+    // Grey background instead of black void
     this.add.rectangle(
       CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2,
       CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT,
-      0x0a0812
+      0x2a2a3a
     ).setDepth(-1)
 
     for (let r = 0; r < rows; r++) {
@@ -170,26 +154,11 @@ export class UndeadMapScene extends GameScene {
         if (!this.isOnGround(px, py)) continue
 
         const rand = rng(c, r, 3)
-        const islandIdx = this.getIslandIdx(px, py)
 
-        // Central islands: light ground, outer islands: darker
-        let frame: number
-        if (islandIdx === 0) {
-          // Central plateau: mostly uniform light fill
-          frame = rand < 0.15
-            ? FILL_VARIED[Math.floor(rng(c, r, 7) * FILL_VARIED.length)]
-            : FILL_LIGHT[Math.floor(rng(c, r, 7) * FILL_LIGHT.length)]
-        } else if (islandIdx <= 4) {
-          // Inner ring: mix of light and varied
-          frame = rand < 0.3
-            ? FILL_VARIED[Math.floor(rng(c, r, 7) * FILL_VARIED.length)]
-            : FILL_LIGHT[Math.floor(rng(c, r, 7) * FILL_LIGHT.length)]
-        } else {
-          // Outer islands: dark fill
-          frame = rand < 0.3
-            ? FILL_LIGHT[Math.floor(rng(c, r, 7) * FILL_LIGHT.length)]
-            : FILL_DARK[0]
-        }
+        // All islands use the same grey ground — no dark zones
+        const frame = rand < 0.2
+          ? FILL_VARIED[Math.floor(rng(c, r, 7) * FILL_VARIED.length)]
+          : FILL_LIGHT[Math.floor(rng(c, r, 7) * FILL_LIGHT.length)]
 
         this.add.image(px, py, 'undead_ground', frame)
           .setScale(4)
@@ -198,16 +167,15 @@ export class UndeadMapScene extends GameScene {
     }
   }
 
-  protected scatterDecorations() {
+  protected scatterDecorations(_filterMin = 0, _filterMax = Infinity) {
     const cx = CONFIG.WORLD_WIDTH / 2
     const cy = CONFIG.WORLD_HEIGHT / 2
     this.treePositions = []
 
-    const MIN_DIST = 100
+    const MIN_DIST = 120
     const MAX_ATTEMPTS = 80
-    const placed: { x: number; y: number }[] = []
+    const placed: { x: number; y: number; key: string }[] = []
 
-    // Only place on ground
     const tryPlace = (islandIdx: number): { x: number; y: number } | null => {
       const island = ISLANDS[islandIdx]
       const ix = cx + island.ox, iy = cy + island.oy
@@ -224,28 +192,60 @@ export class UndeadMapScene extends GameScene {
       return null
     }
 
-    // Fixed scale per sprite size — no random variance
+    // Scales — some props bigger than before
     const propScales: Record<string, number> = {
-      undead_grave1: 2.5, undead_grave2: 2.5, undead_grave3: 2.5, undead_grave4: 2.5,  // 32px → 80
-      undead_bones1: 3, undead_bones2: 5,  // 32px→96, 16px→80
-      undead_crystal1: 1.5, undead_crystal2: 1.5,  // 64px → 96
-      undead_dead_arm: 1.5,  // 64px → 96
-      undead_ruin1: 1, undead_ruin2: 1, undead_ruin3: 1.5,  // 128→128, 64→96
-      undead_dead_tree1: 1, undead_dead_tree2: 1,  // 128px → 128
-      undead_broken_tree1: 1, undead_broken_tree2: 3,  // 128→128, 32→96
-      undead_thorn1: 0.9, undead_thorn2: 0.9,  // 128px → 115
-      undead_skulls: 0.8,  // 128px → 102
+      undead_grave1: 3, undead_grave2: 3, undead_grave3: 2.8, undead_grave4: 3.2,
+      undead_bones1: 3.5, undead_bones2: 5.5,
+      undead_crystal1: 2, undead_crystal2: 1.8,
+      undead_dead_arm: 1.8,
+      undead_ruin1: 1.3, undead_ruin2: 1.3, undead_ruin3: 1.8,
+      undead_dead_tree1: 1.3, undead_dead_tree2: 1.2,
+      undead_broken_tree1: 1.2, undead_broken_tree2: 3.5,
+      undead_thorn1: 1.1, undead_thorn2: 1.1,
+      undead_skulls: 1.0,
     }
+
+    // Props that get physics hitboxes (solid obstacles)
+    const SOLID_PROPS = new Set([
+      'undead_ruin1', 'undead_ruin2', 'undead_ruin3',
+      'undead_dead_tree1', 'undead_dead_tree2',
+      'undead_crystal1', 'undead_crystal2',
+    ])
 
     const addProp = (x: number, y: number, key: string, tint?: number) => {
-      placed.push({ x, y })
+      placed.push({ x, y, key })
       this.treePositions.push({ x, y })
       const s = propScales[key] ?? 1.0
-      const img = this.add.image(x, y, key).setDepth(3).setScale(s)
-      if (tint !== undefined) img.setTint(tint)
+
+      if (SOLID_PROPS.has(key)) {
+        // Solid obstacle with physics body
+        const sprite = this.rocks.create(x, y, key) as Phaser.Physics.Arcade.Sprite
+        sprite.setDepth(3).setScale(s)
+        if (tint !== undefined) sprite.setTint(tint)
+        sprite.refreshBody()
+        const body = sprite.body as Phaser.Physics.Arcade.StaticBody
+        const dw = sprite.displayWidth
+        const dh = sprite.displayHeight
+        const scale = sprite.scaleX
+        body.setSize(dw * 0.4, dh * 0.35)
+        body.setOffset((sprite.width - dw * 0.4 / scale) / 2, (sprite.height - dh * 0.35 / scale) * 0.65)
+      } else {
+        // Decorative only
+        const img = this.add.image(x, y, key).setDepth(3).setScale(s)
+        if (tint !== undefined) img.setTint(tint)
+      }
     }
 
-    const pick = <T>(arr: T[]): T => arr[Phaser.Math.Between(0, arr.length - 1)]
+    // Pick from array — avoid keys already used by any neighbor within 250px
+    const pickUnique = (arr: string[], x: number, y: number): string => {
+      const nearbyKeys = new Set<string>()
+      for (const p of placed) {
+        if (Phaser.Math.Distance.Between(x, y, p.x, p.y) < 250) nearbyKeys.add(p.key)
+      }
+      const filtered = arr.filter(k => !nearbyKeys.has(k))
+      const pool = filtered.length > 0 ? filtered : arr
+      return pool[Phaser.Math.Between(0, pool.length - 1)]
+    }
 
     const graveKeys = ['undead_grave1', 'undead_grave2', 'undead_grave3', 'undead_grave4']
     const ruinKeys = ['undead_ruin1', 'undead_ruin2', 'undead_ruin3']
@@ -255,118 +255,54 @@ export class UndeadMapScene extends GameScene {
     const bonesKeys = ['undead_bones1', 'undead_bones2']
     const thornKeys = ['undead_thorn1', 'undead_thorn2']
 
+    // Helper to place N items from a pool on an island
+    const scatter = (islandIdx: number, count: number, pool: string[], tint?: number) => {
+      for (let i = 0; i < count; i++) {
+        const p = tryPlace(islandIdx)
+        if (p) addProp(p.x, p.y, pickUnique(pool, p.x, p.y), tint)
+      }
+    }
+
     // --- Island 0: Central Plateau — sparse, spawn area ---
-    for (let i = 0; i < 3; i++) {
-      const p = tryPlace(0)
-      if (p) addProp(p.x, p.y, pick(bonesKeys))
-    }
-    for (let i = 0; i < 3; i++) {
-      const p = tryPlace(0)
-      if (p) addProp(p.x, p.y, pick(thornKeys))
-    }
-    for (let i = 0; i < 3; i++) {
-      const p = tryPlace(0)
-      if (p) addProp(p.x, p.y, pick(deadTreeKeys))
-    }
+    scatter(0, 3, bonesKeys)
+    scatter(0, 3, thornKeys)
+    scatter(0, 3, deadTreeKeys)
 
     // --- Island 1: NW Graveyard ---
-    for (let i = 0; i < 10; i++) {
-      const p = tryPlace(1)
-      if (p) addProp(p.x, p.y, pick(graveKeys), 0xaaaacc)
-    }
-    for (let i = 0; i < 4; i++) {
-      const p = tryPlace(1)
-      if (p) addProp(p.x, p.y, pick(deadTreeKeys), 0x778877)
-    }
-    for (let i = 0; i < 3; i++) {
-      const p = tryPlace(1)
-      if (p) addProp(p.x, p.y, pick(bonesKeys))
-    }
+    scatter(1, 10, graveKeys, 0xaaaacc)
+    scatter(1, 4, deadTreeKeys, 0x778877)
+    scatter(1, 3, bonesKeys)
 
     // --- Island 2: NE Ruins ---
-    for (let i = 0; i < 7; i++) {
-      const p = tryPlace(2)
-      if (p) addProp(p.x, p.y, pick(ruinKeys), 0xbbbbcc)
-    }
-    for (let i = 0; i < 5; i++) {
-      const p = tryPlace(2)
-      if (p) addProp(p.x, p.y, pick(graveKeys))
-    }
-    for (let i = 0; i < 4; i++) {
-      const p = tryPlace(2)
-      if (p) addProp(p.x, p.y, pick(brokenTreeKeys))
-    }
+    scatter(2, 7, ruinKeys, 0xbbbbcc)
+    scatter(2, 5, graveKeys)
+    scatter(2, 4, brokenTreeKeys)
 
     // --- Island 3: SW Crystal Cave ---
-    for (let i = 0; i < 8; i++) {
-      const p = tryPlace(3)
-      if (p) addProp(p.x, p.y, pick(crystalKeys), 0x8888dd)
-    }
-    for (let i = 0; i < 4; i++) {
-      const p = tryPlace(3)
-      if (p) addProp(p.x, p.y, pick(thornKeys), 0x667766)
-    }
-    for (let i = 0; i < 3; i++) {
-      const p = tryPlace(3)
-      if (p) addProp(p.x, p.y, pick(deadTreeKeys))
-    }
+    scatter(3, 8, crystalKeys, 0x8888dd)
+    scatter(3, 4, thornKeys, 0x667766)
+    scatter(3, 3, deadTreeKeys)
 
     // --- Island 4: SE Bone Fields ---
-    for (let i = 0; i < 8; i++) {
-      const p = tryPlace(4)
-      if (p) addProp(p.x, p.y, pick(bonesKeys))
-    }
-    for (let i = 0; i < 5; i++) {
-      const p = tryPlace(4)
-      if (p) addProp(p.x, p.y, 'undead_skulls')
-    }
-    for (let i = 0; i < 3; i++) {
-      const p = tryPlace(4)
-      if (p) addProp(p.x, p.y, 'undead_dead_arm')
-    }
+    scatter(4, 8, bonesKeys)
+    scatter(4, 5, [...graveKeys, 'undead_skulls'])
+    scatter(4, 3, ['undead_dead_arm'])
 
     // --- Island 5: N Dark Shrine ---
-    for (let i = 0; i < 5; i++) {
-      const p = tryPlace(5)
-      if (p) addProp(p.x, p.y, pick(ruinKeys), 0x9999aa)
-    }
-    for (let i = 0; i < 4; i++) {
-      const p = tryPlace(5)
-      if (p) addProp(p.x, p.y, pick(crystalKeys), 0xaa88dd)
-    }
+    scatter(5, 5, ruinKeys, 0x9999aa)
+    scatter(5, 4, crystalKeys, 0xaa88dd)
 
     // --- Island 6: S Lich Domain ---
-    for (let i = 0; i < 4; i++) {
-      const p = tryPlace(6)
-      if (p) addProp(p.x, p.y, pick(ruinKeys))
-    }
-    for (let i = 0; i < 6; i++) {
-      const p = tryPlace(6)
-      if (p) addProp(p.x, p.y, pick(graveKeys), 0x889988)
-    }
-    for (let i = 0; i < 3; i++) {
-      const p = tryPlace(6)
-      if (p) addProp(p.x, p.y, 'undead_dead_arm')
-    }
+    scatter(6, 4, ruinKeys)
+    scatter(6, 6, graveKeys, 0x889988)
+    scatter(6, 3, ['undead_dead_arm'])
 
     // --- Islands 7 & 8: Outposts ---
     for (const idx of [7, 8]) {
-      for (let i = 0; i < 4; i++) {
-        const p = tryPlace(idx)
-        if (p) addProp(p.x, p.y, pick(deadTreeKeys))
-      }
-      for (let i = 0; i < 3; i++) {
-        const p = tryPlace(idx)
-        if (p) addProp(p.x, p.y, pick(thornKeys))
-      }
-      for (let i = 0; i < 2; i++) {
-        const p = tryPlace(idx)
-        if (p) addProp(p.x, p.y, pick(crystalKeys), 0x7777bb)
-      }
-      for (let i = 0; i < 2; i++) {
-        const p = tryPlace(idx)
-        if (p) addProp(p.x, p.y, pick(graveKeys))
-      }
+      scatter(idx, 4, deadTreeKeys)
+      scatter(idx, 3, thornKeys)
+      scatter(idx, 2, crystalKeys, 0x7777bb)
+      scatter(idx, 2, graveKeys)
     }
   }
 }
