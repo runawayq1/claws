@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { StartScene } from './scenes/StartScene'
+import { LoadingScene } from './scenes/LoadingScene'
 import { GameScene } from './scenes/GameScene'
 import { UndeadMapScene } from './scenes/UndeadMapScene'
 import { UIScene } from './scenes/UIScene'
@@ -22,7 +23,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [StartScene, TestScene, BossTestScene, GameScene, UndeadMapScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene],
+  scene: [StartScene, LoadingScene, TestScene, BossTestScene, GameScene, UndeadMapScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene],
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,

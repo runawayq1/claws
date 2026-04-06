@@ -397,10 +397,10 @@ export class StartScene extends Phaser.Scene {
         // Save hero to encyclopedia
         unlockHero(hero.type)
 
-        // Brief flash then start
+        // Brief flash then start via LoadingScene
         this.cameras.main.flash(200, 255, 255, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
           if (progress >= 1) {
-            this.scene.start(this.selectedMap, { hero: hero.type })
+            this.scene.start('LoadingScene', { hero: hero.type, map: this.selectedMap, playerName: this.playerName })
           }
         })
       })

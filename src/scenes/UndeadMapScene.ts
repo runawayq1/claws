@@ -61,31 +61,39 @@ export class UndeadMapScene extends GameScene {
   preload() {
     super.preload()
 
+    const img = (key: string, path: string) => {
+      if (!this.textures.exists(key)) {
+        this.load.image(key, path)
+      }
+    }
+
     // Undead ground tileset (Tiled version: 416x1392, 16x16 tiles, 26 cols × 87 rows)
-    this.load.spritesheet('undead_ground', 'assets/undead/Ground_rocks.png', {
-      frameWidth: 16, frameHeight: 16,
-    })
+    if (!this.textures.exists('undead_ground')) {
+      this.load.spritesheet('undead_ground', 'assets/undead/Ground_rocks.png', {
+        frameWidth: 16, frameHeight: 16,
+      })
+    }
 
     // Undead prop images
-    this.load.image('undead_grave1', 'assets/undead/Grave_shadow1_1.png')
-    this.load.image('undead_grave2', 'assets/undead/Grave_shadow1_2.png')
-    this.load.image('undead_grave3', 'assets/undead/Grave_shadow1_3.png')
-    this.load.image('undead_grave4', 'assets/undead/Grave_shadow1_4.png')
-    this.load.image('undead_ruin1', 'assets/undead/Ruin_shadow1_1.png')
-    this.load.image('undead_ruin2', 'assets/undead/Ruin_shadow1_2.png')
-    this.load.image('undead_ruin3', 'assets/undead/Ruin_shadow1_3.png')
-    this.load.image('undead_dead_tree1', 'assets/undead/Dead_tree_shadow1_1.png')
-    this.load.image('undead_dead_tree2', 'assets/undead/Dead_tree_shadow1_2.png')
-    this.load.image('undead_broken_tree1', 'assets/undead/Broken_tree_shadow1_1.png')
-    this.load.image('undead_broken_tree2', 'assets/undead/Broken_tree_shadow1_2.png')
-    this.load.image('undead_crystal1', 'assets/undead/Crystal_shadow1_1.png')
-    this.load.image('undead_crystal2', 'assets/undead/Crystal_shadow1_2.png')
-    this.load.image('undead_bones1', 'assets/undead/Bones_shadow1_1.png')
-    this.load.image('undead_bones2', 'assets/undead/Bones_shadow1_2.png')
-    this.load.image('undead_skulls', 'assets/undead/Pile_sculls_shadow1.png')
-    this.load.image('undead_dead_arm', 'assets/undead/Dead_arm_shadow1_1.png')
-    this.load.image('undead_thorn1', 'assets/undead/Thorn_plant_shadow1_1.png')
-    this.load.image('undead_thorn2', 'assets/undead/Thorn_plant_shadow1_2.png')
+    img('undead_grave1',       'assets/undead/Grave_shadow1_1.png')
+    img('undead_grave2',       'assets/undead/Grave_shadow1_2.png')
+    img('undead_grave3',       'assets/undead/Grave_shadow1_3.png')
+    img('undead_grave4',       'assets/undead/Grave_shadow1_4.png')
+    img('undead_ruin1',        'assets/undead/Ruin_shadow1_1.png')
+    img('undead_ruin2',        'assets/undead/Ruin_shadow1_2.png')
+    img('undead_ruin3',        'assets/undead/Ruin_shadow1_3.png')
+    img('undead_dead_tree1',   'assets/undead/Dead_tree_shadow1_1.png')
+    img('undead_dead_tree2',   'assets/undead/Dead_tree_shadow1_2.png')
+    img('undead_broken_tree1', 'assets/undead/Broken_tree_shadow1_1.png')
+    img('undead_broken_tree2', 'assets/undead/Broken_tree_shadow1_2.png')
+    img('undead_crystal1',     'assets/undead/Crystal_shadow1_1.png')
+    img('undead_crystal2',     'assets/undead/Crystal_shadow1_2.png')
+    img('undead_bones1',       'assets/undead/Bones_shadow1_1.png')
+    img('undead_bones2',       'assets/undead/Bones_shadow1_2.png')
+    img('undead_skulls',       'assets/undead/Pile_sculls_shadow1.png')
+    img('undead_dead_arm',     'assets/undead/Dead_arm_shadow1_1.png')
+    img('undead_thorn1',       'assets/undead/Thorn_plant_shadow1_1.png')
+    img('undead_thorn2',       'assets/undead/Thorn_plant_shadow1_2.png')
   }
 
   // Check if a world pixel is on solid ground (island or bridge)

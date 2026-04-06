@@ -38,28 +38,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    const ss = (key: string, path: string, fw: number, fh: number) => {
+      if (!this.textures.exists(key)) {
+        this.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
+      }
+    }
+    const img = (key: string, path: string) => {
+      if (!this.textures.exists(key)) {
+        this.load.image(key, path)
+      }
+    }
+
     // Monster enemy spritesheets (150x150 frames, side-view — mushroom/flyingeye still used by SandGolem/FlyingEye)
-    this.load.spritesheet('mushroom_attack', 'assets/mushroom/Attack3.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('flyingeye_attack', 'assets/flying_eye/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+    ss('mushroom_attack', 'assets/mushroom/Attack3.png', 150, 150)
+    ss('flyingeye_attack', 'assets/flying_eye/Attack3.png', 150, 150)
 
     // Orc enemies (64x64 top-down, 4 directional rows — we use row 0)
-    this.load.spritesheet('orc1_idle',   'assets/orc/orc1_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc1_run',    'assets/orc/orc1_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc1_attack', 'assets/orc/orc1_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc1_hurt',   'assets/orc/orc1_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc1_death',  'assets/orc/orc1_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
+    ss('orc1_idle',   'assets/orc/orc1_idle_without_shadow.png',   64, 64)
+    ss('orc1_run',    'assets/orc/orc1_run_without_shadow.png',    64, 64)
+    ss('orc1_attack', 'assets/orc/orc1_attack_without_shadow.png', 64, 64)
+    ss('orc1_hurt',   'assets/orc/orc1_hurt_without_shadow.png',   64, 64)
+    ss('orc1_death',  'assets/orc/orc1_death_without_shadow.png',  64, 64)
 
-    this.load.spritesheet('orc2_idle',   'assets/orc2/orc2_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc2_run',    'assets/orc2/orc2_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc2_attack', 'assets/orc2/orc2_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc2_hurt',   'assets/orc2/orc2_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc2_death',  'assets/orc2/orc2_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
+    ss('orc2_idle',   'assets/orc2/orc2_idle_without_shadow.png',   64, 64)
+    ss('orc2_run',    'assets/orc2/orc2_run_without_shadow.png',    64, 64)
+    ss('orc2_attack', 'assets/orc2/orc2_attack_without_shadow.png', 64, 64)
+    ss('orc2_hurt',   'assets/orc2/orc2_hurt_without_shadow.png',   64, 64)
+    ss('orc2_death',  'assets/orc2/orc2_death_without_shadow.png',  64, 64)
 
-    this.load.spritesheet('orc3_idle',   'assets/orc3/orc3_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc3_run',    'assets/orc3/orc3_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc3_attack', 'assets/orc3/orc3_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
-    this.load.spritesheet('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
+    ss('orc3_idle',   'assets/orc3/orc3_idle_without_shadow.png',   64, 64)
+    ss('orc3_run',    'assets/orc3/orc3_run_without_shadow.png',    64, 64)
+    ss('orc3_attack', 'assets/orc3/orc3_attack_without_shadow.png', 64, 64)
+    ss('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   64, 64)
+    ss('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  64, 64)
 
     // Load only the selected hero's spritesheets (not all 7)
     const hero = (this.scene.settings.data as any)?.hero || 'ignara'
@@ -68,44 +79,46 @@ export class GameScene extends Phaser.Scene {
     // (Skeleton2 removed — replaced by Orc3 above)
 
     // Vampire enemy (32x32 frames)
-    this.load.spritesheet('vampire_idle', 'assets/vampire/idle.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('vampire_run', 'assets/vampire/run.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('vampire_attack', 'assets/vampire/attack.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('vampire_hurt', 'assets/vampire/hurt.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('vampire_death', 'assets/vampire/death.png', { frameWidth: 32, frameHeight: 32 })
+    ss('vampire_idle',   'assets/vampire/idle.png',   32, 32)
+    ss('vampire_run',    'assets/vampire/run.png',    32, 32)
+    ss('vampire_attack', 'assets/vampire/attack.png', 32, 32)
+    ss('vampire_hurt',   'assets/vampire/hurt.png',   32, 32)
+    ss('vampire_death',  'assets/vampire/death.png',  32, 32)
 
     // Boss demon slime (288x160 frames, 22 cols x 5 rows)
-    this.load.spritesheet('boss_demon', 'assets/boss_demon/spritesheet.png', { frameWidth: 288, frameHeight: 160 })
+    ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
 
     // VFX spritesheets
-    this.load.spritesheet('vfx_flame', 'assets/vfx/flamethrower_sheet.png', { frameWidth: 64, frameHeight: 24 })
+    ss('vfx_flame', 'assets/vfx/flamethrower_sheet.png', 64, 24)
 
     // Skill icons spritesheet (128x128 per icon, 10 columns, 10 rows = 100 icons)
-    this.load.spritesheet('skill_icons', 'assets/icons/skill_icons_sheet.png', { frameWidth: 128, frameHeight: 128 })
+    ss('skill_icons', 'assets/icons/skill_icons_sheet.png', 128, 128)
 
     // Rock images
-    this.load.image('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
-    this.load.image('rock1_2', 'assets/rocks/Rock1_2_no_shadow.png')
-    this.load.image('rock2_1', 'assets/rocks/Rock2_1_no_shadow.png')
-    this.load.image('rock2_2', 'assets/rocks/Rock2_2_no_shadow.png')
-    this.load.image('rock3_1', 'assets/rocks/Rock3_1_no_shadow.png')
-    this.load.image('rock3_2', 'assets/rocks/Rock3_2_no_shadow.png')
+    img('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
+    img('rock1_2', 'assets/rocks/Rock1_2_no_shadow.png')
+    img('rock2_1', 'assets/rocks/Rock2_1_no_shadow.png')
+    img('rock2_2', 'assets/rocks/Rock2_2_no_shadow.png')
+    img('rock3_1', 'assets/rocks/Rock3_1_no_shadow.png')
+    img('rock3_2', 'assets/rocks/Rock3_2_no_shadow.png')
 
     // Terrain tilesets
-    this.load.spritesheet('terrain_grass', 'assets/terrain/TX Tileset Grass.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('terrain_stone', 'assets/terrain/TX Tileset Stone Ground.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.image('deco_tree1', 'assets/terrain/tree1.png')
-    this.load.image('deco_tree2', 'assets/terrain/tree2.png')
-    this.load.image('deco_tree3', 'assets/terrain/tree3.png')
+    ss('terrain_grass', 'assets/terrain/TX Tileset Grass.png', 32, 32)
+    ss('terrain_stone', 'assets/terrain/TX Tileset Stone Ground.png', 32, 32)
+    img('deco_tree1', 'assets/terrain/tree1.png')
+    img('deco_tree2', 'assets/terrain/tree2.png')
+    img('deco_tree3', 'assets/terrain/tree3.png')
 
     // Prop images for zone decorations (only files that exist in props/)
-    this.load.image('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
-    this.load.image('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
+    img('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
+    img('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
   }
 
   protected loadHeroAssets(hero: string) {
     const ss = (key: string, path: string, fw: number, fh: number) => {
-      this.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
+      if (!this.textures.exists(key)) {
+        this.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
+      }
     }
     switch (hero) {
       case 'ignara':
