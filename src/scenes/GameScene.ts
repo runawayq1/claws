@@ -1,11 +1,11 @@
 import Phaser from 'phaser'
 import { CONFIG } from '../config/GameConfig'
 import { Player, type HeroType } from '../entities/Player'
-import { Skeleton } from '../entities/Skeleton'
-import { Goblin } from '../entities/Zergling'
+import { Orc2 } from '../entities/Skeleton'
+import { Orc1 } from '../entities/Zergling'
 import { FlyingEye } from '../entities/Scorpion'
 import { SandGolem } from '../entities/SandGolem'
-import { Skeleton2 } from '../entities/Skeleton2'
+import { Orc3 } from '../entities/Skeleton2'
 import { Vampire } from '../entities/Vampire'
 import { WaveManager } from '../systems/WaveManager'
 import { XPSystem } from '../systems/XPSystem'
@@ -38,22 +38,34 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Monster enemy spritesheets (150x150 frames, side-view)
-    this.load.spritesheet('skeleton_attack', 'assets/skeleton/Attack3.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('goblin_attack', 'assets/goblin/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+    // Monster enemy spritesheets (150x150 frames, side-view — mushroom/flyingeye still used by SandGolem/FlyingEye)
     this.load.spritesheet('mushroom_attack', 'assets/mushroom/Attack3.png', { frameWidth: 150, frameHeight: 150 })
     this.load.spritesheet('flyingeye_attack', 'assets/flying_eye/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+
+    // Orc enemies (64x64 top-down, 4 directional rows — we use row 0)
+    this.load.spritesheet('orc1_idle',   'assets/orc/orc1_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_run',    'assets/orc/orc1_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_attack', 'assets/orc/orc1_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_hurt',   'assets/orc/orc1_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_death',  'assets/orc/orc1_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
+
+    this.load.spritesheet('orc2_idle',   'assets/orc2/orc2_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_run',    'assets/orc2/orc2_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_attack', 'assets/orc2/orc2_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_hurt',   'assets/orc2/orc2_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_death',  'assets/orc2/orc2_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
+
+    this.load.spritesheet('orc3_idle',   'assets/orc3/orc3_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_run',    'assets/orc3/orc3_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_attack', 'assets/orc3/orc3_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
 
     // Load only the selected hero's spritesheets (not all 7)
     const hero = (this.scene.settings.data as any)?.hero || 'ignara'
     this.loadHeroAssets(hero)
 
-    // Skeleton2 enemy (32x32 frames)
-    this.load.spritesheet('skeleton2_idle', 'assets/skeleton2/idle.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('skeleton2_run', 'assets/skeleton2/run.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('skeleton2_attack', 'assets/skeleton2/attack.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('skeleton2_hurt', 'assets/skeleton2/hurt.png', { frameWidth: 32, frameHeight: 32 })
-    this.load.spritesheet('skeleton2_death', 'assets/skeleton2/death.png', { frameWidth: 32, frameHeight: 32 })
+    // (Skeleton2 removed — replaced by Orc3 above)
 
     // Vampire enemy (32x32 frames)
     this.load.spritesheet('vampire_idle', 'assets/vampire/idle.png', { frameWidth: 32, frameHeight: 32 })
@@ -179,9 +191,9 @@ export class GameScene extends Phaser.Scene {
       this.anims.create({ key: 'flame_burst', frames: this.anims.generateFrameNumbers('vfx_flame', { start: 4, end: 4 }), frameRate: 8, repeat: 0 })
     }
 
-    Skeleton.createAnimations(this)
-    Goblin.createAnimations(this)
-    Skeleton2.createAnimations(this)
+    Orc1.createAnimations(this)
+    Orc2.createAnimations(this)
+    Orc3.createAnimations(this)
     Vampire.createAnimations(this)
     Player.createAnimations(this)
 
@@ -1121,7 +1133,7 @@ export class GameScene extends Phaser.Scene {
 
     for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (enemy.active) {
-        (enemy as Skeleton | Goblin | FlyingEye | SandGolem).update(time, delta)
+        (enemy as Orc1 | Orc2 | Orc3 | FlyingEye | SandGolem).update(time, delta)
       }
     }
 

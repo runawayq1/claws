@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { Player, type HeroType } from '../entities/Player'
-import { Skeleton } from '../entities/Skeleton'
-import { Goblin } from '../entities/Zergling'
+import { Orc2 } from '../entities/Skeleton'
+import { Orc1 } from '../entities/Zergling'
 import { FlyingEye } from '../entities/Scorpion'
 import { SandGolem } from '../entities/SandGolem'
 
@@ -11,11 +11,22 @@ export class TestScene extends Phaser.Scene {
   }
 
   preload() {
-    // Monster enemy spritesheets (150x150 frames, side-view)
-    this.load.spritesheet('skeleton_attack', 'assets/skeleton/Attack3.png', { frameWidth: 150, frameHeight: 150 })
-    this.load.spritesheet('goblin_attack', 'assets/goblin/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+    // Monster enemy spritesheets (150x150 side-view — mushroom/flyingeye used by SandGolem/FlyingEye)
     this.load.spritesheet('mushroom_attack', 'assets/mushroom/Attack3.png', { frameWidth: 150, frameHeight: 150 })
     this.load.spritesheet('flyingeye_attack', 'assets/flying_eye/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+
+    // Orc enemies (64x64 top-down, 4 directional rows — we use row 0)
+    this.load.spritesheet('orc1_idle',   'assets/orc/orc1_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_run',    'assets/orc/orc1_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_attack', 'assets/orc/orc1_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_hurt',   'assets/orc/orc1_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc1_death',  'assets/orc/orc1_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
+
+    this.load.spritesheet('orc2_idle',   'assets/orc2/orc2_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_run',    'assets/orc2/orc2_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_attack', 'assets/orc2/orc2_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_hurt',   'assets/orc2/orc2_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc2_death',  'assets/orc2/orc2_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
 
     // Ignara hero — Evil Wizard 1 (150x150 frames)
     this.load.spritesheet('ignara_idle', 'assets/ignara/Idle.png', { frameWidth: 150, frameHeight: 150 })
@@ -138,8 +149,8 @@ export class TestScene extends Phaser.Scene {
     }).setDepth(20)
 
     // Create animations
-    Skeleton.createAnimations(this)
-    Goblin.createAnimations(this)
+    Orc1.createAnimations(this)
+    Orc2.createAnimations(this)
     Player.createAnimations(this)
 
     // -----------------------------------------------------------------------
@@ -188,14 +199,14 @@ export class TestScene extends Phaser.Scene {
 
     const enemyDefs = [
       {
-        name: 'Skeleton',
-        bodyW: 30, bodyH: 38,
-        create: (x: number, y: number) => new Skeleton(this, x, y, dummyPlayer, 1),
+        name: 'Orc2',
+        bodyW: 24, bodyH: 24,
+        create: (x: number, y: number) => new Orc2(this, x, y, dummyPlayer, 1),
       },
       {
-        name: 'Goblin',
-        bodyW: 28, bodyH: 36,
-        create: (x: number, y: number) => new Goblin(this, x, y, dummyPlayer, 1),
+        name: 'Orc1',
+        bodyW: 24, bodyH: 24,
+        create: (x: number, y: number) => new Orc1(this, x, y, dummyPlayer, 1),
       },
       {
         name: 'FlyingEye',

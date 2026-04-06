@@ -3,12 +3,12 @@ import { Player } from './Player'
 import BaseEnemy from './BaseEnemy'
 
 /**
- * Skeleton2 — armored skeleton with proper animated spritesheets (32x32 frames).
- * Tougher and slower than Skeleton, with a multi-frame attack combo.
+ * Orc3 — slow, tanky orc enemy (replaces Skeleton2).
+ * Top-down 64x64 spritesheet, 4 directional rows — we use row 0 only.
  */
-export class Skeleton2 extends BaseEnemy {
+export class Orc3 extends BaseEnemy {
   constructor(scene: Phaser.Scene, x: number, y: number, player: Player, wave: number) {
-    super(scene, x, y, 'skeleton2_idle', player)
+    super(scene, x, y, 'orc3_idle', player)
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
@@ -22,31 +22,32 @@ export class Skeleton2 extends BaseEnemy {
 
     this.attackRange = 40
     this.kbForce = 100
-    this.walkAnim = 'skeleton2_run'
-    this.attackAnim = 'skeleton2_attack'
+    this.walkAnim = 'orc3_run'
+    this.attackAnim = 'orc3_attack'
 
     this.setScale(2.5)
-    this.setBodySize(14, 20)
-    this.setOffset(9, 10)
+    this.setBodySize(24, 24)
+    this.setOffset(20, 20)
     this.setDepth(5)
 
-    this.play('skeleton2_run')
+    this.play('orc3_run')
   }
 
   static createAnimations(scene: Phaser.Scene) {
-    const defs: [string, string, number, number][] = [
-      ['skeleton2_idle', 'skeleton2_idle', 6, -1],
-      ['skeleton2_run', 'skeleton2_run', 10, -1],
-      ['skeleton2_attack', 'skeleton2_attack', 15, 0],
-      ['skeleton2_hurt', 'skeleton2_hurt', 5, 0],
-      ['skeleton2_death', 'skeleton2_death', 15, 0],
+    // Row 0 frames: idle 4 frames (0-3), run 8 frames (0-7), attack 8 (0-7), hurt 4 (0-3), death 4 (0-3)
+    const defs: [string, string, number, number, number][] = [
+      ['orc3_idle',   'orc3_idle',   0, 3,  -1],
+      ['orc3_run',    'orc3_run',    0, 7,  -1],
+      ['orc3_attack', 'orc3_attack', 0, 7,   0],
+      ['orc3_hurt',   'orc3_hurt',   0, 3,   0],
+      ['orc3_death',  'orc3_death',  0, 3,   0],
     ]
-    for (const [key, texture, count, repeat] of defs) {
+    for (const [key, texture, start, end, repeat] of defs) {
       if (scene.anims.exists(key)) continue
       if (!scene.textures.exists(texture)) continue
       scene.anims.create({
         key,
-        frames: scene.anims.generateFrameNumbers(texture, { start: 0, end: count - 1 }),
+        frames: scene.anims.generateFrameNumbers(texture, { start, end }),
         frameRate: key.includes('attack') ? 14 : key.includes('run') ? 12 : 8,
         repeat,
       })
@@ -54,7 +55,10 @@ export class Skeleton2 extends BaseEnemy {
   }
 
   protected onDeathVfx(onComplete: () => void): void {
-    this.play('skeleton2_death')
+    this.play('orc3_death')
     this.once('animationcomplete', onComplete)
   }
 }
+
+// Legacy alias so any stray imports of Skeleton2 still compile
+export { Orc3 as Skeleton2 }

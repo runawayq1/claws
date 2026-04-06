@@ -1,11 +1,11 @@
 import Phaser from 'phaser'
 import { CONFIG } from '../config/GameConfig'
 import { Player } from '../entities/Player'
-import { Skeleton } from '../entities/Skeleton'
-import { Goblin } from '../entities/Zergling'
+import { Orc2 } from '../entities/Skeleton'
+import { Orc1 } from '../entities/Zergling'
 import { FlyingEye } from '../entities/Scorpion'
 import { SandGolem } from '../entities/SandGolem'
-import { Skeleton2 } from '../entities/Skeleton2'
+import { Orc3 } from '../entities/Skeleton2'
 import { Vampire } from '../entities/Vampire'
 
 export class WaveManager {
@@ -86,37 +86,42 @@ export class WaveManager {
     // Zone 4 — Wastes:     SandGolem 40%, FlyingEye 30%, Goblin 20%, Skeleton 10%
     const zone: number = (this.scene as any).getZone(x, y)
     const roll = Math.random()
-    let mob: Skeleton | Goblin | FlyingEye | SandGolem | Skeleton2 | Vampire
+    let mob: Orc1 | Orc2 | Orc3 | FlyingEye | SandGolem | Vampire
 
+    // Zone 0 — Crossroads: only Orc2
+    // Zone 1 — Meadow:     Orc2 70%, Orc1 30%
+    // Zone 2 — Ruins:      Orc2 40%, Orc1 30%, FlyingEye 20%, SandGolem 10%, Orc3 15%
+    // Zone 3 — Dark Forest: Orc1 30%, FlyingEye 30%, SandGolem 25%, Orc3 30%, Vampire 15%
+    // Zone 4 — Wastes:     SandGolem 40%, FlyingEye 30%, Orc1 20%, Orc3 35%, Vampire 20%
     if (zone <= 0) {
-      mob = new Skeleton(this.scene, x, y, this.player, tier)
+      mob = new Orc2(this.scene, x, y, this.player, tier)
     } else if (zone === 1) {
       mob = roll < 0.30
-        ? new Goblin(this.scene, x, y, this.player, tier)
-        : new Skeleton(this.scene, x, y, this.player, tier)
+        ? new Orc1(this.scene, x, y, this.player, tier)
+        : new Orc2(this.scene, x, y, this.player, tier)
     } else if (zone === 2) {
-      // Zone 2 — Ruins: Skeleton2 appears
+      // Zone 2 — Ruins: Orc3 appears
       if (roll < 0.10) mob = new SandGolem(this.scene, x, y, this.player, tier)
-      else if (roll < 0.25) mob = new Skeleton2(this.scene, x, y, this.player, tier)
+      else if (roll < 0.25) mob = new Orc3(this.scene, x, y, this.player, tier)
       else if (roll < 0.40) mob = new FlyingEye(this.scene, x, y, this.player, tier)
-      else if (roll < 0.65) mob = new Goblin(this.scene, x, y, this.player, tier)
-      else mob = new Skeleton(this.scene, x, y, this.player, tier)
+      else if (roll < 0.65) mob = new Orc1(this.scene, x, y, this.player, tier)
+      else mob = new Orc2(this.scene, x, y, this.player, tier)
     } else if (zone === 3) {
-      // Zone 3 — Dark Forest: Skeleton2 + Vampire appear
+      // Zone 3 — Dark Forest: Orc3 + Vampire appear
       if (roll < 0.15) mob = new Vampire(this.scene, x, y, this.player, tier)
-      else if (roll < 0.30) mob = new Skeleton2(this.scene, x, y, this.player, tier)
+      else if (roll < 0.30) mob = new Orc3(this.scene, x, y, this.player, tier)
       else if (roll < 0.50) mob = new SandGolem(this.scene, x, y, this.player, tier)
       else if (roll < 0.70) mob = new FlyingEye(this.scene, x, y, this.player, tier)
-      else if (roll < 0.85) mob = new Goblin(this.scene, x, y, this.player, tier)
-      else mob = new Skeleton(this.scene, x, y, this.player, tier)
+      else if (roll < 0.85) mob = new Orc1(this.scene, x, y, this.player, tier)
+      else mob = new Orc2(this.scene, x, y, this.player, tier)
     } else {
-      // zone 4 — Wastes: high Vampire + Skeleton2 density
+      // Zone 4 — Wastes: high Vampire + Orc3 density
       if (roll < 0.20) mob = new Vampire(this.scene, x, y, this.player, tier)
-      else if (roll < 0.35) mob = new Skeleton2(this.scene, x, y, this.player, tier)
+      else if (roll < 0.35) mob = new Orc3(this.scene, x, y, this.player, tier)
       else if (roll < 0.55) mob = new SandGolem(this.scene, x, y, this.player, tier)
       else if (roll < 0.75) mob = new FlyingEye(this.scene, x, y, this.player, tier)
-      else if (roll < 0.90) mob = new Goblin(this.scene, x, y, this.player, tier)
-      else mob = new Skeleton(this.scene, x, y, this.player, tier)
+      else if (roll < 0.90) mob = new Orc1(this.scene, x, y, this.player, tier)
+      else mob = new Orc2(this.scene, x, y, this.player, tier)
     }
 
     this.enemies.add(mob)

@@ -2,9 +2,13 @@ import Phaser from 'phaser'
 import { Player } from './Player'
 import BaseEnemy from './BaseEnemy'
 
-export class Goblin extends BaseEnemy {
+/**
+ * Orc1 — fast, weak orc enemy (replaces Goblin).
+ * Top-down 64x64 spritesheet, 4 directional rows — we use row 0 only.
+ */
+export class Orc1 extends BaseEnemy {
   constructor(scene: Phaser.Scene, x: number, y: number, player: Player, wave: number) {
-    super(scene, x, y, 'goblin_attack', player)
+    super(scene, x, y, 'orc1_idle', player)
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
@@ -18,45 +22,38 @@ export class Goblin extends BaseEnemy {
 
     this.attackRange = 40
     this.kbForce = 160
-    this.walkAnim = 'goblin_walk'
-    this.attackAnim = 'goblin_run'
+    this.walkAnim = 'orc1_run'
+    this.attackAnim = 'orc1_attack'
 
-    this.setScale(1.4)
-    this.setBodySize(28, 36)
-    this.setOffset(61, 67)
+    this.setScale(2.5)
+    this.setBodySize(24, 24)
+    this.setOffset(20, 20)
     this.setDepth(5)
 
-    this.play('goblin_walk')
+    this.play('orc1_run')
   }
 
   static createAnimations(scene: Phaser.Scene) {
-    // Goblin — 12 frames, 150x150
-    if (!scene.anims.exists('goblin_walk')) {
+    // Row 0 frames: idle 4 frames (0-3), run 8 frames (0-7), attack 8 (0-7), hurt 4 (0-3), death 4 (0-3)
+    const defs: [string, string, number, number, number][] = [
+      ['orc1_idle',   'orc1_idle',   0, 3,  -1],
+      ['orc1_run',    'orc1_run',    0, 7,  -1],
+      ['orc1_attack', 'orc1_attack', 0, 7,   0],
+      ['orc1_hurt',   'orc1_hurt',   0, 3,   0],
+      ['orc1_death',  'orc1_death',  0, 3,   0],
+    ]
+    for (const [key, texture, start, end, repeat] of defs) {
+      if (scene.anims.exists(key)) continue
+      if (!scene.textures.exists(texture)) continue
       scene.anims.create({
-        key: 'goblin_walk',
-        frames: scene.anims.generateFrameNumbers('goblin_attack', { start: 0, end: 5 }),
-        frameRate: 7,
-        repeat: -1,
-      })
-    }
-    if (!scene.anims.exists('goblin_run')) {
-      scene.anims.create({
-        key: 'goblin_run',
-        frames: scene.anims.generateFrameNumbers('goblin_attack', { start: 0, end: 11 }),
-        frameRate: 12,
-        repeat: -1,
-      })
-    }
-    if (!scene.anims.exists('goblin_death')) {
-      scene.anims.create({
-        key: 'goblin_death',
-        frames: scene.anims.generateFrameNumbers('goblin_attack', { start: 8, end: 11 }),
-        frameRate: 6,
-        repeat: 0,
+        key,
+        frames: scene.anims.generateFrameNumbers(texture, { start, end }),
+        frameRate: key.includes('attack') ? 14 : key.includes('run') ? 12 : 8,
+        repeat,
       })
     }
 
-    // Mushroom — 11 frames, 150x150
+    // Mushroom — 11 frames, 150x150 (used by SandGolem / other enemies)
     if (!scene.anims.exists('mushroom_walk')) {
       scene.anims.create({
         key: 'mushroom_walk',
@@ -102,7 +99,10 @@ export class Goblin extends BaseEnemy {
   }
 
   protected onDeathVfx(onComplete: () => void): void {
-    this.play('goblin_death')
-    this.once('animationcomplete-goblin_death', onComplete)
+    this.play('orc1_death')
+    this.once('animationcomplete', onComplete)
   }
 }
+
+// Legacy aliases
+export { Orc1 as Goblin }

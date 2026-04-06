@@ -2,9 +2,13 @@ import Phaser from 'phaser'
 import { Player } from './Player'
 import BaseEnemy from './BaseEnemy'
 
-export class Skeleton extends BaseEnemy {
+/**
+ * Orc2 — medium orc enemy (replaces Skeleton).
+ * Top-down 64x64 spritesheet, 4 directional rows — we use row 0 only.
+ */
+export class Orc2 extends BaseEnemy {
   constructor(scene: Phaser.Scene, x: number, y: number, player: Player, wave: number) {
-    super(scene, x, y, 'skeleton_attack', player)
+    super(scene, x, y, 'orc2_idle', player)
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
@@ -18,45 +22,44 @@ export class Skeleton extends BaseEnemy {
 
     this.attackRange = 45
     this.kbForce = 120
-    this.walkAnim = 'skeleton_walk'
-    this.attackAnim = 'skeleton_hit'
+    this.walkAnim = 'orc2_run'
+    this.attackAnim = 'orc2_attack'
 
-    this.setScale(1.5)
-    this.setBodySize(30, 38)
-    this.setOffset(60, 56)
+    this.setScale(2.5)
+    this.setBodySize(24, 24)
+    this.setOffset(20, 20)
     this.setDepth(5)
 
-    this.play('skeleton_walk')
+    this.play('orc2_run')
   }
 
   static createAnimations(scene: Phaser.Scene) {
-    if (!scene.anims.exists('skeleton_walk')) {
+    // Row 0 frames: idle 4 frames (0-3), run 8 frames (0-7), attack 8 (0-7), hurt 4 (0-3), death 4 (0-3)
+    // Each row = cols * row_index. Row 0 starts at frame 0.
+    const defs: [string, string, number, number, number][] = [
+      ['orc2_idle',   'orc2_idle',   0, 3,  -1],
+      ['orc2_run',    'orc2_run',    0, 7,  -1],
+      ['orc2_attack', 'orc2_attack', 0, 7,   0],
+      ['orc2_hurt',   'orc2_hurt',   0, 3,   0],
+      ['orc2_death',  'orc2_death',  0, 3,   0],
+    ]
+    for (const [key, texture, start, end, repeat] of defs) {
+      if (scene.anims.exists(key)) continue
+      if (!scene.textures.exists(texture)) continue
       scene.anims.create({
-        key: 'skeleton_walk',
-        frames: scene.anims.generateFrameNumbers('skeleton_attack', { frames: [0, 1] }),
-        frameRate: 4,
-        repeat: -1,
-        yoyo: true,
-      })
-    }
-    if (!scene.anims.exists('skeleton_hit')) {
-      scene.anims.create({
-        key: 'skeleton_hit',
-        frames: scene.anims.generateFrameNumbers('skeleton_attack', { start: 2, end: 5 }),
-        frameRate: 10,
-        repeat: -1,
+        key,
+        frames: scene.anims.generateFrameNumbers(texture, { start, end }),
+        frameRate: key.includes('attack') ? 14 : key.includes('run') ? 12 : 8,
+        repeat,
       })
     }
   }
 
   protected onDeathVfx(onComplete: () => void): void {
-    this.scene.tweens.add({
-      targets: this,
-      scaleX: 0,
-      scaleY: 0,
-      duration: 300,
-      ease: 'Power2',
-      onComplete,
-    })
+    this.play('orc2_death')
+    this.once('animationcomplete', onComplete)
   }
 }
+
+// Legacy alias so any stray imports of Skeleton still compile
+export { Orc2 as Skeleton }
