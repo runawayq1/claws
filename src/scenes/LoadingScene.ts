@@ -5,6 +5,12 @@ export class LoadingScene extends Phaser.Scene {
   private hero: HeroType = 'ignara'
   private map = 'GameScene'
   private playerName = ''
+  private barFill!: Phaser.GameObjects.Graphics
+  private barX = 0
+  private barY = 0
+  private barW = 0
+  private barH = 0
+  private loadingText!: Phaser.GameObjects.Text
 
   constructor() {
     super({ key: 'LoadingScene' })
@@ -32,39 +38,80 @@ export class LoadingScene extends Phaser.Scene {
       color: '#888888', stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5)
 
-    const barW = width * 0.6
-    const barH = 20
-    const barX = width / 2 - barW / 2
-    const barY = height * 0.58
+    this.barW = width * 0.6
+    this.barH = 20
+    this.barX = width / 2 - this.barW / 2
+    this.barY = height * 0.58
 
     // Background track
     const barBg = this.add.graphics()
     barBg.fillStyle(0x222233)
-    barBg.fillRect(barX - 2, barY - 2, barW + 4, barH + 4)
+    barBg.fillRect(this.barX - 2, this.barY - 2, this.barW + 4, this.barH + 4)
     barBg.lineStyle(1, 0x444466)
-    barBg.strokeRect(barX - 2, barY - 2, barW + 4, barH + 4)
+    barBg.strokeRect(this.barX - 2, this.barY - 2, this.barW + 4, this.barH + 4)
 
     // Gold fill bar (starts at 0 width)
-    const barFill = this.add.graphics()
+    this.barFill = this.add.graphics()
 
-    const loadingText = this.add.text(width / 2, barY + barH + 18, 'Loading...', {
+    // Percentage text centered ON the bar
+    const pctText = this.add.text(width / 2, this.barY + this.barH / 2, '0%', {
+      fontFamily: 'monospace', fontSize: '11px',
+      color: '#000000', stroke: '#FFD700', strokeThickness: 1,
+    }).setOrigin(0.5).setDepth(1)
+
+    // Flavor text below the bar — cycles on each progress tick
+    const flavorTexts = [
+      'Sharpening goblin teeth...',
+      'Polishing rusty armor...',
+      'Hiding treasure chests...',
+      'Waking up the undead...',
+      'Feeding the swarm...',
+      'Scattering bones around...',
+      'Brewing potions of doom...',
+      'Planting suspicious mushrooms...',
+      'Summoning reinforcements...',
+      'Oiling the boss gate...',
+    ]
+
+    this.loadingText = this.add.text(width / 2, this.barY + this.barH + 18, flavorTexts[0], {
       fontFamily: 'monospace', fontSize: '13px',
       color: '#888888', stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5)
 
+    // Asset loading fills bar to 90% — swap flavor text every ~10% progress
+    let lastFlavorPct = 0
+    let flavorIdx = 0
     this.load.on('progress', (value: number) => {
-      barFill.clear()
-      barFill.fillStyle(0xFFD700)
-      barFill.fillRect(barX, barY, barW * value, barH)
-      const pct = Math.floor(value * 100)
-      loadingText.setText(`Loading... ${pct}%`)
+      const scaled = value * 0.9
+      this.barFill.clear()
+      this.barFill.fillStyle(0xFFD700)
+      this.barFill.fillRect(this.barX, this.barY, this.barW * scaled, this.barH)
+      pctText.setText(`${Math.floor(scaled * 100)}%`)
+
+      // Change flavor text every ~10% of progress
+      const pct10 = Math.floor(value * 10)
+      if (pct10 > lastFlavorPct) {
+        lastFlavorPct = pct10
+        flavorIdx = (flavorIdx + 1) % flavorTexts.length
+        this.loadingText.setText(flavorTexts[flavorIdx])
+      }
     })
 
     this.load.on('complete', () => {
-      barFill.clear()
-      barFill.fillStyle(0xFFD700)
-      barFill.fillRect(barX, barY, barW, barH)
-      loadingText.setText('Ready!')
+      this.barFill.clear()
+      this.barFill.fillStyle(0xFFD700)
+      this.barFill.fillRect(this.barX, this.barY, this.barW * 0.9, this.barH)
+      pctText.setText('90%')
+
+      // Shimmer pulse on the bar while waiting for terrain
+      this.tweens.add({
+        targets: this.barFill,
+        alpha: { from: 1, to: 0.5 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      })
     })
 
     // ── Load all game assets ──
@@ -81,7 +128,6 @@ export class LoadingScene extends Phaser.Scene {
     }
 
     // Monster spritesheets
-    ss('mushroom_attack', 'assets/mushroom/Attack3.png', 150, 150)
     ss('flyingeye_attack', 'assets/flying_eye/Attack3.png', 150, 150)
 
     // Orc enemies (64x64)
@@ -118,6 +164,9 @@ export class LoadingScene extends Phaser.Scene {
 
     // Skill icons (128x128)
     ss('skill_icons', 'assets/icons/skill_icons_sheet.png', 128, 128)
+
+    // Chest spritesheet (32x32, 9 cols x 4 rows)
+    ss('chests', 'assets/chests/chests.png', 32, 32)
 
     // Rocks
     img('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
@@ -237,6 +286,50 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start(this.map, { hero: this.hero, playerName: this.playerName })
+    // Launch game scene behind us, keep LoadingScene on top
+    this.scene.launch(this.map, { hero: this.hero, playerName: this.playerName })
+    this.scene.bringToTop(this.scene.key)
+
+    // Cycle flavor texts while waiting for terrain (timers work in create phase)
+    const flavorCycler = this.time.addEvent({
+      delay: 1500,
+      loop: true,
+      callback: () => {
+        const texts = [
+          'Sharpening goblin teeth...', 'Polishing rusty armor...',
+          'Hiding treasure chests...', 'Waking up the undead...',
+          'Feeding the swarm...', 'Scattering bones around...',
+          'Brewing potions of doom...', 'Planting suspicious mushrooms...',
+          'Summoning reinforcements...', 'Oiling the boss gate...',
+        ]
+        this.loadingText.setText(texts[Phaser.Math.Between(0, texts.length - 1)])
+      },
+    })
+
+    // Wait for game scene to signal terrain is ready
+    const gameScene = this.scene.get(this.map)
+    const onReady = () => {
+      flavorCycler.destroy()
+      // Stop shimmer, fill bar to 100%
+      this.tweens.killTweensOf(this.barFill)
+      this.barFill.setAlpha(1)
+      this.barFill.clear()
+      this.barFill.fillStyle(0xFFD700)
+      this.barFill.fillRect(this.barX, this.barY, this.barW, this.barH)
+      this.loadingText.setText('Ready!')
+
+      this.time.delayedCall(200, () => {
+        this.cameras.main.fadeOut(400, 0, 0, 0)
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.stop(this.scene.key)
+        })
+      })
+    }
+
+    if (gameScene) {
+      gameScene.events.once('terrain-ready', onReady)
+    } else {
+      this.time.delayedCall(500, onReady)
+    }
   }
 }

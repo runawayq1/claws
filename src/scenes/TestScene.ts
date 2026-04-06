@@ -157,7 +157,7 @@ export class TestScene extends Phaser.Scene {
     // ROW 1: Heroes (y=150)
     // -----------------------------------------------------------------------
     const heroTypes: HeroType[] = ['ignara', 'sifra', 'nazar', 'amun', 'huntress', 'khashin', 'muller']
-    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun', 'Lyra', 'Khashin', 'Muller']
+    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun', 'Lyra', 'Khashin', 'Givi']
 
     const totalHeroes = heroTypes.length
     const heroSpacing = 150

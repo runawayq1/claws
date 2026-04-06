@@ -25,7 +25,9 @@ export class Orc1 extends BaseEnemy {
     this.walkAnim = 'orc1_run'
     this.attackAnim = 'orc1_attack'
 
-    this.setScale(2.5)
+    this.setScale(1.75)
+    this.baseTint = 0xddccaa
+    this.setTint(this.baseTint)
     this.setBodySize(24, 24)
     this.setOffset(20, 20)
     this.setDepth(5)
@@ -50,32 +52,6 @@ export class Orc1 extends BaseEnemy {
         frames: scene.anims.generateFrameNumbers(texture, { start, end }),
         frameRate: key.includes('attack') ? 14 : key.includes('run') ? 12 : 8,
         repeat,
-      })
-    }
-
-    // Mushroom — 11 frames, 150x150 (used by SandGolem / other enemies)
-    if (!scene.anims.exists('mushroom_walk')) {
-      scene.anims.create({
-        key: 'mushroom_walk',
-        frames: scene.anims.generateFrameNumbers('mushroom_attack', { start: 0, end: 4 }),
-        frameRate: 6,
-        repeat: -1,
-      })
-    }
-    if (!scene.anims.exists('mushroom_run')) {
-      scene.anims.create({
-        key: 'mushroom_run',
-        frames: scene.anims.generateFrameNumbers('mushroom_attack', { start: 0, end: 10 }),
-        frameRate: 10,
-        repeat: -1,
-      })
-    }
-    if (!scene.anims.exists('mushroom_death')) {
-      scene.anims.create({
-        key: 'mushroom_death',
-        frames: scene.anims.generateFrameNumbers('mushroom_attack', { start: 7, end: 10 }),
-        frameRate: 6,
-        repeat: 0,
       })
     }
 

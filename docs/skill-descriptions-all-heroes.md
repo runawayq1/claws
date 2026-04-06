@@ -229,6 +229,88 @@
 
 ---
 
+## Khashin — Sand Assassin
+
+**Color:** `#88ddff` | **Element:** Wind/Sand | **Attack:** Wind slash (crescent arc, pierce) / Sand swipe (360° melee, stance toggle Q)
+
+> **Stance gating:** Sirocco stance (default) = cutting wind arcs, long range. Haboob stance = sand melee swipe, applies Blind (40% slow + 25% reduced accuracy, 2s). Gale branch = Sirocco stance. Dune branch = Haboob stance. Mirage branch = either stance.
+
+### Branch: Gale (`#88DDFF`) — *Sirocco stance*
+**Theme:** Raw wind power — push enemies back, spawn persistent tornados, amplify arc damage.
+
+| # | ID | Name | Description | Visual Concept |
+|---|-----|------|-------------|----------------|
+| 1 | kw1 | Razor Wind | Wind slash +25% dmg, pierces +1 target | Sharp crescent blade |
+| 2 | kw2 | Gust Strike | Wind slash knocks back enemies 150px | Shockwave push ring |
+| 3 | kw3 | Dust Devil | Every 5th attack spawns a drifting tornado | Small swirling vortex |
+| 4 | kw4 | Cyclone Surge | Dust Devils +50% bigger, +1s longer; +15% dmg | Enlarged spiral storm |
+| 5 | kw5 | Eye of the Storm | Anchored tornado every 8s; +20% dmg | Central eye in cyclone |
+
+### Branch: Dune (`#E8A040`) — *Haboob stance*
+**Theme:** Sand and blindness — debuff stacking, sand armor, scarab swarm, lingering sand clouds.
+
+| # | ID | Name | Description | Visual Concept |
+|---|-----|------|-------------|----------------|
+| 1 | kd1 | Choking Sand | Blinded enemies take +35% dmg | Dust-choked skull |
+| 2 | kd2 | Sand Armor | Absorb shield 25% max HP, regens 4s after break | Sandy barrier layer |
+| 3 | kd3 | Abrasion | Blinded enemies -20% armor; +3 dmg | Sandpaper erosion |
+| 4 | kd4 | Scarab Tide | On kill: 4 seeking scarabs apply Blind | Scarab beetle swarm |
+| 5 | kd5 | Sandstorm Wall | Haboob arcs spawn lingering sand clouds | Sand cloud wall |
+
+### Branch: Mirage (`#CCAAFF`) — *Either stance*
+**Theme:** Mobility/evasion — dash, phantom decoy, slow trails, wind burst.
+
+| # | ID | Name | Description | Visual Concept |
+|---|-----|------|-------------|----------------|
+| 1 | km1 | Tailwind | +20 speed, -10% attack CD | Wind streak behind runner |
+| 2 | km2 | Phantom Step | Auto-dash 100px away every 6s | Blurred teleport afterimage |
+| 3 | km3 | Mirage | Phantom Step leaves a decoy for 2s | Ghostly duplicate |
+| 4 | km4 | Drift | Moving leaves slow trails (40% slow) | Fading wind footprints |
+| 5 | km5 | Desert Wind | Every 10s: 180px wind burst + 3s DR | Expanding sand shockwave |
+
+---
+
+## Givi — Crystal Gnome
+
+**Color:** `#44aaff` | **Element:** Crystal/Earth | **Attack:** Crystal wave (directional spike cone) / Eruption (360° crystal ring, stance toggle Q)
+
+> **Stance system:** Spike stance (default) = directional cone of crystal spikes, long range, piercing. Eruption stance = close-range AoE crystal ring burst around self.
+
+### Branch: Shardfall (`#44AAFF`)
+**Theme:** Bigger, sharper, more destructive crystal waves — raw offense.
+
+| # | ID | Name | Description | Visual Concept |
+|---|-----|------|-------------|----------------|
+| 1 | cm1 | Coarse Cut | Crystal wave cone +15° wider | Wider spike fan |
+| 2 | cm2 | Deep Vein | Spikes +30% dmg at max range | Glowing deep crystal |
+| 3 | cm3 | Shardstorm | Double wave per slam | Twin spike eruption |
+| 4 | cm4 | Crystal Shrapnel | Spikes spray 3 shards on death | Shattering crystal burst |
+| 5 | cm5 | Tectonic Fury | Every 5th slam: crystal eruption ring | Massive ground fissure |
+
+### Branch: Geode Shell (`#99DDCC`)
+**Theme:** Crystal armor, barriers, resilience — tanky survivability.
+
+| # | ID | Name | Description | Visual Concept |
+|---|-----|------|-------------|----------------|
+| 1 | cr1 | Stone Skin | +2% DR per kill, max 5 stacks | Mineral-crusted skin |
+| 2 | cr2 | Geode Shell | Below 50% HP: absorb next hit, 20s CD | Crystal cocoon shield |
+| 3 | cr3 | Crystal Wall | Barrier every 8s blocking enemies | Crystal spike barricade |
+| 4 | cr4 | Resonance Armor | Wave impact grants 0.5s invuln | Vibrating crystal aura |
+| 5 | cr5 | Living Geode | +25 HP, melee reflect 15 dmg | Crystal-encrusted body |
+
+### Branch: Deep Seam (`#CC99FF`)
+**Theme:** Crystal mines, pillars, resonance — turning the battlefield into a crystal minefield.
+
+| # | ID | Name | Description | Visual Concept |
+|---|-----|------|-------------|----------------|
+| 1 | cf1 | Planted Shard | Slams leave crystal mines | Glowing dormant crystal |
+| 2 | cf2 | Crystal Pillar | Auto pillar every 12s | Erupting crystal column |
+| 3 | cf3 | Fault Line | Wave carves 4s ground hazard | Glowing crystal fissure |
+| 4 | cf4 | Resonance Field | Structures slow enemies 20% | Pulsing energy aura |
+| 5 | cf5 | The Mother Lode | Massive crystal eruption every 12s | Full-screen crystal cataclysm |
+
+---
+
 ## Quick Reference
 
 | Hero | Branch | Color | IDs | Stance |
@@ -249,5 +331,11 @@
 | Lyra | Predator | `#FF4444` | hp1-hp5 | — |
 | Lyra | Stalker | `#44CC44` | hs1-hs5 | — |
 | Lyra | Warden | `#4488FF` | hw1-hw5 | — |
+| Khashin | Gale | `#88DDFF` | kw1-kw5 | Sirocco only |
+| Khashin | Dune | `#E8A040` | kd1-kd5 | Haboob only |
+| Khashin | Mirage | `#CCAAFF` | km1-km5 | Either |
+| Givi | Shardfall | `#44AAFF` | cm1-cm5 | — |
+| Givi | Geode Shell | `#99DDCC` | cr1-cr5 | — |
+| Givi | Deep Seam | `#CC99FF` | cf1-cf5 | — |
 
-**Total:** 10 generic + 75 personal = 85 upgrades
+**Total:** 10 generic + 105 personal = 115 upgrades

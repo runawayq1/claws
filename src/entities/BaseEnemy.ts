@@ -36,6 +36,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   protected flashTint: number = 0xffffff
   protected flashDuration: number = 80
   protected usesSteering: boolean = true
+  protected baseTint: number = 0
 
   // Animation keys — subclasses set these in their constructors
   protected walkAnim: string = ''
@@ -177,7 +178,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
 
     // Clear hit flash by timestamp (zero-allocation)
     if (this._flashUntil > 0 && time >= this._flashUntil) {
-      this.clearTint()
+      if (this.baseTint) this.setTint(this.baseTint); else this.clearTint()
       this._flashUntil = 0
     }
 
@@ -212,8 +213,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     // Blue tint when slowed
     if (this.speed < this.baseSpeed * 0.95) {
       this.setTint(0x6688ff)
-    } else {
-      this.clearTint()
+    } else if (this._flashUntil <= 0) {
+      if (this.baseTint) this.setTint(this.baseTint); else this.clearTint()
     }
 
     const dist = Phaser.Math.Distance.Between(this.x, this.y, this.player.x, this.player.y)
@@ -222,6 +223,9 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
       if (!this.isAttacking) {
         this.isAttacking = true
         if (this.attackAnim) this.play(this.attackAnim)
+      } else if (this.attackAnim && this.anims.currentAnim?.key === this.attackAnim && !this.anims.isPlaying) {
+        // Replay attack animation when it finishes (repeat:0 anims freeze on last frame)
+        this.play(this.attackAnim)
       }
       this.player.takeDamage(this.damagePerSecond * (delta / 1000))
     } else {

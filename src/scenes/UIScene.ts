@@ -664,11 +664,11 @@ export class UIScene extends Phaser.Scene {
     t5.on('pointerout', () => t5.setColor('#FFD700'))
     t5.on('pointerdown', () => {
       const hero = gs.player.heroType
-      const sceneKey = gs.scene.key
+      const map = gs.scene.key
       this.cleanup()
       const sm = this.game.scene
-      sm.stop('LevelUpScene'); sm.stop(sceneKey); sm.stop('UIScene')
-      sm.start(sceneKey, { hero })
+      sm.stop('LevelUpScene'); sm.stop(map); sm.stop('UIScene')
+      sm.start('LoadingScene', { hero, map })
     })
 
     const t6 = this.add.text(cx, btnY + 46, 'Choose Hero', {

@@ -58,43 +58,7 @@ export class UndeadMapScene extends GameScene {
     super({ key: 'UndeadMapScene' })
   }
 
-  preload() {
-    super.preload()
-
-    const img = (key: string, path: string) => {
-      if (!this.textures.exists(key)) {
-        this.load.image(key, path)
-      }
-    }
-
-    // Undead ground tileset (Tiled version: 416x1392, 16x16 tiles, 26 cols × 87 rows)
-    if (!this.textures.exists('undead_ground')) {
-      this.load.spritesheet('undead_ground', 'assets/undead/Ground_rocks.png', {
-        frameWidth: 16, frameHeight: 16,
-      })
-    }
-
-    // Undead prop images
-    img('undead_grave1',       'assets/undead/Grave_shadow1_1.png')
-    img('undead_grave2',       'assets/undead/Grave_shadow1_2.png')
-    img('undead_grave3',       'assets/undead/Grave_shadow1_3.png')
-    img('undead_grave4',       'assets/undead/Grave_shadow1_4.png')
-    img('undead_ruin1',        'assets/undead/Ruin_shadow1_1.png')
-    img('undead_ruin2',        'assets/undead/Ruin_shadow1_2.png')
-    img('undead_ruin3',        'assets/undead/Ruin_shadow1_3.png')
-    img('undead_dead_tree1',   'assets/undead/Dead_tree_shadow1_1.png')
-    img('undead_dead_tree2',   'assets/undead/Dead_tree_shadow1_2.png')
-    img('undead_broken_tree1', 'assets/undead/Broken_tree_shadow1_1.png')
-    img('undead_broken_tree2', 'assets/undead/Broken_tree_shadow1_2.png')
-    img('undead_crystal1',     'assets/undead/Crystal_shadow1_1.png')
-    img('undead_crystal2',     'assets/undead/Crystal_shadow1_2.png')
-    img('undead_bones1',       'assets/undead/Bones_shadow1_1.png')
-    img('undead_bones2',       'assets/undead/Bones_shadow1_2.png')
-    img('undead_skulls',       'assets/undead/Pile_sculls_shadow1.png')
-    img('undead_dead_arm',     'assets/undead/Dead_arm_shadow1_1.png')
-    img('undead_thorn1',       'assets/undead/Thorn_plant_shadow1_1.png')
-    img('undead_thorn2',       'assets/undead/Thorn_plant_shadow1_2.png')
-  }
+  // No preload() — all assets loaded by LoadingScene
 
   // Check if a world pixel is on solid ground (island or bridge)
   private isOnGround(px: number, py: number): boolean {
@@ -131,21 +95,18 @@ export class UndeadMapScene extends GameScene {
     return false
   }
 
-  protected drawTerrainChunk(pack: number) {
-    if (pack !== 0) return  // undead map draws everything in one pass
+  protected drawTerrainProgressive() {
     const tileSize = CONFIG.TILE_SIZE
+    const totalRows = Math.ceil(CONFIG.WORLD_HEIGHT / tileSize)
+    const cols = Math.ceil(CONFIG.WORLD_WIDTH / tileSize)
 
     const rng = (x: number, y: number, salt: number) => {
       const n = Math.sin(x * 127.1 + y * 311.7 + salt * 42) * 43758.5453
       return n - Math.floor(n)
     }
 
-    // Ground_rocks (Tiled layout): 26 cols × 87 rows, 16x16 tiles
     const FILL_LIGHT = [54, 253, 256, 433]
     const FILL_VARIED = [235, 239, 339, 342, 345]
-
-    const cols = Math.ceil(CONFIG.WORLD_WIDTH / tileSize)
-    const rows = Math.ceil(CONFIG.WORLD_HEIGHT / tileSize)
 
     // Grey background instead of black void
     this.add.rectangle(
@@ -154,16 +115,13 @@ export class UndeadMapScene extends GameScene {
       0x2a2a3a
     ).setDepth(-1)
 
-    for (let r = 0; r < rows; r++) {
+    for (let r = 0; r < totalRows; r++) {
       for (let c = 0; c < cols; c++) {
         const px = c * tileSize + tileSize / 2
         const py = r * tileSize + tileSize / 2
-
         if (!this.isOnGround(px, py)) continue
 
         const rand = rng(c, r, 3)
-
-        // All islands use the same grey ground — no dark zones
         const frame = rand < 0.2
           ? FILL_VARIED[Math.floor(rng(c, r, 7) * FILL_VARIED.length)]
           : FILL_LIGHT[Math.floor(rng(c, r, 7) * FILL_LIGHT.length)]

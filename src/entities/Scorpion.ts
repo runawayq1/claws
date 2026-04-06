@@ -28,7 +28,9 @@ export class FlyingEye extends BaseEnemy {
     this.walkAnim = 'flyingeye_walk'
     this.attackAnim = 'flyingeye_run'
 
-    this.setScale(1.4)
+    this.setScale(1.12)
+    this.baseTint = 0xddccaa
+    this.setTint(this.baseTint)
     this.setBodySize(32, 32)
     this.setOffset(59, 59)
     this.setDepth(6)

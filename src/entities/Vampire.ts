@@ -25,7 +25,9 @@ export class Vampire extends BaseEnemy {
     this.walkAnim = 'vampire_run'
     this.attackAnim = 'vampire_attack'
 
-    this.setScale(2.5)
+    this.setScale(2.0)
+    this.baseTint = 0xddccaa
+    this.setTint(this.baseTint)
     this.setBodySize(14, 20)
     this.setOffset(9, 10)
     this.setDepth(5)

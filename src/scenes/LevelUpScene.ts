@@ -22,6 +22,7 @@ export class LevelUpScene extends Phaser.Scene {
   private player!: Player
   private tracker!: UpgradeTracker
   private callerSceneKey!: string
+  private picked = false
 
   constructor() {
     super({ key: 'LevelUpScene' })
@@ -31,6 +32,7 @@ export class LevelUpScene extends Phaser.Scene {
     this.player = data.player
     this.tracker = data.tracker
     this.callerSceneKey = data.callerSceneKey ?? 'GameScene'
+    this.picked = false
     const { width, height } = this.scale
     const isBranch = this.tracker.isBranchSelection
 
@@ -233,7 +235,9 @@ export class LevelUpScene extends Phaser.Scene {
 
     // Click
     zone.on('pointerdown', () => {
-      zone.disableInteractive()
+      if (this.picked) return
+      this.picked = true
+      this.input.enabled = false
       upgrade.apply(this.player)
       this.tracker.pick(upgrade)
       if (upgrade.branch && !this.player.chosenBranch) this.player.chosenBranch = upgrade.branch
@@ -281,8 +285,8 @@ export class LevelUpScene extends Phaser.Scene {
       })
 
       this.time.delayedCall(400, () => {
-        this.scene.stop()
         this.scene.resume(this.callerSceneKey)
+        this.scene.stop()
       })
     })
 
@@ -489,7 +493,9 @@ export class LevelUpScene extends Phaser.Scene {
 
     // ── Click: apply + particles + flash + fly icon + resume ─────────────
     zone.on('pointerdown', () => {
-      zone.disableInteractive()
+      if (this.picked) return
+      this.picked = true
+      this.input.enabled = false
       upgrade.apply(this.player)
       this.tracker.pick(upgrade)
       if (upgrade.branch && !this.player.chosenBranch) this.player.chosenBranch = upgrade.branch
@@ -547,8 +553,8 @@ export class LevelUpScene extends Phaser.Scene {
 
       // Brief delay then resume
       this.time.delayedCall(350, () => {
-        this.scene.stop()
         this.scene.resume(this.callerSceneKey)
+        this.scene.stop()
       })
     })
 

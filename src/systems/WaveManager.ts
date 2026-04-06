@@ -79,49 +79,47 @@ export class WaveManager {
     const tier = this.currentWave
 
     // Pick enemy type based on zone (distance from world center)
-    // Zone 0 — Crossroads: only Skeleton
-    // Zone 1 — Meadow:     Skeleton 70%, Goblin 30%
-    // Zone 2 — Ruins:      Skeleton 40%, Goblin 30%, FlyingEye 20%, SandGolem 10%
-    // Zone 3 — Dark Forest: Goblin 30%, FlyingEye 30%, SandGolem 25%, Skeleton 15%
-    // Zone 4 — Wastes:     SandGolem 40%, FlyingEye 30%, Goblin 20%, Skeleton 10%
+    // Zone 0 — Crossroads: Orc1 60%, Orc2 40% (goblin swarm)
+    // Zone 1 — Meadow:     Orc1 50%, Orc2 30%, Orc3 20%
+    // Zone 2 — Ruins:      Orc1 30%, Orc2 20%, Orc3 15%, FlyingEye 20%, BigOrc 15%
+    // Zone 3 — Dark Forest: Orc1 20%, Orc3 20%, FlyingEye 20%, BigOrc 15%, Vampire 15%, Orc2 10%
+    // Zone 4 — Wastes:     BigOrc 25%, Vampire 25%, Orc3 20%, FlyingEye 20%, Orc1 10%
     const zone: number = (this.scene as any).getZone(x, y)
     const roll = Math.random()
     let mob: Orc1 | Orc2 | Orc3 | FlyingEye | SandGolem | Vampire
 
-    // Zone 0 — Crossroads: only Orc2
-    // Zone 1 — Meadow:     Orc2 70%, Orc1 30%
-    // Zone 2 — Ruins:      Orc2 40%, Orc1 30%, FlyingEye 20%, SandGolem 10%, Orc3 15%
-    // Zone 3 — Dark Forest: Orc1 30%, FlyingEye 30%, SandGolem 25%, Orc3 30%, Vampire 15%
-    // Zone 4 — Wastes:     SandGolem 40%, FlyingEye 30%, Orc1 20%, Orc3 35%, Vampire 20%
     if (zone <= 0) {
-      mob = new Orc2(this.scene, x, y, this.player, tier)
-    } else if (zone === 1) {
-      mob = roll < 0.30
+      // Zone 0 — Crossroads: goblin swarm
+      mob = roll < 0.60
         ? new Orc1(this.scene, x, y, this.player, tier)
         : new Orc2(this.scene, x, y, this.player, tier)
+    } else if (zone === 1) {
+      // Zone 1 — Meadow: mostly goblins + Orc3
+      if (roll < 0.50) mob = new Orc1(this.scene, x, y, this.player, tier)
+      else if (roll < 0.80) mob = new Orc2(this.scene, x, y, this.player, tier)
+      else mob = new Orc3(this.scene, x, y, this.player, tier)
     } else if (zone === 2) {
-      // Zone 2 — Ruins: Orc3 appears
-      if (roll < 0.10) mob = new SandGolem(this.scene, x, y, this.player, tier)
-      else if (roll < 0.25) mob = new Orc3(this.scene, x, y, this.player, tier)
-      else if (roll < 0.40) mob = new FlyingEye(this.scene, x, y, this.player, tier)
-      else if (roll < 0.65) mob = new Orc1(this.scene, x, y, this.player, tier)
+      // Zone 2 — Ruins: mixed, BigOrc + FlyingEye appear
+      if (roll < 0.15) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.35) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      else if (roll < 0.50) mob = new Orc3(this.scene, x, y, this.player, tier)
+      else if (roll < 0.80) mob = new Orc1(this.scene, x, y, this.player, tier)
       else mob = new Orc2(this.scene, x, y, this.player, tier)
     } else if (zone === 3) {
-      // Zone 3 — Dark Forest: Orc3 + Vampire appear
+      // Zone 3 — Dark Forest: Vampire + BigOrc + heavy mix
       if (roll < 0.15) mob = new Vampire(this.scene, x, y, this.player, tier)
-      else if (roll < 0.30) mob = new Orc3(this.scene, x, y, this.player, tier)
-      else if (roll < 0.50) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.30) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.50) mob = new Orc3(this.scene, x, y, this.player, tier)
       else if (roll < 0.70) mob = new FlyingEye(this.scene, x, y, this.player, tier)
       else if (roll < 0.85) mob = new Orc1(this.scene, x, y, this.player, tier)
       else mob = new Orc2(this.scene, x, y, this.player, tier)
     } else {
-      // Zone 4 — Wastes: high Vampire + Orc3 density
-      if (roll < 0.20) mob = new Vampire(this.scene, x, y, this.player, tier)
-      else if (roll < 0.35) mob = new Orc3(this.scene, x, y, this.player, tier)
-      else if (roll < 0.55) mob = new SandGolem(this.scene, x, y, this.player, tier)
-      else if (roll < 0.75) mob = new FlyingEye(this.scene, x, y, this.player, tier)
-      else if (roll < 0.90) mob = new Orc1(this.scene, x, y, this.player, tier)
-      else mob = new Orc2(this.scene, x, y, this.player, tier)
+      // Zone 4 — Wastes: heavy BigOrc + Vampire
+      if (roll < 0.25) mob = new Vampire(this.scene, x, y, this.player, tier)
+      else if (roll < 0.50) mob = new SandGolem(this.scene, x, y, this.player, tier)
+      else if (roll < 0.70) mob = new Orc3(this.scene, x, y, this.player, tier)
+      else if (roll < 0.90) mob = new FlyingEye(this.scene, x, y, this.player, tier)
+      else mob = new Orc1(this.scene, x, y, this.player, tier)
     }
 
     this.enemies.add(mob)

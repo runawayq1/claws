@@ -21,7 +21,7 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   physics: {
     default: 'arcade',
-    arcade: { gravity: { x: 0, y: 0 }, debug: false },
+    arcade: { gravity: { x: 0, y: 0 }, debug: true },
   },
   scene: [StartScene, LoadingScene, TestScene, BossTestScene, GameScene, UndeadMapScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene],
   scale: {
@@ -34,7 +34,8 @@ const config: Phaser.Types.Core.GameConfig = {
   },
 }
 
-const game = new Phaser.Game(config)
+const game = new Phaser.Game(config);
+(window as any).__PHASER_GAME__ = game
 
 // Try to lock orientation to landscape on mobile
 try {

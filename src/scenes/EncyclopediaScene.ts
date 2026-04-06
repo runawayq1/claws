@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { HERO_BRANCHES, GENERIC_POOL } from '../systems/UpgradeSystem'
+import { HERO_BRANCHES, GENERIC_POOL, getIconFrame } from '../systems/UpgradeSystem'
 
 // ============================================================
 // localStorage helpers
@@ -217,6 +217,9 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.load.image('book_content',  'assets/book/book_content.png')
     this.load.spritesheet('book_icons',     'assets/book/Icons.png',      { frameWidth: 32, frameHeight: 32 })
     this.load.spritesheet('book_sells',     'assets/book/sells_full.png', { frameWidth: 32, frameHeight: 24 })
+    if (!this.textures.exists('skill_icons')) {
+      this.load.spritesheet('skill_icons', 'assets/icons/skill_icons_sheet.png', { frameWidth: 128, frameHeight: 128 })
+    }
     this.load.spritesheet('book_bookmarks', 'assets/book/bookmarks.png',  { frameWidth: 32, frameHeight: 28 })
 
     // Hero idle spritesheets — reuse StartScene texture keys (already loaded)
@@ -452,6 +455,9 @@ export class EncyclopediaScene extends Phaser.Scene {
     closeBtn.on('pointerover', () => closeBtn.setColor('#ffffff'))
     closeBtn.on('pointerout',  () => closeBtn.setColor('#d4b483'))
     closeBtn.on('pointerdown', () => this.scene.start('StartScene'))
+
+    // ESC key to go back
+    this.input.keyboard?.on('keydown-ESC', () => this.scene.start('StartScene'))
 
     // Bookmark tabs on left edge — use active/inactive frames
     this.bookmarkSprites = []
@@ -872,9 +878,10 @@ export class EncyclopediaScene extends Phaser.Scene {
       const branchUnlocked = this.encData.branches.includes(branch.name)
 
       // Small branch icon — use the first skill's icon frame for the branch
-      if (this.textures.exists('book_icons')) {
+      const lorIconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
+      if (this.textures.exists(lorIconTex)) {
         const iconFrame = branchIconFrame(heroType, i, 0)
-        const branchIcon = this.add.image(px + 16, bY + 9, 'book_icons', iconFrame)
+        const branchIcon = this.add.image(px + 16, bY + 9, lorIconTex, iconFrame)
           .setDisplaySize(14, 14)
           .setOrigin(0.5)
           .setAlpha(branchUnlocked ? 0.9 : 0.3)
@@ -944,8 +951,9 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Small icon + name on one line — use first skill's icon for tab
       const iconFrame = branchIconFrame(heroType, bi, 0)
-      if (this.textures.exists('book_icons')) {
-        const iconImg = this.add.image(tabX + 10, tabY + tabH / 2 + (isActive ? 0 : 1), 'book_icons', iconFrame)
+      const tabIconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
+      if (this.textures.exists(tabIconTex)) {
+        const iconImg = this.add.image(tabX + 10, tabY + tabH / 2 + (isActive ? 0 : 1), tabIconTex, iconFrame)
           .setDisplaySize(isActive ? 18 : 14, isActive ? 18 : 14).setOrigin(0.5)
         if (!isActive) iconImg.setAlpha(0.5)
         this.rightContainer.add(iconImg)
@@ -1020,9 +1028,9 @@ export class EncyclopediaScene extends Phaser.Scene {
     const gridStartY = divY + 8
     const numSkills = activeBranch.upgrades.length
     // Layout: all skills in a single row (up to 5 fit fine)
-    const cellDisplayW = 36
-    const cellDisplayH = 28
-    const cellGap = 6
+    const cellDisplayW = 48
+    const cellDisplayH = 48
+    const cellGap = 8
     const gridTotalW = numSkills * cellDisplayW + (numSkills - 1) * cellGap
     const gridStartX = px + (pw - gridTotalW) / 2
 
@@ -1050,28 +1058,31 @@ export class EncyclopediaScene extends Phaser.Scene {
         this.rightContainer.add(slot)
       }
 
-      // Selection highlight ring
+      // Selection highlight — subtle glow behind the slot
       if (isSelectedSkill) {
         const ringG = this.add.graphics()
-        ringG.lineStyle(2, activeBranch.color, 0.9)
-        ringG.strokeRect(cellX - 1, gridStartY - 1, cellDisplayW + 2, cellDisplayH + 2)
+        ringG.fillStyle(activeBranch.color, 0.15)
+        ringG.fillCircle(cellCX, cellCY, cellDisplayW / 2 + 6)
+        ringG.lineStyle(1.5, activeBranch.color, 0.8)
+        ringG.strokeCircle(cellCX, cellCY, cellDisplayW / 2 + 3)
         this.rightContainer.add(ringG)
       }
 
       // Skill icon or lock symbol
-      if (unlocked && this.textures.exists('book_icons')) {
-        const iconImg = this.add.image(cellCX, cellCY - 2, 'book_icons', iconFrame)
-          .setDisplaySize(18, 18).setOrigin(0.5).setDepth(1)
+      const gridIconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
+      if (unlocked && this.textures.exists(gridIconTex)) {
+        const iconImg = this.add.image(cellCX, cellCY - 2, gridIconTex, iconFrame)
+          .setDisplaySize(38, 38).setOrigin(0.5).setDepth(1)
         this.rightContainer.add(iconImg)
       } else if (!unlocked) {
         // Grey locked slot with '?' text
         this.rightContainer.add(this.add.text(cellCX, cellCY - 2, '?', {
-          fontFamily: 'monospace', fontSize: '12px', color: '#665544',
+          fontFamily: 'monospace', fontSize: '16px', color: '#665544',
         }).setOrigin(0.5).setAlpha(0.6))
       }
 
       // Skill index number below icon (1-based) as tiny label
-      this.rightContainer.add(this.add.text(cellCX, gridStartY + cellDisplayH - 7, `${ui + 1}`, {
+      this.rightContainer.add(this.add.text(cellCX, gridStartY + cellDisplayH - 4, `${ui + 1}`, {
         fontFamily: 'monospace', fontSize: '7px',
         color: unlocked ? branchColorHex : '#554433',
       }).setOrigin(0.5, 1).setAlpha(0.75))
@@ -1102,7 +1113,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       const cardX = px + 8
       const cardH = ph - (cardStartY - py) - 34  // leave room for nav
 
-      // Card background using info_tileset page frame (y=89-165, 113x77px)
+      // Card background
       const cardBgG = this.add.graphics()
       cardBgG.fillStyle(0xc8a97a, 0.22)
       cardBgG.fillRoundedRect(cardX, cardStartY, cardW, cardH, 4)
@@ -1110,7 +1121,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       cardBgG.strokeRoundedRect(cardX, cardStartY, cardW, cardH, 4)
       this.rightContainer.add(cardBgG)
 
-      // Page frame texture overlay (info_tileset y=89 large frame)
+      // Page frame texture overlay
       if (this.textures.exists('book_tileset')) {
         const frameOverlay = this.add.image(cardX, cardStartY, 'book_tileset')
           .setOrigin(0, 0)
@@ -1121,61 +1132,65 @@ export class EncyclopediaScene extends Phaser.Scene {
         this.rightContainer.add(frameOverlay)
       }
 
-      // Large skill icon top-left of card
-      const iconDisplaySize = 28
-      const iconX = cardX + 10 + iconDisplaySize / 2
-      const iconY = cardStartY + 10 + iconDisplaySize / 2
+      // ── Large centered icon with decorative frame ──
+      const iconSize = 104
+      const iconCX = cardX + cardW / 2
+      const iconCY = cardStartY + 8 + iconSize / 2
+      const detailIconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
 
+      // Slot frame behind icon
       if (this.textures.exists('book_sells')) {
-        const iconSlot = this.add.image(iconX, iconY, 'book_sells', unlocked ? 3 : 6)
-          .setDisplaySize(iconDisplaySize + 8, iconDisplaySize + 6)
+        const iconSlot = this.add.image(iconCX, iconCY, 'book_sells', unlocked ? 3 : 6)
+          .setDisplaySize(iconSize + 10, iconSize + 6)
           .setTint(unlocked ? activeBranch.color : 0x443322)
           .setAlpha(unlocked ? 0.55 : 0.4)
           .setOrigin(0.5)
         this.rightContainer.add(iconSlot)
       }
 
-      if (unlocked && this.textures.exists('book_icons')) {
-        const bigIcon = this.add.image(iconX, iconY, 'book_icons', iconFrame)
-          .setDisplaySize(iconDisplaySize, iconDisplaySize).setOrigin(0.5).setDepth(2)
+      if (unlocked && this.textures.exists(detailIconTex)) {
+        const bigIcon = this.add.image(iconCX, iconCY, detailIconTex, iconFrame)
+          .setDisplaySize(iconSize, iconSize).setOrigin(0.5).setDepth(2)
         this.rightContainer.add(bigIcon)
       } else if (!unlocked) {
-        this.rightContainer.add(this.add.text(iconX, iconY, '?', {
-          fontFamily: 'monospace', fontSize: '18px', color: '#665544',
+        this.rightContainer.add(this.add.text(iconCX, iconCY, '?', {
+          fontFamily: 'monospace', fontSize: '28px', color: '#665544',
         }).setOrigin(0.5).setAlpha(0.6))
       }
 
-      // Skill name (right of icon)
-      const nameX = cardX + 10 + iconDisplaySize + 8
-      const nameW = cardW - iconDisplaySize - 24
-      this.rightContainer.add(this.add.text(nameX, cardStartY + 8, skill.label, {
+      // ── Skill name centered below icon ──
+      const nameY = iconCY + iconSize / 2 + 10
+      this.rightContainer.add(this.add.text(iconCX, nameY, skill.label, {
         fontFamily: 'monospace', fontSize: '11px',
         color: unlocked ? branchColorHex : '#887766',
-      }).setOrigin(0, 0))
+        stroke: '#c8a97a', strokeThickness: 2,
+      }).setOrigin(0.5, 0))
 
-      // Branch tag below name
-      this.rightContainer.add(this.add.text(nameX, cardStartY + 22, activeBranch.name, {
+      // Branch tag
+      this.rightContainer.add(this.add.text(iconCX, nameY + 14, activeBranch.name, {
         fontFamily: 'monospace', fontSize: '8px', color: '#998866',
-      }).setOrigin(0, 0))
+      }).setOrigin(0.5, 0))
 
-      // Divider under header row
-      const cardDivY = cardStartY + iconDisplaySize + 16
+      // Divider
+      const cardDivY = nameY + 28
       const cdivG = this.add.graphics()
       cdivG.lineStyle(0.5, activeBranch.color, 0.3)
-      cdivG.lineBetween(cardX + 6, cardDivY, cardX + cardW - 6, cardDivY)
+      cdivG.lineBetween(cardX + 12, cardDivY, cardX + cardW - 12, cardDivY)
       this.rightContainer.add(cdivG)
 
       // Description text
       if (unlocked) {
-        this.rightContainer.add(this.add.text(cardX + 10, cardDivY + 6, skill.desc, {
+        this.rightContainer.add(this.add.text(cardX + cardW / 2, cardDivY + 8, skill.desc, {
           fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
-          wordWrap: { width: nameW + iconDisplaySize + 4 }, lineSpacing: 3,
-        }).setOrigin(0, 0))
+          wordWrap: { width: cardW - 24 }, lineSpacing: 3,
+          align: 'center',
+        }).setOrigin(0.5, 0))
       } else {
-        this.rightContainer.add(this.add.text(cardX + 10, cardDivY + 6, 'Undiscovered ability.\nDefeat enemies to reveal this skill.', {
+        this.rightContainer.add(this.add.text(cardX + cardW / 2, cardDivY + 8, 'Undiscovered ability.\nDefeat enemies to reveal this skill.', {
           fontFamily: 'monospace', fontSize: '9px', color: '#998866',
-          fontStyle: 'italic', wordWrap: { width: cardW - 20 }, lineSpacing: 3,
-        }).setOrigin(0, 0))
+          fontStyle: 'italic', wordWrap: { width: cardW - 24 }, lineSpacing: 3,
+          align: 'center',
+        }).setOrigin(0.5, 0))
       }
 
       // Skill number badge (bottom-right of card)
@@ -1217,7 +1232,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     GENERIC_POOL.forEach((upgrade, i) => {
       const rowY = py + 40 + i * rowH
       const unlocked = this.encData.upgrades.includes(upgrade.id)
-      const iconFrame = (54 + i) % 90  // generic icons from row 6+
+      const iconFrame = this.textures.exists('skill_icons') ? getIconFrame(upgrade.icon) : ((54 + i) % 90)
 
       // Row background — alternating sell slot frames
       if (this.textures.exists('book_sells')) {
@@ -1232,9 +1247,10 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       if (unlocked) {
         // Skill icon
-        if (this.textures.exists('book_icons')) {
-          const icon = this.add.image(px + 14, rowY + rowH / 2, 'book_icons', iconFrame)
-            .setDisplaySize(12, 12)
+        const genIconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
+        if (this.textures.exists(genIconTex)) {
+          const icon = this.add.image(px + 14, rowY + rowH / 2, genIconTex, iconFrame)
+            .setDisplaySize(14, 14)
             .setOrigin(0.5)
           this.rightContainer.add(icon)
         }

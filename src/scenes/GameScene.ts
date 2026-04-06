@@ -31,164 +31,12 @@ export class GameScene extends Phaser.Scene {
   private gameOver = false
   private selectedHero: HeroType = 'ignara'
   protected terrainRT!: Phaser.GameObjects.RenderTexture
-  private terrainTmpTile!: Phaser.GameObjects.Image | null
 
   constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
     super(config ?? { key: 'GameScene' })
   }
 
-  preload() {
-    const ss = (key: string, path: string, fw: number, fh: number) => {
-      if (!this.textures.exists(key)) {
-        this.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
-      }
-    }
-    const img = (key: string, path: string) => {
-      if (!this.textures.exists(key)) {
-        this.load.image(key, path)
-      }
-    }
-
-    // Monster enemy spritesheets (150x150 frames, side-view — mushroom/flyingeye still used by SandGolem/FlyingEye)
-    ss('mushroom_attack', 'assets/mushroom/Attack3.png', 150, 150)
-    ss('flyingeye_attack', 'assets/flying_eye/Attack3.png', 150, 150)
-
-    // Orc enemies (64x64 top-down, 4 directional rows — we use row 0)
-    ss('orc1_idle',   'assets/orc/orc1_idle_without_shadow.png',   64, 64)
-    ss('orc1_run',    'assets/orc/orc1_run_without_shadow.png',    64, 64)
-    ss('orc1_attack', 'assets/orc/orc1_attack_without_shadow.png', 64, 64)
-    ss('orc1_hurt',   'assets/orc/orc1_hurt_without_shadow.png',   64, 64)
-    ss('orc1_death',  'assets/orc/orc1_death_without_shadow.png',  64, 64)
-
-    ss('orc2_idle',   'assets/orc2/orc2_idle_without_shadow.png',   64, 64)
-    ss('orc2_run',    'assets/orc2/orc2_run_without_shadow.png',    64, 64)
-    ss('orc2_attack', 'assets/orc2/orc2_attack_without_shadow.png', 64, 64)
-    ss('orc2_hurt',   'assets/orc2/orc2_hurt_without_shadow.png',   64, 64)
-    ss('orc2_death',  'assets/orc2/orc2_death_without_shadow.png',  64, 64)
-
-    ss('orc3_idle',   'assets/orc3/orc3_idle_without_shadow.png',   64, 64)
-    ss('orc3_run',    'assets/orc3/orc3_run_without_shadow.png',    64, 64)
-    ss('orc3_attack', 'assets/orc3/orc3_attack_without_shadow.png', 64, 64)
-    ss('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   64, 64)
-    ss('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  64, 64)
-
-    // Load only the selected hero's spritesheets (not all 7)
-    const hero = (this.scene.settings.data as any)?.hero || 'ignara'
-    this.loadHeroAssets(hero)
-
-    // (Skeleton2 removed — replaced by Orc3 above)
-
-    // Vampire enemy (32x32 frames)
-    ss('vampire_idle',   'assets/vampire/idle.png',   32, 32)
-    ss('vampire_run',    'assets/vampire/run.png',    32, 32)
-    ss('vampire_attack', 'assets/vampire/attack.png', 32, 32)
-    ss('vampire_hurt',   'assets/vampire/hurt.png',   32, 32)
-    ss('vampire_death',  'assets/vampire/death.png',  32, 32)
-
-    // Boss demon slime (288x160 frames, 22 cols x 5 rows)
-    ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
-
-    // VFX spritesheets
-    ss('vfx_flame', 'assets/vfx/flamethrower_sheet.png', 64, 24)
-
-    // Skill icons spritesheet (128x128 per icon, 10 columns, 10 rows = 100 icons)
-    ss('skill_icons', 'assets/icons/skill_icons_sheet.png', 128, 128)
-
-    // Rock images
-    img('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
-    img('rock1_2', 'assets/rocks/Rock1_2_no_shadow.png')
-    img('rock2_1', 'assets/rocks/Rock2_1_no_shadow.png')
-    img('rock2_2', 'assets/rocks/Rock2_2_no_shadow.png')
-    img('rock3_1', 'assets/rocks/Rock3_1_no_shadow.png')
-    img('rock3_2', 'assets/rocks/Rock3_2_no_shadow.png')
-
-    // Terrain tilesets
-    ss('terrain_grass', 'assets/terrain/TX Tileset Grass.png', 32, 32)
-    ss('terrain_stone', 'assets/terrain/TX Tileset Stone Ground.png', 32, 32)
-    img('deco_tree1', 'assets/terrain/tree1.png')
-    img('deco_tree2', 'assets/terrain/tree2.png')
-    img('deco_tree3', 'assets/terrain/tree3.png')
-
-    // Prop images for zone decorations (only files that exist in props/)
-    img('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
-    img('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
-  }
-
-  protected loadHeroAssets(hero: string) {
-    const ss = (key: string, path: string, fw: number, fh: number) => {
-      if (!this.textures.exists(key)) {
-        this.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
-      }
-    }
-    switch (hero) {
-      case 'ignara':
-        ss('ignara_idle', 'assets/ignara/Idle.png', 150, 150)
-        ss('ignara_run', 'assets/ignara/Move.png', 150, 150)
-        ss('ignara_attack', 'assets/ignara/Attack.png', 150, 150)
-        ss('ignara_hurt', 'assets/ignara/Take Hit.png', 150, 150)
-        ss('ignara_death', 'assets/ignara/Death.png', 150, 150)
-        break
-      case 'sifra':
-        ss('sifra_idle', 'assets/sifra/Idle.png', 231, 190)
-        ss('sifra_run', 'assets/sifra/Run.png', 231, 190)
-        ss('sifra_attack', 'assets/sifra/Attack1.png', 231, 190)
-        ss('sifra_attack2', 'assets/sifra/Attack2.png', 231, 190)
-        ss('sifra_hurt', 'assets/sifra/Hit.png', 231, 190)
-        ss('sifra_death', 'assets/sifra/Death.png', 231, 190)
-        break
-      case 'nazar':
-        ss('nazar_idle', 'assets/nazar/Idle.png', 200, 200)
-        ss('nazar_run', 'assets/nazar/Run.png', 200, 200)
-        ss('nazar_attack', 'assets/nazar/Attack1.png', 200, 200)
-        ss('nazar_attack2', 'assets/nazar/Attack2.png', 200, 200)
-        ss('nazar_hurt', 'assets/nazar/Take Hit.png', 200, 200)
-        ss('nazar_death', 'assets/nazar/Death.png', 200, 200)
-        break
-      case 'amun':
-        ss('amun_idle', 'assets/amun/Idle.png', 160, 111)
-        ss('amun_run', 'assets/amun/Run.png', 160, 111)
-        ss('amun_attack', 'assets/amun/Attack1.png', 160, 111)
-        ss('amun_attack2', 'assets/amun/Attack2.png', 160, 111)
-        ss('amun_attack3', 'assets/amun/Attack3.png', 160, 111)
-        ss('amun_hurt', 'assets/amun/Take Hit.png', 160, 111)
-        ss('amun_death', 'assets/amun/Death.png', 160, 111)
-        break
-      case 'huntress':
-        ss('huntress_idle', 'assets/lyra/Idle.png', 150, 150)
-        ss('huntress_run', 'assets/lyra/Run.png', 150, 150)
-        ss('huntress_attack', 'assets/lyra/Attack1.png', 150, 150)
-        ss('huntress_attack2', 'assets/lyra/Attack2.png', 150, 150)
-        ss('huntress_ranged', 'assets/lyra/Attack3.png', 150, 150)
-        ss('huntress_hurt', 'assets/lyra/Take hit.png', 150, 150)
-        ss('huntress_death', 'assets/lyra/Death.png', 150, 150)
-        break
-      case 'khashin':
-        ss('khashin_idle', 'assets/khashin/Idle.png', 288, 128)
-        ss('khashin_run', 'assets/khashin/Run.png', 288, 128)
-        ss('khashin_attack', 'assets/khashin/Attack.png', 288, 128)
-        ss('khashin_air_attack', 'assets/khashin/Air_attack.png', 288, 128)
-        ss('khashin_special', 'assets/khashin/Special.png', 288, 128)
-        ss('khashin_hurt', 'assets/khashin/Take_hit.png', 288, 128)
-        ss('khashin_death', 'assets/khashin/Death.png', 288, 128)
-        break
-      case 'muller':
-        ss('muller_idle', 'assets/givi/Idle.png', 288, 128)
-        ss('muller_run', 'assets/givi/Run.png', 288, 128)
-        ss('muller_attack', 'assets/givi/Attack.png', 288, 128)
-        ss('muller_ground_slam', 'assets/givi/Ground_slam.png', 288, 128)
-        ss('muller_special', 'assets/givi/Special.png', 288, 128)
-        ss('muller_hurt', 'assets/givi/Take_hit.png', 288, 128)
-        ss('muller_death', 'assets/givi/Death.png', 288, 128)
-        // Crystal VFX sprites
-        ss('crystal_green_0', 'assets/givi/crystal_green_0.png', 75, 78)
-        ss('crystal_green_1', 'assets/givi/crystal_green_1.png', 65, 41)
-        ss('crystal_pink_0', 'assets/givi/crystal_pink_0.png', 63, 61)
-        ss('crystal_pink_1', 'assets/givi/crystal_pink_1.png', 30, 21)
-        ss('crystal_blue_0', 'assets/givi/crystal_blue_0.png', 54, 51)
-        ss('crystal_blue_1', 'assets/givi/crystal_blue_1.png', 43, 27)
-        break
-    }
-  }
+  // No preload() — all assets loaded by LoadingScene
 
   create(data?: { hero?: HeroType }) {
     this.gameOver = false
@@ -213,7 +61,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
     this.rocks = this.physics.add.staticGroup()
 
-    // Terrain: fill base color instantly, defer all chunk drawing
+    // Terrain: fill base color instantly, draw tiles progressively
     this.terrainRT = this.add.renderTexture(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT).setOrigin(0).setDepth(0)
     this.terrainRT.fill(0x4a7c3f)
 
@@ -226,20 +74,12 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
     this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
 
-    // ── Pack 2: Next frame — mid-range terrain + decorations ──
-    this.time.delayedCall(1, () => {
-      this.drawTerrainChunk(1)
-      this.scatterDecorations(0, 1800)
-      this.scatterRocks(0, 1800)
-
-      // ── Pack 3: Deferred — far terrain + outer decorations ──
-      this.time.delayedCall(1, () => {
-        this.drawTerrainChunk(2)
-        this.generateGraveTextures()
-        this.scatterDecorations(1800, Infinity)
-        this.scatterRocks(1800, Infinity)
-      })
-    })
+    // Draw all terrain, decorations, rocks in one pass — then signal ready
+    this.drawTerrainProgressive()
+    this.scatterDecorations(0, Infinity)
+    this.scatterRocks(0, Infinity)
+    this.generateGraveTextures()
+    this.events.emit('terrain-ready')
 
     // Enemies group
     this.enemies = this.physics.add.group({ runChildUpdate: false })
@@ -480,38 +320,24 @@ export class GameScene extends Phaser.Scene {
     return 4
   }
 
-  // Draw terrain in chunks: 0=center(~800px), 1=mid(800-1600px), 2=outer(rest)
-  protected drawTerrainChunk(pack: number) {
+  /** Draw all terrain tiles synchronously onto the RenderTexture */
+  protected drawTerrainProgressive() {
     const tileSize = CONFIG.TILE_SIZE
-    const cx = CONFIG.WORLD_WIDTH / 2
-    const cy = CONFIG.WORLD_HEIGHT / 2
+    const totalRows = Math.ceil(CONFIG.WORLD_HEIGHT / tileSize)
+    const cols = Math.ceil(CONFIG.WORLD_WIDTH / tileSize)
+    const GRASS_FRAMES = [4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 23, 28, 29, 30, 31]
 
     const rng = (x: number, y: number, salt: number) => {
       const n = Math.sin(x * 127.1 + y * 311.7 + salt * 42) * 43758.5453
       return n - Math.floor(n)
     }
 
-    const GRASS_FRAMES = [4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 23, 28, 29, 30, 31]
+    const tmpTile = this.add.image(0, 0, 'terrain_grass', 0).setScale(2).setVisible(false)
 
-    const cols = Math.ceil(CONFIG.WORLD_WIDTH / tileSize)
-    const rows = Math.ceil(CONFIG.WORLD_HEIGHT / tileSize)
-
-    // Distance ranges per pack (pack 0 skipped — base fill covers it)
-    const ranges: [number, number][] = [[0, 0], [0, 1600], [1600, Infinity]]
-    const [minDist, maxDist] = ranges[pack]
-
-    if (!this.terrainTmpTile) {
-      this.terrainTmpTile = this.add.image(0, 0, 'terrain_grass', 0).setScale(2).setVisible(false)
-    }
-    const tmpTile = this.terrainTmpTile
-
-    for (let r = 0; r < rows; r++) {
+    for (let r = 0; r < totalRows; r++) {
       for (let c = 0; c < cols; c++) {
         const px = c * tileSize + tileSize / 2
         const py = r * tileSize + tileSize / 2
-        const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2)
-        if (dist < minDist || dist >= maxDist) continue
-
         const zone = this.getZone(px, py)
         const rand = rng(c, r, 3)
         const grassFrame = GRASS_FRAMES[Math.floor(rand * GRASS_FRAMES.length)]
@@ -525,11 +351,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Destroy temp tile after last pack
-    if (pack === 2 && this.terrainTmpTile) {
-      this.terrainTmpTile.destroy()
-      this.terrainTmpTile = null
-    }
+    tmpTile.destroy()
   }
 
   protected treePositions: { x: number; y: number }[] = []
@@ -577,7 +399,7 @@ export class GameScene extends Phaser.Scene {
         this._rockPlaced.push({ x, y })
         const key = ROCK_KEYS[Phaser.Math.Between(0, ROCK_KEYS.length - 1)]
         const rock = this.rocks.create(x, y, key) as Phaser.Physics.Arcade.Sprite
-        rock.setDepth(2).setScale(Phaser.Math.FloatBetween(0.6, 1.2))
+        rock.setDepth(2).setScale(Phaser.Math.FloatBetween(0.9, 1.8))
         rock.refreshBody()
         const body = rock.body as Phaser.Physics.Arcade.StaticBody
         const dw = rock.displayWidth, dh = rock.displayHeight, sc = rock.scaleX
@@ -1200,25 +1022,44 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private isChestPositionClear(x: number, y: number, minDist = 80): boolean {
+    // Check rocks
+    if (this._rockPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
+    // Check trees and decorations
+    if (this.treePositions.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
+    if (this._decoPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
+    return true
+  }
+
   private spawnChests() {
     const cx = CONFIG.WORLD_WIDTH / 2, cy = CONFIG.WORLD_HEIGHT / 2
+    const MAX_ATTEMPTS = 30
+
     // Common chests — scattered in mid-range
     for (let i = 0; i < 10; i++) {
-      const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.5
-      const dist = Phaser.Math.Between(400, 1200)
-      const x = cx + Math.cos(angle) * dist
-      const y = cy + Math.sin(angle) * dist
-      const chest = new Chest(this, x, y, 'common', this.player)
-      this.chests.add(chest)
+      for (let a = 0; a < MAX_ATTEMPTS; a++) {
+        const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.5
+        const dist = Phaser.Math.Between(400, 1200)
+        const x = cx + Math.cos(angle) * dist
+        const y = cy + Math.sin(angle) * dist
+        if (!this.isChestPositionClear(x, y)) continue
+        const chest = new Chest(this, x, y, 'common', this.player)
+        this.chests.add(chest)
+        break
+      }
     }
     // Rare chests — further out
     for (let i = 0; i < 3; i++) {
-      const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.3
-      const dist = Phaser.Math.Between(800, 1400)
-      const x = cx + Math.cos(angle) * dist
-      const y = cy + Math.sin(angle) * dist
-      const chest = new Chest(this, x, y, 'rare', this.player)
-      this.chests.add(chest)
+      for (let a = 0; a < MAX_ATTEMPTS; a++) {
+        const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.3
+        const dist = Phaser.Math.Between(800, 1400)
+        const x = cx + Math.cos(angle) * dist
+        const y = cy + Math.sin(angle) * dist
+        if (!this.isChestPositionClear(x, y)) continue
+        const chest = new Chest(this, x, y, 'rare', this.player)
+        this.chests.add(chest)
+        break
+      }
     }
   }
 }

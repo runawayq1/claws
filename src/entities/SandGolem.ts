@@ -2,13 +2,17 @@ import Phaser from 'phaser'
 import { Player } from './Player'
 import BaseEnemy from './BaseEnemy'
 
+/**
+ * BigOrc — large, tanky orc with ground slam.
+ * Uses orc1 spritesheet scaled up. Slow but high HP and AoE slam.
+ */
 export class SandGolem extends BaseEnemy {
   private lastSlamTime = 0
   private slamCooldown = 5000
   private slamRadius = 80
 
   constructor(scene: Phaser.Scene, x: number, y: number, player: Player, wave: number) {
-    super(scene, x, y, 'mushroom_attack', player)
+    super(scene, x, y, 'orc3_idle', player)
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
@@ -30,27 +34,46 @@ export class SandGolem extends BaseEnemy {
     this.dmgTextYOffset = -30
     this.flashTint = 0xddbb88
     this.flashDuration = 100
-    this.walkAnim = 'mushroom_walk'
-    this.attackAnim = 'mushroom_run'
+    this.walkAnim = 'orc3_run'
+    this.attackAnim = 'orc3_attack'
 
-    this.setScale(2.0)
-    this.setBodySize(32, 40)
-    this.setOffset(59, 65)
+    this.setScale(3.2)
+    this.baseTint = 0xcc4444
+    this.setTint(this.baseTint)
+    this.setBodySize(24, 24)
+    this.setOffset(20, 20)
     this.setDepth(5)
 
-    this.play('mushroom_walk')
+    this.play('orc3_run')
+
+    // Pulsing red glow aura
+    const glow = scene.add.circle(x, y, 40, 0xff3333, 0.2).setDepth(4)
+    scene.tweens.add({
+      targets: glow,
+      scale: { from: 1.0, to: 1.6 },
+      alpha: { from: 0.25, to: 0.05 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    })
+    // Follow the BigOrc
+    scene.events.on('update', () => {
+      if (!this.active) { glow.destroy(); return }
+      glow.setPosition(this.x, this.y)
+    })
+    this.once('destroy', () => glow.destroy())
   }
 
   protected onDeathVfx(onComplete: () => void): void {
-    this.play('mushroom_death')
-    this.once('animationcomplete-mushroom_death', () => {
-      // Spawn debris particles
+    this.play('orc3_death')
+    this.once('animationcomplete', () => {
       for (let i = 0; i < 5; i++) {
         const debris = this.scene.add.circle(
           this.x + Phaser.Math.Between(-20, 20),
           this.y + Phaser.Math.Between(-10, 10),
           Phaser.Math.Between(3, 6),
-          0x8b7355
+          0x8b4513
         ).setDepth(4)
         this.scene.tweens.add({
           targets: debris,
@@ -72,7 +95,7 @@ export class SandGolem extends BaseEnemy {
     this.lastSlamTime = time
 
     // Ground slam visual
-    const ring = this.scene.add.circle(this.x, this.y, 10, 0xaa8844, 0.5).setDepth(3)
+    const ring = this.scene.add.circle(this.x, this.y, 10, 0xaa4444, 0.5).setDepth(3)
     this.scene.tweens.add({
       targets: ring,
       scale: this.slamRadius / 10,
@@ -84,7 +107,6 @@ export class SandGolem extends BaseEnemy {
     // Damage player if in range
     if (dist <= this.slamRadius) {
       this.player.takeDamage(this.damagePerSecond * 2)
-      // Push player back
       const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y)
       const pBody = this.player.body as Phaser.Physics.Arcade.Body
       pBody.setVelocity(Math.cos(angle) * 250, Math.sin(angle) * 250)

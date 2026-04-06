@@ -30,7 +30,7 @@ Vampire Survivors-style top-down survival roguelite. Phaser 3.90 + Vite 8 + Type
 | Nazar | `nazar` | Fast melee / Poison puddles | sword ↔ venom (Q) |
 | Lyra | `huntress` | Piercing spear / Melee combo | spear ↔ melee (Q) |
 | Khashin | `khashin` | Sand Assassin | — |
-| Muller | `muller` | Crystal Golem | — |
+| Givi | `muller` | Crystal Gnome | — |
 
 Each hero has 3 upgrade branches × 5 skills + 10 shared generic upgrades.
 
@@ -101,7 +101,7 @@ All scale HP/speed/damage per wave tier (30s per tier).
 | 1 | Map loading delay after hero select | Medium | ~35 assets load synchronously in preload(). Solution researched: LoadingScene with progress bar |
 | 2 | Sifra Lightning icons are placeholders | Low | Uses Shatter branch icons (frames 45-49). Needs dedicated art |
 | 3 | boss_demon loads twice | Low | Loaded lazily in StartScene AND in GameScene.preload() without exists() guard |
-| 4 | Khashin/Muller combat skills not implemented | High | Hero classes exist, branch upgrades defined, but skill effects are stubs |
+| 4 | Khashin/Givi combat skills not implemented | High | Hero classes exist, branch upgrades defined, but skill effects are stubs |
 | 5 | Evil Wizard assets unused | Info | Returned to assets/ for future hero, no code references |
 | 6 | SandGolem uses mushroom sprite | Low | Visually a mushroom, named SandGolem in code |
 | 7 | debug: true in Phaser config | Low | `main.ts` — should disable for production |
@@ -113,7 +113,7 @@ All scale HP/speed/damage per wave tier (30s per tier).
 |---|------|----------|----------|
 | 1 | LoadingScene with progress bar between hero select and gameplay | Performance | High |
 | 2 | Khashin combat mechanics (Sand Assassin — dash, sand armor, mirage) | Gameplay | High |
-| 3 | Muller combat mechanics (Crystal Golem — shards, geode, pillars) | Gameplay | High |
+| 3 | Givi combat mechanics (Crystal Gnome — shards, geode, pillars) | Gameplay | High |
 | 4 | Generate icons for all heroes (prompts ready in icon-generation-prompts.md) | Art | Medium |
 | 5 | Evil Wizard → new hero (8th hero, assets ready) | Content | Medium |
 | 6 | Meta-progression currency system (design doc exists) | Systems | Medium |
@@ -169,6 +169,6 @@ Design docs (`docs/`):
 - `skill-descriptions-all-heroes.md` — narrative skill descriptions
 - `skill-levels-design.md` — skill level scaling design
 - `khashin-design.md` — Khashin hero design
-- `crystal-muller-design.md` — Muller hero design
+- `crystal-muller-design.md` — Givi (Crystal Gnome) hero design
 - `game-design-roadmap.md` — feature roadmap
 - `meta-progression-currency-design.md` — currency/meta design

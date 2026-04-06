@@ -25,7 +25,9 @@ export class Orc2 extends BaseEnemy {
     this.walkAnim = 'orc2_run'
     this.attackAnim = 'orc2_attack'
 
-    this.setScale(2.5)
+    this.setScale(2.0)
+    this.baseTint = 0xddccaa
+    this.setTint(this.baseTint)
     this.setBodySize(24, 24)
     this.setOffset(20, 20)
     this.setDepth(5)
