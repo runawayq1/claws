@@ -134,6 +134,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   speedBuffUntil = 0
   baseSpeedCache = 0
 
+  private _lastDmgVfxTime = 0
   private touchTarget: Phaser.Math.Vector2 | null = null
   private _shadow!: Phaser.GameObjects.Ellipse
   private lastAttackTime = 0
@@ -300,6 +301,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.armor = 0
 
     this.baseSpeed = this.speed
+    this.baseSpeedCache = this.speed
     if (sprCfg && hasSpr) {
       this.setScale(sprCfg.scale)
       this.baseScale = sprCfg.scale
@@ -983,7 +985,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   setTouchTarget(x: number, y: number) {
     if (this.isDead) return
-    this.touchTarget = new Phaser.Math.Vector2(x, y)
+    if (this.touchTarget) this.touchTarget.set(x, y)
+    else this.touchTarget = new Phaser.Math.Vector2(x, y)
   }
 
   clearTouchTarget() { this.touchTarget = null }
@@ -1114,46 +1117,53 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Hit flash + damage VFX
     if (reduced >= 1 && this.hasSprite) {
+      // Hurt anim on every hit
       this.playAnim('hurt')
       this.scene.time.delayedCall(300, () => {
         if (this.active && !this.isDead) this.currentAnim = '' // force re-eval
       })
 
-      // Floating damage number
-      const dmgText = this.scene.add.text(this.x, this.y - 20, `-${Math.ceil(reduced)}`, {
-        fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
-        stroke: '#000000', strokeThickness: 3,
-      }).setDepth(20).setOrigin(0.5)
-      this.scene.tweens.add({
-        targets: dmgText, y: dmgText.y - 30, alpha: 0,
-        duration: 600, ease: 'Power2',
-        onComplete: () => dmgText.destroy(),
-      })
+      // Rate-limit text/particles to 300ms debounce (like BaseEnemy)
+      const now = this.scene.time.now
+      if (now - this._lastDmgVfxTime > 300) {
+        this._lastDmgVfxTime = now
 
-      // Blood particles (procedural red dots)
-      const particleCount = Math.min(8, Math.ceil(reduced / 5))
-      for (let i = 0; i < particleCount; i++) {
-        const size = Phaser.Math.Between(2, 4)
-        const blood = this.scene.add.circle(
-          this.x, this.y,
-          size, 0xcc0000, 0.8
-        ).setDepth(10)
-        const angle = Math.random() * Math.PI * 2
-        const dist = Phaser.Math.Between(15, 35)
+        // Floating damage number
+        const dmgText = this.scene.add.text(this.x, this.y - 20, `-${Math.ceil(reduced)}`, {
+          fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
+          stroke: '#000000', strokeThickness: 3,
+        }).setDepth(20).setOrigin(0.5)
         this.scene.tweens.add({
-          targets: blood,
-          x: blood.x + Math.cos(angle) * dist,
-          y: blood.y + Math.sin(angle) * dist,
-          alpha: 0, scale: 0.3,
-          duration: Phaser.Math.Between(250, 450),
-          ease: 'Power2',
-          onComplete: () => blood.destroy(),
+          targets: dmgText, y: dmgText.y - 30, alpha: 0,
+          duration: 600, ease: 'Power2',
+          onComplete: () => dmgText.destroy(),
         })
-      }
 
-      // Red camera flash for heavy hits (>15% max HP)
-      if (reduced > this.maxHp * 0.15) {
-        this.scene.cameras.main.flash(150, 180, 30, 30)
+        // Blood particles (procedural red dots)
+        const particleCount = Math.min(8, Math.ceil(reduced / 5))
+        for (let i = 0; i < particleCount; i++) {
+          const size = Phaser.Math.Between(2, 4)
+          const blood = this.scene.add.circle(
+            this.x, this.y,
+            size, 0xcc0000, 0.8
+          ).setDepth(10)
+          const angle = Math.random() * Math.PI * 2
+          const dist = Phaser.Math.Between(15, 35)
+          this.scene.tweens.add({
+            targets: blood,
+            x: blood.x + Math.cos(angle) * dist,
+            y: blood.y + Math.sin(angle) * dist,
+            alpha: 0, scale: 0.3,
+            duration: Phaser.Math.Between(250, 450),
+            ease: 'Power2',
+            onComplete: () => blood.destroy(),
+          })
+        }
+
+        // Red camera flash for heavy hits (>15% max HP)
+        if (reduced > this.maxHp * 0.15) {
+          this.scene.cameras.main.flash(150, 180, 30, 30)
+        }
       }
     }
 
@@ -1578,8 +1588,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Speed buff expiry
     if (this.speedBuffUntil > 0 && this.scene.time.now > this.speedBuffUntil) {
       this.speedBuffUntil = 0
-      // Restore base speed (approximate — just reduce by the 30% buff)
-      this.speed = Math.ceil(this.speed / 1.3)
+      // Restore speed from cache instead of dividing (avoids floating-point drift / compounding)
+      this.speed = this.baseSpeedCache
     }
 
     // Poison tick

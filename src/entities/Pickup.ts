@@ -202,7 +202,8 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
       }).setOrigin(0.5).setDepth(20)
       this.scene.tweens.add({ targets: txt, y: txt.y - 25, alpha: 0, duration: 600, onComplete: () => txt.destroy() })
     } else if (this.pickupType === 'speed') {
-      // Speed boost for 8 seconds
+      // Speed boost for 8 seconds — cache current speed before multiplying so expiry restores correctly
+      this.player.baseSpeedCache = this.player.speed
       this.player.speedBuffUntil = this.scene.time.now + 8000
       this.player.speed = Math.ceil(this.player.speed * 1.3)
       const txt = this.scene.add.text(this.x, this.y - 10, 'SPEED!', {

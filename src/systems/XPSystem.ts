@@ -48,6 +48,11 @@ export class XPSystem {
     this.scene.time.delayedCall(250, () => {
       if (orb.active) orb.setVelocity(0, 0)
     })
+
+    // Auto-expire after 20s to prevent unbounded accumulation
+    this.scene.time.delayedCall(20000, () => {
+      if (orb.active) orb.destroy()
+    })
   }
 
   /** Call every frame — pulls nearby orbs toward player */

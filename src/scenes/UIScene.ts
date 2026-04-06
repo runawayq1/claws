@@ -33,6 +33,17 @@ export class UIScene extends Phaser.Scene {
   private stanceIcon: Phaser.GameObjects.Graphics | null = null
   private _buffLabels: (Phaser.GameObjects.Text | null)[] = []
 
+  // Dirty-flag tracking — cached values from last HUD redraw
+  private _lastHp = -1
+  private _lastMaxHp = -1
+  private _lastXp = -1
+  private _lastXpMax = -1
+  private _lastLevel = -1
+  private _lastEnergy1 = -1  // hero energy bar 1 (ice/sword/melee/wind)
+  private _lastEnergy2 = -1  // hero energy bar 2 (lightning/venom/spear/sand)
+  private _lastKills = -1
+  private _lastGameTimeSec = -1  // integer seconds bucket
+
   constructor() {
     super({ key: 'UIScene' })
   }
@@ -196,6 +207,13 @@ export class UIScene extends Phaser.Scene {
     // CLAWS warning
     this.events.on('claws-warning', () => {
       this.showAnnounce('THE CLAWS ARE COMING...', '#ff2222')
+    })
+
+    // Clean up all external event listeners on shutdown to prevent memory leaks
+    this.events.once('shutdown', () => {
+      this.gameScene?.events?.off('stance-changed')
+      this.gameScene?.events?.off('nazar-stance-changed')
+      this.gameScene?.events?.off('huntress-stance-changed')
     })
 
     this.updatePositions()
@@ -810,6 +828,74 @@ export class UIScene extends Phaser.Scene {
     }
     if (this.endScreenShown) return
 
+    // --- Timer text + pulse animation (always update, cheap) ---
+    const remaining = Math.max(0, CONFIG.RUN_DURATION - this.gameScene.gameTime)
+    const mins = Math.floor(remaining / 60000)
+    const secs = Math.floor((remaining % 60000) / 1000)
+    const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    if (remaining < 60000) {
+      this.timerText.setColor('#ff4444')
+      const pulse = 0.85 + Math.sin(this.gameScene.gameTime / 200) * 0.15
+      this.timerText.setScale(pulse)
+    } else if (remaining < 120000) {
+      this.timerText.setColor('#ffaa44')
+      this.timerText.setScale(1)
+    } else {
+      this.timerText.setColor('#ffffff')
+      this.timerText.setScale(1)
+    }
+    this.timerText.setText(timeStr)
+
+    // --- Dirty-flag check: gather current driving values ---
+    const curHp        = p.hp
+    const curMaxHp     = p.maxHp
+    const curXp        = p.xp
+    const curXpMax     = p.xpToNextLevel()
+    const curLevel     = p.level
+    const curKills     = p.kills
+    const curTimeSec   = Math.floor(remaining / 1000)
+
+    // Hero-specific energy bars
+    let curEnergy1 = 0, curEnergy2 = 0
+    if (p.heroType === 'sifra') {
+      curEnergy1 = p.iceEnergy; curEnergy2 = p.lightningEnergy
+    } else if (p.heroType === 'nazar') {
+      curEnergy1 = p.swordEnergy; curEnergy2 = p.venomEnergy
+    } else if (p.heroType === 'huntress') {
+      curEnergy1 = p.meleeEnergy; curEnergy2 = p.spearEnergy
+    } else if (p.heroType === 'khashin') {
+      curEnergy1 = p.windEnergy; curEnergy2 = p.sandEnergy
+    }
+
+    const dirty =
+      curHp      !== this._lastHp      ||
+      curMaxHp   !== this._lastMaxHp   ||
+      curXp      !== this._lastXp      ||
+      curXpMax   !== this._lastXpMax   ||
+      curLevel   !== this._lastLevel   ||
+      curEnergy1 !== this._lastEnergy1 ||
+      curEnergy2 !== this._lastEnergy2 ||
+      curKills   !== this._lastKills   ||
+      curTimeSec !== this._lastGameTimeSec
+
+    if (!dirty) {
+      // Nothing changed — skip all Graphics API calls, just throttle minimap
+      this._mmFrame = ((this._mmFrame || 0) + 1) % 3
+      if (this._mmFrame === 0) this.drawMinimap()
+      return
+    }
+
+    // Update cached values
+    this._lastHp           = curHp
+    this._lastMaxHp        = curMaxHp
+    this._lastXp           = curXp
+    this._lastXpMax        = curXpMax
+    this._lastLevel        = curLevel
+    this._lastEnergy1      = curEnergy1
+    this._lastEnergy2      = curEnergy2
+    this._lastKills        = curKills
+    this._lastGameTimeSec  = curTimeSec
+
     const g = this.hud
     g.clear()
 
@@ -1121,27 +1207,8 @@ export class UIScene extends Phaser.Scene {
     g.lineStyle(1, 0x333355)
     g.strokeRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 6)
 
-    // === TOP-CENTER: Timer ===
-    const remaining = Math.max(0, CONFIG.RUN_DURATION - this.gameScene.gameTime)
-    const mins = Math.floor(remaining / 60000)
-    const secs = Math.floor((remaining % 60000) / 1000)
-    const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-
-    if (remaining < 60000) {
-      this.timerText.setColor('#ff4444')
-      // Pulse effect in last minute
-      const pulse = 0.85 + Math.sin(this.gameScene.gameTime / 200) * 0.15
-      this.timerText.setScale(pulse)
-    } else if (remaining < 120000) {
-      this.timerText.setColor('#ffaa44')
-      this.timerText.setScale(1)
-    } else {
-      this.timerText.setColor('#ffffff')
-      this.timerText.setScale(1)
-    }
-    this.timerText.setText(timeStr)
-
-    // Timer background pill
+    // === TOP-CENTER: Timer background pill ===
+    // (timerText content/color/scale already updated above the dirty check)
     const tw = this.timerText.width + 20
     const th = this.timerText.height + 8
     const tx = this.scale.width / 2 - tw / 2

@@ -329,9 +329,7 @@ export class UpgradeTracker {
    *  - no stance / other heroes: show all 3 branches (or randomly pick 3 if more than 3)
    *
    * For Khashin:
-   *  - stance 'sirocco': Gale branch + Mirage branch (+ Dune excluded)
-   *  - stance 'haboob': Dune branch + Mirage branch (+ Gale excluded)
-   *  - no stance: all 3 branches
+   *  - always shows all 3 branches: Gale, Dune, Mirage
    */
   getBranchChoices(heroType: HeroType, stance?: string): Upgrade[] {
     let branches = HERO_BRANCHES[heroType] || []
@@ -348,14 +346,8 @@ export class UpgradeTracker {
         branches = [...SIFRA_BRANCHES].sort(() => Math.random() - 0.5).slice(0, 3)
       }
     } else if (heroType === 'khashin') {
-      if (stance === 'sirocco') {
-        // Gale (sirocco only) + Mirage (always) — exclude Dune
-        branches = [KHASHIN_GALE_BRANCH, KHASHIN_MIRAGE_BRANCH]
-      } else if (stance === 'haboob') {
-        // Dune (haboob only) + Mirage (always) — exclude Gale
-        branches = [KHASHIN_DUNE_BRANCH, KHASHIN_MIRAGE_BRANCH]
-      }
-      // no stance → show all 3 (falls through to the length>3 guard below, which won't fire)
+      // Always show all 3 branches (Gale, Dune, Mirage) like other heroes
+      branches = KHASHIN_BRANCHES
     }
 
     // For any hero with more than 3 branches, randomly pick 3
