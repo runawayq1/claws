@@ -13,36 +13,38 @@ export interface EncyclopediaData {
 
 const STORAGE_KEY = 'claws_encyclopedia'
 
-export function loadEncyclopedia(): EncyclopediaData {
-  // Always return all heroes, upgrades, and branches as unlocked so the
-  // encyclopedia is fully browsable regardless of save state.
-  const allHeroes = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
-  const allUpgrades: string[] = []
-  const allBranches: string[] = []
-  for (const [, branches] of Object.entries(HERO_BRANCHES)) {
-    for (const branch of branches) {
-      allBranches.push(branch.name)
-      for (const upgrade of branch.upgrades) allUpgrades.push(upgrade.id)
-    }
-  }
-  for (const upgrade of GENERIC_POOL) allUpgrades.push(upgrade.id)
+const UNLOCK_ALL = true  // Set to false to restore progressive unlock logic
 
-  // Merge with any existing save data so earned progress is preserved too.
+export function loadEncyclopedia(): EncyclopediaData {
+  if (UNLOCK_ALL) {
+    // Return all heroes, upgrades, and branches as unlocked so the
+    // encyclopedia is fully browsable regardless of save state.
+    const allHeroes = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
+    const allUpgrades: string[] = []
+    const allBranches: string[] = []
+    for (const [, branches] of Object.entries(HERO_BRANCHES)) {
+      for (const branch of branches) {
+        allBranches.push(branch.name)
+        for (const upgrade of branch.upgrades) allUpgrades.push(upgrade.id)
+      }
+    }
+    for (const upgrade of GENERIC_POOL) allUpgrades.push(upgrade.id)
+    return { heroes: allHeroes, upgrades: allUpgrades, branches: allBranches }
+  }
+
+  // Progressive unlock: only return what the player has actually earned.
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      const savedHeroes:   string[] = Array.isArray(parsed.heroes)   ? parsed.heroes   : []
-      const savedUpgrades: string[] = Array.isArray(parsed.upgrades) ? parsed.upgrades : []
-      const savedBranches: string[] = Array.isArray(parsed.branches) ? parsed.branches : []
       return {
-        heroes:   [...new Set([...allHeroes,   ...savedHeroes])],
-        upgrades: [...new Set([...allUpgrades, ...savedUpgrades])],
-        branches: [...new Set([...allBranches, ...savedBranches])],
+        heroes:   Array.isArray(parsed.heroes)   ? parsed.heroes   : [],
+        upgrades: Array.isArray(parsed.upgrades) ? parsed.upgrades : [],
+        branches: Array.isArray(parsed.branches) ? parsed.branches : [],
       }
     }
   } catch (_) { /* ignore */ }
-  return { heroes: allHeroes, upgrades: allUpgrades, branches: allBranches }
+  return { heroes: [], upgrades: [], branches: [] }
 }
 
 export function saveEncyclopedia(data: EncyclopediaData): void {

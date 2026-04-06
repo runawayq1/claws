@@ -1126,12 +1126,49 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.scene.tweens.add({ targets: wrathRing, scale: 6, alpha: 0, duration: 300, onComplete: () => wrathRing.destroy() })
     }
 
-    // Hit flash
+    // Hit flash + damage VFX
     if (reduced >= 1 && this.hasSprite) {
       this.playAnim('hurt')
       this.scene.time.delayedCall(300, () => {
         if (this.active && !this.isDead) this.currentAnim = '' // force re-eval
       })
+
+      // Floating damage number
+      const dmgText = this.scene.add.text(this.x, this.y - 20, `-${Math.ceil(reduced)}`, {
+        fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
+        stroke: '#000000', strokeThickness: 3,
+      }).setDepth(20).setOrigin(0.5)
+      this.scene.tweens.add({
+        targets: dmgText, y: dmgText.y - 30, alpha: 0,
+        duration: 600, ease: 'Power2',
+        onComplete: () => dmgText.destroy(),
+      })
+
+      // Blood particles (procedural red dots)
+      const particleCount = Math.min(8, Math.ceil(reduced / 5))
+      for (let i = 0; i < particleCount; i++) {
+        const size = Phaser.Math.Between(2, 4)
+        const blood = this.scene.add.circle(
+          this.x, this.y,
+          size, 0xcc0000, 0.8
+        ).setDepth(10)
+        const angle = Math.random() * Math.PI * 2
+        const dist = Phaser.Math.Between(15, 35)
+        this.scene.tweens.add({
+          targets: blood,
+          x: blood.x + Math.cos(angle) * dist,
+          y: blood.y + Math.sin(angle) * dist,
+          alpha: 0, scale: 0.3,
+          duration: Phaser.Math.Between(250, 450),
+          ease: 'Power2',
+          onComplete: () => blood.destroy(),
+        })
+      }
+
+      // Red camera flash for heavy hits (>15% max HP)
+      if (reduced > this.maxHp * 0.15) {
+        this.scene.cameras.main.flash(150, 180, 30, 30)
+      }
     }
 
     // Molten Skin: fire burst when player takes damage

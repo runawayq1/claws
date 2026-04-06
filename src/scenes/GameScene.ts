@@ -356,8 +356,11 @@ export class GameScene extends Phaser.Scene {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + 5)
       }
 
-      // Heart drop every 100 kills
-      if (this.player.kills % 100 === 0) {
+      // Heart drop with progressive thresholds: 100, 300, 500, then every 500
+      const kills = this.player.kills
+      const heartThresholds = [100, 300, 500]
+      const isThreshold = heartThresholds.includes(kills) || (kills > 500 && kills % 500 === 0)
+      if (isThreshold) {
         const heart = new Pickup(this, x, y, 'heart', this.player)
         this.pickups.add(heart)
       }
@@ -436,7 +439,7 @@ export class GameScene extends Phaser.Scene {
       this.scene.get('UIScene').events.emit('claws-warning')
     })
 
-    this.events.on('claws-spawn', () => {
+    this.events.once('claws-spawn', () => {
       this.spawnClawsBoss()
     })
 
@@ -1061,27 +1064,44 @@ export class GameScene extends Phaser.Scene {
       this.anims.create({ key: 'boss_hit', frames: this.anims.generateFrameNumbers('boss_demon', { start: 33, end: 37 }), frameRate: 8, repeat: 0 })
       this.anims.create({ key: 'boss_death', frames: this.anims.generateFrameNumbers('boss_demon', { start: 38, end: 59 }), frameRate: 10, repeat: 0 })
     }
+    if (!this.anims.exists('boss_spawn')) {
+      // Reverse death animation — frames 59 down to 38 — for materializing effect
+      const spawnFrames: Phaser.Types.Animations.AnimationFrame[] = []
+      for (let f = 59; f >= 38; f--) {
+        spawnFrames.push({ key: 'boss_demon', frame: f })
+      }
+      this.anims.create({ key: 'boss_spawn', frames: spawnFrames, frameRate: 10, repeat: 0 })
+    }
 
-    // Spawn boss at edge of screen
-    const angle = Math.random() * Math.PI * 2
-    const bx = this.player.x + Math.cos(angle) * 400
-    const by = this.player.y + Math.sin(angle) * 400
+    // Spawn boss to the LEFT of the player
+    const bx = Phaser.Math.Clamp(this.player.x - 400, 60, CONFIG.WORLD_WIDTH - 60)
+    const by = Phaser.Math.Clamp(this.player.y, 60, CONFIG.WORLD_HEIGHT - 60)
 
-    const boss = this.physics.add.sprite(
-      Phaser.Math.Clamp(bx, 60, CONFIG.WORLD_WIDTH - 60),
-      Phaser.Math.Clamp(by, 60, CONFIG.WORLD_HEIGHT - 60),
-      'boss_demon'
-    )
+    const boss = this.physics.add.sprite(bx, by, 'boss_demon')
     boss.setScale(3)
     boss.setDepth(15)
     boss.setBodySize(60, 50)
     boss.setOffset(114, 70)
-    boss.play('boss_walk')
+    boss.setAlpha(0)
     ;(boss as any).hp = 9999
     ;(boss as any).maxHp = 9999
+    ;(boss as any).bossSpawning = true
 
     // Shadow under boss
     const shadow = this.add.ellipse(boss.x, boss.y, 80, 24, 0x000000, 0.35).setDepth(14)
+
+    // Spawn animation: reverse death (materializing effect) with alpha fade-in
+    boss.play('boss_spawn')
+    this.tweens.add({ targets: boss, alpha: 1, duration: 600, ease: 'Linear' })
+    boss.once('animationcomplete', () => {
+      if (!boss.active) return
+      ;(boss as any).bossSpawning = false
+      boss.play('boss_idle')
+      // Brief idle pause before entering walk loop
+      this.time.delayedCall(400, () => {
+        if (boss.active) boss.play('boss_walk')
+      })
+    })
 
     // Boss cleave attack cooldown
     let cleaveCooldown = 0
@@ -1095,6 +1115,8 @@ export class GameScene extends Phaser.Scene {
           bossTimer.destroy()
           return
         }
+        // Wait for spawn animation to complete before acting
+        if ((boss as any).bossSpawning) return
         this.physics.moveTo(boss, this.player.x, this.player.y, 100)
         boss.setFlipX(this.player.x < boss.x)
         shadow.setPosition(boss.x, (boss.body as Phaser.Physics.Arcade.Body).bottom)

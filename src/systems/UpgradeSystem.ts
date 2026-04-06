@@ -140,11 +140,11 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
 const SIFRA_LIGHTNING_BRANCH: BranchDef = {
   name: 'Lightning', color: 0x9966ff,
   upgrades: [
-    { id: 'sl1', label: 'Spark Initiate',  desc: 'Cone: chain to 1 nearby foe within 80px at 60% dmg, +15% dmg', icon: 'sf1_deep_freeze',   apply: p => { p.hasSparkInitiate = true; p.damage = Math.ceil(p.damage * 1.15) } },
-    { id: 'sl2', label: 'Arc Reach',       desc: 'Cone +50% wider, side-arc 40% dmg, +15 range',                  icon: 'sf2_blizzard_aura', apply: p => { p.hasArcReach = true; p.range += 15 } },
-    { id: 'sl3', label: 'Overcharge',      desc: '~8% chance per frame: cone deals 3× dmg burst, +15% dmg',       icon: 'sf3_frost_nova',    apply: p => { p.hasOvercharge = true; p.damage = Math.ceil(p.damage * 1.15) } },
-    { id: 'sl4', label: 'Ball Lightning',  desc: 'Orbit 45px: zap enemies in 40px for 30% dmg/s, +3 dmg',         icon: 'sf4_absolute_zero', apply: p => { p.hasBallLightning = true; p.damage += 3 } },
-    { id: 'sl5', label: 'Storm Lord',      desc: 'Every 2s: random enemy struck for 2× dmg, +20% dmg',            icon: 'sf5_eternal_winter', apply: p => { p.hasStormLord = true; p.damage = Math.ceil(p.damage * 1.2) } },
+    { id: 'sl1', label: 'Spark Initiate',  desc: 'Cone: chain to 1 nearby foe within 80px at 60% dmg, +15% dmg', icon: 'sl1_spark_initiate', apply: p => { p.hasSparkInitiate = true; p.damage = Math.ceil(p.damage * 1.15) } },
+    { id: 'sl2', label: 'Arc Reach',       desc: 'Cone +50% wider, side-arc 40% dmg, +15 range',                  icon: 'sl2_arc_reach',     apply: p => { p.hasArcReach = true; p.range += 15 } },
+    { id: 'sl3', label: 'Overcharge',      desc: '~8% chance per frame: cone deals 3× dmg burst, +15% dmg',       icon: 'sl3_overcharge',    apply: p => { p.hasOvercharge = true; p.damage = Math.ceil(p.damage * 1.15) } },
+    { id: 'sl4', label: 'Ball Lightning',  desc: 'Orbit 45px: zap enemies in 40px for 30% dmg/s, +3 dmg',         icon: 'sl4_ball_lightning', apply: p => { p.hasBallLightning = true; p.damage += 3 } },
+    { id: 'sl5', label: 'Storm Lord',      desc: 'Every 2s: random enemy struck for 2× dmg, +20% dmg',            icon: 'sl5_storm_lord',    apply: p => { p.hasStormLord = true; p.damage = Math.ceil(p.damage * 1.2) } },
   ],
 }
 
@@ -444,6 +444,8 @@ const ICON_FRAME_MAP: Record<string, number> = {
   'nv1_toxic_slash': 30, 'nv2_virulent_strain': 31, 'nv3_pandemic': 32, 'nv4_weakness': 33, 'nv5_necrosis': 34,
   'ns1_vanish': 35, 'ns2_phantom_trail': 36, 'ns3_smoke_bomb': 37, 'ns4_blood_scent': 38, 'ns5_death_mark': 39,
   'sf1_deep_freeze': 40, 'sf2_blizzard_aura': 41, 'sf3_frost_nova': 42, 'sf4_absolute_zero': 43, 'sf5_eternal_winter': 44,
+  // Sifra — Lightning (temp: use Shatter icons as placeholders until dedicated art)
+  'sl1_spark_initiate': 45, 'sl2_arc_reach': 46, 'sl3_overcharge': 47, 'sl4_ball_lightning': 48, 'sl5_storm_lord': 49,
   'ss1_permafrost': 45, 'ss2_shatter': 46, 'ss3_ice_spear': 47, 'ss4_frostbite': 48, 'ss5_avalanche': 49,
   'sc1_glacial_pierce': 50, 'sc2_ice_armor': 51, 'sc3_mirror_ice': 52, 'sc4_cryo_shield': 53, 'sc5_diamond_dust': 54,
   'aq1_titans_pulse': 55, 'aq2_earthquake': 56, 'aq3_colossus': 57, 'aq4_rally_cry': 58, 'aq5_cataclysm': 59,
