@@ -411,7 +411,7 @@ export class GameScene extends Phaser.Scene {
       }
       const choices = this.upgradeTracker.getChoices(this.player.heroType, this.player.getActiveStance())
       if (choices.length === 0) return  // all upgrades taken — skip level-up UI
-      this.scene.launch('LevelUpScene', { player: this.player, tracker: this.upgradeTracker })
+      this.scene.launch('LevelUpScene', { player: this.player, tracker: this.upgradeTracker, callerSceneKey: this.scene.key })
       this.scene.pause()
     })
 

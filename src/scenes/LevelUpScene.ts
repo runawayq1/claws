@@ -21,14 +21,16 @@ const BRANCH_ICON_SIZE = 128
 export class LevelUpScene extends Phaser.Scene {
   private player!: Player
   private tracker!: UpgradeTracker
+  private callerSceneKey!: string
 
   constructor() {
     super({ key: 'LevelUpScene' })
   }
 
-  create(data: { player: Player; tracker: UpgradeTracker }) {
+  create(data: { player: Player; tracker: UpgradeTracker; callerSceneKey?: string }) {
     this.player = data.player
     this.tracker = data.tracker
+    this.callerSceneKey = data.callerSceneKey ?? 'GameScene'
     const { width, height } = this.scale
     const isBranch = this.tracker.isBranchSelection
 
@@ -280,7 +282,7 @@ export class LevelUpScene extends Phaser.Scene {
 
       this.time.delayedCall(400, () => {
         this.scene.stop()
-        this.scene.resume('GameScene')
+        this.scene.resume(this.callerSceneKey)
       })
     })
 
@@ -546,7 +548,7 @@ export class LevelUpScene extends Phaser.Scene {
       // Brief delay then resume
       this.time.delayedCall(350, () => {
         this.scene.stop()
-        this.scene.resume('GameScene')
+        this.scene.resume(this.callerSceneKey)
       })
     })
 
