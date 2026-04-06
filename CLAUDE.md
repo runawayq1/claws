@@ -23,6 +23,14 @@ Vampire Survivors-style game. Phaser 3 + Vite + TypeScript.
 | Tester | `.claude/agents/tester.md` | QA, builds, type checking, UI audit, regression testing |
 | Researcher | `.claude/agents/researcher.md` | Codebase analysis, UI audits, Phaser research, solution finding |
 
+## Git Workflow
+
+- `main` — production deploys only (Vercel). Never commit directly to main.
+- `dev` — active development branch. Always work here locally.
+- `feat/*` — feature branches off dev, merge back into dev when done.
+- Release flow: `feat/* → dev → main` (main = deploy version).
+- `npm run dev` always runs from `dev` or a feature branch.
+
 ## Project Structure
 
 - `src/scenes/` — Phaser scenes (GameScene, StartScene, UIScene, etc.)
