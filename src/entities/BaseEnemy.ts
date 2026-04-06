@@ -41,6 +41,11 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   protected walkAnim: string = ''
   protected attackAnim: string = ''
 
+  // Pathfinding throttle cache
+  private _steerFrame = 0
+  private _steerCache: { x: number; y: number } | null = null
+  private _flashUntil = 0
+
   constructor(
     scene: Phaser.Scene,
     x: number,
@@ -95,11 +100,9 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
       })
     }
 
-    // Hit flash
+    // Hit flash — use timestamp instead of allocating a timer
     this.setTintFill(this.flashTint)
-    this.scene.time.delayedCall(this.flashDuration, () => {
-      if (this.active) this.clearTint()
-    })
+    this._flashUntil = this.scene.time.now + this.flashDuration
 
     // Knockback
     if (this.body) {
@@ -172,6 +175,12 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   update(time: number, delta: number) {
     if (!this.active || !this.player.active || this.isDying) return
 
+    // Clear hit flash by timestamp (zero-allocation)
+    if (this._flashUntil > 0 && time >= this._flashUntil) {
+      this.clearTint()
+      this._flashUntil = 0
+    }
+
     // Recover speed toward baseSpeed
     if (this.speed < this.baseSpeed) {
       this.speed = Math.min(this.baseSpeed, this.speed + this.baseSpeed * 0.5 * (delta / 1000))
@@ -179,11 +188,15 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
 
     if (!this.isRooted) {
       if (this.usesSteering) {
-        const rocks = (this.scene as any).rocks as Phaser.Physics.Arcade.StaticGroup | undefined
-        const target = rocks
-          ? getSteeringTarget(this, this.player.x, this.player.y, rocks)
-          : { x: this.player.x, y: this.player.y }
-        this.scene.physics.moveTo(this, target.x, target.y, this.speed)
+        // Throttle pathfinding to every 4 frames — cache steering target
+        this._steerFrame = ((this._steerFrame || 0) + 1) % 4
+        if (this._steerFrame === 0 || !this._steerCache) {
+          const rocks = (this.scene as any).rocks as Phaser.Physics.Arcade.StaticGroup | undefined
+          this._steerCache = rocks
+            ? getSteeringTarget(this, this.player.x, this.player.y, rocks)
+            : { x: this.player.x, y: this.player.y }
+        }
+        this.scene.physics.moveTo(this, this._steerCache.x, this._steerCache.y, this.speed)
       } else {
         this.scene.physics.moveTo(this, this.player.x, this.player.y, this.speed)
       }

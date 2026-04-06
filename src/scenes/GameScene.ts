@@ -437,7 +437,10 @@ export class GameScene extends Phaser.Scene {
           (enemy as any).die()
         }
       }
-      const choices = this.upgradeTracker.getChoices(this.player.heroType, this.player.getActiveStance())
+      const isBranch = this.upgradeTracker.isBranchSelection
+      const choices = isBranch
+        ? this.upgradeTracker.getBranchChoices(this.player.heroType, this.player.getActiveStance())
+        : this.upgradeTracker.getChoices(this.player.heroType, this.player.getActiveStance())
       if (choices.length === 0) return  // all upgrades taken — skip level-up UI
       this.scene.launch('LevelUpScene', { player: this.player, tracker: this.upgradeTracker, callerSceneKey: this.scene.key })
       this.scene.pause()
@@ -738,7 +741,7 @@ export class GameScene extends Phaser.Scene {
     fb.fillCircle(8, 8, 8)
     fb.fillStyle(0xffffff, 0.6)
     fb.fillCircle(8, 8, 5)
-    fb.generateTexture('vfx_flame', 16, 16)
+    fb.generateTexture('vfx_fireball', 16, 16)
     fb.destroy()
 
     // Smoke puff — soft gray (12x12)

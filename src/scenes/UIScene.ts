@@ -1148,7 +1148,10 @@ export class UIScene extends Phaser.Scene {
     g.fillStyle(0x0a0a1a, 0.6)
     g.fillRoundedRect(tx, 6, tw, th, 6)
 
-    // Minimap
-    this.drawMinimap()
+    // Minimap — throttle to every 3 frames
+    this._mmFrame = ((this._mmFrame || 0) + 1) % 3
+    if (this._mmFrame === 0) this.drawMinimap()
   }
+
+  private _mmFrame = 0
 }

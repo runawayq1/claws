@@ -39,6 +39,10 @@ Vampire Survivors-style game. Phaser 3 + Vite + TypeScript.
 - `public/assets/` — spritesheets, icons, terrain tiles
 - `docs/` — session logs, design docs (Obsidian-compatible)
 
+## Communication
+
+- Messages starting with **бтв**, **/btw**, **байзевей**, **до речі**, **by the way** (and variations) are **deferred tasks** — finish the current task first, then handle them after. Do not interrupt current work.
+
 ## Key Conventions
 
 - Icon frame indices use static `ICON_FRAME_MAP` in UpgradeSystem.ts — never derive from runtime data

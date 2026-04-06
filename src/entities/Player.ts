@@ -1051,79 +1051,65 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
     }
 
-    // Cryo Shield: fire counter shards when hit
-    if (this.hasCryoShield && reduced >= 1) {
-      const scene = this.scene as any
-      if (scene.enemies) {
-        const nearby = (scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[])
-          .filter((e: any) => e.active && Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= 80)
-        for (let i = 0; i < Math.min(3, nearby.length); i++) {
-          const e = nearby[i]
-          ;(e as any).takeDamage(this.damage * 0.25, 'ice')
-          // Shard VFX
-          const shard = this.scene.add.circle(this.x, this.y, 3, 0x88ddff, 0.8).setDepth(10)
-          this.scene.tweens.add({ targets: shard, x: e.x, y: e.y, alpha: 0, duration: 200, onComplete: () => shard.destroy() })
-        }
-      }
-    }
-
     // Iron Will: cap incoming damage to 10% max HP
     if (this.hasIronWill && reduced > this.maxHp * 0.1) {
       reduced = this.maxHp * 0.1
-      // VFX: silver shield flash
       const shield = this.scene.add.circle(this.x, this.y, 18, 0x88aacc, 0.5).setDepth(10)
       this.scene.tweens.add({ targets: shield, scale: 2.5, alpha: 0, duration: 250, onComplete: () => shield.destroy() })
     }
 
     this.hp -= reduced
 
-    // Thorns: reflect 50% damage to nearby enemies
-    if (this.hasThorns && reduced >= 1) {
+    // Combined on-hit enemy scan — single loop for all reactive passives
+    const needsScan = reduced >= 1 && (this.hasCryoShield || this.hasThorns || this.hasLivingGeode || this.hasWrath || this.hasMoltenSkin)
+    if (needsScan) {
       const scene = this.scene as any
       if (scene.enemies) {
+        const wrathRadius = this.hasWrath ? 70 + this.splashRadius * 0.8 : 0
+        const maxRadius = Math.max(80, 60, wrathRadius, 50)
+        let cryoCount = 0
         for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= 60) {
+          const dist = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
+          if (dist > maxRadius) continue
+
+          if (this.hasCryoShield && dist <= 80 && cryoCount < 3) {
+            ;(e as any).takeDamage(this.damage * 0.25, 'ice')
+            const shard = this.scene.add.circle(this.x, this.y, 3, 0x88ddff, 0.8).setDepth(10)
+            this.scene.tweens.add({ targets: shard, x: e.x, y: e.y, alpha: 0, duration: 200, onComplete: () => shard.destroy() })
+            cryoCount++
+          }
+          if (this.hasThorns && dist <= 60) {
             (e as any).takeDamage(reduced * 0.5, 'melee')
           }
-        }
-        // VFX: yellow spike ring
-        const spikes = this.scene.add.circle(this.x, this.y, 10, 0xffdd44, 0.5).setDepth(9)
-        this.scene.tweens.add({ targets: spikes, scale: 5, alpha: 0, duration: 250, onComplete: () => spikes.destroy() })
-      }
-    }
-
-    // Living Geode (Muller): reflect 15 damage to melee attackers
-    if (this.hasLivingGeode && reduced >= 1) {
-      const scene = this.scene as any
-      if (scene.enemies) {
-        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= 60) {
+          if (this.hasLivingGeode && dist <= 60) {
             ;(e as any).takeDamage?.(15, 'melee')
           }
-        }
-        const fx = this.scene.add.circle(this.x, this.y, 10, 0x44aaff, 0.4).setDepth(9)
-        this.scene.tweens.add({ targets: fx, scale: 4, alpha: 0, duration: 250, onComplete: () => fx.destroy() })
-      }
-    }
-
-    // Wrath: damage aura spike when hit
-    if (this.hasWrath && reduced >= 1) {
-      const wrathRadius = 70 + this.splashRadius * 0.8
-      const wrathDmg = this.damage * 0.6
-      const scene = this.scene as any
-      if (scene.enemies) {
-        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= wrathRadius) {
-            (e as any).takeDamage(wrathDmg, 'melee')
+          if (this.hasWrath && dist <= wrathRadius) {
+            (e as any).takeDamage(this.damage * 0.6, 'melee')
+          }
+          if (this.hasMoltenSkin && dist <= 50) {
+            (e as any).takeDamage(this.damage * 0.3, 'fire')
           }
         }
+        // VFX rings for active passives
+        if (this.hasThorns) {
+          const spikes = this.scene.add.circle(this.x, this.y, 10, 0xffdd44, 0.5).setDepth(9)
+          this.scene.tweens.add({ targets: spikes, scale: 5, alpha: 0, duration: 250, onComplete: () => spikes.destroy() })
+        }
+        if (this.hasLivingGeode) {
+          const fx = this.scene.add.circle(this.x, this.y, 10, 0x44aaff, 0.4).setDepth(9)
+          this.scene.tweens.add({ targets: fx, scale: 4, alpha: 0, duration: 250, onComplete: () => fx.destroy() })
+        }
+        if (this.hasWrath) {
+          const wrathRing = this.scene.add.circle(this.x, this.y, 15, 0xff6600, 0.6).setDepth(9)
+          this.scene.tweens.add({ targets: wrathRing, scale: 6, alpha: 0, duration: 300, onComplete: () => wrathRing.destroy() })
+        }
+        if (this.hasMoltenSkin) {
+          const burst = this.scene.add.circle(this.x, this.y, 8, 0xff4400, 0.4).setDepth(9)
+          this.scene.tweens.add({ targets: burst, scale: 5, alpha: 0, duration: 200, onComplete: () => burst.destroy() })
+        }
       }
-      // VFX: angry orange burst
-      const wrathRing = this.scene.add.circle(this.x, this.y, 15, 0xff6600, 0.6).setDepth(9)
-      this.scene.tweens.add({ targets: wrathRing, scale: 6, alpha: 0, duration: 300, onComplete: () => wrathRing.destroy() })
     }
 
     // Hit flash + damage VFX
@@ -1169,19 +1155,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (reduced > this.maxHp * 0.15) {
         this.scene.cameras.main.flash(150, 180, 30, 30)
       }
-    }
-
-    // Molten Skin: fire burst when player takes damage
-    if (this.hasMoltenSkin) {
-      const scene = this.scene as any
-      if (scene.enemies) {
-        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= 50) (e as any).takeDamage(this.damage * 0.3, 'fire')
-        }
-      }
-      const burst = this.scene.add.circle(this.x, this.y, 8, 0xff4400, 0.4).setDepth(9)
-      this.scene.tweens.add({ targets: burst, scale: 5, alpha: 0, duration: 200, onComplete: () => burst.destroy() })
     }
 
     if (this.hp <= 0) {

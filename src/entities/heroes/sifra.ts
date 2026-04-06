@@ -442,7 +442,7 @@ export function updateSifraPassives(p: Player, delta: number) {
   const enemies = scene.enemies as Phaser.Physics.Arcade.Group | undefined
 
   // Sifra Blizzard Aura — slow nearby enemies passively
-  if (p.hasBlizzardAura && p.stance === 'ice') {
+  if (p.hasBlizzardAura) {
     const baseRadius = 60 + p.splashRadius * 0.3
     const t = p.scene.time.now / 1000
 

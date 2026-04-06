@@ -50,7 +50,11 @@ export function attackCrystalWave(p: Player, target: Phaser.Physics.Arcade.Sprit
   const spikeCount = 8 + ((p as any).hasShardstorm ? 8 : 0)
   const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
   let resonanceArmorTriggered = false
-  const isSuper = (p as any).hasTectonicFury && (++(p as any).tectonicCounter % 5 === 0)
+  let isSuper = false
+  if ((p as any).hasTectonicFury) {
+    (p as any).tectonicCounter = ((p as any).tectonicCounter || 0) + 1
+    isSuper = (p as any).tectonicCounter % 5 === 0
+  }
   const actualRange = isSuper ? range * 2 : range
   const actualCone = isSuper ? coneHalf * 2 : coneHalf
 
