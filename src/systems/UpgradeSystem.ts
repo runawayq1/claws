@@ -441,18 +441,18 @@ const AMUN_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'aw1', label: 'Thorns', icon: 'aw1_thorns',
-        desc: ['When hit: reflect 50% dmg to enemies in 6m, +5% armor', 'Reflect radius +2m, +5% armor', '+5% armor + Wrath AoE burst on hit'],
+        desc: ['When hit: reflect 50% dmg to enemies in 6m, +5% armor', 'Reflect radius +2m, +5% armor', '+5% armor + Wrath AoE burst every 4 seconds'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasThorns = true; p.armor = Math.min(0.7, p.armor + 0.05) }
           else if (lvl === 2) { p.splashRadius += 20; p.armor = Math.min(0.7, p.armor + 0.05) }
-          else { p.armor = Math.min(0.7, p.armor + 0.05); p.hasWrath = true }
+          else { p.armor = Math.min(0.7, p.armor + 0.05); p.hasWrathPulse = true }
         },
       },
       {
         id: 'aw2', label: 'Wrath', icon: 'aw2_wrath',
-        desc: ['When hit: AoE burst 60% dmg in 7m, +10% dmg', '+10% dmg, AoE radius +2m', '+10% dmg + Living Fortress: aura scales with HP%'],
+        desc: ['When hit: AoE burst 60% dmg in 10m, +5% dmg', '+10% dmg, AoE radius +2m', '+10% dmg + Living Fortress: aura scales with HP%'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.05) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1); p.splashRadius += 20 }
           else { p.damage = Math.ceil(p.damage * 1.1); p.hasLivingFortress = true }
         },
@@ -468,10 +468,10 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'aw5', label: 'Divine Judgment', icon: 'aw5_divine_judgment', isUltimate: true,
-        desc: ['Auto-execute enemies below 15% HP in range, +15% dmg', '+10% dmg, execute range doubled', '+15% dmg, execute threshold rises to 20% HP'],
+        desc: ['Auto-execute enemies below 15% HP in 12m range, +10% dmg', '+5% dmg, execute range doubled', '+15% dmg, execute threshold rises to 20% HP'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.15) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.1) }
+          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.05) }
           else { p.damage = Math.ceil(p.damage * 1.15) }
         },
       },

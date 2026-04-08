@@ -427,6 +427,28 @@ export function updateAmunPassives(p: Player, delta: number) {
     }
   }
 
+  // Amun Wrath Pulse: passive AoE burst every 4s (Thorns lvl3)
+  if (p.hasWrathPulse) {
+    p.wrathPulseTimer += delta
+    if (p.wrathPulseTimer >= 4000) {
+      p.wrathPulseTimer = 0
+      const pulseR = 70 + p.splashRadius * 0.8
+      const pulseDmg = p.damage * 0.6
+      const scene = p.scene as any
+      if (scene.enemies) {
+        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e.active) continue
+          if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= pulseR) {
+            (e as BaseEnemy).takeDamage(pulseDmg, 'melee')
+          }
+        }
+      }
+      // VFX: orange wrath ring
+      const ring = p.scene.add.circle(p.x, p.y, 15, 0xff6600, 0.6).setDepth(9)
+      p.scene.tweens.add({ targets: ring, scale: pulseR / 15, alpha: 0, duration: 350, onComplete: () => ring.destroy() })
+    }
+  }
+
   // Amun Gravity Well: pull enemies toward player every 2s
   if (p.hasGravityWell) {
     p.gravityWellTimer += delta

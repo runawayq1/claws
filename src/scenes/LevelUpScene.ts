@@ -5,10 +5,45 @@ import { unlockUpgrade, unlockBranch } from './EncyclopediaScene'
 // @ts-ignore - kept for revert after testing
 import { shouldShowHint } from '../systems/HintFlags'
 
+/** Render desc text with number tokens highlighted in yellow. Returns [baseText, overlayText]. */
+function addHighlightedDesc(
+  scene: Phaser.Scene, x: number, y: number, text: string,
+  style: Phaser.Types.GameObjects.Text.TextStyle,
+): [Phaser.GameObjects.Text, Phaser.GameObjects.Text] {
+  const base = scene.add.text(x, y, text, { ...style }).setOrigin(0.5, 0)
+
+  // Get wrapped lines from the base text to match line breaks exactly
+  const lines = base.getWrappedText(text)
+  const wrapped = lines.join('\n')
+
+  // Build overlay: only number tokens visible, rest replaced with spaces
+  const result = new Array(wrapped.length).fill(' ')
+  for (let i = 0; i < wrapped.length; i++) {
+    if (wrapped[i] === '\n') result[i] = '\n'
+  }
+  let pos = 0
+  for (const line of lines) {
+    const re = /[+×]?\d+\.?\d*[%ms]?/g
+    let m
+    while ((m = re.exec(line)) !== null) {
+      for (let i = 0; i < m[0].length; i++) result[pos + m.index + i] = line[m.index + i]
+    }
+    pos += line.length + 1
+  }
+
+  // Render overlay WITHOUT wordWrap — line breaks already embedded via \n
+  const { wordWrap: _, ...noWrapStyle } = style as any
+  const overlay = scene.add.text(x, y, result.join(''), {
+    ...noWrapStyle, color: '#FFD700',
+  }).setOrigin(0.5, 0)
+
+  return [base, overlay]
+}
+
 // Compact 5-card layout
-const CARD_W = 200
-const CARD_H = 300
-const GAP = 14
+const CARD_W = 170
+const CARD_H = 255
+const GAP = 12
 const STRIP_H = 28
 const ICON_SIZE = 96
 const DOT_RADIUS = 4
@@ -16,10 +51,10 @@ const DOT_COUNT = 3   // max skill level
 const DOT_SPACING = 14
 
 // Branch selection mode — bigger, bolder cards
-const BRANCH_CARD_W = 340
-const BRANCH_CARD_H = 480
-const BRANCH_GAP = 28
-const BRANCH_ICON_SIZE = 128
+const BRANCH_CARD_W = 289
+const BRANCH_CARD_H = 408
+const BRANCH_GAP = 24
+const BRANCH_ICON_SIZE = 109
 
 export class LevelUpScene extends Phaser.Scene {
   private player!: Player
@@ -207,7 +242,7 @@ export class LevelUpScene extends Phaser.Scene {
     const descText = Array.isArray(upgrade.desc) ? upgrade.desc[0] : upgrade.desc
     if (descText) {
       const descY = iconY + BRANCH_ICON_SIZE / 2 + 44
-      const descTxt = this.add.text(0, descY, descText, {
+      const brDescStyle: Phaser.Types.GameObjects.Text.TextStyle = {
         fontFamily: 'monospace',
         fontSize: '12px',
         color: '#cccccc',
@@ -216,8 +251,10 @@ export class LevelUpScene extends Phaser.Scene {
         wordWrap: { width: cw - 40 },
         align: 'center',
         lineSpacing: 4,
-      }).setOrigin(0.5, 0)
+      }
+      const [descTxt, descTxtHL] = addHighlightedDesc(this, 0, descY, descText, brDescStyle)
       container.add(descTxt)
+      container.add(descTxtHL)
     }
 
     // SELECT button
@@ -478,7 +515,7 @@ export class LevelUpScene extends Phaser.Scene {
     const descMaxY = ly + CARD_H - 30
     const descStartY = nameY + 14
     const descAvail = descMaxY - descStartY
-    const descLabel = this.add.text(0, descStartY, nextDesc, {
+    const descStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace',
       fontSize: '9px',
       color: isPersonal ? '#cccccc' : '#999999',
@@ -487,11 +524,14 @@ export class LevelUpScene extends Phaser.Scene {
       wordWrap: { width: CARD_W - 20 },
       align: 'center',
       lineSpacing: 2,
-    }).setOrigin(0.5, 0)
+    }
+    const [descLabel, descHL] = addHighlightedDesc(this, 0, descStartY, nextDesc, descStyle)
     if (descLabel.height > descAvail) {
       descLabel.setCrop(0, 0, descLabel.width, descAvail)
+      descHL.setCrop(0, 0, descHL.width, descAvail)
     }
     container.add(descLabel)
+    container.add(descHL)
 
     // ── SELECT button ─────────────────────────────────────────────────────
     const btnY = ly + CARD_H - 14

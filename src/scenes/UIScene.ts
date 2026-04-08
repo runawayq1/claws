@@ -1716,17 +1716,6 @@ export class UIScene extends Phaser.Scene {
     g.fillStyle(0x0a0a1a, 0.6)
     g.fillRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 4)
 
-    // === TOP-CENTER: Timer background pill ===
-    // (timerText content/color/scale already updated above the dirty check)
-    const tw = this.timerText.width + 26
-    const th = this.timerText.height + 12
-    const tx = this.scale.width / 2 - tw / 2
-    const ty = 25
-    g.fillStyle(0x0a0a1a, 0.35)
-    g.fillRoundedRect(tx, ty, tw, th, 8)
-    g.lineStyle(1, 0x333355, 0.3)
-    g.strokeRoundedRect(tx, ty, tw, th, 8)
-
     // Minimap — throttle to every 3 frames
     this._mmFrame = ((this._mmFrame || 0) + 1) % 3
     if (this._mmFrame === 0) this.drawMinimap()

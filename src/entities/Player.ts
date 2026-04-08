@@ -176,6 +176,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   rebirthStacks = 0           // revive N times at full HP (Undying)
   hasLivingFortress = false   // aura damage scales with HP %
   hasWrath = false            // damage aura spike when hit
+  hasWrathPulse = false       // passive Wrath AoE every 4s (Thorns lvl3)
+  wrathPulseTimer = 0
   hasGravityWell = false      // pull enemies toward Amun
   gravityWellTimer = 0
   hasDivineJudgment = false   // execute enemies below 15% HP in range
@@ -297,6 +299,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const curLevel = this.branchMasteryLevel[branch] ?? 0
     if (curLevel < 3 && xp >= Player.MASTERY_THRESHOLDS[curLevel]) {
       this.branchMasteryLevel[branch] = curLevel + 1
+      // Sifra mastery 1 & 2: +2 range per level
+      if (this.heroType === 'sifra' && curLevel + 1 <= 2) {
+        this.range += 2
+      }
       this.scene.events.emit('branch-mastery-levelup', { branch, level: curLevel + 1 })
     }
   }

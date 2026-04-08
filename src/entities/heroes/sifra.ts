@@ -466,8 +466,16 @@ export function updateSifraEnergy(p: Player, delta: number) {
   const regenAmt = p.energyRegenRate * (delta / 1000)
   if (p.stance === 'ice') {
     p.lightningEnergy = Math.min(p.maxEnergy, p.lightningEnergy + regenAmt)
+    // Frost Mastery 3: slow passive regen of active stance energy
+    if (p.getMasteryLevel('frost') >= 3) {
+      p.iceEnergy = Math.min(p.maxEnergy, p.iceEnergy + regenAmt * 0.15)
+    }
   } else {
     p.iceEnergy = Math.min(p.maxEnergy, p.iceEnergy + regenAmt)
+    // Lightning Mastery 3: slow passive regen of active stance energy
+    if (p.getMasteryLevel('lightning') >= 3) {
+      p.lightningEnergy = Math.min(p.maxEnergy, p.lightningEnergy + regenAmt * 0.15)
+    }
   }
 }
 
