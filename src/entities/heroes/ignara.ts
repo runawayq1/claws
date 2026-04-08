@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
+import { BaseEnemy } from '../BaseEnemy'
 
 /**
  * Ignara — Fireball projectile with AOE explosion.
@@ -17,7 +18,7 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
   const ballTint = dmgRatio > 2.5 ? 0xffffaa : dmgRatio > 1.5 ? 0xff8800 : 0xff4400
 
   // Meltdown: +50% damage when below 40% HP
-  let effectiveDmg = p.damage
+  let effectiveDmg = p.damage * p.getMasteryDamageMult('fireball')
   if (p.hasMeltdown && p.hp < p.maxHp * 0.4) effectiveDmg = Math.ceil(effectiveDmg * 1.5)
 
   // Create fireball
@@ -87,7 +88,7 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= explodeRadius) {
-          (e as any).takeDamage(effectiveDmg, 'fire')
+          (e as BaseEnemy).takeDamage(effectiveDmg, 'fire')
 
           // Base fireball knockback (Backdraft upgrades to 300)
           const kb = Phaser.Math.Angle.Between(tx, ty, e.x, e.y)
@@ -97,12 +98,11 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
 
           // Wildfire: kill triggers mini-explosion on nearby enemies
           if (p.hasWildfire) {
-            const hpNow = (e as any).hp ?? 0
-            if (hpNow <= 0) {
+            if ((e as BaseEnemy).isDying) {
               for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                 if (!e2.active || e2 === e) continue
                 if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= 50) {
-                  (e2 as any).takeDamage(p.damage * 0.4, 'fire')
+                  (e2 as BaseEnemy).takeDamage(p.damage * 0.4 * p.getMasteryDamageMult('fireball'), 'fire')
                 }
               }
               const miniBlast = p.scene.add.circle(e.x, e.y, 8, 0xff6600, 0.5).setDepth(9)
@@ -120,7 +120,7 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
               delay: 500, repeat: 5,
               callback: () => {
                 burnElapsed += 500
-                if (e.active) (e as any).takeDamage(burnDmg * 0.5, 'fire')
+                if (e.active) (e as BaseEnemy).takeDamage(burnDmg * 0.5, 'fire')
                 if (burnElapsed >= 3000) (e as any)._burnTimer = null
               },
             })
@@ -145,7 +145,7 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
                 p.scene.tweens.add({ targets: boom, scale: 4, alpha: 0, duration: 250, onComplete: () => boom.destroy() })
                 for (const e3 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                   if (!e3.active) continue
-                  if (Phaser.Math.Distance.Between(ex, ey, e3.x, e3.y) <= 35) (e3 as any).takeDamage(p.damage * 0.5, 'fire')
+                  if (Phaser.Math.Distance.Between(ex, ey, e3.x, e3.y) <= 35) (e3 as BaseEnemy).takeDamage(p.damage * 0.5 * p.getMasteryDamageMult('fireball'), 'fire')
                 }
               },
             })
@@ -182,7 +182,7 @@ export function updateLavaTrail(p: Player, delta: number) {
             for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e.active) continue
               if (Phaser.Math.Distance.Between(lx, ly, e.x, e.y) <= 12) {
-                (e as any).takeDamage(p.damage * 0.2, 'fire')
+                (e as BaseEnemy).takeDamage(p.damage * 0.2 * p.getMasteryDamageMult('fireball'), 'fire')
               }
             }
           }

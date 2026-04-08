@@ -1,39 +1,54 @@
 import Phaser from 'phaser'
-import { CONFIG } from '../../config/GameConfig'
 import type { Player } from '../Player'
+import { BaseEnemy } from '../BaseEnemy'
 
-/** Haboob melee: instant 360° AoE sand swipe — applies blind + knockback */
+/** Haboob melee: cone AoE sand swipe — applies blind + knockback */
 export function attackSandSwipe(p: Player, target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
   const cx = p.cx, cy = p.cy
   const angle = Phaser.Math.Angle.Between(cx, cy, target.x, target.y)
   const swipeRange = 90
-  let dmg = Math.ceil(p.damage * 1.3)  // melee hits harder than ranged
+  const coneHalf = Math.PI / 4  // ±45° = 90° cone
+  let dmg = Math.ceil(p.damage * 1.3 * p.getMasteryDamageMult('sand'))
   let hitCount = 0
 
-  // Sand burst VFX — full circle
+  // Sand burst VFX — cone arc
   const arcGfx = p.scene.add.graphics().setDepth(10)
+  arcGfx.fillStyle(0xddaa44, 0.15)
+  arcGfx.beginPath()
+  arcGfx.moveTo(cx, cy)
+  for (let i = 0; i <= 12; i++) {
+    const a = angle - coneHalf + (coneHalf * 2 * i / 12)
+    arcGfx.lineTo(cx + Math.cos(a) * swipeRange, cy + Math.sin(a) * swipeRange)
+  }
+  arcGfx.closePath()
+  arcGfx.fill()
   arcGfx.lineStyle(3, 0xcc8844, 0.5)
-  arcGfx.strokeCircle(cx, cy, swipeRange)
-  arcGfx.fillStyle(0xddaa44, 0.12)
-  arcGfx.fillCircle(cx, cy, swipeRange)
+  arcGfx.beginPath()
+  arcGfx.arc(cx, cy, swipeRange, angle - coneHalf, angle + coneHalf)
+  arcGfx.strokePath()
   p.scene.tweens.add({ targets: arcGfx, alpha: 0, duration: 250, onComplete: () => arcGfx.destroy() })
 
-  // Hit ALL enemies in radius (360° melee)
+  // Hit enemies in cone
   for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
     if (!e.active) continue
     const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
     if (dist > swipeRange) continue
+    const toEnemy = Phaser.Math.Angle.Between(cx, cy, e.x, e.y)
+    let diff = toEnemy - angle
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    if (Math.abs(diff) > coneHalf) continue
 
     let finalDmg = dmg
     // Choking Sand: +35% dmg to blinded enemies
     if (p.hasChokingSand && (e as any)._isBlinded) finalDmg = Math.ceil(finalDmg * 1.35)
     // Abrasion: +20% dmg to blinded enemies
     if (p.hasAbrasion && (e as any)._isBlinded) finalDmg = Math.ceil(finalDmg * 1.2)
-    ;(e as any).takeDamage?.(finalDmg, 'melee')
+    ;(e as BaseEnemy).takeDamage(finalDmg, 'melee')
 
     // Apply blind (slow + marker) — use timestamp to prevent stacking issues
-    if ((e as any).speed && (e as any).baseSpeed) {
-      (e as any).speed = (e as any).baseSpeed * 0.6
+    if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+      (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed * 0.6
       ;(e as any)._isBlinded = true
       ;(e as any)._blindExpires = p.scene.time.now + 2000
       e.setTint(0xddaa44)
@@ -42,7 +57,7 @@ export function attackSandSwipe(p: Player, target: Phaser.Physics.Arcade.Sprite,
         const checkBlind = () => {
           if (!e.active) { (e as any)._blindTimer = null; return }
           if (p.scene.time.now >= (e as any)._blindExpires) {
-            e.clearTint(); (e as any).speed = (e as any).baseSpeed
+            e.clearTint(); (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed
             ;(e as any)._isBlinded = false; (e as any)._blindTimer = null
           } else {
             (e as any)._blindTimer = p.scene.time.delayedCall(200, checkBlind)
@@ -53,10 +68,11 @@ export function attackSandSwipe(p: Player, target: Phaser.Physics.Arcade.Sprite,
     }
 
     // Knockback
-    if (p.hasGustStrike && (e as any).body) {
+    if (p.hasGustStrike && e.body) {
       const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y)
-      ;(e as any).body.velocity.x += Math.cos(kb) * 200
-      ;(e as any).body.velocity.y += Math.sin(kb) * 200
+      const eBody = e.body as Phaser.Physics.Arcade.Body
+      eBody.velocity.x += Math.cos(kb) * 200
+      eBody.velocity.y += Math.sin(kb) * 200
     }
 
     // Sandstorm Wall: lingering sand cloud on hit
@@ -73,7 +89,7 @@ export function attackSandSwipe(p: Player, target: Phaser.Physics.Arcade.Sprite,
             for (const e2 of enemies2.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e2.active) continue
               if (Phaser.Math.Distance.Between(cloudX, cloudY, e2.x, e2.y) < 50) {
-                ;(e2 as any).takeDamage?.(p.damage * 0.15, 'melee')
+                ;(e2 as BaseEnemy).takeDamage(p.damage * 0.15 * p.getMasteryDamageMult('sand'), 'melee')
                 ;(e2 as any)._isBlinded = true
                 ;(e2 as any)._blindExpires = p.scene.time.now + 1500
                 e2.setTint(0xddaa44)
@@ -82,7 +98,7 @@ export function attackSandSwipe(p: Player, target: Phaser.Physics.Arcade.Sprite,
                     if (!e2.active) { (e2 as any)._blindTimer = null; return }
                     if (p.scene.time.now >= (e2 as any)._blindExpires) {
                       e2.clearTint(); (e2 as any)._isBlinded = false; (e2 as any)._blindTimer = null
-                      if ((e2 as any).baseSpeed) (e2 as any).speed = (e2 as any).baseSpeed
+                      if ((e2 as BaseEnemy).baseSpeed) (e2 as BaseEnemy).speed = (e2 as BaseEnemy).baseSpeed
                     } else { (e2 as any)._blindTimer = p.scene.time.delayedCall(200, chk) }
                   }
                   ;(e2 as any)._blindTimer = p.scene.time.delayedCall(200, chk)
@@ -162,17 +178,18 @@ export function attackWindSlash(p: Player, target: Phaser.Physics.Arcade.Sprite,
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active || hitSet.has(e)) continue
         if (Phaser.Math.Distance.Between(ax, ay, e.x, e.y) < 35) {
-          let dmg = Math.ceil(p.damage)
+          let dmg = Math.ceil(p.damage * p.getMasteryDamageMult('wind'))
           // Choking Sand: +35% dmg to blinded enemies
           if (p.hasChokingSand && (e as any)._isBlinded) dmg = Math.ceil(dmg * 1.35)
           // Abrasion: +20% dmg to blinded enemies (armor shred)
           if (p.hasAbrasion && (e as any)._isBlinded) dmg = Math.ceil(dmg * 1.2)
-          ;(e as any).takeDamage?.(dmg, 'melee')
+          ;(e as BaseEnemy).takeDamage(dmg, 'melee')
           // Gust Strike: knockback
-          if (p.hasGustStrike && (e as any).body) {
+          if (p.hasGustStrike && e.body) {
             const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y)
-            ;(e as any).body.velocity.x += Math.cos(kb) * 150
-            ;(e as any).body.velocity.y += Math.sin(kb) * 150
+            const eBody = e.body as Phaser.Physics.Arcade.Body
+            eBody.velocity.x += Math.cos(kb) * 150
+            eBody.velocity.y += Math.sin(kb) * 150
           }
           hitSet.add(e)
           // Hit VFX
@@ -233,7 +250,7 @@ export function spawnDustDevil(p: Player, x: number, y: number, angle: number) {
         for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
           if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) < radius) {
-            ;(e as any).takeDamage?.(dmg * 0.016 * 4, 'melee')
+            ;(e as BaseEnemy).takeDamage?.(dmg * 0.016 * 4, 'melee')
           }
         }
       }
@@ -288,7 +305,7 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
           for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
             if (!e.active) continue
             if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) < 80) {
-              ;(e as any).takeDamage?.(p.damage * 0.5 * 0.016 * 4, 'melee')
+              ;(e as BaseEnemy).takeDamage?.(p.damage * 0.5 * 0.016 * 4, 'melee')
             }
           }
           if (elapsed >= 4000) { timer.destroy(); stormGfx.destroy() }
@@ -313,8 +330,8 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
         const awayAngle = Phaser.Math.Angle.Between(nearest.x, nearest.y, p.x, p.y)
         const oldX = p.x, oldY = p.y
         p.setPosition(
-          Phaser.Math.Clamp(p.x + Math.cos(awayAngle) * 100, 50, CONFIG.WORLD_WIDTH - 50),
-          Phaser.Math.Clamp(p.y + Math.sin(awayAngle) * 100, 50, CONFIG.WORLD_HEIGHT - 50)
+          p.x + Math.cos(awayAngle) * 100,
+          p.y + Math.sin(awayAngle) * 100
         )
         // Mirage: leave decoy
         if (p.hasMirage) {
@@ -324,7 +341,7 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
           for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
             if (!e.active) continue
             if (Phaser.Math.Distance.Between(oldX, oldY, e.x, e.y) < 120) {
-              p.scene.physics.moveTo(e, oldX, oldY, (e as any).speed || 80)
+              p.scene.physics.moveTo(e, oldX, oldY, (e as BaseEnemy).speed || 80)
             }
           }
         }
@@ -351,9 +368,14 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
           trailLife += 100
           if (enemies) {
             for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-              if (!e.active || !(e as any).speed || !(e as any).baseSpeed) continue
+              if (!e.active || !(e as BaseEnemy).speed || !(e as BaseEnemy).baseSpeed) continue
               if (Phaser.Math.Distance.Between(dx, dy, e.x, e.y) < 20) {
-                (e as any).speed = (e as any).baseSpeed * 0.6
+                (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed * 0.6
+                p.scene.time.delayedCall(1500, () => {
+                  if ((e as BaseEnemy).active && !(e as BaseEnemy).isDying) {
+                    (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed
+                  }
+                })
               }
             }
           }
@@ -377,9 +399,10 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(p.cx, p.cy, e.x, e.y) < 180) {
           const kb = Phaser.Math.Angle.Between(p.cx, p.cy, e.x, e.y)
-          if ((e as any).body) {
-            (e as any).body.velocity.x = Math.cos(kb) * 300
-            ;(e as any).body.velocity.y = Math.sin(kb) * 300
+          if (e.body) {
+            const eBody = e.body as Phaser.Physics.Arcade.Body
+            eBody.velocity.x = Math.cos(kb) * 300
+            eBody.velocity.y = Math.sin(kb) * 300
           }
         }
       }
@@ -387,6 +410,105 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
       const oldArmor = p.armor
       p.armor = Math.min(0.7, p.armor + 0.5)
       p.scene.time.delayedCall(3000, () => { p.armor = oldArmor })
+    }
+  }
+
+  // Scarab Tide: on kill, spawn 4 seeking blind scarabs
+  if (p.hasScarabTide && enemies) {
+    if (!(p as any)._scarabs) (p as any)._scarabs = [] as Phaser.GameObjects.Arc[]
+
+    // Listen for enemy deaths via scene event (register once)
+    if (!(p as any)._scarabDeathListener) {
+      const onEnemyDied = (ex: number, ey: number) => {
+        if (!p.hasScarabTide) return
+        // Prune dead scarabs (always read from the property, not the stale local ref)
+        const alive = ((p as any)._scarabs as any[] || []).filter(s => s.active)
+        ;(p as any)._scarabs = alive
+        if (alive.length >= 8) return  // cap at 8
+
+        const scene = p.scene as any
+        const scarabEnemies = scene.enemies as Phaser.Physics.Arcade.Group | undefined
+        for (let i = 0; i < 4 && alive.length < 8; i++) {
+          const angle = (i / 4) * Math.PI * 2
+          const scarab = p.scene.add.circle(
+            ex + Math.cos(angle) * 8, ey + Math.sin(angle) * 8,
+            4, 0xcc8800, 1
+          ).setDepth(10)
+          alive.push(scarab)
+
+          // Seek nearest enemy
+          const scarabSpeed = 250
+          let targetEnemy: Phaser.Physics.Arcade.Sprite | null = null
+          if (scarabEnemies) {
+            let nearDist = Infinity
+            for (const candidate of scarabEnemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+              if (!candidate.active) continue
+              const d = Phaser.Math.Distance.Between(scarab.x, scarab.y, candidate.x, candidate.y)
+              if (d < 200 && d < nearDist) { nearDist = d; targetEnemy = candidate }
+            }
+          }
+
+          if (!targetEnemy) { scarab.destroy(); continue }
+
+          let tgt: Phaser.Physics.Arcade.Sprite = targetEnemy
+          const seekTimer = p.scene.time.addEvent({
+            delay: 16, loop: true,
+            callback: () => {
+              if (!scarab.active) { seekTimer.destroy(); return }
+              if (!tgt.active) {
+                // Retarget
+                let newTarget: Phaser.Physics.Arcade.Sprite | null = null
+                let nearDist2 = Infinity
+                if (scarabEnemies) {
+                  for (const candidate of scarabEnemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+                    if (!candidate.active) continue
+                    const d = Phaser.Math.Distance.Between(scarab.x, scarab.y, candidate.x, candidate.y)
+                    if (d < 200 && d < nearDist2) { nearDist2 = d; newTarget = candidate }
+                  }
+                }
+                if (!newTarget) { scarab.destroy(); seekTimer.destroy(); return }
+                tgt = newTarget  // retarget to new enemy
+              }
+              const moveTarget = tgt?.active ? tgt : null
+              if (!moveTarget) { scarab.destroy(); seekTimer.destroy(); return }
+
+              const dx = moveTarget.x - scarab.x
+              const dy = moveTarget.y - scarab.y
+              const dist = Math.sqrt(dx * dx + dy * dy)
+              if (dist < 8) {
+                // Hit — apply blind
+                const now = p.scene.time.now
+                ;(moveTarget as any)._isBlinded = true
+                ;(moveTarget as any)._blindExpires = now + 1500
+                moveTarget.setTint(0xddaa44)
+                if (!(moveTarget as any)._blindTimer) {
+                  const checkBlind = () => {
+                    if (!moveTarget.active) { (moveTarget as any)._blindTimer = null; return }
+                    if (p.scene.time.now >= (moveTarget as any)._blindExpires) {
+                      moveTarget.clearTint();
+                      (moveTarget as any)._isBlinded = false;
+                      (moveTarget as any)._blindTimer = null
+                    } else {
+                      (moveTarget as any)._blindTimer = p.scene.time.delayedCall(200, checkBlind)
+                    }
+                  }
+                  ;(moveTarget as any)._blindTimer = p.scene.time.delayedCall(200, checkBlind)
+                }
+                scarab.destroy()
+                seekTimer.destroy()
+              } else {
+                scarab.x += (dx / dist) * scarabSpeed * 0.016
+                scarab.y += (dy / dist) * scarabSpeed * 0.016
+              }
+            },
+          })
+
+          // Destroy after 5s if not hit
+          p.scene.time.delayedCall(5000, () => { if (scarab.active) scarab.destroy() })
+        }
+      }
+      ;(p as any)._scarabDeathListener = onEnemyDied
+      p.scene.events.on('enemy-died', onEnemyDied)
     }
   }
 }

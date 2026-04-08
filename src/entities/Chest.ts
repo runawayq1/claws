@@ -51,7 +51,7 @@ export class Chest extends Phaser.Physics.Arcade.Sprite {
           { key: 'chests', frame: openFrame(col) },
           { key: 'chests', frame: contentsFrame(col) },
         ],
-        frameRate: 6,
+        frameRate: 12,
         repeat: 0,
       })
     }
@@ -65,7 +65,7 @@ export class Chest extends Phaser.Physics.Arcade.Sprite {
           { key: 'chests', frame: openFrame(col) },
           { key: 'chests', frame: contentsFrame(col) },
         ],
-        frameRate: 6,
+        frameRate: 12,
         repeat: 0,
       })
     }

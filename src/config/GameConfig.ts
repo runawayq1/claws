@@ -36,17 +36,29 @@ export const CONFIG = {
   RUN_DURATION: 600000, // 10 minutes in ms
 
   // Mob cap — like Vampire Survivors, limits alive enemies on screen
-  MOB_CAP_BASE: 40,       // starting cap at wave 1
-  MOB_CAP_PER_WAVE: 15,   // +15 per wave tier
+  MOB_CAP_BASE: 20,       // starting cap at wave 1
+  MOB_CAP_PER_WAVE: 12,   // +12 per wave tier
   MOB_CAP_MAX: 200,        // hard ceiling
 
   // Minimap
   MINIMAP_SIZE: 140,
   MINIMAP_MARGIN: 10,
+  MINIMAP_WORLD_RADIUS: 1200,
+
+  // Chunks (infinite map)
+  CHUNK_SIZE: 960,
+  CHUNK_TILES: 15,
 
   // Terrain — grass meadow
   TILE_SIZE: 64,
   TILE_COLOR_1: 0xd4b483,  // warm sand
   TILE_COLOR_2: 0xc9a86c,  // darker sand
   TILE_SPECKLE: 0xb8956a,  // speckle dots
+
+  // Gold drops
+  GOLD_MOB_CHANCE: 0.35,
+  GOLD_MOB_MIN: 1,
+  GOLD_MOB_MAX: 1,
+  GOLD_BOSS_MIN: 5,
+  GOLD_BOSS_MAX: 10,
 } as const

@@ -12,6 +12,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public speed: number = 0
   public baseSpeed: number = 0
   public xpValue: number = 0
+  public goldValue: number = 0
   public damagePerSecond: number = 0
   public isDying: boolean = false
   public isAttacking: boolean = false
@@ -28,8 +29,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // --- Configurable per-enemy constants (set in subclass constructor) ---
   protected kbForce: number = 120
   protected kbRestoreDuration: number = 150
-  protected shakeIntensity: number = 60
-  protected shakeAmplitude: number = 0.003
+  protected shakeIntensity: number = 0
+  protected shakeAmplitude: number = 0
   protected dmgTextColor: string = '#ffff00'
   protected dmgTextSize: string = '14px'
   protected dmgTextYOffset: number = -20
@@ -46,6 +47,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   private _steerFrame = 0
   private _steerCache: { x: number; y: number } | null = null
   private _flashUntil = 0
+  private poisonTimer?: Phaser.Time.TimerEvent
 
   constructor(
     scene: Phaser.Scene,
@@ -128,17 +130,18 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // -------------------------------------------------------------------------
   applyPoison(dps: number, duration: number) {
     if (this.isDying) return
+    if (this.poisonTimer) { this.poisonTimer.remove(); this.poisonTimer = undefined }
     const interval = 200
     const ticks = Math.floor(duration / interval)
     let ticksLeft = ticks
-    const timer = this.scene.time.addEvent({
+    this.poisonTimer = this.scene.time.addEvent({
       delay: interval,
       repeat: ticks - 1,
       callback: () => {
-        if (!this.active || this.isDying) { timer.remove(); return }
+        if (!this.active || this.isDying) { this.poisonTimer?.remove(); this.poisonTimer = undefined; return }
         this.takeDamage(dps * (interval / 1000), 'poison')
         ticksLeft--
-        if (ticksLeft <= 0) timer.remove()
+        if (ticksLeft <= 0) { this.poisonTimer = undefined }
       },
     })
   }
@@ -164,7 +167,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
 
     this.onDeathVfx(() => {
       if (this.scene) {
-        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue)
+        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue, this.goldValue)
       }
       this.destroy()
     })
@@ -210,9 +213,11 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     const dx = this.player.x - this.x
     if (Math.abs(dx) > 4) this.setFlipX(dx < 0)
 
-    // Blue tint when slowed
+    // Blue tint when slowed, red tint when marked
     if (this.speed < this.baseSpeed * 0.95) {
       this.setTint(0x6688ff)
+    } else if (this.isMarked) {
+      this.setTint(0xff6666)
     } else if (this._flashUntil <= 0) {
       if (this.baseTint) this.setTint(this.baseTint); else this.clearTint()
     }
@@ -245,7 +250,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   /** Subclass plays death animation / tween and calls onComplete when done. */
   protected abstract onDeathVfx(onComplete: () => void): void
 
-  /** Optional per-frame subclass logic (Vampire lifesteal, SandGolem slam). */
+  /** Optional per-frame subclass logic (e.g. SandGolem slam). */
   protected onUpdate(_time: number, _delta: number): void {
     // default: no-op
   }

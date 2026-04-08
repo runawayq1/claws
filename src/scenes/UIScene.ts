@@ -3,9 +3,11 @@ import { CONFIG } from '../config/GameConfig'
 import { GameScene } from './GameScene'
 import { FlyingEye } from '../entities/Scorpion'
 import { SandGolem } from '../entities/SandGolem'
-import { GENERIC_POOL, HERO_BRANCHES } from '../systems/UpgradeSystem'
+import { GENERIC_POOL, HERO_BRANCHES, getIconFrame } from '../systems/UpgradeSystem'
 import { MetaProgress, type SessionRecord } from '../systems/MetaProgress'
 import { SessionLogger } from '../systems/SessionLogger'
+import { Player } from '../entities/Player'
+import { shouldShowHint } from '../systems/HintFlags'
 
 const HERO_DISPLAY_NAMES: Record<string, string> = {
   huntress: 'Lyra', muller: 'Givi', ignara: 'Ignara',
@@ -23,15 +25,21 @@ export class UIScene extends Phaser.Scene {
   private announcement!: Phaser.GameObjects.Text
   private overlay!: Phaser.GameObjects.Graphics
   private minimap!: Phaser.GameObjects.Graphics
+  private mmMaskShape!: Phaser.GameObjects.Graphics
   private endTexts: Phaser.GameObjects.Text[] = []
   private endScreenShown = false
   private isPaused = false
+  private pauseTab: 'stats' | 'inventory' = 'stats'
   private pauseOverlay!: Phaser.GameObjects.Graphics
   private pauseTexts: Phaser.GameObjects.Text[] = []
-  private pauseBtn!: Phaser.GameObjects.Text
+  private pauseTabObjs: Phaser.GameObjects.GameObject[] = []
+  private pauseBtn: Phaser.GameObjects.Text | null = null
   private stanceBtn: Phaser.GameObjects.Text | null = null
   private stanceIcon: Phaser.GameObjects.Graphics | null = null
-  private _buffLabels: (Phaser.GameObjects.Text | null)[] = []
+  private mobileStanceBtn: Phaser.GameObjects.Zone | null = null
+  private mobileStanceLbl: Phaser.GameObjects.Text | null = null
+  private mobileStancePill: Phaser.GameObjects.Graphics | null = null
+  private isMobile = false
 
   // Dirty-flag tracking — cached values from last HUD redraw
   private _lastHp = -1
@@ -41,8 +49,16 @@ export class UIScene extends Phaser.Scene {
   private _lastLevel = -1
   private _lastEnergy1 = -1  // hero energy bar 1 (ice/sword/melee/wind)
   private _lastEnergy2 = -1  // hero energy bar 2 (lightning/venom/spear/sand)
+  private _bigBuffObjs: (Phaser.GameObjects.Image | Phaser.GameObjects.Text)[] = []
   private _lastKills = -1
+  private _lastGold = -1
   private _lastGameTimeSec = -1  // integer seconds bucket
+  private _critFlashUntil = 0   // timestamp — HP bar white flash on damage
+  private _critPulse = 0        // continuous pulse counter at low HP
+  private _mmMaskDirty = true
+  private _tookDamageThisRun = false  // tracks if player received any damage this run
+  private goldText!: Phaser.GameObjects.Text
+  private goldIcon!: Phaser.GameObjects.Image
 
   constructor() {
     super({ key: 'UIScene' })
@@ -50,6 +66,13 @@ export class UIScene extends Phaser.Scene {
 
   create(data: { gameScene: GameScene }) {
     this.gameScene = data.gameScene || (this.scene.get('GameScene') as GameScene)
+    this._tookDamageThisRun = false  // reset at start of each run
+    this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+
+    // Slight UI scale-down on mobile so elements don't crowd the edges
+    if (this.isMobile) {
+      this.cameras.main.setZoom(0.92)
+    }
 
     const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace',
@@ -62,29 +85,14 @@ export class UIScene extends Phaser.Scene {
     // Main HUD graphics layer
     this.hud = this.add.graphics()
 
-    // Hero portrait — use spritesheet idle frame
-    const ht = this.gameScene.player.heroType
-    const srcMap: Record<string, string> = {}
-    const srcHero = srcMap[ht] || ht
-    const spriteKey = `${srcHero}_idle`
-    const tints: Record<string, number> = {}
-    if (this.textures.exists(spriteKey)) {
-      const scales: Record<string, number> = { ignara: 0.33, sifra: 0.28, nazar: 0.36, amun: 0.50 }
-      const yOffsets: Record<string, number> = { amun: -10 }
-      const portrait = this.add.sprite(34, 30 + (yOffsets[ht] || 0), spriteKey, 0).setScale(scales[ht] || 0.3).setDepth(2)
-      if (tints[ht]) portrait.setTint(tints[ht])
-    } else {
-      this.add.image(34, 30, `hero_${ht}`).setScale(0.6).setDepth(2)
-    }
+    // HP text (on bar)
+    this.hpText = this.add.text(0, 0, '', {
+      ...textStyle, fontSize: '11px',
+    }).setDepth(3)
 
-    // HP text
-    this.hpText = this.add.text(60, 14, '', textStyle).setDepth(2)
-
-    // Level badge
-    this.lvlText = this.add.text(60, 46, '', {
-      ...textStyle,
-      fontSize: '12px',
-      color: '#66bbff',
+    // Level text (below bars)
+    this.lvlText = this.add.text(0, 0, '', {
+      ...textStyle, fontSize: '11px', color: '#66bbff',
     }).setDepth(2)
 
     // Kills (top-right) — with skull icon
@@ -101,8 +109,27 @@ export class UIScene extends Phaser.Scene {
       color: '#ffaa44',
     }).setDepth(2)
 
+    // Gold counter (top-right under tier) with coin icon
+    if (!this.textures.exists('hud_coin')) {
+      const gc = this.add.graphics()
+      gc.fillStyle(0xffd700)
+      gc.fillCircle(7, 7, 7)
+      gc.fillStyle(0xffee88)
+      gc.fillCircle(6, 5, 3)
+      gc.lineStyle(1, 0xbb9900)
+      gc.strokeCircle(7, 7, 7)
+      gc.generateTexture('hud_coin', 14, 14)
+      gc.destroy()
+    }
+    this.goldIcon = this.add.image(0, 52, 'hud_coin').setDepth(2)
+    this.goldText = this.add.text(0, 48, '', {
+      ...textStyle,
+      fontSize: '13px',
+      color: '#FFD700',
+    }).setDepth(2)
+
     // Countdown timer (top-center)
-    this.timerText = this.add.text(0, 6, '', {
+    this.timerText = this.add.text(0, 26, '', {
       fontFamily: 'monospace',
       fontSize: '24px',
       color: '#ffffff',
@@ -110,36 +137,33 @@ export class UIScene extends Phaser.Scene {
       strokeThickness: 5,
     }).setDepth(2)
 
-    // Center announcement
+    // Top-area announcement (kill milestones, claws warning)
     this.announcement = this.add.text(0, 0, '', {
       fontFamily: 'monospace',
-      fontSize: '28px',
+      fontSize: '20px',
       color: '#FFD700',
       stroke: '#000000',
-      strokeThickness: 5,
+      strokeThickness: 4,
     }).setOrigin(0.5).setAlpha(0).setDepth(20)
 
-    // Minimap
+    // Minimap with clip mask
     this.minimap = this.add.graphics().setDepth(2)
-
-    // Pause button (top-center-left, next to timer)
-    this.pauseBtn = this.add.text(0, 0, '||', {
-      fontFamily: 'monospace',
-      fontSize: '20px',
-      color: '#aaaaaa',
-      stroke: '#000000',
-      strokeThickness: 3,
-      backgroundColor: '#1a1a2e',
-      padding: { x: 8, y: 4 },
-    }).setOrigin(0.5).setInteractive().setDepth(25)
-    this.pauseBtn.on('pointerover', () => { if (!this.isPaused) this.pauseBtn.setColor('#ffffff') })
-    this.pauseBtn.on('pointerout', () => { if (!this.isPaused) this.pauseBtn.setColor('#aaaaaa') })
-    this.pauseBtn.on('pointerdown', () => this.togglePause())
+    const mmSize = CONFIG.MINIMAP_SIZE
+    const mmMargin = CONFIG.MINIMAP_MARGIN
+    const mmX = this.scale.width - mmSize - mmMargin - 4
+    const mmY = mmMargin + 76
+    this.mmMaskShape = this.make.graphics({ x: 0, y: 0 })
+    this.mmMaskShape.fillStyle(0xffffff)
+    this.mmMaskShape.fillRect(mmX, mmY, mmSize, mmSize)
+    this.minimap.setMask(this.mmMaskShape.createGeometryMask())
 
     // Spacebar pause/resume (desktop)
     if (this.input.keyboard) {
       const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
       spaceKey.on('down', () => this.togglePause())
+      // ESC only unpauses (does not pause) to avoid conflicting with other ESC bindings
+      const escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
+      escKey.on('down', () => { if (this.isPaused) this.togglePause() })
     }
 
     // Pause overlay
@@ -158,8 +182,7 @@ export class UIScene extends Phaser.Scene {
       this.stanceBtn = this.add.text(0, 0, '', {
         fontFamily: 'monospace', fontSize: '11px', color: '#88ddff',
         stroke: '#000000', strokeThickness: 3,
-        backgroundColor: '#1a1a2e', padding: { x: 10, y: 5 },
-      }).setOrigin(0.5).setInteractive().setDepth(3)
+      }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
         this.gameScene.player.toggleStance()
       })
@@ -176,8 +199,7 @@ export class UIScene extends Phaser.Scene {
       this.stanceBtn = this.add.text(0, 0, '', {
         fontFamily: 'monospace', fontSize: '11px', color: '#ff6644',
         stroke: '#000000', strokeThickness: 3,
-        backgroundColor: '#1a1a2e', padding: { x: 10, y: 5 },
-      }).setOrigin(0.5).setInteractive().setDepth(3)
+      }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
         this.gameScene.player.toggleNazarStance()
       })
@@ -193,8 +215,7 @@ export class UIScene extends Phaser.Scene {
       this.stanceBtn = this.add.text(0, 0, '', {
         fontFamily: 'monospace', fontSize: '11px', color: '#2ecc71',
         stroke: '#000000', strokeThickness: 3,
-        backgroundColor: '#1a1a2e', padding: { x: 10, y: 5 },
-      }).setOrigin(0.5).setInteractive().setDepth(3)
+      }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
         this.gameScene.player.toggleHuntressStance()
       })
@@ -204,9 +225,86 @@ export class UIScene extends Phaser.Scene {
       this.updateHuntressStanceBtn()
     }
 
+    // Mobile stance toggle button (big, right side)
+    const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+    const p = this.gameScene.player
+    const hasStance = p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance)
+    if (isMob && hasStance) {
+      const { width, height } = this.scale
+      // Right half of screen = stance tap zone
+      const zone = this.add.zone(width * 0.75, height / 2, width / 2, height)
+        .setInteractive().setDepth(5)
+      this.mobileStanceBtn = zone
+      zone.on('pointerdown', () => {
+        if (p.heroType === 'sifra') p.toggleStance()
+        else if (p.heroType === 'nazar') p.toggleNazarStance()
+        else if (p.heroType === 'huntress') p.toggleHuntressStance()
+        else if (p.heroType === 'khashin') p.toggleKhashinStance()
+        else if (p.heroType === 'amun') p.toggleAmunStance()
+        this.updateMobileStanceBtn()
+      })
+      // Pill background behind stance label (bottom-right)
+      const pill = this.add.graphics().setDepth(20)
+      this.mobileStancePill = pill
+      // Small stance indicator label (bottom-right)
+      const lbl = this.add.text(width - 12, height - 12, '', {
+        fontFamily: 'monospace', fontSize: '18px', color: '#ffffff',
+        stroke: '#000000', strokeThickness: 3, align: 'center',
+      }).setOrigin(1, 1).setDepth(21).setAlpha(0.8)
+      this.mobileStanceLbl = lbl
+      this.gameScene.events.on('stance-changed', () => this.updateMobileStanceBtn())
+      this.gameScene.events.on('nazar-stance-changed', () => this.updateMobileStanceBtn())
+      this.gameScene.events.on('huntress-stance-changed', () => this.updateMobileStanceBtn())
+      this.gameScene.events.on('khashin-stance-changed', () => this.updateMobileStanceBtn())
+      this.gameScene.events.on('amun-stance-changed', () => this.updateMobileStanceBtn())
+      this.updateMobileStanceBtn()
+
+      // TAP hint on first game — fades out after 2s
+      if (shouldShowHint('mobile_stance_tap')) {
+        const tapHint = this.add.text(width - 52, height - 50, 'TAP', {
+          fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
+          stroke: '#000000', strokeThickness: 2,
+        }).setOrigin(0.5).setDepth(22).setAlpha(0.6)
+        this.time.delayedCall(1500, () => {
+          this.tweens.add({ targets: tapHint, alpha: 0, duration: 800, onComplete: () => tapHint.destroy() })
+        })
+      }
+    }
+
     // CLAWS warning
     this.events.on('claws-warning', () => {
       this.showAnnounce('THE CLAWS ARE COMING...', '#ff2222')
+    })
+
+    // Branch mastery level-up popup (fixed HUD position, non-blocking)
+    this.masteryPopup = this.add.text(0, 80, '', {
+      fontFamily: 'monospace',
+      fontSize: '20px',
+      color: '#ffdd00',
+      stroke: '#000000',
+      strokeThickness: 4,
+      fontStyle: 'bold',
+    }).setOrigin(0.5, 0).setDepth(20).setAlpha(0)
+
+    // Listen for branch mastery level-ups emitted by the Player via scene events
+    this.gameScene.events.on('branch-mastery-levelup', ({ branch, level }: { branch: string; level: number }) => {
+      const levelName = Player.MASTERY_NAMES[level] || ''
+      const displayBranch = branch.charAt(0).toUpperCase() + branch.slice(1)
+      this.masteryPopup.setText(`\u2B27 ${displayBranch} \u2014 ${levelName} \u2B27`)
+      this.masteryPopup.setPosition(this.scale.width / 2, 80).setAlpha(1).setScale(0.8)
+      this.tweens.killTweensOf(this.masteryPopup)
+      this.tweens.add({
+        targets: this.masteryPopup,
+        scale: 1,
+        duration: 250,
+        ease: 'Back.easeOut',
+      })
+      this.tweens.add({
+        targets: this.masteryPopup,
+        alpha: 0,
+        duration: 600,
+        delay: 1800,
+      })
     })
 
     // Clean up all external event listeners on shutdown to prevent memory leaks
@@ -214,6 +312,9 @@ export class UIScene extends Phaser.Scene {
       this.gameScene?.events?.off('stance-changed')
       this.gameScene?.events?.off('nazar-stance-changed')
       this.gameScene?.events?.off('huntress-stance-changed')
+      this.gameScene?.events?.off('khashin-stance-changed')
+      this.gameScene?.events?.off('amun-stance-changed')
+      this.gameScene?.events?.off('branch-mastery-levelup')
     })
 
     this.updatePositions()
@@ -224,10 +325,48 @@ export class UIScene extends Phaser.Scene {
     const { width, height } = this.scale
     this.killText.setPosition(width - 20, 14).setOrigin(1, 0)
     this.tierText.setPosition(width - 20, 32).setOrigin(1, 0)
-    this.timerText.setPosition(width / 2, 10).setOrigin(0.5, 0)
-    this.pauseBtn.setPosition(width / 2 + 60, 22)
-    this.announcement.setPosition(width / 2, height / 2 - 50)
-    if (this.stanceBtn) this.stanceBtn.setPosition(120, 100)
+    this.goldText.setPosition(width - 20, 48).setOrigin(1, 0)
+    this.goldIcon.setPosition(width - 20 - this.goldText.width - 10, 55)
+    this.timerText.setPosition(width / 2, 30).setOrigin(0.5, 0)
+    this.announcement.setPosition(width / 2, 60)
+    if (this.stanceBtn) this.stanceBtn.setPosition(56, 72)
+    if (this.mobileStanceBtn) {
+      this.mobileStanceBtn.setPosition(width * 0.75, height / 2).setSize(width / 2, height)
+    }
+    if (this.mobileStanceLbl) {
+      this.mobileStanceLbl.setPosition(width - 12, height - 12)
+    }
+    this._mmMaskDirty = true
+  }
+
+  private updateMobileStanceBtn() {
+    if (!this.mobileStanceLbl) return
+    const p = this.gameScene.player
+    let label = ''
+    if (p.heroType === 'sifra') {
+      label = p.stance === 'lightning' ? '⚡' : '❄'
+    } else if (p.heroType === 'nazar') {
+      label = p.nazarStance === 'venom' ? '☠' : '⚔'
+    } else if (p.heroType === 'huntress') {
+      label = p.huntressStance === 'spear' ? '🏹' : '⚔'
+    } else if (p.heroType === 'khashin') {
+      label = p.khashinStance === 'sirocco' ? '💨' : '🏜'
+    } else if (p.heroType === 'amun') {
+      label = p.amunStance === 'quake' ? '🌋' : '⚔'
+    }
+    this.mobileStanceLbl.setText(label)
+    // Draw pill background behind the label
+    if (this.mobileStancePill && label) {
+      const lbl = this.mobileStanceLbl
+      const pw = 80, ph = 36
+      const rx = lbl.x - pw + (lbl.displayWidth * 0.5)
+      const ry = lbl.y - ph + (lbl.displayHeight * 0.5)
+      this.mobileStancePill.clear()
+      this.mobileStancePill.fillStyle(0x000000, 0.3)
+      this.mobileStancePill.fillRoundedRect(rx, ry, pw, ph, 10)
+    } else if (this.mobileStancePill && !label) {
+      this.mobileStancePill.clear()
+    }
   }
 
   private updateStanceBtn() {
@@ -237,13 +376,7 @@ export class UIScene extends Phaser.Scene {
     const label = isLightning ? '⚡ LIGHTNING [Q]' : '❄ ICE [Q]'
     const color = isLightning ? '#bb88ff' : '#88ddff'
     this.stanceBtn.setText(label).setColor(color)
-
-    // Colored dot indicator
     this.stanceIcon.clear()
-    const bx = 120 - this.stanceBtn.width / 2 - 12
-    const by = 100
-    this.stanceIcon.fillStyle(isLightning ? 0x9966ff : 0x55aaff)
-    this.stanceIcon.fillCircle(bx, by, 4)
   }
 
   private updateNazarStanceBtn() {
@@ -254,10 +387,6 @@ export class UIScene extends Phaser.Scene {
     const color = isVenom ? '#44cc44' : '#ff6644'
     this.stanceBtn.setText(label).setColor(color)
     this.stanceIcon.clear()
-    const bx = 120 - this.stanceBtn.width / 2 - 12
-    const by = 100
-    this.stanceIcon.fillStyle(isVenom ? 0x44cc44 : 0xcc4444)
-    this.stanceIcon.fillCircle(bx, by, 4)
   }
 
   private updateHuntressStanceBtn() {
@@ -268,25 +397,22 @@ export class UIScene extends Phaser.Scene {
     const color = isSpear ? '#2ecc71' : '#e67e22'
     this.stanceBtn.setText(label).setColor(color)
     this.stanceIcon.clear()
-    const bx = 120 - this.stanceBtn.width / 2 - 12
-    const by = 100
-    this.stanceIcon.fillStyle(isSpear ? 0x2ecc71 : 0xe67e22)
-    this.stanceIcon.fillCircle(bx, by, 4)
   }
 
   private showAnnounce(text: string, color = '#FFD700') {
+    this.tweens.killTweensOf(this.announcement)
     this.announcement.setText(text).setColor(color).setAlpha(1).setScale(0.5)
     this.tweens.add({
       targets: this.announcement,
       scale: 1,
-      duration: 300,
+      duration: 200,
       ease: 'Back.easeOut',
     })
     this.tweens.add({
       targets: this.announcement,
       alpha: 0,
-      duration: 2000,
-      delay: 3000,
+      duration: 500,
+      delay: 800,
     })
   }
 
@@ -298,11 +424,10 @@ export class UIScene extends Phaser.Scene {
 
     if (this.isPaused) {
       this.scene.pause(this.gameScene.scene.key)
-      this.pauseBtn.setText('▶').setColor('#66ff66')
+      this.pauseBtn?.setText('▶').setColor('#66ff66')
 
       const gs = this.gameScene
       const p = gs.player
-      const tracker = gs.upgradeTracker
       const compact = height < 500
       const dep = 29
       const objs: Phaser.GameObjects.GameObject[] = []
@@ -363,107 +488,62 @@ export class UIScene extends Phaser.Scene {
         stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(dep))
 
-      // ── Content area ──
-      const contentTop = py + (compact ? 62 : 82)
-      const contentBot = py + panelH - (compact ? 44 : 60)
+      // ── Tab row ──
+      const tabH = compact ? 22 : 28
+      const tabY = barY + barH + (compact ? 4 : 6)
+      const tabW = compact ? 80 : 110
       const midX = px + panelW / 2
+      const tabStatsX = midX - tabW - (compact ? 4 : 6)
+      const tabInvX = midX + (compact ? 4 : 6)
 
-      // ── Divider line ──
-      panelG.lineStyle(1, 0x334466, 0.4)
-      panelG.lineBetween(midX, contentTop + 4, midX, contentBot - 4)
+      // Tab graphics objects
+      const tabStatsG = this.add.graphics().setDepth(dep)
+      objs.push(tabStatsG)
+      const tabStatsLbl = this.add.text(tabStatsX + tabW / 2, tabY + tabH / 2, 'STATS', {
+        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ffddcc',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(dep)
+      objs.push(tabStatsLbl)
 
-      // ── Left: Stats ──
-      const leftX = px + (compact ? 16 : 28)
-      let sy = contentTop
-      const sf = compact ? '10px' : '12px'
-      const sGap = compact ? 14 : 18
+      const tabInvG = this.add.graphics().setDepth(dep)
+      objs.push(tabInvG)
+      const tabInvLbl = this.add.text(tabInvX + tabW / 2, tabY + tabH / 2, 'INVENTORY', {
+        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#886666',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(dep)
+      objs.push(tabInvLbl)
 
-      const sectionTitle = (x: number, y: number, text: string) => {
-        const t = this.add.text(x, y, text, {
-          fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#8899aa',
-          stroke: '#000000', strokeThickness: 2,
-        }).setDepth(dep)
-        objs.push(t)
-        panelG.lineStyle(1, 0x445566, 0.3)
-        panelG.lineBetween(x, y + (compact ? 13 : 16), x + (compact ? 100 : 140), y + (compact ? 13 : 16))
-      }
-
-      sectionTitle(leftX, sy, '◆ STATS')
-      sy += compact ? 18 : 24
-
-      const valColor = '#ccddee'
-      const statRow = (label: string, val: string) => {
-        objs.push(this.add.text(leftX, sy, label, {
-          fontFamily: 'monospace', fontSize: sf, color: '#667788', stroke: '#000000', strokeThickness: 1,
-        }).setDepth(dep))
-        objs.push(this.add.text(leftX + (compact ? 72 : 100), sy, val, {
-          fontFamily: 'monospace', fontSize: sf, color: valColor, stroke: '#000000', strokeThickness: 1,
-        }).setDepth(dep))
-        sy += sGap
-      }
-
-      statRow('HP', `${Math.ceil(p.hp)} / ${p.maxHp}`)
-      statRow('Damage', `${Math.ceil(p.damage)}`)
-      statRow('Speed', `${Math.ceil(p.speed)}`)
-      statRow('Range', `${Math.ceil(p.range)}px`)
-      statRow('Cooldown', `${p.attackCooldown}ms`)
-      statRow('Armor', `${Math.round(p.armor * 100)}%`)
-      statRow('HP Regen', `${p.hpRegen}/s`)
-      statRow('Splash', `${p.splashRadius}px`)
-      statRow('Strikes', `${p.strikeCount}`)
-      if (tracker.chosenBranch) {
-        statRow('Branch', tracker.chosenBranch)
-      }
-
-      // ── Right: Skills ──
-      const rightX = midX + (compact ? 12 : 20)
-      let ry = contentTop
-
-      sectionTitle(rightX, ry, '◆ SKILLS')
-      ry += compact ? 18 : 24
-
-      // Collect picked skills
-      const pickedSkills: { label: string; desc: string }[] = []
-      for (const id of tracker.pickedPersonal) {
-        const branches = HERO_BRANCHES[p.heroType] || []
-        for (const b of branches) {
-          const skill = b.upgrades.find(u => u.id === id)
-          if (skill) { pickedSkills.push({ label: skill.label, desc: skill.desc }); break }
-        }
-      }
-      for (const id of tracker.pickedGeneric) {
-        const skill = GENERIC_POOL.find(u => u.id === id)
-        if (skill) pickedSkills.push({ label: skill.label, desc: skill.desc })
-      }
-
-      if (pickedSkills.length === 0) {
-        objs.push(this.add.text(rightX, ry, 'No skills yet', {
-          fontFamily: 'monospace', fontSize: sf, color: '#445566', stroke: '#000000', strokeThickness: 1,
-        }).setDepth(dep))
-      } else {
-        const maxSkills = compact ? 8 : 12
-        const skillGap = compact ? 22 : 28
-        for (let i = 0; i < Math.min(pickedSkills.length, maxSkills); i++) {
-          const s = pickedSkills[i]
-          objs.push(this.add.text(rightX, ry, s.label, {
-            fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ccddee',
-            stroke: '#000000', strokeThickness: 2,
-          }).setDepth(dep))
-          objs.push(this.add.text(rightX, ry + (compact ? 11 : 14), s.desc, {
-            fontFamily: 'monospace', fontSize: compact ? '7px' : '9px', color: '#556666',
-            stroke: '#000000', strokeThickness: 1,
-            wordWrap: { width: midX - rightX + (panelW / 2) - (compact ? 28 : 48) },
-          }).setDepth(dep))
-          ry += skillGap
-        }
-        if (pickedSkills.length > maxSkills) {
-          objs.push(this.add.text(rightX, ry, `+${pickedSkills.length - maxSkills} more...`, {
-            fontFamily: 'monospace', fontSize: '9px', color: '#445566', stroke: '#000000', strokeThickness: 1,
-          }).setDepth(dep))
+      const drawTabBtn = (
+        tabG: Phaser.GameObjects.Graphics,
+        tabLbl: Phaser.GameObjects.Text,
+        isStats: boolean,
+        active: boolean,
+      ) => {
+        const tx = isStats ? tabStatsX : tabInvX
+        tabG.clear()
+        if (active) {
+          tabG.fillStyle(0x8b2020, 0.9)
+          tabG.fillRoundedRect(tx, tabY, tabW, tabH, { tl: 6, tr: 6, bl: 0, br: 0 })
+          tabG.lineStyle(1, 0xcc4444, 0.7)
+          tabG.strokeRoundedRect(tx, tabY, tabW, tabH, { tl: 6, tr: 6, bl: 0, br: 0 })
+          tabLbl.setColor('#ffddcc')
+        } else {
+          tabG.fillStyle(0x2a1010, 0.7)
+          tabG.fillRoundedRect(tx, tabY, tabW, tabH, { tl: 6, tr: 6, bl: 0, br: 0 })
+          tabG.lineStyle(1, 0x5a2020, 0.5)
+          tabG.strokeRoundedRect(tx, tabY, tabW, tabH, { tl: 6, tr: 6, bl: 0, br: 0 })
+          tabLbl.setColor('#886666')
         }
       }
 
-      // ── Bottom buttons ──
+      drawTabBtn(tabStatsG, tabStatsLbl, true, this.pauseTab === 'stats')
+      drawTabBtn(tabInvG, tabInvLbl, false, this.pauseTab === 'inventory')
+
+      // Content area bounds (below tab row)
+      const contentTop = tabY + tabH + (compact ? 4 : 6)
+      const contentBot = py + panelH - (compact ? 44 : 60)
+
+      // ── Bottom buttons (always shown) ──
       const btnY = py + panelH - (compact ? 26 : 36)
       const btnW = compact ? 90 : 120
       const btnH = compact ? 24 : 32
@@ -515,16 +595,415 @@ export class UIScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(dep))
 
       this.pauseTexts = objs as Phaser.GameObjects.Text[]
+
+      // ── Render initial tab content ──
+      const renderCurrentTab = () => {
+        this.pauseTabObjs.forEach(o => o.destroy())
+        this.pauseTabObjs = []
+        if (this.pauseTab === 'stats') {
+          this.renderStatsTab(px, contentTop, contentBot, midX, panelW, compact, dep)
+        } else {
+          this.renderInventoryTab(px, contentTop, contentBot, compact, dep)
+        }
+      }
+      renderCurrentTab()
+
+      // ── Tab click zones ──
+      const tabStatsZone = this.add.zone(tabStatsX + tabW / 2, tabY + tabH / 2, tabW, tabH)
+        .setInteractive({ useHandCursor: true }).setDepth(dep + 1)
+      objs.push(tabStatsZone)
+      tabStatsZone.on('pointerdown', () => {
+        if (this.pauseTab === 'stats') return
+        this.pauseTab = 'stats'
+        drawTabBtn(tabStatsG, tabStatsLbl, true, true)
+        drawTabBtn(tabInvG, tabInvLbl, false, false)
+        renderCurrentTab()
+      })
+
+      const tabInvZone = this.add.zone(tabInvX + tabW / 2, tabY + tabH / 2, tabW, tabH)
+        .setInteractive({ useHandCursor: true }).setDepth(dep + 1)
+      objs.push(tabInvZone)
+      tabInvZone.on('pointerdown', () => {
+        if (this.pauseTab === 'inventory') return
+        this.pauseTab = 'inventory'
+        drawTabBtn(tabInvG, tabInvLbl, false, true)
+        drawTabBtn(tabStatsG, tabStatsLbl, true, false)
+        renderCurrentTab()
+      })
+
     } else {
       this.clearPause()
       this.scene.resume(this.gameScene.scene.key)
     }
   }
 
+  // ── Stats tab: two-column stats + skills ──
+  private renderStatsTab(
+    px: number, contentTop: number, contentBot: number,
+    midX: number, panelW: number, compact: boolean, dep: number,
+  ) {
+    const gs = this.gameScene
+    const p = gs.player
+    const tracker = gs.upgradeTracker
+    const objs = this.pauseTabObjs
+
+    // Divider line
+    const divG = this.add.graphics().setDepth(dep)
+    objs.push(divG)
+    divG.lineStyle(1, 0x334466, 0.4)
+    divG.lineBetween(midX, contentTop + 4, midX, contentBot - 4)
+
+    // Left: Stats
+    const leftX = px + (compact ? 16 : 28)
+    let sy = contentTop
+    const sf = compact ? '10px' : '12px'
+    const sGap = compact ? 14 : 18
+
+    const sectionTitle = (x: number, y: number, text: string) => {
+      const t = this.add.text(x, y, text, {
+        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#8899aa',
+        stroke: '#000000', strokeThickness: 2,
+      }).setDepth(dep)
+      objs.push(t)
+      divG.lineStyle(1, 0x445566, 0.3)
+      divG.lineBetween(x, y + (compact ? 13 : 16), x + (compact ? 100 : 140), y + (compact ? 13 : 16))
+    }
+
+    sectionTitle(leftX, sy, '◆ STATS')
+    sy += compact ? 18 : 24
+
+    const valColor = '#ccddee'
+    const statRow = (label: string, val: string) => {
+      objs.push(this.add.text(leftX, sy, label, {
+        fontFamily: 'monospace', fontSize: sf, color: '#667788', stroke: '#000000', strokeThickness: 1,
+      }).setDepth(dep))
+      objs.push(this.add.text(leftX + (compact ? 72 : 100), sy, val, {
+        fontFamily: 'monospace', fontSize: sf, color: valColor, stroke: '#000000', strokeThickness: 1,
+      }).setDepth(dep))
+      sy += sGap
+    }
+
+    statRow('HP', `${Math.ceil(p.hp)} / ${p.maxHp}`)
+    statRow('Damage', `${Math.ceil(p.damage)}`)
+    statRow('Speed', `${Math.ceil(p.speed)}`)
+    statRow('Range', `${Math.ceil(p.range)}px`)
+    statRow('Cooldown', `${p.attackCooldown}ms`)
+    statRow('Armor', `${Math.round(p.armor * 100)}%`)
+    statRow('HP Regen', `${p.hpRegen}/s`)
+    statRow('Splash', `${p.splashRadius}px`)
+    statRow('Strikes', `${p.strikeCount}`)
+    if (tracker.chosenBranch) {
+      statRow('Branch', tracker.chosenBranch)
+    }
+
+    // Right: Skills
+    const rightX = midX + (compact ? 12 : 20)
+    let ry = contentTop
+
+    sectionTitle(rightX, ry, '◆ SKILLS')
+    ry += compact ? 18 : 24
+
+    const pickedSkills: { label: string; desc: string; level: number }[] = []
+    const personalIds = Object.keys(tracker.skillLevels).filter(id => !tracker.pickedGeneric.has(id))
+    for (const id of personalIds) {
+      const branches = HERO_BRANCHES[p.heroType] || []
+      for (const b of branches) {
+        const skill = b.upgrades.find(u => u.id === id)
+        if (skill) {
+          const lvl = tracker.skillLevels[id] ?? 1
+          const descArr = Array.isArray(skill.desc) ? skill.desc : [skill.desc as string]
+          pickedSkills.push({ label: skill.label, desc: descArr[0] ?? '', level: lvl })
+          break
+        }
+      }
+    }
+    for (const id of tracker.pickedGeneric) {
+      const skill = GENERIC_POOL.find(u => u.id === id)
+      if (skill) {
+        const descArr = Array.isArray(skill.desc) ? skill.desc : [skill.desc as string]
+        pickedSkills.push({ label: skill.label, desc: descArr[0] ?? '', level: 1 })
+      }
+    }
+
+    if (pickedSkills.length === 0) {
+      objs.push(this.add.text(rightX, ry, 'No skills yet', {
+        fontFamily: 'monospace', fontSize: sf, color: '#445566', stroke: '#000000', strokeThickness: 1,
+      }).setDepth(dep))
+    } else {
+      const maxSkills = compact ? 8 : 12
+      const skillGap = compact ? 22 : 28
+      for (let i = 0; i < Math.min(pickedSkills.length, maxSkills); i++) {
+        const s = pickedSkills[i]
+        objs.push(this.add.text(rightX, ry, s.label, {
+          fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ccddee',
+          stroke: '#000000', strokeThickness: 2,
+        }).setDepth(dep))
+        objs.push(this.add.text(rightX, ry + (compact ? 11 : 14), s.desc, {
+          fontFamily: 'monospace', fontSize: compact ? '7px' : '9px', color: '#556666',
+          stroke: '#000000', strokeThickness: 1,
+          wordWrap: { width: midX - rightX + (panelW / 2) - (compact ? 28 : 48) },
+        }).setDepth(dep))
+        ry += skillGap
+      }
+      if (pickedSkills.length > maxSkills) {
+        objs.push(this.add.text(rightX, ry, `+${pickedSkills.length - maxSkills} more...`, {
+          fontFamily: 'monospace', fontSize: '9px', color: '#445566', stroke: '#000000', strokeThickness: 1,
+        }).setDepth(dep))
+      }
+    }
+  }
+
+  // ── Inventory tab: icon grid of picked upgrades ──
+  private renderInventoryTab(
+    px: number, contentTop: number, contentBot: number,
+    compact: boolean, dep: number,
+  ) {
+    const gs = this.gameScene
+    const p = gs.player
+    const tracker = gs.upgradeTracker
+    const objs = this.pauseTabObjs
+    const iconSheetExists = this.textures.exists('skill_icons_sheet')
+
+    // Collect all picked skills in order
+    const allSkills: { label: string; icon: string }[] = []
+    const personalIdsInv = Object.keys(tracker.skillLevels).filter(id => !tracker.pickedGeneric.has(id))
+    for (const id of personalIdsInv) {
+      const branches = HERO_BRANCHES[p.heroType] || []
+      for (const b of branches) {
+        const skill = b.upgrades.find(u => u.id === id)
+        if (skill) { allSkills.push({ label: skill.label, icon: skill.icon }); break }
+      }
+    }
+    for (const id of tracker.pickedGeneric) {
+      const skill = GENERIC_POOL.find(u => u.id === id)
+      if (skill) allSkills.push({ label: skill.label, icon: skill.icon })
+    }
+
+    // 10 slots: 2 columns × 5 rows, left side of panel
+    const totalSlots = 10
+    const cols = 2
+    const rows = 5
+    const slotSize = compact ? 56 : 72
+    const slotGap = compact ? 6 : 8
+    const gridW = cols * slotSize + (cols - 1) * slotGap
+    const gridH = rows * slotSize + (rows - 1) * slotGap
+    const gridX = px + (compact ? 16 : 24)
+    const gridY = contentTop + Math.max(0, ((contentBot - contentTop) - gridH) / 2)
+
+    // Tooltip
+    const tooltipText = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ffddcc',
+      stroke: '#000000', strokeThickness: 2,
+      backgroundColor: '#1a0505',
+      padding: { x: 6, y: 4 },
+    }).setDepth(dep + 4).setAlpha(0).setOrigin(0)
+    objs.push(tooltipText)
+
+    // Draw 10 slots
+    for (let i = 0; i < totalSlots; i++) {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const sx = gridX + col * (slotSize + slotGap)
+      const sy = gridY + row * (slotSize + slotGap)
+      const skill = allSkills[i] || null
+
+      const slotG = this.add.graphics().setDepth(dep + 1)
+      objs.push(slotG)
+
+      // Slot frame
+      if (skill) {
+        slotG.fillStyle(0x3a1010)
+        slotG.fillRoundedRect(sx, sy, slotSize, slotSize, 6)
+        slotG.lineStyle(2, 0x8b2020, 0.9)
+        slotG.strokeRoundedRect(sx, sy, slotSize, slotSize, 6)
+      } else {
+        // Empty slot — dashed look
+        slotG.fillStyle(0x1a0808, 0.5)
+        slotG.fillRoundedRect(sx, sy, slotSize, slotSize, 6)
+        slotG.lineStyle(1, 0x4a1515, 0.5)
+        slotG.strokeRoundedRect(sx, sy, slotSize, slotSize, 6)
+      }
+
+      if (skill) {
+        // Skill icon (128x128 sheet → scale to fit slot with margin)
+        if (iconSheetExists) {
+          const frame = getIconFrame(skill.icon)
+          const iconScale = (slotSize - 10) / 128
+          const icon = this.add.image(sx + slotSize / 2, sy + slotSize / 2, 'skill_icons_sheet', frame)
+            .setScale(iconScale).setDepth(dep + 2)
+          objs.push(icon)
+        } else {
+          objs.push(this.add.text(sx + slotSize / 2, sy + slotSize / 2, skill.label.substring(0, 3).toUpperCase(), {
+            fontFamily: 'monospace', fontSize: compact ? '11px' : '14px', color: '#cc8866',
+            stroke: '#000000', strokeThickness: 2,
+          }).setOrigin(0.5).setDepth(dep + 2))
+        }
+
+        // Hover zone for tooltip
+        const zone = this.add.zone(sx, sy, slotSize, slotSize)
+          .setOrigin(0, 0).setInteractive({ useHandCursor: false }).setDepth(dep + 3)
+        objs.push(zone)
+
+        zone.on('pointerover', () => {
+          slotG.clear()
+          slotG.fillStyle(0x4a1818)
+          slotG.fillRoundedRect(sx, sy, slotSize, slotSize, 6)
+          slotG.lineStyle(2, 0xcc4444)
+          slotG.strokeRoundedRect(sx, sy, slotSize, slotSize, 6)
+          tooltipText.setText(skill.label)
+            .setPosition(sx + slotSize + 8, sy)
+            .setAlpha(1)
+        })
+        zone.on('pointerout', () => {
+          slotG.clear()
+          slotG.fillStyle(0x3a1010)
+          slotG.fillRoundedRect(sx, sy, slotSize, slotSize, 6)
+          slotG.lineStyle(2, 0x8b2020, 0.9)
+          slotG.strokeRoundedRect(sx, sy, slotSize, slotSize, 6)
+          tooltipText.setAlpha(0)
+        })
+      }
+    }
+
+    // Right side — stats summary next to inventory
+    const infoX = gridX + gridW + (compact ? 20 : 32)
+    const infoY = gridY
+    const infoStyle = { fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#aabbcc', stroke: '#000000', strokeThickness: 2 }
+    const valStyle = { ...infoStyle, color: '#ffddaa' }
+    const lineH = compact ? 18 : 22
+
+    const stats = [
+      ['HP', `${Math.ceil(p.hp)} / ${p.maxHp}`],
+      ['DMG', `${p.damage}`],
+      ['SPD', `${p.speed}`],
+      ['RNG', `${p.range}`],
+      ['ARM', `${Math.round(p.armor * 100)}%`],
+      ['LVL', `${p.level}`],
+      ['KILLS', `${p.kills}`],
+      ['GOLD', `${p.goldThisRun} ✦`],
+    ]
+    stats.forEach(([label, val], i) => {
+      objs.push(this.add.text(infoX, infoY + i * lineH, label, infoStyle as any).setDepth(dep + 1))
+      objs.push(this.add.text(infoX + (compact ? 50 : 65), infoY + i * lineH, val, valStyle as any).setDepth(dep + 1))
+    })
+
+    // === MASTERY SECTION (below stats) ===
+    const masteryY = infoY + stats.length * lineH + (compact ? 10 : 16)
+    const branchColor: Record<string, number> = {
+      ice: 0x55aaff, lightning: 0x9966ff,
+      sword: 0xcc4444, venom: 0x44cc44,
+      melee: 0xe67e22, spear: 0x2ecc71,
+      wind: 0x88ddff, sand: 0xddaa44,
+      ground: 0xddaa22, quake: 0xff8833,
+      fireball: 0xff6600, crystal: 0x44aaff,
+    }
+    const heroBranches: Record<string, string[]> = {
+      sifra: ['ice', 'lightning'], nazar: ['sword', 'venom'],
+      huntress: ['melee', 'spear'], khashin: ['wind', 'sand'],
+      ignara: ['fireball'], muller: ['crystal'],
+    }
+    let branches = heroBranches[p.heroType] || []
+    if (p.heroType === 'amun' && p.hasQuakeStance) branches = ['ground', 'quake']
+    else if (p.heroType === 'amun') branches = []
+
+    if (branches.length > 0) {
+      objs.push(this.add.text(infoX, masteryY, 'MASTERY', {
+        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px',
+        color: '#888888', stroke: '#000000', strokeThickness: 2,
+      }).setDepth(dep + 1))
+
+      const dSize = compact ? 5 : 6
+      const rowH = compact ? 28 : 34
+      const barW = compact ? 60 : 80
+
+      branches.forEach((branch, bi) => {
+        const ry = masteryY + 18 + bi * rowH
+        const level = p.getMasteryLevel(branch)
+        const xp = p.branchMasteryXP[branch] ?? 0
+        const color = branchColor[branch] ?? 0xaaaaaa
+        const displayName = branch.charAt(0).toUpperCase() + branch.slice(1)
+        const levelName = Player.MASTERY_NAMES[level] || ''
+
+        // Branch label
+        objs.push(this.add.text(infoX, ry, displayName, {
+          fontFamily: 'monospace', fontSize: compact ? '10px' : '11px',
+          color: '#' + color.toString(16).padStart(6, '0'),
+          stroke: '#000000', strokeThickness: 2,
+        }).setDepth(dep + 1))
+
+        // Mastery level name (right of label)
+        if (levelName) {
+          objs.push(this.add.text(infoX + (compact ? 55 : 65), ry, levelName, {
+            fontFamily: 'monospace', fontSize: compact ? '9px' : '10px',
+            color: '#ffddaa', stroke: '#000000', strokeThickness: 1,
+          }).setDepth(dep + 1))
+        }
+
+        // Diamond row + XP progress bar
+        const diamondY = ry + (compact ? 14 : 16)
+        const mg = this.add.graphics().setDepth(dep + 2)
+        objs.push(mg)
+
+        // 3 diamonds
+        const diamondSpacing = dSize * 3
+        for (let i = 0; i < 3; i++) {
+          const cx = infoX + dSize + i * diamondSpacing
+          const cy = diamondY
+          const filled = i < level
+          if (filled) {
+            mg.fillStyle(color, 0.95)
+            mg.fillTriangle(cx, cy - dSize, cx + dSize, cy, cx - dSize, cy)
+            mg.fillTriangle(cx, cy + dSize, cx + dSize, cy, cx - dSize, cy)
+            mg.fillStyle(0xffffff, 0.25)
+            mg.fillTriangle(cx, cy - dSize + 1, cx + dSize - 2, cy, cx - dSize + 2, cy)
+          } else {
+            mg.fillStyle(color, 0.08)
+            mg.fillTriangle(cx, cy - dSize, cx + dSize, cy, cx - dSize, cy)
+            mg.fillTriangle(cx, cy + dSize, cx + dSize, cy, cx - dSize, cy)
+            mg.lineStyle(1, color, 0.5)
+            mg.beginPath()
+            mg.moveTo(cx, cy - dSize)
+            mg.lineTo(cx + dSize, cy)
+            mg.lineTo(cx, cy + dSize)
+            mg.lineTo(cx - dSize, cy)
+            mg.closePath()
+            mg.strokePath()
+          }
+        }
+
+        // XP progress bar (toward next level)
+        const barX2 = infoX + 3 * diamondSpacing + dSize + 6
+        const barH = compact ? 6 : 8
+        const nextThreshold = level < 3 ? Player.MASTERY_THRESHOLDS[level] : Player.MASTERY_THRESHOLDS[2]
+        const prevThreshold = level > 0 ? Player.MASTERY_THRESHOLDS[level - 1] : 0
+        const progress = level >= 3 ? 1 : Math.min(1, (xp - prevThreshold) / (nextThreshold - prevThreshold))
+
+        mg.fillStyle(0x1a1a2a)
+        mg.fillRoundedRect(barX2, diamondY - barH / 2, barW, barH, 2)
+        if (progress > 0) {
+          mg.fillStyle(color, 0.8)
+          mg.fillRoundedRect(barX2, diamondY - barH / 2, Math.max(2, barW * progress), barH, 2)
+        }
+        mg.lineStyle(1, color, 0.3)
+        mg.strokeRoundedRect(barX2, diamondY - barH / 2, barW, barH, 2)
+
+        // XP text
+        const xpLabel = level >= 3 ? 'MAX' : `${Math.floor(xp)}/${nextThreshold}`
+        objs.push(this.add.text(barX2 + barW + 6, diamondY, xpLabel, {
+          fontFamily: 'monospace', fontSize: compact ? '8px' : '9px',
+          color: level >= 3 ? '#ffdd44' : '#777777',
+          stroke: '#000000', strokeThickness: 1,
+        }).setOrigin(0, 0.5).setDepth(dep + 1))
+      })
+    }
+  }
+
   private clearPause() {
     this.isPaused = false
-    this.pauseBtn.setText('||').setColor('#aaaaaa')
+    this.pauseBtn?.setText('||').setColor('#aaaaaa')
     this.pauseOverlay.setAlpha(0)
+    this.pauseTabObjs.forEach(o => o.destroy())
+    this.pauseTabObjs = []
     this.pauseTexts.forEach(t => t.destroy())
     this.pauseTexts = []
   }
@@ -570,8 +1049,10 @@ export class UIScene extends Phaser.Scene {
       timeMs: survived,
       wave: gs.waveManager?.currentWave || 1,
       won: survived >= CONFIG.RUN_DURATION,
+      tookDamage: this._tookDamageThisRun,
       date: new Date().toISOString(),
-      upgrades: [...gs.upgradeTracker.pickedGeneric, ...gs.upgradeTracker.pickedPersonal],
+      upgrades: [...gs.upgradeTracker.pickedGeneric, ...Object.keys(gs.upgradeTracker.skillLevels).filter(id => !gs.upgradeTracker.pickedGeneric.has(id))],
+      goldEarned: gs.player.goldThisRun,
     }
     MetaProgress.recordSession(session)
 
@@ -606,7 +1087,7 @@ export class UIScene extends Phaser.Scene {
 
     // Stats panel
     const panelG = this.add.graphics().setDepth(31)
-    const pw = 260, ph = 90
+    const pw = 260, ph = 114
     const px = cx - pw / 2, py = topY + 44
     panelG.fillStyle(0x1a1a2e, 0.9)
     panelG.fillRoundedRect(px, py, pw, ph, 10)
@@ -621,6 +1102,7 @@ export class UIScene extends Phaser.Scene {
     const t2 = this.add.text(cx, py + 18, `Time: ${timeStr}`, infoStyle).setOrigin(0.5).setDepth(32)
     const t3 = this.add.text(cx, py + 42, `Kills: ${gs.player.kills}`, { ...infoStyle, color: '#ff8888' }).setOrigin(0.5).setDepth(32)
     const t4 = this.add.text(cx, py + 66, `Level: ${gs.player.level}`, { ...infoStyle, color: '#66bbff' }).setOrigin(0.5).setDepth(32)
+    const t4b = this.add.text(cx, py + 90, `Gold: ${gs.player.goldThisRun} ✦`, { ...infoStyle, color: '#FFD700' }).setOrigin(0.5).setDepth(32)
 
     // Leaderboard panel
     const lbG = this.add.graphics().setDepth(31)
@@ -668,7 +1150,7 @@ export class UIScene extends Phaser.Scene {
       this.cleanup()
       const sm = this.game.scene
       sm.stop('LevelUpScene'); sm.stop(map); sm.stop('UIScene')
-      sm.start('LoadingScene', { hero, map })
+      sm.start(map, { hero })
     })
 
     const t6 = this.add.text(cx, btnY + 46, 'Choose Hero', {
@@ -685,7 +1167,22 @@ export class UIScene extends Phaser.Scene {
       sm.start('StartScene')
     })
 
-    this.endTexts = [t1, t2, t3, t4, t5, t6, panelG as any, lbG as any, ...lbEntries]
+    const t7 = this.add.text(cx, btnY + 86, 'FORGE', {
+      ...btnStyle, fontSize: '14px', color: '#FFD700',
+      backgroundColor: '#1a1a0a',
+    } as Phaser.Types.GameObjects.Text.TextStyle)
+      .setOrigin(0.5).setInteractive().setDepth(32)
+    t7.on('pointerover', () => t7.setColor('#ffffff'))
+    t7.on('pointerout', () => t7.setColor('#FFD700'))
+    t7.on('pointerdown', () => {
+      const sceneKey = gs.scene.key
+      this.cleanup()
+      const sm = this.game.scene
+      sm.stop('LevelUpScene'); sm.stop(sceneKey); sm.stop('UIScene')
+      sm.start('ForgeScene')
+    })
+
+    this.endTexts = [t1, t2, t3, t4, t4b, t5, t6, t7, panelG as any, lbG as any, ...lbEntries]
   }
 
   private showAchievementNotification(ids: string[]) {
@@ -742,13 +1239,21 @@ export class UIScene extends Phaser.Scene {
     const margin = CONFIG.MINIMAP_MARGIN
     const { width } = this.scale
     const mapX = width - size - margin - 4
-    const mapY = margin + 50
+    const mapY = margin + 76
 
     // Background with frame
     mm.fillStyle(0x0a0a1a, 0.75)
     mm.fillRoundedRect(mapX - 2, mapY - 2, size + 4, size + 4, 4)
     mm.fillStyle(0x111122, 0.85)
     mm.fillRect(mapX, mapY, size, size)
+
+    // Update clip mask position — only on resize
+    if (this._mmMaskDirty && this.mmMaskShape) {
+      this.mmMaskShape.clear()
+      this.mmMaskShape.fillStyle(0xffffff)
+      this.mmMaskShape.fillRect(mapX, mapY, size, size)
+      this._mmMaskDirty = false
+    }
 
     // Border frame
     mm.lineStyle(2, 0x444466)
@@ -765,55 +1270,51 @@ export class UIScene extends Phaser.Scene {
     mm.fillRect(mapX + size, mapY + size - 4, 2, 6)
     mm.fillRect(mapX + size - 4, mapY + size, 6, 2)
 
-    const scaleX = size / CONFIG.WORLD_WIDTH
-    const scaleY = size / CONFIG.WORLD_HEIGHT
+    const gs = this.gameScene
+    if (!gs?.player) return
 
-    // Zone rings (world center 1500,1500 mapped to minimap coords)
-    const cx = mapX + 1500 * scaleX
-    const cy = mapY + 1500 * scaleY
+    const playerX = gs.player.x
+    const playerY = gs.player.y
+    const radius = CONFIG.MINIMAP_WORLD_RADIUS
+    const scale = size / (radius * 2)
+    const half = size / 2
+
+    // Helper: world coord → minimap pixel
+    const toMmX = (wx: number) => mapX + half + (wx - playerX) * scale
+    const toMmY = (wy: number) => mapY + half + (wy - playerY) * scale
+
+    // Zone rings from world origin (0,0)
     const zoneRings: [number, number, number][] = [
       [600,  0x888888, 0.3],
       [1200, 0x448844, 0.3],
       [1800, 0x888866, 0.3],
       [2400, 0x446644, 0.3],
     ]
+    const ox = toMmX(0)
+    const oy = toMmY(0)
     for (const [worldRadius, color, alpha] of zoneRings) {
       mm.lineStyle(1, color, alpha)
-      mm.strokeCircle(cx, cy, worldRadius * scaleX)
+      mm.strokeCircle(ox, oy, worldRadius * scale)
     }
-
-    const gs = this.gameScene
-    if (!gs?.player) return
 
     // Enemies as colored dots
     for (const enemy of gs.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!enemy.active) continue
+      const ex = toMmX(enemy.x)
+      const ey = toMmY(enemy.y)
+      if (ex < mapX || ex > mapX + size || ey < mapY || ey > mapY + size) continue
       if (enemy instanceof FlyingEye) mm.fillStyle(0xff4444)
       else if (enemy instanceof SandGolem) mm.fillStyle(0xff8800)
       else mm.fillStyle(0xcccccc)
-      const ex = mapX + enemy.x * scaleX
-      const ey = mapY + enemy.y * scaleY
       const s = enemy instanceof SandGolem ? 3 : 1.5
       mm.fillRect(ex - s / 2, ey - s / 2, s, s)
     }
 
-    // Camera viewport
-    const cam = gs.cameras.main
-    mm.lineStyle(1, 0x4488aa, 0.6)
-    mm.strokeRect(
-      mapX + cam.scrollX * scaleX,
-      mapY + cam.scrollY * scaleY,
-      cam.width * scaleX,
-      cam.height * scaleY,
-    )
-
-    // Player — bright dot with ring
-    const px = mapX + gs.player.x * scaleX
-    const py = mapY + gs.player.y * scaleY
+    // Player — always at center
     mm.fillStyle(0x00ff66)
-    mm.fillCircle(px, py, 3)
+    mm.fillCircle(mapX + half, mapY + half, 3)
     mm.lineStyle(1, 0x00ff66, 0.4)
-    mm.strokeCircle(px, py, 5)
+    mm.strokeCircle(mapX + half, mapY + half, 5)
   }
 
   update() {
@@ -853,6 +1354,7 @@ export class UIScene extends Phaser.Scene {
     const curXpMax     = p.xpToNextLevel()
     const curLevel     = p.level
     const curKills     = p.kills
+    const curGold      = p.goldThisRun
     const curTimeSec   = Math.floor(remaining / 1000)
 
     // Hero-specific energy bars
@@ -865,25 +1367,35 @@ export class UIScene extends Phaser.Scene {
       curEnergy1 = p.meleeEnergy; curEnergy2 = p.spearEnergy
     } else if (p.heroType === 'khashin') {
       curEnergy1 = p.windEnergy; curEnergy2 = p.sandEnergy
+    } else if (p.heroType === 'amun' && p.hasQuakeStance) {
+      curEnergy1 = p.groundEnergy; curEnergy2 = p.quakeEnergy
     }
 
+    // Force redraw during flash or critical HP pulse
+    const hpCritNow = curHp / (curMaxHp || 1) <= 0.3 && curHp > 0
     const dirty =
-      curHp      !== this._lastHp      ||
-      curMaxHp   !== this._lastMaxHp   ||
-      curXp      !== this._lastXp      ||
-      curXpMax   !== this._lastXpMax   ||
-      curLevel   !== this._lastLevel   ||
-      curEnergy1 !== this._lastEnergy1 ||
-      curEnergy2 !== this._lastEnergy2 ||
-      curKills   !== this._lastKills   ||
-      curTimeSec !== this._lastGameTimeSec
+      curHp        !== this._lastHp      ||
+      curMaxHp     !== this._lastMaxHp   ||
+      curXp        !== this._lastXp      ||
+      curXpMax     !== this._lastXpMax   ||
+      curLevel     !== this._lastLevel   ||
+      curEnergy1   !== this._lastEnergy1 ||
+      curEnergy2   !== this._lastEnergy2 ||
+      curKills     !== this._lastKills   ||
+      curGold      !== this._lastGold    ||
+      curTimeSec   !== this._lastGameTimeSec ||
+      this.time.now < this._critFlashUntil ||
+      hpCritNow
 
     if (!dirty) {
-      // Nothing changed — skip all Graphics API calls, just throttle minimap
       this._mmFrame = ((this._mmFrame || 0) + 1) % 3
       if (this._mmFrame === 0) this.drawMinimap()
       return
     }
+
+    // Detect damage BEFORE caching (so _lastHp still has old value)
+    const tookDamage = curHp < this._lastHp && this._lastHp > 0
+    if (tookDamage) this._tookDamageThisRun = true
 
     // Update cached values
     this._lastHp           = curHp
@@ -894,326 +1406,303 @@ export class UIScene extends Phaser.Scene {
     this._lastEnergy1      = curEnergy1
     this._lastEnergy2      = curEnergy2
     this._lastKills        = curKills
+    this._lastGold         = curGold
     this._lastGameTimeSec  = curTimeSec
+
+    // Kill milestone announcements
+    const KILL_MILESTONES: [number, string][] = [
+      [50, '50 KILLS'], [100, 'CENTURION'], [250, 'SLAUGHTER'], [500, 'MASSACRE'], [1000, 'GENOCIDE'],
+    ]
+    for (const [threshold, label] of KILL_MILESTONES) {
+      if (curKills >= threshold && !this._killMilestones.has(threshold)) {
+        this._killMilestones.add(threshold)
+        this.showAnnounce(label)
+      }
+    }
+
 
     const g = this.hud
     g.clear()
 
-    // === TOP-LEFT: HP/XP Panel (with padding from edges) ===
-    const panelW = 210, panelH = 66
-    const px = 14, py = 10
-
-    // Panel background
-    g.fillStyle(0x0a0a1a, 0.7)
-    g.fillRoundedRect(px, py, panelW, panelH, 8)
-    g.lineStyle(1, 0x333355)
-    g.strokeRoundedRect(px, py, panelW, panelH, 8)
-
-    // Portrait frame
-    g.lineStyle(2, 0x666688)
-    g.strokeCircle(34, 30, 14)
-
-    // HP bar
-    const hpBarX = 60, hpBarY = 18, hpBarW = 152, hpBarH = 14
-    // Bar background
-    g.fillStyle(0x1a0000)
-    g.fillRoundedRect(hpBarX, hpBarY, hpBarW, hpBarH, 3)
-    // HP fill
-    const hpRatio = Math.max(0, p.hp / p.maxHp)
-    const hpColor = hpRatio > 0.5 ? 0xcc2222 : hpRatio > 0.25 ? 0xcc6622 : 0xff2222
-    if (hpRatio > 0) {
-      g.fillStyle(hpColor)
-      g.fillRoundedRect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH, 3)
-      // Shine highlight
-      g.fillStyle(0xffffff, 0.15)
-      g.fillRect(hpBarX + 2, hpBarY + 1, hpBarW * hpRatio - 4, 4)
+    // === HERO COLOR for LVL circle border ===
+    const HERO_COLORS: Record<string, number> = {
+      ignara: 0xe84118, sifra: 0x82ccdd, amun: 0xfff200, nazar: 0xc23616,
+      huntress: 0x2ecc71, khashin: 0x88ddff, muller: 0x44aaff,
     }
-    // HP bar frame
-    g.lineStyle(1, 0x662222)
-    g.strokeRoundedRect(hpBarX, hpBarY, hpBarW, hpBarH, 3)
+    const heroColor = HERO_COLORS[p.heroType] ?? 0xaaaaaa
+
+    // === LAYOUT CONSTANTS ===
+    // LVL circle (48px, like buff icons) at far left, then bars to its right
+    const lvlSize = 48
+    const lvlX = 4                             // circle left edge
+    const lvlCX = lvlX + lvlSize / 2           // circle center X
+    const barX = lvlX + lvlSize + 4            // bars start after circle
+    const ebW = 95, ebGap = 3
+    const barW = ebW * 2 + ebGap               // HP bar = combined energy width (193px)
+    const hpBarH = 24, ebH = 12
+    const hpBarY = 16                          // HP bar top
+    const ebY = hpBarY + hpBarH + 3            // energy bars top
+    const lvlCY = hpBarY + (hpBarH + 3 + ebH) / 2  // vertically center with bars
+
+    // === LVL CIRCLE (left of bars) ===
+    g.fillStyle(0x0a0a1a, 0.8)
+    g.fillCircle(lvlCX, lvlCY, lvlSize / 2)
+    g.lineStyle(2, heroColor, 0.8)
+    g.strokeCircle(lvlCX, lvlCY, lvlSize / 2)
+    this.lvlText.setText(`LVL ${p.level}`)
+    this.lvlText.setPosition(lvlCX, lvlCY).setOrigin(0.5)
+
+    // === HP BAR (same width as combined energy) ===
+    const hpRatio = Math.max(0, p.hp / p.maxHp)
+    const now = this.time.now
+    const isCritical = hpRatio <= 0.3 && hpRatio > 0
+
+    if (tookDamage && now > this._critFlashUntil + 300) this._critFlashUntil = now + 50
+    if (isCritical) this._critPulse += 1
+    else this._critPulse = 0
+    const isFlashing = now < this._critFlashUntil || (isCritical && (Math.floor(this._critPulse / 8) % 2 === 0))
+
+    g.fillStyle(0x220808)
+    g.fillRoundedRect(barX, hpBarY, barW, hpBarH, 2)
+    const hpFillW = Math.floor(barW * hpRatio)
+    if (hpFillW > 0) {
+      const c = isFlashing ? 0xffffff : hpRatio > 0.5 ? 0xcc2222 : hpRatio > 0.25 ? 0xdd6622 : 0xff2222
+      g.fillStyle(c)
+      g.fillRoundedRect(barX, hpBarY, hpFillW, hpBarH, 2)
+    }
+    g.lineStyle(1, isFlashing ? 0xffffff : 0x551111)
+    g.strokeRoundedRect(barX, hpBarY, barW, hpBarH, 2)
 
     this.hpText.setText(`${Math.ceil(p.hp)}/${p.maxHp}`)
+    this.hpText.setPosition(barX + barW / 2, hpBarY + hpBarH / 2).setOrigin(0.5)
 
-    // XP bar
-    const xpBarX = 60, xpBarY = 50, xpBarW = 152, xpBarH = 10
-    g.fillStyle(0x000a1a)
-    g.fillRoundedRect(xpBarX, xpBarY, xpBarW, xpBarH, 2)
+    // === XP (top bar, full width) ===
+    const screenW = this.scale.width
+    const xpPad = 40
+    const xpTopY = 4
+    const xpFullW = screenW - xpPad * 2
+    const xpTopH = 6
     const xpRatio = p.xp / p.xpToNextLevel()
-    if (xpRatio > 0) {
+    const xpFillW = Math.floor(xpFullW * xpRatio)
+    g.fillStyle(0x080818, 0.8)
+    g.fillRoundedRect(xpPad, xpTopY, xpFullW, xpTopH, 3)
+    if (xpFillW > 0) {
       g.fillStyle(0x2266cc)
-      g.fillRoundedRect(xpBarX, xpBarY, xpBarW * xpRatio, xpBarH, 2)
-      g.fillStyle(0xffffff, 0.12)
-      g.fillRect(xpBarX + 2, xpBarY + 1, xpBarW * xpRatio - 4, 3)
+      g.fillRoundedRect(xpPad, xpTopY, xpFillW, xpTopH, 3)
+      g.fillStyle(0x4499ff, 0.5)
+      g.fillRect(xpPad + 1, xpTopY, xpFillW - 2, 1)
     }
-    g.lineStyle(1, 0x223366)
-    g.strokeRoundedRect(xpBarX, xpBarY, xpBarW, xpBarH, 2)
+    g.lineStyle(1, 0x1a2244, 0.6)
+    g.strokeRoundedRect(xpPad, xpTopY, xpFullW, xpTopH, 3)
 
-    // Level badge
-    const lvlBadgeX = 52, lvlBadgeY = 44
-    g.fillStyle(0x1a1a3e)
-    g.fillCircle(lvlBadgeX, lvlBadgeY, 9)
-    g.lineStyle(1, 0x4488ff)
-    g.strokeCircle(lvlBadgeX, lvlBadgeY, 9)
-    this.lvlText.setPosition(lvlBadgeX, lvlBadgeY).setOrigin(0.5)
-    this.lvlText.setText(`${p.level}`)
+    // === ENERGY BARS (directly below HP, aligned) ===
+    const hasEnergy = (p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance))
+    if (hasEnergy) {
+      const rightBarX = barX + ebW + ebGap
 
-    // HP text centered in bar
-    this.hpText.setPosition(hpBarX + hpBarW / 2, hpBarY + hpBarH / 2).setOrigin(0.5)
-
-    // === SIFRA ENERGY BARS (below HP/XP panel) ===
-    if (p.heroType === 'sifra') {
-      const ebX = 14, ebY = 80, ebW = 95, ebH = 6, ebGap = 3
-      // Panel bg
-      g.fillStyle(0x0a0a1a, 0.7)
-      g.fillRoundedRect(ebX, ebY - 2, ebW * 2 + ebGap + 8, ebH + 4, 4)
-
-      // Ice energy bar (left)
-      const iceRatio = p.iceEnergy / p.maxEnergy
-      g.fillStyle(0x0a1a2a)
-      g.fillRect(ebX + 3, ebY, ebW, ebH)
-      if (iceRatio > 0) {
-        const iceColor = p.stance === 'ice' ? 0x55aaff : 0x2a5580
-        g.fillStyle(iceColor)
-        g.fillRect(ebX + 3, ebY, ebW * iceRatio, ebH)
+      const drawDualBars = (
+        leftRatio: number, leftActive: number, leftDim: number, leftBorder: number,
+        rightRatio: number, rightActive: number, rightDim: number, rightBorder: number,
+        leftIsActive: boolean, rightIsActive: boolean,
+      ) => {
+        // Left bar
+        g.fillStyle(0x0a0a0a)
+        g.fillRect(barX, ebY, ebW, ebH)
+        if (leftRatio > 0) {
+          g.fillStyle(leftIsActive ? leftActive : leftDim)
+          g.fillRect(barX, ebY, ebW * leftRatio, ebH)
+        }
+        g.lineStyle(1, leftBorder, 0.5)
+        g.strokeRect(barX, ebY, ebW, ebH)
+        // Right bar
+        g.fillStyle(0x0a0a0a)
+        g.fillRect(rightBarX, ebY, ebW, ebH)
+        if (rightRatio > 0) {
+          g.fillStyle(rightIsActive ? rightActive : rightDim)
+          g.fillRect(rightBarX, ebY, ebW * rightRatio, ebH)
+        }
+        g.lineStyle(1, rightBorder, 0.5)
+        g.strokeRect(rightBarX, ebY, ebW, ebH)
       }
-      g.lineStyle(1, 0x335577)
-      g.strokeRect(ebX + 3, ebY, ebW, ebH)
 
-      // Lightning energy bar (right)
-      const ltRatio = p.lightningEnergy / p.maxEnergy
-      const ltX = ebX + 3 + ebW + ebGap
-      g.fillStyle(0x1a0a2a)
-      g.fillRect(ltX, ebY, ebW, ebH)
-      if (ltRatio > 0) {
-        const ltColor = p.stance === 'lightning' ? 0x9966ff : 0x4a3380
-        g.fillStyle(ltColor)
-        g.fillRect(ltX, ebY, ebW * ltRatio, ebH)
-      }
-      g.lineStyle(1, 0x553377)
-      g.strokeRect(ltX, ebY, ebW, ebH)
-    }
-
-    // === NAZAR ENERGY BARS (below HP/XP panel) ===
-    if (p.heroType === 'nazar') {
-      const ebX = 14, ebY = 80, ebW = 95, ebH = 6, ebGap = 3
-      g.fillStyle(0x0a0a1a, 0.7)
-      g.fillRoundedRect(ebX, ebY - 2, ebW * 2 + ebGap + 8, ebH + 4, 4)
-
-      const swordRatio = p.swordEnergy / p.maxEnergy
-      g.fillStyle(0x1a0a0a)
-      g.fillRect(ebX + 3, ebY, ebW, ebH)
-      if (swordRatio > 0) {
-        g.fillStyle(p.nazarStance === 'sword' ? 0xcc4444 : 0x662222)
-        g.fillRect(ebX + 3, ebY, ebW * swordRatio, ebH)
-      }
-      g.lineStyle(1, 0x553333)
-      g.strokeRect(ebX + 3, ebY, ebW, ebH)
-
-      const venomRatio = p.venomEnergy / p.maxEnergy
-      const vX = ebX + 3 + ebW + ebGap
-      g.fillStyle(0x0a1a0a)
-      g.fillRect(vX, ebY, ebW, ebH)
-      if (venomRatio > 0) {
-        g.fillStyle(p.nazarStance === 'venom' ? 0x44cc44 : 0x226622)
-        g.fillRect(vX, ebY, ebW * venomRatio, ebH)
-      }
-      g.lineStyle(1, 0x335533)
-      g.strokeRect(vX, ebY, ebW, ebH)
+      if (p.heroType === 'sifra')
+        drawDualBars(p.iceEnergy / p.maxEnergy, 0x55aaff, 0x2a5580, 0x335577,
+          p.lightningEnergy / p.maxEnergy, 0x9966ff, 0x4a3380, 0x553377,
+          p.stance === 'ice', p.stance === 'lightning')
+      else if (p.heroType === 'nazar')
+        drawDualBars(p.swordEnergy / p.maxEnergy, 0xcc4444, 0x662222, 0x553333,
+          p.venomEnergy / p.maxEnergy, 0x44cc44, 0x226622, 0x335533,
+          p.nazarStance === 'sword', p.nazarStance === 'venom')
+      else if (p.heroType === 'huntress')
+        drawDualBars(p.meleeEnergy / p.maxEnergy, 0xe67e22, 0x734011, 0x553311,
+          p.spearEnergy / p.maxEnergy, 0x2ecc71, 0x176638, 0x115533,
+          p.huntressStance === 'melee', p.huntressStance === 'spear')
+      else if (p.heroType === 'khashin')
+        drawDualBars(p.windEnergy / p.maxEnergy, 0x88ddff, 0x446688, 0x335577,
+          p.sandEnergy / p.maxEnergy, 0xddaa44, 0x6e5522, 0x554411,
+          p.khashinStance === 'sirocco', p.khashinStance === 'haboob')
+      else if (p.heroType === 'amun' && p.hasQuakeStance)
+        drawDualBars(p.groundEnergy / p.maxEnergy, 0xddaa22, 0x6e5511, 0x554411,
+          p.quakeEnergy / p.maxEnergy, 0xff8833, 0x7a4419, 0x553311,
+          p.amunStance === 'melee', p.amunStance === 'quake')
     }
 
-    // === HUNTRESS ENERGY BARS (below HP/XP panel) ===
-    if (p.heroType === 'huntress') {
-      const ebX = 14, ebY = 80, ebW = 95, ebH = 6, ebGap = 3
-      g.fillStyle(0x0a0a1a, 0.7)
-      g.fillRoundedRect(ebX, ebY - 2, ebW * 2 + ebGap + 8, ebH + 4, 4)
-
-      const meleeRatio = p.meleeEnergy / p.maxEnergy
-      g.fillStyle(0x1a0d00)
-      g.fillRect(ebX + 3, ebY, ebW, ebH)
-      if (meleeRatio > 0) {
-        g.fillStyle(p.huntressStance === 'melee' ? 0xe67e22 : 0x734011)
-        g.fillRect(ebX + 3, ebY, ebW * meleeRatio, ebH)
+    // === MASTERY DIAMONDS (on energy bars) + STANCE LABELS ===
+    if (hasEnergy) {
+      const rightBarX = barX + ebW + ebGap
+      const branchColor: Record<string, number> = {
+        ice: 0x55aaff, lightning: 0x9966ff,
+        sword: 0xcc4444, venom: 0x44cc44,
+        melee: 0xe67e22, spear: 0x2ecc71,
+        wind: 0x88ddff, sand: 0xddaa44,
+        ground: 0xddaa22, quake: 0xff8833,
       }
-      g.lineStyle(1, 0x553311)
-      g.strokeRect(ebX + 3, ebY, ebW, ebH)
-
-      const spearRatio = p.spearEnergy / p.maxEnergy
-      const sX = ebX + 3 + ebW + ebGap
-      g.fillStyle(0x001a0a)
-      g.fillRect(sX, ebY, ebW, ebH)
-      if (spearRatio > 0) {
-        g.fillStyle(p.huntressStance === 'spear' ? 0x2ecc71 : 0x176638)
-        g.fillRect(sX, ebY, ebW * spearRatio, ebH)
+      const heroBranches: Record<string, [string, string]> = {
+        sifra: ['ice', 'lightning'], nazar: ['sword', 'venom'],
+        huntress: ['melee', 'spear'], khashin: ['wind', 'sand'],
       }
-      g.lineStyle(1, 0x115533)
-      g.strokeRect(sX, ebY, ebW, ebH)
+      let branches: [string, string] | null = heroBranches[p.heroType] || null
+      if (p.heroType === 'amun' && p.hasQuakeStance) branches = ['ground', 'quake']
+
+      if (branches) {
+        const dSize = 4
+        const diamondCY = ebY + ebH / 2  // centered on energy bar
+
+        const drawBarDiamonds = (branch: string, bx: number, bw: number) => {
+          const level = p.getMasteryLevel(branch)
+          const color = branchColor[branch] ?? 0xaaaaaa
+          const spacing = bw / 4
+          for (let i = 0; i < 3; i++) {
+            const cx = bx + spacing * (i + 1)
+            const cy = diamondCY
+            if (i < level) {
+              g.fillStyle(0xffffff, 0.85)
+              g.fillTriangle(cx, cy - dSize, cx + dSize, cy, cx - dSize, cy)
+              g.fillTriangle(cx, cy + dSize, cx + dSize, cy, cx - dSize, cy)
+            } else {
+              g.lineStyle(1.5, color, 0.45)
+              g.beginPath()
+              g.moveTo(cx, cy - dSize)
+              g.lineTo(cx + dSize, cy)
+              g.lineTo(cx, cy + dSize)
+              g.lineTo(cx - dSize, cy)
+              g.closePath()
+              g.strokePath()
+            }
+          }
+        }
+
+        drawBarDiamonds(branches[0], barX, ebW)
+        drawBarDiamonds(branches[1], rightBarX, ebW)
+      }
     }
 
-    // === KHASHIN ENERGY BARS (below HP/XP panel) ===
-    if (p.heroType === 'khashin') {
-      const ebX = 14, ebY = 80, ebW = 95, ebH = 6, ebGap = 3
-      g.fillStyle(0x0a0a1a, 0.7)
-      g.fillRoundedRect(ebX, ebY - 2, ebW * 2 + ebGap + 8, ebH + 4, 4)
-
-      // Wind energy bar (left — sirocco/ranged)
-      const windRatio = p.windEnergy / p.maxEnergy
-      g.fillStyle(0x0a1a2a)
-      g.fillRect(ebX + 3, ebY, ebW, ebH)
-      if (windRatio > 0) {
-        g.fillStyle(p.khashinStance === 'sirocco' ? 0x88ddff : 0x446688)
-        g.fillRect(ebX + 3, ebY, ebW * windRatio, ebH)
-      }
-      g.lineStyle(1, 0x335577)
-      g.strokeRect(ebX + 3, ebY, ebW, ebH)
-
-      // Sand energy bar (right — haboob/melee)
-      const sandRatio = p.sandEnergy / p.maxEnergy
-      const sX = ebX + 3 + ebW + ebGap
-      g.fillStyle(0x1a1000)
-      g.fillRect(sX, ebY, ebW, ebH)
-      if (sandRatio > 0) {
-        g.fillStyle(p.khashinStance === 'haboob' ? 0xddaa44 : 0x6e5522)
-        g.fillRect(sX, ebY, ebW * sandRatio, ebH)
-      }
-      g.lineStyle(1, 0x554411)
-      g.strokeRect(sX, ebY, ebW, ebH)
-    }
-
-    // === UNIVERSAL BUFF PANEL (below HP/XP panel, all heroes) ===
+    // === BIG BUFF ICONS (unified row below HP/energy) ===
     {
-      const buffY = 82
-      const buffX = 14
-      const buffSize = 14
-      const buffGap = 3
+      const buffStartY = hasEnergy ? ebY + ebH + 24 : hpBarY + hpBarH + 14
+      const buffSize = 48
+      const buffGap = 4
+      const buffX = barX
       let bi = 0
+      const now = this.gameScene.time.now
 
-      const drawBuff = (active: boolean, color: number, label?: string, stacks?: number) => {
-        if (!active) return
+      // Hide all previous icons/labels
+      for (const obj of this._bigBuffObjs) if (obj) obj.setVisible(false)
+
+      const drawBigBuff = (frame: number, borderColor: number, text?: string, alphaVal = 0.9, timerFrac?: number) => {
         const bx = buffX + bi * (buffSize + buffGap)
-        g.fillStyle(color, 0.75)
-        g.fillRoundedRect(bx, buffY, buffSize, buffSize, 3)
-        g.lineStyle(1, 0xffffff, 0.3)
-        g.strokeRoundedRect(bx, buffY, buffSize, buffSize, 3)
-        if (label && !this._buffLabels[bi]) {
-          this._buffLabels[bi] = this.add.text(0, 0, '', {
-            fontFamily: 'monospace', fontSize: '8px', color: '#ffffff',
-            stroke: '#000000', strokeThickness: 2,
+        const by = buffStartY
+
+        g.fillStyle(0x0a0a1a, 0.7)
+        g.fillRoundedRect(bx, by, buffSize, buffSize, 5)
+        g.lineStyle(1, borderColor, 0.7)
+        g.strokeRoundedRect(bx, by, buffSize, buffSize, 5)
+
+        // Timer sweep overlay (darkened expired portion)
+        if (timerFrac !== undefined) {
+          const darkH = Math.floor(buffSize * (1 - Math.max(0, Math.min(1, timerFrac))))
+          if (darkH > 0) {
+            g.fillStyle(0x000000, 0.5)
+            g.fillRect(bx + 1, by + 1, buffSize - 2, darkH)
+          }
+        }
+
+        // Icon sprite
+        const iconIdx = bi * 2
+        if (!this._bigBuffObjs[iconIdx]) {
+          this._bigBuffObjs[iconIdx] = this.add.image(0, 0, 'skill_icons', frame)
+            .setDisplaySize(buffSize - 6, buffSize - 6).setDepth(2).setOrigin(0.5)
+        }
+        const icon = this._bigBuffObjs[iconIdx] as Phaser.GameObjects.Image
+        icon.setPosition(bx + buffSize / 2, by + buffSize / 2)
+        icon.setFrame(frame); icon.setAlpha(alphaVal); icon.setVisible(true)
+
+        // Label
+        const lblIdx = bi * 2 + 1
+        if (!this._bigBuffObjs[lblIdx]) {
+          this._bigBuffObjs[lblIdx] = this.add.text(0, 0, '', {
+            fontFamily: 'monospace', fontSize: '24px', color: '#ffffff',
+            stroke: '#000000', strokeThickness: 4,
           }).setDepth(3).setOrigin(0.5)
         }
-        const lbl = this._buffLabels[bi]
-        if (lbl) {
-          lbl.setPosition(bx + buffSize / 2, buffY + buffSize / 2).setOrigin(0.5)
-          lbl.setText(stacks !== undefined ? `${stacks}` : (label || ''))
-          lbl.setVisible(true)
-        }
+        const lbl = this._bigBuffObjs[lblIdx] as Phaser.GameObjects.Text
+        lbl.setPosition(bx + buffSize / 2, by + buffSize / 2)
+        if (text) { lbl.setText(text); lbl.setVisible(true) } else lbl.setVisible(false)
+
         bi++
       }
 
-      // Hide all previous buff labels
-      for (const lbl of this._buffLabels) if (lbl) lbl.setVisible(false)
+      // --- Pickup buffs (timed) ---
+      if (p.shieldHp > 0 && p.shieldTimer > 0)
+        drawBigBuff(9, 0x4488ff, `${Math.ceil(p.shieldTimer / 1000)}`, 0.9, p.shieldTimer / 10000)
+      if (p.speedBuffUntil > now)
+        drawBigBuff(1, 0xffdd44, `${Math.ceil((p.speedBuffUntil - now) / 1000)}`, 0.9, (p.speedBuffUntil - now) / 8000)
 
-      // --- Universal buffs ---
-      if ((p as any).hasCriticalStrike)     drawBuff(true, 0xff4444, 'C')
-      if ((p as any).hasMarkedTarget)       drawBuff(true, 0xff8844, 'M')
-      if ((p as any).hasBattleFrenzy && (p as any).battleFrenzyUntil > this.gameScene.time.now)
-                                            drawBuff(true, 0xff6666, 'F')
-      if ((p as any).hasKillStride && (p as any).killStrideUntil > this.gameScene.time.now)
-                                            drawBuff(true, 0x44cc44, 'S')
-      if ((p as any).hasCamouflage && (p as any).vanishUntil > this.gameScene.time.now)
-                                            drawBuff(true, 0x8888ff, 'I')
+      // --- Stone Skin (Givi) ---
+      if (p.hasStoneSkin && p.stoneSkinStacks > 0)
+        drawBigBuff(60, 0x99ddcc, `${p.stoneSkinStacks}`)
 
-      // Amun
-      if (p.defenseAuraActive)              drawBuff(true, 0x4488ff, 'D')
-      if (p.hasPassiveAura)                 drawBuff(true, 0xfff200, 'A')
-      if (p.dmgAuraActive)                  drawBuff(true, 0xff8800, 'W')
-      if (p.hasUndying)                     drawBuff(true, 0xffee88, 'U')
-      if (p.hasThorns)                      drawBuff(true, 0xffdd44, 'T')
-      if (p.hasIronWill)                    drawBuff(true, 0x88aacc, 'I')
-      if (p.hasEarthquake)                  drawBuff(true, 0xccaa55, 'E')
-      if (p.hasGravityWell)                 drawBuff(true, 0x9966ff, 'G')
-      if (p.hasDivineJudgment)              drawBuff(true, 0xfff200, 'J')
-      if (p.hasColossus)                    drawBuff(true, 0xffcc44, 'C')
-      if (p.hasCataclysm)                   drawBuff(true, 0xff6600, '2')
-      if (p.hasLowHpRegen)                  drawBuff(true, 0x44ff88, 'R')
-      if (p.hasLivingFortress)              drawBuff(true, 0xaaccff, 'L')
-      if (p.hasWrath)                       drawBuff(true, 0xff3333, 'W')
-
-      // Givi / Crystal Muller
-      if (p.hasStoneSkin)                   drawBuff(true, 0x99ddcc, undefined, p.stoneSkinStacks)
-      if ((p as any).hasGeodeShell)         drawBuff(true, 0x66bbaa, 'G')
-      if ((p as any).hasCrystalWall)        drawBuff(true, 0x44aaff, 'W')
-      if ((p as any).hasResonanceArmor)     drawBuff(true, 0x88ccff, 'R')
-      if ((p as any).hasLivingGeode)        drawBuff(true, 0x55ccaa, 'L')
-      if ((p as any).hasDeepVein)           drawBuff(true, 0x4488ff, 'D')
-      if ((p as any).hasShardstorm)         drawBuff(true, 0x66aaff, '2')
-      if ((p as any).hasCrystalShrapnel)    drawBuff(true, 0x88ddff, 'S')
-      if ((p as any).hasTectonicFury)       drawBuff(true, 0xff6644, 'T')
-      if ((p as any).hasCrystalPillar)      drawBuff(true, 0x6688cc, 'P')
-      if ((p as any).hasFaultLine)          drawBuff(true, 0x4466aa, 'F')
-      if ((p as any).hasResonanceField)     drawBuff(true, 0x7799cc, 'R')
-      if ((p as any).hasMotherLode)         drawBuff(true, 0xcc99ff, 'M')
-      if ((p as any).hasPlantedShard)       drawBuff(true, 0x5577aa, 'P')
-
-      // Khashin
-      if ((p as any).hasGustStrike)         drawBuff(true, 0x88ddff, 'G')
-      if ((p as any).hasDustDevil)          drawBuff(true, 0xaaddff, 'D')
-      if ((p as any).hasEyeOfTheStorm)      drawBuff(true, 0x66ccff, 'E')
-      if ((p as any).hasChokingSand)        drawBuff(true, 0xe8a040, 'C')
-      if ((p as any).hasSandArmor)          drawBuff(true, 0xccaa66, 'A')
-      if ((p as any).hasScarabTide)         drawBuff(true, 0xddbb44, 'S')
-      if ((p as any).hasPhantomStep)        drawBuff(true, 0xccaaff, 'P')
-      if ((p as any).hasMirage)             drawBuff(true, 0xbb99ee, 'M')
-      if ((p as any).hasDrift)              drawBuff(true, 0xaa88dd, 'D')
-      if ((p as any).hasDesertWind)         drawBuff(true, 0x9977cc, 'W')
-
-      // Ignara
-      if ((p as any).hasPyromaniac)         drawBuff(true, 0xff4400, 'P')
-      if ((p as any).hasPhoenixHeart)       drawBuff(true, 0xff8800, 'H')
-
-      // Sifra
-      if ((p as any).hasBlizzardAura)       drawBuff(true, 0x55aaff, 'B')
-      if ((p as any).hasIceArmor)           drawBuff(true, 0x88ccff, 'I')
-      if ((p as any).hasBallLightning)      drawBuff(true, 0x9966ff, 'L')
-
-      // Nazar
-      if ((p as any).hasShadowStep)         drawBuff(true, 0x663333, 'S')
-      if ((p as any).hasVanish)             drawBuff(true, 0x444466, 'V')
-      if ((p as any).hasAssassinate)        drawBuff(true, 0xcc2222, 'A')
-
-      // Lyra / Huntress
-      if ((p as any).hasHeavySpear)         drawBuff(true, 0x4488ff, 'H')
-      if ((p as any).hasExplosiveTips)      drawBuff(true, 0xff6644, 'E')
-      if ((p as any).hasSpearWall)          drawBuff(true, 0x44cc88, 'W')
-      if ((p as any).hasCaltrops)           drawBuff(true, 0xaa6633, 'C')
-      if ((p as any).hasNetThrow)           drawBuff(true, 0x669944, 'N')
-      if ((p as any).hasLeap)               drawBuff(true, 0x44aa88, 'L')
+      // --- Ice Armor (Sifra) ---
+      if (p.hasIceArmor && p.iceArmorHP > 0)
+        drawBigBuff(51, 0x88ddff, `${Math.ceil(p.iceArmorHP)}`)
 
     }
 
     // === TOP-RIGHT: Kills & Tier (panel above minimap) ===
-    this.killText.setText(`${p.kills} kills`)
+    this.killText.setText(`● ${p.kills} kills`)
+    if (curGold !== this._lastGold && this._lastGold >= 0) {
+      // Bump animation on gold change
+      this.tweens.add({
+        targets: [this.goldText, this.goldIcon],
+        scaleX: 1.3, scaleY: 1.3, duration: 80, yoyo: true,
+      })
+    }
+    this.goldText.setText(`${p.goldThisRun}`)
+    // Reposition coin icon to left of text
+    this.goldIcon.setPosition(this.scale.width - 20 - this.goldText.width - 10, 55)
 
     const tier = this.gameScene.waveManager?.currentWave || 1
     const tierStars = tier >= 8 ? 'DANGER' : tier >= 5 ? 'HARD' : tier >= 3 ? 'MEDIUM' : 'EASY'
     const tierColor = tier >= 8 ? '#ff4444' : tier >= 5 ? '#ffaa44' : tier >= 3 ? '#ffff66' : '#88ff88'
-    this.tierText.setText(`Tier ${tier} - ${tierStars}`).setColor(tierColor)
+    this.tierText.setText(`TIER ${tier}  ${tierStars}`).setColor(tierColor)
 
-    // Kills/tier background panel
-    const killPanelW = 130, killPanelH = 40
-    const killPanelX = this.scale.width - killPanelW - 14
+    // Kills/tier/gold background panel
+    const killPanelW = 130, killPanelH = 56
+    const killPanelX = this.scale.width - killPanelW - 10
     const killPanelY = 8
     g.fillStyle(0x0a0a1a, 0.6)
-    g.fillRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 6)
-    g.lineStyle(1, 0x333355)
-    g.strokeRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 6)
+    g.fillRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 4)
 
     // === TOP-CENTER: Timer background pill ===
     // (timerText content/color/scale already updated above the dirty check)
-    const tw = this.timerText.width + 20
-    const th = this.timerText.height + 8
+    const tw = this.timerText.width + 26
+    const th = this.timerText.height + 12
     const tx = this.scale.width / 2 - tw / 2
-    g.fillStyle(0x0a0a1a, 0.6)
-    g.fillRoundedRect(tx, 6, tw, th, 6)
+    const ty = 25
+    g.fillStyle(0x0a0a1a, 0.35)
+    g.fillRoundedRect(tx, ty, tw, th, 8)
+    g.lineStyle(1, 0x333355, 0.3)
+    g.strokeRoundedRect(tx, ty, tw, th, 8)
 
     // Minimap — throttle to every 3 frames
     this._mmFrame = ((this._mmFrame || 0) + 1) % 3
@@ -1221,4 +1710,8 @@ export class UIScene extends Phaser.Scene {
   }
 
   private _mmFrame = 0
+  private _killMilestones = new Set<number>()
+
+  // Branch-mastery level-up popup text
+  private masteryPopup!: Phaser.GameObjects.Text
 }

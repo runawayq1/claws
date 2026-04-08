@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { type HeroType } from '../entities/Player'
 import { unlockHero } from './EncyclopediaScene'
+import { shouldShowHint } from '../systems/HintFlags'
 
 interface HeroDef {
   type: HeroType
@@ -17,10 +18,10 @@ interface HeroDef {
 }
 
 const HEROES: HeroDef[] = [
-  { type: 'ignara', name: 'Ignara', role: 'Fire Mage', color: 0xe84118,
-    asset: 'assets/ignara/Idle.png', fw: 150, fh: 150, scale: 1.1, frames: 8 },
   { type: 'sifra', name: 'Sifra', role: 'Ice Mage', color: 0x82ccdd,
     asset: 'assets/sifra/Idle.png', fw: 231, fh: 190, scale: 0.65, frames: 6 },
+  { type: 'ignara', name: 'Ignara', role: 'Fire Mage', color: 0xe84118,
+    asset: 'assets/ignara/Idle.png', fw: 150, fh: 150, scale: 1.1, frames: 8 },
   { type: 'amun', name: 'Amun', role: 'Guardian', color: 0xfff200,
     asset: 'assets/amun/Idle.png', fw: 160, fh: 111, scale: 1.3, frames: 8, yOff: -30 },
   { type: 'nazar', name: 'Nazar', role: 'Samurai', color: 0xc23616,
@@ -32,6 +33,9 @@ const HEROES: HeroDef[] = [
   { type: 'muller', name: 'Givi', role: 'Crystal Gnome', color: 0x44aaff,
     asset: 'assets/givi/Idle_cropped.png', fw: 51, fh: 44, scale: 1.12, frames: 8, yOff: 10 },
 ]
+
+// Only first hero is unlocked; rest are locked
+const UNLOCKED_HEROES = new Set<HeroType>(['sifra'])
 
 export class StartScene extends Phaser.Scene {
   private circles: Phaser.GameObjects.Graphics[] = []
@@ -59,6 +63,7 @@ export class StartScene extends Phaser.Scene {
   }
 
   create(data?: { playerName?: string }) {
+    this.cameras.main.fadeIn(200)
     const { width, height } = this.scale
     const compact = height < 500
     this.circles = []
@@ -94,12 +99,24 @@ export class StartScene extends Phaser.Scene {
       color: '#ffffff', stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5)
 
-    // Layout heroes
-    const circleRadius = compact ? 36 : 52
-    const gap = compact ? 16 : 20
-    const totalW = HEROES.length * (circleRadius * 2) + (HEROES.length - 1) * gap
-    const startX = width / 2 - totalW / 2 + circleRadius
-    const heroY = compact ? height * 0.48 : height * 0.46
+    // Layout heroes — detect portrait mobile
+    const isPortrait = height > width
+    const circleRadius = isPortrait ? 32 : (compact ? 36 : 52)
+    const gap = isPortrait ? 12 : (compact ? 16 : 20)
+
+    // Portrait: grid layout (2 columns). Landscape: single row.
+    let startX: number, heroY: number
+    const cols = isPortrait ? 2 : HEROES.length
+    const rowH = circleRadius * 2 + (isPortrait ? 50 : 0)
+    if (isPortrait) {
+      const gridW = cols * (circleRadius * 2) + (cols - 1) * gap
+      startX = width / 2 - gridW / 2 + circleRadius
+      heroY = height * 0.28
+    } else {
+      const totalW = HEROES.length * (circleRadius * 2) + (HEROES.length - 1) * gap
+      startX = width / 2 - totalW / 2 + circleRadius
+      heroY = compact ? height * 0.48 : height * 0.46
+    }
 
     // Create idle animations for each hero
     HEROES.forEach((hero, _i) => {
@@ -261,7 +278,8 @@ export class StartScene extends Phaser.Scene {
         drawFrame(false)
       })
       bookSprite.on('pointerdown', () => {
-        this.scene.start('EncyclopediaScene')
+        this.cameras.main.fadeOut(200)
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('EncyclopediaScene'))
       })
     } else {
       // Mobile: tap plays open animation, then transitions
@@ -269,7 +287,8 @@ export class StartScene extends Phaser.Scene {
         bookSprite.disableInteractive()
         bookSprite.play('book_open')
         bookSprite.once('animationcomplete', () => {
-          this.scene.start('EncyclopediaScene')
+          this.cameras.main.fadeOut(200)
+          this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('EncyclopediaScene'))
         })
       })
     }
@@ -282,30 +301,22 @@ export class StartScene extends Phaser.Scene {
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
     profileBtn.on('pointerover', () => profileBtn.setColor('#FFD700'))
     profileBtn.on('pointerout', () => profileBtn.setColor('#888888'))
-    profileBtn.on('pointerdown', () => this.scene.start('ProfileScene'))
+    profileBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('ProfileScene')) })
 
-    // Map selector — toggle between Grasslands and Undead map
-    this.selectedMap = 'GameScene'
-    const mapBtnY = compact ? height - 14 : height * 0.92
-    const mapBtnX = width / 2 - (compact ? 52 : 72)
-    const mapBtn = this.add.text(mapBtnX, mapBtnY, 'MAP: GRASSLANDS', {
+    // Forge button (meta-upgrades)
+    const forgeBtnY = compact ? height - 14 : height * 0.92
+    const forgeBtnX = width / 2 + (compact ? 130 : 180)
+    const forgeBtn = this.add.text(forgeBtnX, forgeBtnY, 'FORGE', {
       fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      color: '#FFD700', stroke: '#000000', strokeThickness: 3,
       backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
-    const updateMapBtn = () => {
-      if (this.selectedMap === 'UndeadMapScene') {
-        mapBtn.setText('MAP: UNDEAD').setColor('#aa88ff')
-      } else {
-        mapBtn.setText('MAP: GRASSLANDS').setColor('#888888')
-      }
-    }
-    mapBtn.on('pointerover', () => mapBtn.setColor(this.selectedMap === 'UndeadMapScene' ? '#cc99ff' : '#aaffaa'))
-    mapBtn.on('pointerout', () => updateMapBtn())
-    mapBtn.on('pointerdown', () => {
-      this.selectedMap = this.selectedMap === 'GameScene' ? 'UndeadMapScene' : 'GameScene'
-      updateMapBtn()
-    })
+    forgeBtn.on('pointerover', () => forgeBtn.setColor('#ffffff'))
+    forgeBtn.on('pointerout', () => forgeBtn.setColor('#FFD700'))
+    forgeBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('ForgeScene')) })
+
+    // Map selector — hidden for now (only Grasslands available)
+    this.selectedMap = 'GameScene'
 
     // TEST button — corner shortcut to hitbox debug scene
     const testBtn = this.add.text(width - 10, height - 10, 'TEST', {
@@ -315,20 +326,30 @@ export class StartScene extends Phaser.Scene {
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(1, 1).setInteractive({ useHandCursor: true })
     testBtn.on('pointerover', () => testBtn.setColor('#aaaaff'))
     testBtn.on('pointerout', () => testBtn.setColor('#444466'))
-    testBtn.on('pointerdown', () => this.scene.start('TestScene'))
+    testBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('TestScene')) })
 
     HEROES.forEach((hero, i) => {
-      const cx = startX + i * (circleRadius * 2 + gap)
+      let cx: number, cy: number
+      if (isPortrait) {
+        const col = i % cols
+        const row = Math.floor(i / cols)
+        cx = startX + col * (circleRadius * 2 + gap)
+        cy = heroY + row * (rowH + gap)
+      } else {
+        cx = startX + i * (circleRadius * 2 + gap)
+        cy = heroY
+      }
       const colorHex = `#${hero.color.toString(16).padStart(6, '0')}`
+      const isLocked = !UNLOCKED_HEROES.has(hero.type)
 
       // Circle background + border
       const g = this.add.graphics().setDepth(0)
       this.circles.push(g)
-      this.drawCircle(g, cx, heroY, circleRadius, hero.color, false)
+      this.drawCircle(g, cx, cy, circleRadius, isLocked ? 0x444444 : hero.color, false)
 
       // Animated sprite — circular mask
       const texKey = hero.asset.replace(/[^a-z0-9]/gi, '_')
-      const sprY = heroY + (hero.yOff || 0)
+      const sprY = cy + (hero.yOff || 0)
       const sprite = this.add.sprite(cx, sprY, texKey, 0)
         .setScale(hero.scale).setDepth(1)
       if (hero.tint) sprite.setTint(hero.tint)
@@ -337,73 +358,134 @@ export class StartScene extends Phaser.Scene {
       // Circular mask to clip sprite inside the circle
       const maskShape = this.make.graphics({ x: 0, y: 0 })
       maskShape.fillStyle(0xffffff)
-      maskShape.fillCircle(cx, heroY, circleRadius - 3)
+      maskShape.fillCircle(cx, cy, circleRadius - 3)
       const mask = maskShape.createGeometryMask()
       sprite.setMask(mask)
 
+      // Locked overlay: darken sprite + lock icon
+      if (isLocked) {
+        sprite.setTint(0x333333)
+        const lockOverlay = this.add.graphics().setDepth(3)
+        lockOverlay.fillStyle(0x000000, 0.5)
+        lockOverlay.fillCircle(cx, cy, circleRadius - 3)
+        // Lock icon — procedural padlock
+        const lx = cx, ly = cy
+        const lockG = this.add.graphics().setDepth(4)
+        lockG.lineStyle(2, 0x888888, 1)
+        // Shackle (arc)
+        lockG.beginPath()
+        lockG.arc(lx, ly - 6, 7, Math.PI, 0, false)
+        lockG.strokePath()
+        // Body (rect)
+        lockG.fillStyle(0x666666, 1)
+        lockG.fillRect(lx - 9, ly - 6, 18, 14)
+        lockG.lineStyle(1, 0x888888, 1)
+        lockG.strokeRect(lx - 9, ly - 6, 18, 14)
+        // Keyhole
+        lockG.fillStyle(0x222222, 1)
+        lockG.fillCircle(lx, ly, 2)
+        lockG.fillRect(lx - 1, ly, 2, 5)
+      }
+
       // Hero name below circle
-      const nameText = this.add.text(cx, heroY + circleRadius + (compact ? 8 : 14), hero.name, {
-        fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
-        color: colorHex, stroke: '#000000', strokeThickness: 3,
+      const nameText = this.add.text(cx, cy + circleRadius + (compact ? 8 : 14), hero.name, {
+        fontFamily: 'monospace', fontSize: isPortrait ? '10px' : (compact ? '11px' : '14px'),
+        color: isLocked ? '#555555' : colorHex, stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(2)
 
       // Role below name
-      this.add.text(cx, heroY + circleRadius + (compact ? 22 : 32), hero.role, {
-        fontFamily: 'monospace', fontSize: compact ? '8px' : '10px',
-        color: '#888888', stroke: '#000000', strokeThickness: 2,
+      this.add.text(cx, cy + circleRadius + (compact ? 22 : 32), hero.role, {
+        fontFamily: 'monospace', fontSize: isPortrait ? '7px' : (compact ? '8px' : '10px'),
+        color: isLocked ? '#444444' : '#888888', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(2)
 
       // Interactive zone over the circle
-      const zone = this.add.zone(cx, heroY, circleRadius * 2, circleRadius * 2 + 50)
-        .setInteractive({ useHandCursor: true })
+      const zone = this.add.zone(cx, cy, circleRadius * 2, circleRadius * 2 + 50)
+        .setInteractive({ useHandCursor: !isLocked })
 
-      zone.on('pointerover', () => {
-        if (this.selectedIndex !== i) {
-          this.drawCircle(g, cx, heroY, circleRadius, hero.color, true)
-          sprite.setScale(hero.scale * 1.15)
-          nameText.setColor('#ffffff')
-        }
-      })
-
-      zone.on('pointerout', () => {
-        if (this.selectedIndex !== i) {
-          this.drawCircle(g, cx, heroY, circleRadius, hero.color, false)
-          sprite.setScale(hero.scale)
-          nameText.setColor(colorHex)
-        }
-      })
-
-      zone.on('pointerdown', () => {
-        // Deselect previous
-        if (this.selectedIndex >= 0 && this.selectedIndex !== i) {
-          const prev = HEROES[this.selectedIndex]
-          const prevCx = startX + this.selectedIndex * (circleRadius * 2 + gap)
-          this.drawCircle(this.circles[this.selectedIndex], prevCx, heroY, circleRadius, prev.color, false)
-        }
-
-        this.selectedIndex = i
-        this.drawCircle(g, cx, heroY, circleRadius, hero.color, true)
-        sprite.setScale(hero.scale * 1.15)
-
-        // Enter fullscreen on mobile only
-        const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
-        if (isMob) {
-          const el = document.documentElement as any
-          if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-            (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {})
-          }
-        }
-
-        // Save hero to encyclopedia
-        unlockHero(hero.type)
-
-        // Brief flash then start via LoadingScene
-        this.cameras.main.flash(200, 255, 255, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-          if (progress >= 1) {
-            this.scene.start('LoadingScene', { hero: hero.type, map: this.selectedMap, playerName: this.playerName })
+      if (isLocked) {
+        // Locked heroes: shake + show unlock condition
+        zone.on('pointerdown', () => {
+          // Brief shake to indicate locked
+          this.tweens.add({ targets: g, x: 3, duration: 40, yoyo: true, repeat: 2, onComplete: () => g.setX(0) })
+          // Show floating unlock hint below the hero (fades after 2s)
+          shouldShowHint(`locked_hero_tapped_${hero.type}`) // mark first tap
+          const hintTxt = this.add.text(cx, cy + circleRadius + (compact ? 52 : 68), 'Play more runs to unlock', {
+            fontFamily: 'monospace', fontSize: isPortrait ? '8px' : (compact ? '9px' : '11px'),
+            color: '#aaaaaa', stroke: '#000000', strokeThickness: 2,
+          }).setOrigin(0.5).setDepth(5)
+          this.tweens.add({
+            targets: hintTxt, alpha: 0, duration: 600,
+            delay: 1400,
+            onComplete: () => hintTxt.destroy(),
+          })
+        })
+      } else {
+        zone.on('pointerover', () => {
+          if (this.selectedIndex !== i) {
+            this.drawCircle(g, cx, cy, circleRadius, hero.color, true)
+            sprite.setScale(hero.scale * 1.15)
+            nameText.setColor('#ffffff')
           }
         })
-      })
+
+        zone.on('pointerout', () => {
+          if (this.selectedIndex !== i) {
+            this.drawCircle(g, cx, cy, circleRadius, hero.color, false)
+            sprite.setScale(hero.scale)
+            nameText.setColor(colorHex)
+          }
+        })
+
+        zone.on('pointerdown', () => {
+          // Deselect previous
+          if (this.selectedIndex >= 0 && this.selectedIndex !== i) {
+            const prev = HEROES[this.selectedIndex]
+            let prevCx: number, prevCy: number
+            if (isPortrait) {
+              const pc = this.selectedIndex % cols
+              const pr = Math.floor(this.selectedIndex / cols)
+              prevCx = startX + pc * (circleRadius * 2 + gap)
+              prevCy = heroY + pr * (rowH + gap)
+            } else {
+              prevCx = startX + this.selectedIndex * (circleRadius * 2 + gap)
+              prevCy = heroY
+            }
+            this.drawCircle(this.circles[this.selectedIndex], prevCx, prevCy, circleRadius, prev.color, false)
+          }
+
+          this.selectedIndex = i
+          this.drawCircle(g, cx, cy, circleRadius, hero.color, true)
+          sprite.setScale(hero.scale * 1.15)
+
+          // Enter fullscreen + lock landscape on mobile
+          const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+          if (isMob) {
+            const el = document.documentElement as any
+            if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+              const p = (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {})
+              // Try to lock orientation to landscape after fullscreen
+              if (p && typeof p.then === 'function') {
+                p.then(() => {
+                  (screen.orientation as any)?.lock?.('landscape')?.catch?.(() => {})
+                })
+              }
+            } else {
+              (screen.orientation as any)?.lock?.('landscape')?.catch?.(() => {})
+            }
+          }
+
+          // Save hero to encyclopedia
+          unlockHero(hero.type)
+
+          // Brief flash then start game scene directly
+          this.cameras.main.flash(200, 255, 255, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
+            if (progress >= 1) {
+              this.scene.start('LoadingScene', { hero: hero.type, map: this.selectedMap, playerName: this.playerName })
+            }
+          })
+        })
+      }
     })
   }
 

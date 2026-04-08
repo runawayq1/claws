@@ -58,7 +58,35 @@ export class UndeadMapScene extends GameScene {
     super({ key: 'UndeadMapScene' })
   }
 
-  // No preload() — all assets loaded by LoadingScene
+  preload() {
+    super.preload()
+    const ss = (key: string, path: string, fw: number, fh: number) => {
+      if (!this.textures.exists(key)) this.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
+    }
+    const img = (key: string, path: string) => {
+      if (!this.textures.exists(key)) this.load.image(key, path)
+    }
+    ss('undead_ground', 'assets/undead/Ground_rocks.png', 16, 16)
+    img('undead_grave1',       'assets/undead/Grave_shadow1_1.png')
+    img('undead_grave2',       'assets/undead/Grave_shadow1_2.png')
+    img('undead_grave3',       'assets/undead/Grave_shadow1_3.png')
+    img('undead_grave4',       'assets/undead/Grave_shadow1_4.png')
+    img('undead_ruin1',        'assets/undead/Ruin_shadow1_1.png')
+    img('undead_ruin2',        'assets/undead/Ruin_shadow1_2.png')
+    img('undead_ruin3',        'assets/undead/Ruin_shadow1_3.png')
+    img('undead_dead_tree1',   'assets/undead/Dead_tree_shadow1_1.png')
+    img('undead_dead_tree2',   'assets/undead/Dead_tree_shadow1_2.png')
+    img('undead_broken_tree1', 'assets/undead/Broken_tree_shadow1_1.png')
+    img('undead_broken_tree2', 'assets/undead/Broken_tree_shadow1_2.png')
+    img('undead_crystal1',     'assets/undead/Crystal_shadow1_1.png')
+    img('undead_crystal2',     'assets/undead/Crystal_shadow1_2.png')
+    img('undead_bones1',       'assets/undead/Bones_shadow1_1.png')
+    img('undead_bones2',       'assets/undead/Bones_shadow1_2.png')
+    img('undead_skulls',       'assets/undead/Pile_sculls_shadow1.png')
+    img('undead_dead_arm',     'assets/undead/Dead_arm_shadow1_1.png')
+    img('undead_thorn1',       'assets/undead/Thorn_plant_shadow1_1.png')
+    img('undead_thorn2',       'assets/undead/Thorn_plant_shadow1_2.png')
+  }
 
   // Check if a world pixel is on solid ground (island or bridge)
   private isOnGround(px: number, py: number): boolean {
@@ -108,12 +136,18 @@ export class UndeadMapScene extends GameScene {
     const FILL_LIGHT = [54, 253, 256, 433]
     const FILL_VARIED = [235, 239, 339, 342, 345]
 
-    // Grey background instead of black void
+    // Clear the green base fill from the parent class so void areas are transparent
+    this.terrainRT.clear()
+
+    // Grey background instead of black void — shows through the transparent RT void areas
     this.add.rectangle(
       CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2,
       CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT,
       0x2a2a3a
     ).setDepth(-1)
+
+    // Use a single temporary image drawn to the RenderTexture (1 draw call vs ~2209 sprites)
+    const tmpTile = this.add.image(0, 0, 'undead_ground', 0).setScale(4).setVisible(false)
 
     for (let r = 0; r < totalRows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -126,11 +160,12 @@ export class UndeadMapScene extends GameScene {
           ? FILL_VARIED[Math.floor(rng(c, r, 7) * FILL_VARIED.length)]
           : FILL_LIGHT[Math.floor(rng(c, r, 7) * FILL_LIGHT.length)]
 
-        this.add.image(px, py, 'undead_ground', frame)
-          .setScale(4)
-          .setDepth(0)
+        tmpTile.setFrame(frame).setPosition(px, py)
+        this.terrainRT.draw(tmpTile)
       }
     }
+
+    tmpTile.destroy()
   }
 
   protected scatterDecorations(_filterMin = 0, _filterMax = Infinity) {
@@ -270,5 +305,18 @@ export class UndeadMapScene extends GameScene {
       scatter(idx, 2, crystalKeys, 0x7777bb)
       scatter(idx, 2, graveKeys)
     }
+  }
+
+  protected useInfiniteMap(): boolean { return false }
+
+  public getZone(px: number, py: number): number {
+    const cx = CONFIG.WORLD_WIDTH / 2
+    const cy = CONFIG.WORLD_HEIGHT / 2
+    const dist = Phaser.Math.Distance.Between(px, py, cx, cy)
+    if (dist < 600) return 0
+    if (dist < 1200) return 1
+    if (dist < 1800) return 2
+    if (dist < 2400) return 3
+    return 4
   }
 }

@@ -16,6 +16,7 @@ export class ProfileScene extends Phaser.Scene {
   }
 
   create() {
+    this.cameras.main.fadeIn(200)
     const { width, height } = this.scale
     const meta = MetaProgress.load()
     const defs = MetaProgress.getAchievementDefs()
@@ -39,7 +40,10 @@ export class ProfileScene extends Phaser.Scene {
     }).setInteractive({ useHandCursor: true })
     back.on('pointerover', () => back.setColor('#ffffff'))
     back.on('pointerout', () => back.setColor('#888888'))
-    back.on('pointerdown', () => this.scene.start('StartScene'))
+    back.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
+
+    // ESC to go back
+    this.input.keyboard!.on('keydown-ESC', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
 
     // === STATS PANEL ===
     const panelX = 20
@@ -74,11 +78,13 @@ export class ProfileScene extends Phaser.Scene {
 
     // === HERO STATS ===
     const heroList = [
-      { key: 'ignara',   name: 'Ignara', color: '#ff6644' },
-      { key: 'sifra',    name: 'Sifra',  color: '#66bbff' },
-      { key: 'amun',     name: 'Amun',   color: '#ffdd44' },
-      { key: 'nazar',    name: 'Nazar',  color: '#cc4422' },
-      { key: 'huntress', name: 'Lyra',   color: '#2ecc71' },
+      { key: 'ignara',   name: 'Ignara',  color: '#ff6644' },
+      { key: 'sifra',    name: 'Sifra',   color: '#66bbff' },
+      { key: 'amun',     name: 'Amun',    color: '#ffdd44' },
+      { key: 'nazar',    name: 'Nazar',   color: '#cc4422' },
+      { key: 'huntress', name: 'Lyra',    color: '#55aa55' },
+      { key: 'khashin',  name: 'Khashin', color: '#ccaa55' },
+      { key: 'muller',   name: 'Givi',    color: '#55aacc' },
     ]
     const heroH = 28 + heroList.length * 20 + 8
     this.drawPanel(panelX, y, panelW, heroH, 'HERO STATS')
@@ -180,6 +186,7 @@ export class ProfileScene extends Phaser.Scene {
 
         const heroColors: Record<string, string> = {
           ignara: '#ff6644', nazar: '#cc4422', sifra: '#66bbff', amun: '#ffdd44',
+          huntress: '#55aa55', khashin: '#ccaa55', muller: '#55aacc',
         }
 
         this.add.text(panelX + 20, ry, `${s.id}`, rowStyle)

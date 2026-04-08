@@ -6,12 +6,12 @@ import { Orc1 } from '../entities/Zergling'
 import { FlyingEye } from '../entities/Scorpion'
 import { SandGolem } from '../entities/SandGolem'
 import { Orc3 } from '../entities/Skeleton2'
-import { Vampire } from '../entities/Vampire'
 import { WaveManager } from '../systems/WaveManager'
-import { XPSystem } from '../systems/XPSystem'
+import { XPSystem, GoldSystem } from '../systems/XPSystem'
 import { UpgradeTracker } from '../systems/UpgradeSystem'
-import { Pickup, type PickupType } from '../entities/Pickup'
+import { Pickup } from '../entities/Pickup'
 import { Chest } from '../entities/Chest'
+import { ChunkManager } from '../systems/ChunkManager'
 
 const ROCK_KEYS = [
   'rock1_1', 'rock1_2', 'rock2_1', 'rock2_2', 'rock3_1', 'rock3_2',
@@ -23,25 +23,176 @@ export class GameScene extends Phaser.Scene {
   rocks!: Phaser.Physics.Arcade.StaticGroup
   waveManager!: WaveManager
   xpSystem!: XPSystem
+  goldSystem!: GoldSystem
   upgradeTracker!: UpgradeTracker
   pickups!: Phaser.GameObjects.Group
   chests!: Phaser.GameObjects.Group
   gameTime = 0
   private enemyHpBars!: Phaser.GameObjects.Graphics
   private gameOver = false
+  private graves: Phaser.GameObjects.Image[] = []
+  private _magnetFrame = 0
   private selectedHero: HeroType = 'ignara'
   protected terrainRT!: Phaser.GameObjects.RenderTexture
+  private chunkManager?: ChunkManager
 
   constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
     super(config ?? { key: 'GameScene' })
   }
 
-  // No preload() — all assets loaded by LoadingScene
+  init(data?: { hero?: HeroType; playerName?: string }) {
+    this.selectedHero = data?.hero || 'ignara'
+  }
+
+  preload() {
+    const ss = (key: string, path: string, fw: number, fh: number) => {
+      if (!this.textures.exists(key)) {
+        this.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
+      }
+    }
+    const img = (key: string, path: string) => {
+      if (!this.textures.exists(key)) {
+        this.load.image(key, path)
+      }
+    }
+
+    // Monster spritesheets
+    ss('flyingeye_attack', 'assets/flying_eye/Attack3.png', 150, 150)
+
+    // Orc enemies (64x64)
+    ss('orc1_idle',   'assets/orc/orc1_idle_without_shadow.png',   64, 64)
+    ss('orc1_run',    'assets/orc/orc1_run_without_shadow.png',    64, 64)
+    ss('orc1_attack', 'assets/orc/orc1_attack_without_shadow.png', 64, 64)
+    ss('orc1_hurt',   'assets/orc/orc1_hurt_without_shadow.png',   64, 64)
+    ss('orc1_death',  'assets/orc/orc1_death_without_shadow.png',  64, 64)
+
+    ss('orc2_idle',   'assets/orc2/orc2_idle_without_shadow.png',   64, 64)
+    ss('orc2_run',    'assets/orc2/orc2_run_without_shadow.png',    64, 64)
+    ss('orc2_attack', 'assets/orc2/orc2_attack_without_shadow.png', 64, 64)
+    ss('orc2_hurt',   'assets/orc2/orc2_hurt_without_shadow.png',   64, 64)
+    ss('orc2_death',  'assets/orc2/orc2_death_without_shadow.png',  64, 64)
+
+    ss('orc3_idle',   'assets/orc3/orc3_idle_without_shadow.png',   64, 64)
+    ss('orc3_run',    'assets/orc3/orc3_run_without_shadow.png',    64, 64)
+    ss('orc3_attack', 'assets/orc3/orc3_attack_without_shadow.png', 64, 64)
+    ss('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   64, 64)
+    ss('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  64, 64)
+
+    // Boss demon (288x160)
+    ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
+
+    // VFX
+    ss('vfx_flame', 'assets/vfx/flamethrower_sheet.png', 64, 24)
+
+    // Skill icons (128x128)
+    ss('skill_icons', 'assets/icons/skill_icons_sheet.png', 128, 128)
+
+    // Individual DALL-E skill icons
+    img('icon_g1_sharp_edge', 'assets/icons/g1_sharp_edge.png')
+    img('icon_g2_swift_feet', 'assets/icons/g2_swift_feet.png')
+    img('icon_placeholder_a', 'assets/icons/placeholder_a.png')
+    img('icon_placeholder_b', 'assets/icons/placeholder_b.png')
+
+    // Chest spritesheet (32x32, 9 cols x 4 rows)
+    ss('chests', 'assets/chests/chests.png', 32, 32)
+
+    // Rocks
+    img('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
+    img('rock1_2', 'assets/rocks/Rock1_2_no_shadow.png')
+    img('rock2_1', 'assets/rocks/Rock2_1_no_shadow.png')
+    img('rock2_2', 'assets/rocks/Rock2_2_no_shadow.png')
+    img('rock3_1', 'assets/rocks/Rock3_1_no_shadow.png')
+    img('rock3_2', 'assets/rocks/Rock3_2_no_shadow.png')
+
+    // Terrain
+    ss('terrain_grass', 'assets/terrain/TX Tileset Grass.png', 32, 32)
+    ss('terrain_stone', 'assets/terrain/TX Tileset Stone Ground.png', 32, 32)
+    img('deco_tree1', 'assets/terrain/tree1.png')
+    img('deco_tree2', 'assets/terrain/tree2.png')
+    img('deco_tree3', 'assets/terrain/tree3.png')
+
+    // Props
+    img('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
+    img('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
+
+    // Hero-specific assets
+    this.loadHeroAssets(this.selectedHero, ss)
+  }
+
+  private loadHeroAssets(hero: string, ss: (key: string, path: string, fw: number, fh: number) => void) {
+    switch (hero) {
+      case 'ignara':
+        ss('ignara_idle',   'assets/ignara/Idle.png',     150, 150)
+        ss('ignara_run',    'assets/ignara/Move.png',     150, 150)
+        ss('ignara_attack', 'assets/ignara/Attack.png',   150, 150)
+        ss('ignara_hurt',   'assets/ignara/Take Hit.png', 150, 150)
+        ss('ignara_death',  'assets/ignara/Death.png',    150, 150)
+        break
+      case 'sifra':
+        ss('sifra_idle',    'assets/sifra/Idle.png',    231, 190)
+        ss('sifra_run',     'assets/sifra/Run.png',     231, 190)
+        ss('sifra_attack',  'assets/sifra/Attack1.png', 231, 190)
+        ss('sifra_attack2', 'assets/sifra/Attack2.png', 231, 190)
+        ss('sifra_hurt',    'assets/sifra/Hit.png',     231, 190)
+        ss('sifra_death',   'assets/sifra/Death.png',   231, 190)
+        break
+      case 'nazar':
+        ss('nazar_idle',    'assets/nazar/Idle.png',      200, 200)
+        ss('nazar_run',     'assets/nazar/Run.png',       200, 200)
+        ss('nazar_attack',  'assets/nazar/Attack1.png',   200, 200)
+        ss('nazar_attack2', 'assets/nazar/Attack2.png',   200, 200)
+        ss('nazar_hurt',    'assets/nazar/Take Hit.png',  200, 200)
+        ss('nazar_death',   'assets/nazar/Death.png',     200, 200)
+        break
+      case 'amun':
+        ss('amun_idle',    'assets/amun/Idle.png',      160, 111)
+        ss('amun_run',     'assets/amun/Run.png',       160, 111)
+        ss('amun_attack',  'assets/amun/Attack1.png',   160, 111)
+        ss('amun_attack2', 'assets/amun/Attack2.png',   160, 111)
+        ss('amun_attack3', 'assets/amun/Attack3.png',   160, 111)
+        ss('amun_hurt',    'assets/amun/Take Hit.png',  160, 111)
+        ss('amun_death',   'assets/amun/Death.png',     160, 111)
+        break
+      case 'huntress':
+        ss('huntress_idle',    'assets/lyra/Idle.png',     150, 150)
+        ss('huntress_run',     'assets/lyra/Run.png',      150, 150)
+        ss('huntress_attack',  'assets/lyra/Attack1.png',  150, 150)
+        ss('huntress_attack2', 'assets/lyra/Attack2.png',  150, 150)
+        ss('huntress_ranged',  'assets/lyra/Attack3.png',  150, 150)
+        ss('huntress_hurt',    'assets/lyra/Take hit.png', 150, 150)
+        ss('huntress_death',   'assets/lyra/Death.png',    150, 150)
+        break
+      case 'khashin':
+        ss('khashin_idle',       'assets/khashin/Idle.png',       288, 128)
+        ss('khashin_run',        'assets/khashin/Run.png',        288, 128)
+        ss('khashin_attack',     'assets/khashin/Attack.png',     288, 128)
+        ss('khashin_air_attack', 'assets/khashin/Air_attack.png', 288, 128)
+        ss('khashin_special',    'assets/khashin/Special.png',    288, 128)
+        ss('khashin_hurt',       'assets/khashin/Take_hit.png',   288, 128)
+        ss('khashin_death',      'assets/khashin/Death.png',      288, 128)
+        break
+      case 'muller':
+        ss('muller_idle',        'assets/givi/Idle.png',         288, 128)
+        ss('muller_run',         'assets/givi/Run.png',          288, 128)
+        ss('muller_attack',      'assets/givi/Attack.png',       288, 128)
+        ss('muller_ground_slam', 'assets/givi/Ground_slam.png',  288, 128)
+        ss('muller_special',     'assets/givi/Special.png',      288, 128)
+        ss('muller_hurt',        'assets/givi/Take_hit.png',     288, 128)
+        ss('muller_death',       'assets/givi/Death.png',        288, 128)
+        ss('crystal_green_0',    'assets/givi/crystal_green_0.png', 75, 78)
+        ss('crystal_green_1',    'assets/givi/crystal_green_1.png', 65, 41)
+        ss('crystal_pink_0',     'assets/givi/crystal_pink_0.png',  63, 61)
+        ss('crystal_pink_1',     'assets/givi/crystal_pink_1.png',  30, 21)
+        ss('crystal_blue_0',     'assets/givi/crystal_blue_0.png',  54, 51)
+        ss('crystal_blue_1',     'assets/givi/crystal_blue_1.png',  43, 27)
+        break
+    }
+  }
 
   create(data?: { hero?: HeroType }) {
     this.gameOver = false
     this.gameTime = 0
-    this.selectedHero = data?.hero || 'ignara'
+    if (data?.hero) this.selectedHero = data.hero
 
     // ── Pack 1: Immediate — what the player sees first frame ──
     this.generateVfxTextures()
@@ -55,31 +206,37 @@ export class GameScene extends Phaser.Scene {
     Orc1.createAnimations(this)
     Orc2.createAnimations(this)
     Orc3.createAnimations(this)
-    Vampire.createAnimations(this)
     Player.createAnimations(this)
 
-    this.physics.world.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
-    this.rocks = this.physics.add.staticGroup()
-
-    // Terrain: fill base color instantly, draw tiles progressively
-    this.terrainRT = this.add.renderTexture(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT).setOrigin(0).setDepth(0)
-    this.terrainRT.fill(0x4a7c3f)
-
-    // Player at center
-    this.player = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
+    if (this.useInfiniteMap()) {
+      // Infinite map path
+      this.physics.world.setBounds(-1e7, -1e7, 2e7, 2e7)
+      this.rocks = this.physics.add.staticGroup()
+      this.player = new Player(this, 0, 0, this.selectedHero)
+      this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
+      // NO camera.setBounds — infinite scroll
+      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y))
+      this.chunkManager.create(0, 0)
+      this.generateGraveTextures()
+      this.events.emit('terrain-ready')
+    } else {
+      // Bounded map path (UndeadMapScene uses this)
+      this.physics.world.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
+      this.rocks = this.physics.add.staticGroup()
+      this.terrainRT = this.add.renderTexture(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT).setOrigin(0).setDepth(0)
+      this.terrainRT.fill(0x4a7c3f)
+      this.player = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
+      this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
+      this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
+      this.drawTerrainProgressive()
+      this.scatterDecorations(0, Infinity)
+      this.scatterRocks(0, Infinity)
+      this.generateGraveTextures()
+      this.events.emit('terrain-ready')
+    }
 
     // Collide player with rocks and trees
     this.physics.add.collider(this.player, this.rocks)
-    // Camera
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
-    this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
-
-    // Draw all terrain, decorations, rocks in one pass — then signal ready
-    this.drawTerrainProgressive()
-    this.scatterDecorations(0, Infinity)
-    this.scatterRocks(0, Infinity)
-    this.generateGraveTextures()
-    this.events.emit('terrain-ready')
 
     // Enemies group
     this.enemies = this.physics.add.group({ runChildUpdate: false })
@@ -92,8 +249,9 @@ export class GameScene extends Phaser.Scene {
       return !(enemy as any).isFlying
     })
 
-    // XP system
+    // XP + Gold systems
     this.xpSystem = new XPSystem(this, this.player)
+    this.goldSystem = new GoldSystem(this, this.player)
 
     // Pickups group (HP orbs, magnets)
     this.pickups = this.add.group()
@@ -109,11 +267,22 @@ export class GameScene extends Phaser.Scene {
     this.setupTouchControls()
 
     // Events
-    this.events.on('enemy-died', (x: number, y: number, xpValue: number) => {
+    this.events.on('enemy-died', (x: number, y: number, xpValue: number, goldValue: number = 0) => {
       this.xpSystem.spawnOrb(x, y, xpValue)
       this.player.kills++
+      // Branch Mastery: +0.25 XP on kill
+      if (this.player.currentAttackBranch) {
+        this.player.awardMasteryXP(this.player.currentAttackBranch, 0.25)
+      }
       this.waveManager.onEnemyKilled()
       this.spawnGrave(x, y)
+
+      // Gold drop — bosses always, regular mobs 8% chance
+      let gold = goldValue
+      if (gold === 0 && Math.random() < CONFIG.GOLD_MOB_CHANCE) {
+        gold = Phaser.Math.Between(CONFIG.GOLD_MOB_MIN, CONFIG.GOLD_MOB_MAX)
+      }
+      if (gold > 0) this.goldSystem.spawnOrb(x, y, gold)
 
       // Huntress kill-triggered mechanics
       if (this.player.heroType === 'huntress') {
@@ -137,76 +306,11 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      // Khashin kill-triggered mechanics
-      if (this.player.heroType === 'khashin') {
-        // Scarab Tide: 4 seeking scarabs that blind nearby enemies
-        if (this.player.hasScarabTide) {
-          for (let i = 0; i < 4; i++) {
-            const sa = (i / 4) * Math.PI * 2
-            const scarab = this.add.circle(x, y, 3, 0xddaa44, 0.7).setDepth(10)
-            // Find nearest unblinded enemy
-            let target: Phaser.Physics.Arcade.Sprite | null = null
-            let nearDist = 150
-            for (const e of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-              if (!e.active || (e as any)._isBlinded) continue
-              const d = Phaser.Math.Distance.Between(x, y, e.x, e.y)
-              if (d < nearDist) { nearDist = d; target = e }
-            }
-            if (target) {
-              const t = target
-              this.tweens.add({
-                targets: scarab, x: t.x, y: t.y, duration: 300, delay: i * 50,
-                onComplete: () => {
-                  scarab.destroy()
-                  if (t.active) {
-                    ;(t as any)._isBlinded = true
-                    ;(t as any)._blindExpires = this.time.now + 1500
-                    ;(t as any).speed = (t as any).baseSpeed * 0.6
-                    t.setTint(0xddaa44)
-                    if (!(t as any)._blindTimer) {
-                      const scene = this
-                      const chk = () => {
-                        if (!t.active) { (t as any)._blindTimer = null; return }
-                        if (scene.time.now >= (t as any)._blindExpires) {
-                          t.clearTint(); (t as any)._isBlinded = false; (t as any)._blindTimer = null
-                          if ((t as any).baseSpeed) (t as any).speed = (t as any).baseSpeed
-                        } else { (t as any)._blindTimer = scene.time.delayedCall(200, chk) }
-                      }
-                      ;(t as any)._blindTimer = scene.time.delayedCall(200, chk)
-                    }
-                  }
-                },
-              })
-            } else {
-              // No target, just fly out
-              this.tweens.add({
-                targets: scarab,
-                x: x + Math.cos(sa) * 60, y: y + Math.sin(sa) * 60,
-                alpha: 0, duration: 400, delay: i * 50,
-                onComplete: () => scarab.destroy(),
-              })
-            }
-          }
-        }
-      }
-
-      // Crystal Muller kill-triggered mechanics
-      if (this.player.heroType === 'muller') {
-        // Stone Skin: +1 DR stack on kill, +5% scale, -2% speed per stack
-        if (this.player.hasStoneSkin && this.player.stoneSkinStacks < 5) {
-          this.player.stoneSkinStacks++
-          this.player.stoneSkinTimer = 0
-          // Scale hero up
-          this.player.applyStoneSkinVisuals()
-          // Proc VFX — stone dust ring
-          const ring = this.add.circle(this.player.cx, this.player.cy, 8, 0x99ddcc, 0.6).setDepth(12)
-          this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 300, onComplete: () => ring.destroy() })
-        }
-      }
+      // (Stone Skin stacks now trigger on damage taken, not kills — see Player.takeDamage)
 
       // Ignara kill-triggered mechanics
       if (this.player.heroType === 'ignara' && this.player.hasPyromaniac) {
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 5)
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 2)
       }
 
       // Heart drop with progressive thresholds: 100, 300, 500, then every 500
@@ -218,20 +322,6 @@ export class GameScene extends Phaser.Scene {
         this.pickups.add(heart)
       }
 
-      // Drop table — weighted random drops
-      const tier = this.waveManager.currentWave
-      const roll = Math.random()
-      let dropType: PickupType | null = null
-      if (roll < 0.08) dropType = 'hp'
-      else if (roll < 0.10) dropType = 'magnet'
-      else if (roll < 0.11 && tier >= 3) dropType = 'bomb'
-      else if (roll < 0.115 && tier >= 4) dropType = 'shield'
-      else if (roll < 0.12 && tier >= 2) dropType = 'speed'
-      else if (roll < 0.125 && tier >= 5) dropType = 'xpstar'
-      if (dropType) {
-        const pickup = new Pickup(this, x, y, dropType, this.player)
-        this.pickups.add(pickup)
-      }
     })
 
     // Pickup overlap — collect on touch
@@ -267,7 +357,7 @@ export class GameScene extends Phaser.Scene {
 
     this.events.on('player-levelup', () => {
       // Kill nearby enemies so player can safely choose upgrades
-      const CLEAR_RADIUS = 200
+      const CLEAR_RADIUS = 150
       const px = this.player.cx
       const py = this.player.cy
       for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
@@ -276,6 +366,16 @@ export class GameScene extends Phaser.Scene {
         if (dist < CLEAR_RADIUS && typeof (enemy as any).die === 'function') {
           (enemy as any).die()
         }
+      }
+      // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter
+      for (const orb of this.xpSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+        if (orb.active && Math.random() < 0.5) orb.destroy()
+      }
+      for (const orb of this.goldSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+        if (orb.active && Math.random() < 0.5) orb.destroy()
+      }
+      for (const p of this.pickups.getChildren() as Phaser.GameObjects.GameObject[]) {
+        if (p.active && Math.random() < 0.5) p.destroy()
       }
       const isBranch = this.upgradeTracker.isBranchSelection
       const choices = isBranch
@@ -308,11 +408,11 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
+  protected useInfiniteMap(): boolean { return true }
+
   /** Returns the biome zone (0-4) for a world pixel position. */
   public getZone(px: number, py: number): number {
-    const cx = CONFIG.WORLD_WIDTH / 2
-    const cy = CONFIG.WORLD_HEIGHT / 2
-    const dist = Phaser.Math.Distance.Between(px, py, cx, cy)
+    const dist = Phaser.Math.Distance.Between(px, py, 0, 0)
     if (dist < 600) return 0
     if (dist < 1200) return 1
     if (dist < 1800) return 2
@@ -557,6 +657,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private generateVfxTextures() {
+    // Short-circuit: if the first texture exists, all were generated in a prior run
+    if (this.textures.exists('vfx_fireball')) return
+
     // Flame blob — soft radial gradient circle (16x16)
     const fb = this.add.graphics({ x: 0, y: 0 }).setVisible(false)
     fb.fillStyle(0xffffff, 1)
@@ -885,6 +988,12 @@ export class GameScene extends Phaser.Scene {
       alpha: 0.85,
       duration: 400,
     })
+
+    this.graves.push(grave)
+    if (this.graves.length > 50) {
+      const oldest = this.graves.shift()
+      oldest?.destroy()
+    }
   }
 
   private spawnClawsBoss() {
@@ -912,8 +1021,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Spawn boss to the LEFT of the player
-    const bx = Phaser.Math.Clamp(this.player.x - 400, 60, CONFIG.WORLD_WIDTH - 60)
-    const by = Phaser.Math.Clamp(this.player.y, 60, CONFIG.WORLD_HEIGHT - 60)
+    const bx = this.player.x - 400  // no clamp
+    const by = this.player.y         // no clamp
 
     const boss = this.physics.add.sprite(bx, by, 'boss_demon')
     boss.setScale(3)
@@ -986,35 +1095,34 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number) {
     if (this.gameOver) return
 
+    this.chunkManager?.update(this.player.x, this.player.y)
+
     this.gameTime += delta
 
     this.player.update(time, delta)
     this.player.tryAutoAttack(this.enemies, time, delta)
 
-    for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (enemy.active) {
-        (enemy as Orc1 | Orc2 | Orc3 | FlyingEye | SandGolem).update(time, delta)
-      }
+    // XP/gold magnet pull — throttled to every other frame
+    this._magnetFrame = (this._magnetFrame + 1) % 2
+    if (this._magnetFrame === 0) {
+      this.xpSystem.updateMagnet()
+      this.goldSystem.updateMagnet()
     }
 
-    // XP magnet pull
-    this.xpSystem.updateMagnet()
-
-    // Batched enemy HP bars
+    // Single merged enemy loop: update + HP bars
     this.enemyHpBars.clear()
     for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!enemy.active) continue
+      ;(enemy as Orc1 | Orc2 | Orc3 | FlyingEye | SandGolem).update(time, delta)
+
       const e = enemy as any
       if (e.hp === undefined || e.maxHp === undefined || e.hp >= e.maxHp) continue
-
       const barWidth = e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 24
       const barHeight = e.maxHp > 100 ? 5 : 3
       const barY = enemy.y - (e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 22)
       const barX = enemy.x - barWidth / 2
-
       this.enemyHpBars.fillStyle(0x333333)
       this.enemyHpBars.fillRect(barX, barY, barWidth, barHeight)
-
       const hpRatio = Math.max(0, e.hp / e.maxHp)
       const color = hpRatio > 0.5 ? 0x00ff00 : hpRatio > 0.25 ? 0xffff00 : 0xff0000
       this.enemyHpBars.fillStyle(color)
@@ -1023,16 +1131,29 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isChestPositionClear(x: number, y: number, minDist = 80): boolean {
-    // Check rocks
-    if (this._rockPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
-    // Check trees and decorations
-    if (this.treePositions.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
+    // Check other chests
+    for (const c of this.chests.getChildren() as Phaser.GameObjects.Sprite[]) {
+      if (Phaser.Math.Distance.Between(x, y, c.x, c.y) < minDist) return false
+    }
+    // Check rocks — wider zone since rocks can be scaled up to 1.8x
+    if (this._rockPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < 120)) return false
+    // Check trees — larger exclusion zone (trees are big sprites)
+    if (this.treePositions.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < 150)) return false
     if (this._decoPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
     return true
   }
 
+  shutdown() {
+    this.events.off('enemy-died')
+    this.events.off('magnet-activated')
+    this.events.off('player-levelup')
+    this.events.off('player-died')
+    this.events.off('claws-incoming')
+    this.events.off('claws-spawn')
+  }
+
   private spawnChests() {
-    const cx = CONFIG.WORLD_WIDTH / 2, cy = CONFIG.WORLD_HEIGHT / 2
+    const cx = 0, cy = 0
     const MAX_ATTEMPTS = 30
 
     // Common chests — scattered in mid-range

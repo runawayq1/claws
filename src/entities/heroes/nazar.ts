@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
+import { BaseEnemy } from '../BaseEnemy'
 
 export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
   // Shadow Step: blink 30px toward nearest enemy before slashing
@@ -45,7 +46,7 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
   const enemiesInRange = (enemies.getChildren() as Phaser.Physics.Arcade.Sprite[])
     .filter(e => e.active && Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= hitRadius).length
   const isAssassinating = p.hasAssassinate && enemiesInRange === 1
-  const meleeDmg = isAssassinating ? p.damage * 2 : p.damage
+  const meleeDmg = (isAssassinating ? p.damage * 2 : p.damage) * p.getMasteryDamageMult('sword')
 
   // Damage all enemies in range
   for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
@@ -53,7 +54,7 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
     if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= hitRadius) {
       // Weakness: poisoned enemies take +30% damage
       const weakMult = (p.hasWeakness && (e as any)._poisoned) ? 1.3 : 1
-      for (let i = 0; i < p.strikeCount; i++) (e as any).takeDamage(meleeDmg * weakMult, 'melee')
+      for (let i = 0; i < p.strikeCount; i++) (e as BaseEnemy).takeDamage(meleeDmg * weakMult, 'melee')
       // Hit spark
       if (p.scene.textures.exists('vfx_hitspark')) {
         const spark = p.scene.add.image(e.x, e.y, 'vfx_hitspark')
@@ -77,15 +78,15 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
       if (p.hasHemorrhage && !(e as any)._bleedTimer) {
         (e as any)._bleedTimer = p.scene.time.addEvent({
           delay: 500, repeat: 5, callback: () => {
-            if (e.active) (e as any).takeDamage(p.damage * 0.15, 'melee')
+            if (e.active) (e as BaseEnemy).takeDamage(p.damage * 0.15 * p.getMasteryDamageMult('sword'), 'melee')
             if (!(e as any)._bleedTimer?.repeatCount) (e as any)._bleedTimer = null
           }
         })
       }
 
       // Blood Scent — execute enemies below 20% HP
-      if (p.hasBloodScent && (e as any).hp > 0 && (e as any).hp < (e as any).maxHp * 0.2) {
-        (e as any).takeDamage((e as any).hp + 1, 'melee')
+      if (p.hasBloodScent && (e as BaseEnemy).hp > 0 && (e as BaseEnemy).hp < (e as BaseEnemy).maxHp * 0.2) {
+        (e as BaseEnemy).takeDamage((e as BaseEnemy).hp + 1, 'melee')
         // VFX: blood splatter
         for (let b = 0; b < 4; b++) {
           const ba = Math.random() * Math.PI * 2
@@ -98,7 +99,7 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
       // Death Mark — first hit marks, second hit deals +40%
       if (p.hasDeathMark) {
         if ((e as any)._deathMarked) {
-          (e as any).takeDamage(p.damage * 0.4, 'melee');
+          (e as BaseEnemy).takeDamage(p.damage * 0.4 * p.getMasteryDamageMult('sword'), 'melee');
           (e as any)._deathMarked = false
         } else {
           (e as any)._deathMarked = true
@@ -117,7 +118,13 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
     for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!e.active) continue
       if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= smokeR) {
-        if ((e as any).speed && (e as any).baseSpeed) (e as any).speed = (e as any).baseSpeed * 0.4
+        if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+          const origSpeed = (e as BaseEnemy).baseSpeed || (e as BaseEnemy).speed
+          ;(e as BaseEnemy).speed = origSpeed * 0.4
+          p.scene.time.delayedCall(2000, () => {
+            if ((e as Phaser.Physics.Arcade.Sprite).active) (e as BaseEnemy).speed = origSpeed
+          })
+        }
       }
     }
   }
@@ -132,7 +139,7 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
       if (d > p.range && d <= lungeRange) {
         const aToE = Phaser.Math.Angle.Between(p.x, p.y, e.x, e.y)
         if (Math.abs(Phaser.Math.Angle.Wrap(aToE - lungeAngle)) < 0.6) {
-          (e as any).takeDamage(p.damage * 0.7, 'melee')
+          (e as BaseEnemy).takeDamage(p.damage * 0.7 * p.getMasteryDamageMult('sword'), 'melee')
         }
       }
     }
@@ -193,7 +200,7 @@ export function attackDash(p: Player, target: Phaser.Physics.Arcade.Sprite, enem
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= hitRadius) {
-          for (let i = 0; i < p.strikeCount; i++) (e as any).takeDamage(p.damage, 'melee')
+          for (let i = 0; i < p.strikeCount; i++) (e as BaseEnemy).takeDamage(p.damage, 'melee')
           // Hit spark — size scales with damage
           if (p.scene.textures.exists('vfx_hitspark')) {
             const spark = p.scene.add.image(e.x, e.y, 'vfx_hitspark')
@@ -219,8 +226,12 @@ export function attackDash(p: Player, target: Phaser.Physics.Arcade.Sprite, enem
         for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
           if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= smokeRadius) {
-            if ((e as any).speed && (e as any).baseSpeed) {
-              (e as any).speed = (e as any).baseSpeed * 0.4
+            if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+              const origSpeed = (e as BaseEnemy).baseSpeed || (e as BaseEnemy).speed
+              ;(e as BaseEnemy).speed = origSpeed * 0.4
+              p.scene.time.delayedCall(2000, () => {
+                if ((e as Phaser.Physics.Arcade.Sprite).active) (e as BaseEnemy).speed = origSpeed
+              })
             }
           }
         }
@@ -258,7 +269,7 @@ export function attackDash(p: Player, target: Phaser.Physics.Arcade.Sprite, enem
               for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                 if (!e.active) continue
                 if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= hitRadius) {
-                  (e as any).takeDamage(p.damage * 0.7, 'melee')
+                  (e as BaseEnemy).takeDamage(p.damage * 0.7, 'melee')
                 }
               }
               // Slash VFX at chain target
@@ -365,12 +376,12 @@ export function spawnPoisonCloud(p: Player, cx: number, cy: number, enemies: Pha
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= poolRadius) {
-          const hpBefore = (e as any).hp || 0
+          const hpBefore = (e as BaseEnemy).hp || 0
           // Necrosis: poison DPS ramps +20% per tick
           const necroMult = p.hasNecrosis ? (1 + tickCount * 0.2) : 1;
           // Weakness: +30% damage to already-poisoned enemies
           const weakMult = (p.hasWeakness && (e as any)._poisoned) ? 1.3 : 1;
-          (e as any).takeDamage(p.damage * necroMult * weakMult, 'poison')
+          (e as BaseEnemy).takeDamage(p.damage * necroMult * weakMult * p.getMasteryDamageMult('venom'), 'poison')
           // Tag as poisoned for Weakness
           ;(e as any)._poisoned = true
           e.setTint(0x88ff88)
@@ -382,7 +393,7 @@ export function spawnPoisonCloud(p: Player, cx: number, cy: number, enemies: Pha
             })
           }
           // Pandemic: spread mini-cloud on kill
-          if (p.hasPandemic && hpBefore > 0 && ((e as any).hp <= 0 || !e.active)) {
+          if (p.hasPandemic && hpBefore > 0 && ((e as BaseEnemy).hp <= 0 || !e.active)) {
             const miniRadius = poolRadius * 0.5
             const miniGfx = p.scene.add.circle(e.x, e.y, miniRadius * 0.3, 0x44cc44, 0.3).setDepth(3)
             p.scene.tweens.add({ targets: miniGfx, scale: 2, alpha: 0, duration: 1500, onComplete: () => miniGfx.destroy() })
@@ -395,7 +406,7 @@ export function spawnPoisonCloud(p: Player, cx: number, cy: number, enemies: Pha
                 for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                   if (!e2.active) continue
                   if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= miniRadius) {
-                    (e2 as any).takeDamage(p.damage * 0.5, 'poison')
+                    (e2 as BaseEnemy).takeDamage(p.damage * 0.5 * p.getMasteryDamageMult('venom'), 'poison')
                   }
                 }
               },
@@ -427,7 +438,7 @@ export function spawnPoisonCloud(p: Player, cx: number, cy: number, enemies: Pha
         for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
           if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= puddleR) {
-            ;(e as any).takeDamage(p.hasVirulentStrain ? p.damage * 0.5 : p.damage * 0.3, 'poison')
+            ;(e as BaseEnemy).takeDamage((p.hasVirulentStrain ? p.damage * 0.5 : p.damage * 0.3) * p.getMasteryDamageMult('venom'), 'poison')
             ;(e as any)._poisoned = true
           }
         }
@@ -629,25 +640,41 @@ export function updateNazarEnergy(p: Player, delta: number) {
 export function updatePhantomTrail(p: Player, delta: number, moving: boolean) {
   if (p.hasPhantomTrail && moving) {
     p.phantomTrailTimer += delta
-    if (p.phantomTrailTimer >= 250) {
+    if (p.phantomTrailTimer >= 500) {
       p.phantomTrailTimer = 0
+      // Enforce max 6 trails
+      if (!(p as any)._phantomTrails) (p as any)._phantomTrails = [] as Phaser.GameObjects.Arc[]
+      const activeTrails = ((p as any)._phantomTrails as Phaser.GameObjects.Arc[]).filter(t => t.active)
+      ;(p as any)._phantomTrails = activeTrails
+      if (activeTrails.length >= 6) return
+
       const tx = p.x, ty = p.y
-      const trail = p.scene.add.circle(tx, ty, 6, 0x9955dd, 0.4).setDepth(3)
+      const trail = p.scene.add.circle(tx, ty, 12, 0x220033, 0.5).setDepth(3)
+      activeTrails.push(trail)
+      // Track last hit time per enemy (500ms cooldown between hits on same enemy)
+      const trailHitTimes = new Map<Phaser.Physics.Arcade.Sprite, number>()
+
       let ticks = 0
       const trailTimer = p.scene.time.addEvent({
-        delay: 300, repeat: 4, callback: () => {
+        delay: 250, repeat: 7, callback: () => {
           ticks++
+          const now = p.scene.time.now
           const scene = p.scene as any
           if (scene.enemies) {
             for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e.active) continue
-              if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= 15) (e as any).takeDamage(p.damage * 0.15, 'melee')
+              const lastHit = trailHitTimes.get(e as Phaser.Physics.Arcade.Sprite) ?? 0
+              if (now - lastHit < 500) continue
+              if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= 12) {
+                ;(e as BaseEnemy).takeDamage(p.damage * 0.3 * p.getMasteryDamageMult('sword'), 'melee')
+                trailHitTimes.set(e as Phaser.Physics.Arcade.Sprite, now)
+              }
             }
           }
-          if (ticks >= 4) { trail.destroy(); trailTimer.destroy() }
+          if (ticks >= 8) { if (trail.active) trail.destroy(); trailTimer.destroy() }
         }
       })
-      p.scene.tweens.add({ targets: trail, alpha: 0, scale: 0.3, duration: 1500 })
+      p.scene.tweens.add({ targets: trail, alpha: 0, scale: 0.3, duration: 2000, onComplete: () => { if (trail.active) trail.destroy() } })
     }
   }
 }

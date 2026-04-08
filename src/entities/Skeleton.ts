@@ -29,7 +29,7 @@ export class Orc2 extends BaseEnemy {
     this.baseTint = 0xddccaa
     this.setTint(this.baseTint)
     this.setBodySize(24, 24)
-    this.setOffset(20, 20)
+    this.setOffset(20, 18)
     this.setDepth(5)
 
     this.play('orc2_run')

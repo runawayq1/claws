@@ -61,16 +61,18 @@ export class LoadingScene extends Phaser.Scene {
 
     // Flavor text below the bar — cycles on each progress tick
     const flavorTexts = [
-      'Sharpening goblin teeth...',
-      'Polishing rusty armor...',
-      'Hiding treasure chests...',
-      'Waking up the undead...',
-      'Feeding the swarm...',
-      'Scattering bones around...',
-      'Brewing potions of doom...',
-      'Planting suspicious mushrooms...',
-      'Summoning reinforcements...',
-      'Oiling the boss gate...',
+      'The Bramauthroba never sleeps...',
+      'Counting dunes in the Pishane...',
+      'Brushing sand off Amunat ruins...',
+      'The Swarm does not wait for you...',
+      'Consulting the ruins of Amunat...',
+      'Khashin was born in a sandstorm. You were not.',
+      'An-Nubis, Warden of the Rift, is displeased...',
+      'Ignara burned the Academy. She has no regrets.',
+      'Amun has been guarding this Key for 1000 years...',
+      'The Bramauthroba yawns. Enemies pour through.',
+      'Givi just wants to go home. The Rift disagrees.',
+      'Nazar\'s clan is dead. The cult is not.',
     ]
 
     this.loadingText = this.add.text(width / 2, this.barY + this.barH + 18, flavorTexts[0], {
@@ -149,13 +151,6 @@ export class LoadingScene extends Phaser.Scene {
     ss('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   64, 64)
     ss('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  64, 64)
 
-    // Vampire (32x32)
-    ss('vampire_idle',   'assets/vampire/idle.png',   32, 32)
-    ss('vampire_run',    'assets/vampire/run.png',    32, 32)
-    ss('vampire_attack', 'assets/vampire/attack.png', 32, 32)
-    ss('vampire_hurt',   'assets/vampire/hurt.png',   32, 32)
-    ss('vampire_death',  'assets/vampire/death.png',  32, 32)
-
     // Boss demon (288x160)
     ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
 
@@ -164,6 +159,12 @@ export class LoadingScene extends Phaser.Scene {
 
     // Skill icons (128x128)
     ss('skill_icons', 'assets/icons/skill_icons_sheet.png', 128, 128)
+
+    // Card backgrounds (level-up UI)
+    img('card_back', 'assets/ui/card_back.png')
+    img('card_back_lg', 'assets/ui/card_back_lg.png')
+    img('card_sealed', 'assets/ui/card_sealed.png')
+    img('card_sealed_lg', 'assets/ui/card_sealed_lg.png')
 
     // Chest spritesheet (32x32, 9 cols x 4 rows)
     ss('chests', 'assets/chests/chests.png', 32, 32)
@@ -296,11 +297,18 @@ export class LoadingScene extends Phaser.Scene {
       loop: true,
       callback: () => {
         const texts = [
-          'Sharpening goblin teeth...', 'Polishing rusty armor...',
-          'Hiding treasure chests...', 'Waking up the undead...',
-          'Feeding the swarm...', 'Scattering bones around...',
-          'Brewing potions of doom...', 'Planting suspicious mushrooms...',
-          'Summoning reinforcements...', 'Oiling the boss gate...',
+          'The Bramauthroba never sleeps...',
+          'Counting dunes in the Pishane...',
+          'Brushing sand off Amunat ruins...',
+          'The Swarm does not wait for you...',
+          'Consulting the ruins of Amunat...',
+          'Khashin was born in a sandstorm. You were not.',
+          'An-Nubis, Warden of the Rift, is displeased...',
+          'Ignara burned the Academy. She has no regrets.',
+          'Amun has been guarding this Key for 1000 years...',
+          'The Bramauthroba yawns. Enemies pour through.',
+          'Givi just wants to go home. The Rift disagrees.',
+          'Nazar\'s clan is dead. The cult is not.',
         ]
         this.loadingText.setText(texts[Phaser.Math.Between(0, texts.length - 1)])
       },

@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
+import { BaseEnemy } from '../BaseEnemy'
 
 export function attackIceShard(p: Player, target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
   const baseAngle = Phaser.Math.Angle.Between(p.x, p.y, target.x, target.y)
@@ -7,6 +8,7 @@ export function attackIceShard(p: Player, target: Phaser.Physics.Arcade.Sprite, 
   const hasFrost = p.scene.textures.exists('vfx_frost')
 
   // Dynamic: shard size from damage + splash, hit radius from splash, multi-shard from strikeCount
+  const iceMasteryMult = p.getMasteryDamageMult('ice')
   const dmgRatio = Math.min(p.damage / 12, 4)
   const hitRadius = 24 + p.splashRadius * 0.5
   const shardScale = 1.5 + dmgRatio * 0.4 + p.splashRadius * 0.025
@@ -36,8 +38,8 @@ export function attackIceShard(p: Player, target: Phaser.Physics.Arcade.Sprite, 
             for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e.active || novaHitSet.has(e)) continue
               if (Phaser.Math.Distance.Between(novaShard.x, novaShard.y, e.x, e.y) <= hitRadius * 0.8) {
-                (e as any).takeDamage(p.damage * 0.5, 'ice')
-                if ((e as any).speed) (e as any).speed *= 0.6
+                (e as BaseEnemy).takeDamage(p.damage * 0.5 * iceMasteryMult, 'ice')
+                if ((e as BaseEnemy).speed) (e as BaseEnemy).speed *= 0.6
                 novaHitSet.add(e)
               }
             }
@@ -96,23 +98,23 @@ export function attackIceShard(p: Player, target: Phaser.Physics.Arcade.Sprite, 
           if (!e.active || hitSet.has(e)) continue
           if (Phaser.Math.Distance.Between(shard.x, shard.y, e.x, e.y) <= hitRadius) {
             // Permafrost: bonus dmg to slowed enemies
-            const isSlowed = (e as any).speed && (e as any).baseSpeed && (e as any).speed < (e as any).baseSpeed * 0.9
-            const permaDmg = (p.hasPermafrost && isSlowed) ? p.damage * 1.4 : p.damage;
-            (e as any).takeDamage(permaDmg, 'ice')
+            const isSlowed = (e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed && (e as BaseEnemy).speed < (e as BaseEnemy).baseSpeed * 0.9
+            const permaDmg = ((p.hasPermafrost && isSlowed) ? p.damage * 1.4 : p.damage) * iceMasteryMult;
+            (e as BaseEnemy).takeDamage(permaDmg, 'ice')
             // Deep Freeze: stronger slow (0.3x vs 0.7x)
             const slowMult = p.hasDeepFreeze ? 0.3 : 0.7
-            if ((e as any).speed) (e as any).speed *= slowMult
+            if ((e as BaseEnemy).speed) (e as BaseEnemy).speed *= slowMult
             // Absolute Zero: freeze stun if very slow
-            if (p.hasAbsoluteZero && (e as any).speed && (e as any).baseSpeed) {
-              if ((e as any).speed < (e as any).baseSpeed * 0.35 && !(e as any)._frozenUntil) {
+            if (p.hasAbsoluteZero && (e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+              if ((e as BaseEnemy).speed < (e as BaseEnemy).baseSpeed * 0.35 && !(e as any)._frozenUntil) {
                 (e as any)._frozenUntil = p.scene.time.now + 2000;
-                (e as any).speed = 0
+                (e as BaseEnemy).speed = 0
                 e.setTintFill(0x88ccff)
                 p.scene.time.delayedCall(2000, () => {
                   if (e.active) {
                     e.clearTint()
                     ;(e as any)._frozenUntil = 0
-                    ;(e as any).speed = (e as any).baseSpeed * 0.5
+                    ;(e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed * 0.5
                   }
                 })
               }
@@ -176,7 +178,7 @@ export function spawnShatterShards(
   // Shuffle and take up to shatterPieces targets
   nearby.sort(() => Math.random() - 0.5)
   const targets = nearby.slice(0, p.shatterPieces)
-  const shatterDmg = Math.ceil(p.damage * 0.5)
+  const shatterDmg = Math.ceil(p.damage * 0.5 * p.getMasteryDamageMult('ice'))
   const miniScale = 0.8 + dmgRatio * 0.2
 
   for (const t of targets) {
@@ -195,8 +197,8 @@ export function spawnShatterShards(
       onComplete: () => {
         mini.destroy()
         if (t.active) {
-          (t as any).takeDamage(shatterDmg, 'ice')
-          if ((t as any).speed) (t as any).speed *= 0.8
+          (t as BaseEnemy).takeDamage(shatterDmg, 'ice')
+          if ((t as BaseEnemy).speed) (t as BaseEnemy).speed *= 0.8
           parentHitSet.add(t)
           // Small burst on impact
           for (let i = 0; i < 3; i++) {
@@ -225,6 +227,17 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
   const spread = 0.6 + p.splashRadius * 0.005
   const useSheet = p.scene.textures.exists('vfx_lightning_sheet')
   const useTex = useSheet || p.scene.textures.exists('vfx_lightning')
+
+  // Purple shift based on lightning mastery (0=blue, 3=deep purple)
+  const mLvl = p.getMasteryLevel('lightning')
+  const boltColors  = [0xaaccff, 0xaa99ff, 0xbb77ff, 0xcc55ff]
+  const sparkColors = [0xccddff, 0xccbbff, 0xddaaff, 0xee99ff]
+  const glowColors  = [0xaaccff, 0xbb99ff, 0xcc88ff, 0xdd77ff]
+  const tintColors  = [0x88aaff, 0x9988ff, 0xaa77ff, 0xbb66ff]
+  const boltColor = boltColors[mLvl] ?? boltColors[3]
+  const sparkColor = sparkColors[mLvl] ?? sparkColors[3]
+  const glowColor = glowColors[mLvl] ?? glowColors[3]
+  const forkColor = tintColors[mLvl] ?? tintColors[3]
 
   // Lazy init
   if (!p.lightningGfx) {
@@ -278,7 +291,7 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
       .setScale(sprScale, sprScale * (1 + p.splashRadius * 0.008))
       .setVisible(true)
       .setAlpha(0.7 + Math.random() * 0.3) // flicker
-    const tint = dmgRatio > 3 ? 0xffffff : dmgRatio > 1.5 ? 0xccddff : 0x88aaff
+    const tint = dmgRatio > 3 ? 0xffffff : dmgRatio > 1.5 ? sparkColor : forkColor
     p.lightningSprite.setTint(tint)
   }
 
@@ -290,14 +303,14 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
   for (let i = 0; i < 3; i++) {
     const sa = p.lightningAngle + (Math.random() - 0.5) * 2.5
     const sl = Phaser.Math.FloatBetween(4, 12)
-    g2.lineStyle(1, 0xccddff, 0.4 + Math.random() * 0.4)
+    g2.lineStyle(1, sparkColor, 0.4 + Math.random() * 0.4)
     g2.beginPath()
     g2.moveTo(tipX, tipY)
     g2.lineTo(tipX + Math.cos(sa) * sl, tipY + Math.sin(sa) * sl)
     g2.strokePath()
   }
   // Fading glow dot at tip
-  g2.fillStyle(0xaaccff, 0.25 + Math.random() * 0.2)
+  g2.fillStyle(glowColor, 0.25 + Math.random() * 0.2)
   g2.fillCircle(tipX, tipY, 4 + Math.random() * 3)
 
   // Secondary jagged arcs in the cone (Graphics layer — extra bolts for beefier feel)
@@ -306,7 +319,7 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
   for (let b = 0; b < boltCount; b++) {
     const boltAngle = p.lightningAngle + (Math.random() - 0.5) * spread * 1.5
     const alpha = 0.3 + Math.random() * 0.35
-    g.lineStyle(Phaser.Math.Between(1, 2), 0xaaccff, alpha)
+    g.lineStyle(Phaser.Math.Between(1, 2), boltColor, alpha)
     let bx = p.x, by = p.y
     const segments = Phaser.Math.Between(4, 6)
     const segLen = lightRange / segments
@@ -326,7 +339,7 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
       const forkX = p.x + Math.cos(boltAngle) * segLen * forkSeg
       const forkY = p.y + Math.sin(boltAngle) * segLen * forkSeg
       const forkAngle = boltAngle + (Math.random() - 0.5) * 1.2
-      g.lineStyle(1, 0x88aaff, alpha * 0.6)
+      g.lineStyle(1, forkColor, alpha * 0.6)
       g.beginPath()
       g.moveTo(forkX, forkY)
       let fx = forkX, fy = forkY
@@ -363,7 +376,7 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
 
   // Damage enemies inside the wide cone
   const coneSpread = p.hasArcReach ? spread * 1.5 : spread
-  const dmgThisFrame = p.damage * (delta / 1000)
+  const dmgThisFrame = p.damage * (delta / 1000) * p.getMasteryDamageMult('lightning')
   const overcharging = p.hasOvercharge && Math.random() < 0.08 // ~8% per frame = frequent bursts
   const chainTargets: Phaser.Physics.Arcade.Sprite[] = []
 
@@ -375,10 +388,10 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
     const angleDiff = Phaser.Math.Angle.Wrap(angleToEnemy - p.lightningAngle)
     if (Math.abs(angleDiff) <= coneSpread) {
       const dmg = overcharging ? dmgThisFrame * 3 : dmgThisFrame;
-      (e as any).takeDamage(dmg, 'lightning')
+      (e as BaseEnemy).takeDamage(dmg, 'lightning')
       // Slow enemies
-      if ((e as any).speed && (e as any).baseSpeed) {
-        (e as any).speed = Math.max((e as any).baseSpeed * 0.6, (e as any).speed * 0.98)
+      if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+        (e as BaseEnemy).speed = Math.max((e as BaseEnemy).baseSpeed * 0.6, (e as BaseEnemy).speed * 0.98)
       }
       if (p.hasSparkInitiate) chainTargets.push(e)
     }
@@ -401,15 +414,36 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
       if (d < 80 && d < chainDist) { chainDist = d; chainTarget = e }
     }
     if (chainTarget) {
-      (chainTarget as any).takeDamage(dmgThisFrame * 0.6, 'lightning')
-      // Chain bolt VFX
+      (chainTarget as BaseEnemy).takeDamage(dmgThisFrame * 0.6, 'lightning')
+      // Chain bolt VFX — jagged multi-segment lightning
       const cg = p.scene.add.graphics().setDepth(10)
-      cg.lineStyle(2, 0xaaddff, 0.7)
-      cg.beginPath(); cg.moveTo(src.x, src.y)
-      const mx = (src.x + chainTarget.x) / 2 + (Math.random() - 0.5) * 20
-      const my = (src.y + chainTarget.y) / 2 + (Math.random() - 0.5) * 20
-      cg.lineTo(mx, my); cg.lineTo(chainTarget.x, chainTarget.y); cg.strokePath()
-      p.scene.tweens.add({ targets: cg, alpha: 0, duration: 100, onComplete: () => cg.destroy() })
+      const sx = src.x, sy = src.y, tx = chainTarget.x, ty = chainTarget.y
+      const segs = 5 + Math.floor(Math.random() * 3)
+      const dx = (tx - sx) / segs, dy = (ty - sy) / segs
+      // Bright core bolt
+      cg.lineStyle(3, 0xffffff, 0.9)
+      cg.beginPath(); cg.moveTo(sx, sy)
+      for (let s = 1; s < segs; s++) {
+        const jx = sx + dx * s + (Math.random() - 0.5) * 24
+        const jy = sy + dy * s + (Math.random() - 0.5) * 24
+        cg.lineTo(jx, jy)
+      }
+      cg.lineTo(tx, ty); cg.strokePath()
+      // Outer glow bolt (wider, colored)
+      cg.lineStyle(6, boltColor, 0.5)
+      cg.beginPath(); cg.moveTo(sx, sy)
+      for (let s = 1; s < segs; s++) {
+        const jx = sx + dx * s + (Math.random() - 0.5) * 28
+        const jy = sy + dy * s + (Math.random() - 0.5) * 28
+        cg.lineTo(jx, jy)
+      }
+      cg.lineTo(tx, ty); cg.strokePath()
+      cg.setBlendMode(Phaser.BlendModes.ADD)
+      // Impact flash on chain target
+      const cf = p.scene.add.circle(tx, ty, 8, 0xffffff, 0.8).setDepth(11)
+        .setBlendMode(Phaser.BlendModes.ADD)
+      p.scene.tweens.add({ targets: cf, scale: 2.5, alpha: 0, duration: 120, onComplete: () => cf.destroy() })
+      p.scene.tweens.add({ targets: cg, alpha: 0, duration: 150, onComplete: () => cg.destroy() })
     }
   }
 
@@ -422,7 +456,7 @@ export function attackLightning(p: Player, enemies: Phaser.Physics.Arcade.Group,
       const ae = Phaser.Math.Angle.Between(p.x, p.y, e.x, e.y)
       const ad = Math.abs(Phaser.Math.Angle.Wrap(ae - p.lightningAngle))
       if (ad > coneSpread && ad <= coneSpread + 0.4) {
-        (e as any).takeDamage(dmgThisFrame * 0.4, 'lightning')
+        (e as BaseEnemy).takeDamage(dmgThisFrame * 0.4, 'lightning')
       }
     }
   }
@@ -496,9 +530,9 @@ export function updateSifraPassives(p: Player, delta: number) {
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= auraRadius) {
-          if ((e as any).speed && (e as any).baseSpeed) {
+          if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
             const blizSlow = p.hasDeepFreeze ? 0.3 : 0.6
-            ;(e as any).speed = Math.min((e as any).speed, (e as any).baseSpeed * blizSlow)
+            ;(e as BaseEnemy).speed = Math.min((e as BaseEnemy).speed, (e as BaseEnemy).baseSpeed * blizSlow)
           }
         }
       }
@@ -514,8 +548,8 @@ export function updateSifraPassives(p: Player, delta: number) {
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= frostR) {
-          (e as any).takeDamage(p.damage * 0.2 * (delta / 1000), 'ice')
-          if ((e as any).speed && (e as any).baseSpeed) (e as any).speed = (e as any).baseSpeed * 0.4
+          (e as BaseEnemy).takeDamage(p.damage * 0.2 * (delta / 1000), 'ice')
+          if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed * 0.4
         }
       }
     }
@@ -529,7 +563,7 @@ export function updateSifraPassives(p: Player, delta: number) {
   }
 
   // Sifra Ball Lightning — orbiting electric ball
-  if (p.hasBallLightning && p.stance === 'lightning') {
+  if (p.hasBallLightning) {
     if (!p.ballLightningGfx) p.ballLightningGfx = p.scene.add.graphics().setDepth(9)
     p.ballLightningGfx.clear()
     const orbitR = 45
@@ -548,7 +582,7 @@ export function updateSifraPassives(p: Player, delta: number) {
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(bx, by, e.x, e.y) <= 40) {
-          (e as any).takeDamage(p.damage * 0.3 * (delta / 1000), 'lightning')
+          (e as BaseEnemy).takeDamage(p.damage * 0.3 * (delta / 1000), 'lightning')
           // Mini bolt
           if (Math.random() < 0.1) {
             const mg = p.scene.add.graphics().setDepth(10)
@@ -572,7 +606,7 @@ export function updateSifraPassives(p: Player, delta: number) {
         const alive = (enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]).filter((e: any) => e.active)
         if (alive.length > 0) {
           const target = alive[Math.floor(Math.random() * alive.length)]
-          ;(target as any).takeDamage(p.damage * 2, 'lightning')
+          ;(target as BaseEnemy).takeDamage(p.damage * 2, 'lightning')
           // Lightning strike VFX
           const strikeG = p.scene.add.graphics().setDepth(11)
           strikeG.lineStyle(3, 0xeeddff, 0.9)
@@ -594,11 +628,27 @@ export function updateSifraPassives(p: Player, delta: number) {
     }
   }
 
-  // Sifra Ice Armor — absorb shield
+  // Sifra Ice Armor — absorb shield + aura ring
   if (p.hasIceArmor) {
     p.iceArmorRegenDelay -= delta
     if (p.iceArmorRegenDelay <= 0 && p.iceArmorHP < p.iceArmorMax) {
       p.iceArmorHP = Math.min(p.iceArmorMax, p.iceArmorHP + p.iceArmorMax * 0.1 * (delta / 1000))
+    }
+    // Ice aura ring when shield is active
+    if (!(p as any)._iceArmorAura) {
+      (p as any)._iceArmorAura = p.scene.add.graphics().setDepth(3).setBlendMode(Phaser.BlendModes.ADD)
+    }
+    const ag = (p as any)._iceArmorAura as Phaser.GameObjects.Graphics
+    ag.clear()
+    if (p.iceArmorHP > 0) {
+      const ratio = p.iceArmorHP / p.iceArmorMax
+      const t = p.scene.time.now / 1000
+      const pulse = 0.5 + Math.sin(t * 3) * 0.2
+      const r = 30 + ratio * 10
+      ag.lineStyle(2, 0x88ddff, pulse * ratio)
+      ag.strokeCircle(p.x, p.y, r)
+      ag.lineStyle(1, 0xaaeeff, pulse * ratio * 0.4)
+      ag.strokeCircle(p.x, p.y, r + 3)
     }
   }
 }

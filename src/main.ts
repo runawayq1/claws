@@ -1,6 +1,5 @@
 import Phaser from 'phaser'
 import { StartScene } from './scenes/StartScene'
-import { LoadingScene } from './scenes/LoadingScene'
 import { GameScene } from './scenes/GameScene'
 import { UndeadMapScene } from './scenes/UndeadMapScene'
 import { UIScene } from './scenes/UIScene'
@@ -9,6 +8,8 @@ import { ProfileScene } from './scenes/ProfileScene'
 import { TestScene } from './scenes/TestScene'
 import { BossTestScene } from './scenes/BossTestScene'
 import { EncyclopediaScene } from './scenes/EncyclopediaScene'
+import { ForgeScene } from './scenes/ForgeScene'
+import { LoadingScene } from './scenes/LoadingScene'
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -21,9 +22,9 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   physics: {
     default: 'arcade',
-    arcade: { gravity: { x: 0, y: 0 }, debug: true },
+    arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [StartScene, LoadingScene, TestScene, BossTestScene, GameScene, UndeadMapScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene],
+  scene: [StartScene, LoadingScene, ...(import.meta.env.DEV ? [TestScene, BossTestScene] : []), GameScene, UndeadMapScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene, ForgeScene],
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -36,6 +37,22 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 (window as any).__PHASER_GAME__ = game
+
+// Pause game when tab is hidden, resume when visible again (GameScene + UIScene only)
+const PAUSEABLE_SCENES = ['GameScene', 'UndeadMapScene', 'UIScene']
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    for (const key of PAUSEABLE_SCENES) {
+      const s = game.scene.getScene(key)
+      if (s?.scene.isActive()) s.scene.pause()
+    }
+  } else {
+    for (const key of PAUSEABLE_SCENES) {
+      const s = game.scene.getScene(key)
+      if (s?.scene.isPaused()) s.scene.resume()
+    }
+  }
+})
 
 // Try to lock orientation to landscape on mobile
 try {

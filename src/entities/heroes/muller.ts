@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
+import { BaseEnemy } from '../BaseEnemy'
 
 const CRYSTAL_KEYS = ['crystal_green_0', 'crystal_green_1', 'crystal_pink_0', 'crystal_pink_1', 'crystal_blue_0', 'crystal_blue_1']
 
@@ -85,11 +86,11 @@ export function attackCrystalWave(p: Player, target: Phaser.Physics.Arcade.Sprit
 
       // Damage enemies near spike
       const dmgMult = (p as any).hasDeepVein ? (1 + 0.3 * (dist / actualRange)) : 1
-      const dmg = Math.ceil((p as any).damage * dmgMult)
+      const dmg = Math.ceil((p as any).damage * dmgMult * p.getMasteryDamageMult('crystal'))
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active || hitSet.has(e)) continue
         if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) < 30) {
-          ;(e as any).takeDamage?.(dmg, 'melee')
+          ;(e as BaseEnemy).takeDamage?.(dmg, 'melee')
           hitSet.add(e)
           // Hit VFX — crystal shard burst
           spawnCrystalShard(p, e.x, e.y, Math.random() * Math.PI * 2, 15, 200)
@@ -108,7 +109,7 @@ export function attackCrystalWave(p: Player, target: Phaser.Physics.Arcade.Sprit
               const ex = sx + Math.cos(sa) * 30
               const ey = sy + Math.sin(sa) * 30
               if (Phaser.Math.Distance.Between(ex, ey, e.x, e.y) < 20) {
-                ;(e as any).takeDamage?.(Math.ceil((p as any).damage * 0.3), 'melee')
+                ;(e as BaseEnemy).takeDamage?.(Math.ceil((p as any).damage * 0.3 * p.getMasteryDamageMult('crystal')), 'melee')
               }
             }
           }
@@ -133,12 +134,12 @@ export function attackCrystalWave(p: Player, target: Phaser.Physics.Arcade.Sprit
             for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e.active) continue
               if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) < 15) {
-                ;(e as any).takeDamage?.(Math.ceil((p as any).damage * 0.15), 'melee')
+                ;(e as BaseEnemy).takeDamage?.(Math.ceil((p as any).damage * 0.15 * p.getMasteryDamageMult('crystal')), 'melee')
               }
               // Resonance Field: slow enemies near Fault Line
               if ((p as any).hasResonanceField && Phaser.Math.Distance.Between(sx, sy, e.x, e.y) < 60) {
-                if ((e as any).speed && (e as any).baseSpeed) {
-                  (e as any).speed = Math.min((e as any).speed, (e as any).baseSpeed * 0.8)
+                if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+                  (e as BaseEnemy).speed = Math.min((e as BaseEnemy).speed, (e as BaseEnemy).baseSpeed * 0.8)
                 }
               }
             }
@@ -198,7 +199,7 @@ export function attackCrystalWave(p: Player, target: Phaser.Physics.Arcade.Sprit
               for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                 if (!e2.active) continue
                 if (Phaser.Math.Distance.Between(mx, my, e2.x, e2.y) < 60) {
-                  ;(e2 as any).takeDamage?.(Math.ceil((p as any).damage * 0.8), 'melee')
+                  ;(e2 as BaseEnemy).takeDamage?.(Math.ceil((p as any).damage * 0.8 * p.getMasteryDamageMult('crystal')), 'melee')
                 }
               }
               mineCheck.destroy()
@@ -280,7 +281,7 @@ export function crystalRingBurst(p: Player, cx: number, cy: number, radius = 80)
 // Crystal Muller — Eruption stance (AoE around self)
 export function attackCrystalEruption(p: Player, enemies: Phaser.Physics.Arcade.Group) {
   const cx = (p as any).cx, cy = (p as any).cy
-  const dmg = Math.ceil((p as any).damage * 0.8)
+  const dmg = Math.ceil((p as any).damage * 0.8 * p.getMasteryDamageMult('crystal'))
   const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
 
   const layers = crystalRingBurst(p, cx, cy, (p as any).range * 0.3)
@@ -290,7 +291,7 @@ export function attackCrystalEruption(p: Player, enemies: Phaser.Physics.Arcade.
   for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
     if (!e.active || hitSet.has(e)) continue
     if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= maxDist) {
-      ;(e as any).takeDamage?.(dmg, 'melee')
+      ;(e as BaseEnemy).takeDamage?.(dmg, 'melee')
       hitSet.add(e)
     }
   }
@@ -306,13 +307,13 @@ export function updateMullerPassives(p: Player, delta: number) {
   const scene = p.scene as any
   const enemies = scene.enemies as Phaser.Physics.Arcade.Group | undefined
 
-  // Stone Skin: decay stacks over time
+  // Stone Skin: decay stacks over time (smooth animation)
   if ((p as any).hasStoneSkin && (p as any).stoneSkinStacks > 0) {
     (p as any).stoneSkinTimer += delta
     if ((p as any).stoneSkinTimer >= 4000) {
       (p as any).stoneSkinStacks = Math.max(0, (p as any).stoneSkinStacks - 1)
       ;(p as any).stoneSkinTimer = 0
-      ;(p as any).applyStoneSkinVisuals()
+      ;(p as any).applyStoneSkinVisuals(true) // animate = true for smooth transition
     }
   }
 
@@ -340,14 +341,14 @@ export function updateMullerPassives(p: Player, delta: number) {
         callback: () => {
           wallLife += 100
           for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-            if (!e.active || !(e as any).body) continue
+            if (!e.active || !e.body) continue
             if (Math.abs(e.x - wx) < 35 && Math.abs(e.y - (wy + 34)) < 12) {
-              (e as any).body.velocity.y = e.y < wy + 34 ? -60 : 60
+              (e.body as Phaser.Physics.Arcade.Body).velocity.y = e.y < wy + 34 ? -60 : 60
             }
             // Resonance Field: slow enemies near structures
             if ((p as any).hasResonanceField && Phaser.Math.Distance.Between(wx, wy, e.x, e.y) < 60) {
-              if ((e as any).speed && (e as any).baseSpeed) {
-                (e as any).speed = Math.min((e as any).speed, (e as any).baseSpeed * 0.8)
+              if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+                (e as BaseEnemy).speed = Math.min((e as BaseEnemy).speed, (e as BaseEnemy).baseSpeed * 0.8)
               }
             }
           }
@@ -383,15 +384,15 @@ export function updateMullerPassives(p: Player, delta: number) {
           for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
             if (!e.active) continue
             if (Phaser.Math.Distance.Between(px, py, e.x, e.y) < 50) {
-              ;(e as any).takeDamage?.((p as any).damage * 0.1, 'melee')
-              if ((e as any).speed && (e as any).baseSpeed) {
-                (e as any).speed = Math.min((e as any).speed, (e as any).baseSpeed * 0.8)
+              ;(e as BaseEnemy).takeDamage?.((p as any).damage * 0.1 * p.getMasteryDamageMult('crystal'), 'melee')
+              if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+                (e as BaseEnemy).speed = Math.min((e as BaseEnemy).speed, (e as BaseEnemy).baseSpeed * 0.8)
               }
             }
             // Resonance Field: slow enemies near Crystal Pillar
             if ((p as any).hasResonanceField && Phaser.Math.Distance.Between(px, py, e.x, e.y) < 60) {
-              if ((e as any).speed && (e as any).baseSpeed) {
-                (e as any).speed = Math.min((e as any).speed, (e as any).baseSpeed * 0.8)
+              if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+                (e as BaseEnemy).speed = Math.min((e as BaseEnemy).speed, (e as BaseEnemy).baseSpeed * 0.8)
               }
             }
           }
@@ -441,7 +442,7 @@ export function updateMullerPassives(p: Player, delta: number) {
           if (!e.active) continue
           const d = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
           if (d >= waveRadius - 40 && d <= waveRadius + 20) {
-            ;(e as any).takeDamage?.((p as any).damage * 3, 'ice')
+            ;(e as BaseEnemy).takeDamage?.((p as any).damage * 3 * p.getMasteryDamageMult('crystal'), 'ice')
           }
         }
         if (waveRadius >= 600) {

@@ -93,56 +93,46 @@ interface HeroInfo {
 
 const HERO_INFO: HeroInfo[] = [
   { type: 'ignara', name: 'Ignara', role: 'Fire Mage', color: 0xe84118,
-    lore: 'Born in the volcanic forges of Mount Kael, Ignara mastered flame before she could walk. Exiled for burning down the Academy of Elements, she now wanders the cursed lands, turning swarms to ash with a flick of her wrist.',
+    lore: 'Born in the shadow of Mount Kael — the volcano that marks the edge of the Amunat wastes — Ignara was the last student of the Flamewood Academy before it burned. She burned it. Her teacher, she later discovered, was one of the architects of the Bramauthroba rift. She came to the Pishane carrying the First Flame: a fire that has not gone out in seven years, aimed at the source.',
     playstyle: 'Ranged AoE caster. Fireballs explode on impact. Excels at clearing dense packs. Three paths: raw damage (Inferno), survivability (Fortress), or chaotic destruction (Havoc).',
   },
   { type: 'sifra', name: 'Sifra', role: 'Ice Mage', color: 0x82ccdd,
-    lore: 'Sifra was once a scholar of the Frozen Spire, studying the boundary between ice and lightning. An experiment gone wrong fused both elements into her soul. She now channels frost and storm in equal measure.',
+    lore: 'Daughter of North-Union diplomats stationed on the border of the Pishane, Sifra grew up watching the desert from the cold side of a trade wall. Her parents were killed in the Swarm\'s first crossing. The frost came from her mother\'s bloodline. The lightning came from the Bramauthroba itself — she touched it once and survived. She came south to understand why.',
     playstyle: 'Dual-stance caster. Switch between Ice shards (piercing projectiles) and Lightning (continuous beam). Branches: Frost (crowd control), Shatter (split projectiles), Crystal (defense), or Lightning (chain damage).',
   },
   { type: 'amun', name: 'Amun', role: 'Guardian', color: 0xfff200,
-    lore: 'The last king of a fallen desert kingdom, Amun carries the weight of his people on his shoulders. His divine armor channels the earth itself, creating shockwaves that flatten anything in his path.',
+    lore: 'Amun is not a king. He is an artifact — a golem-guardian forged by the Amunat civilization to protect the Key of Balance, the object that can seal the Bramauthroba. When Amunat fell a thousand years ago, Amun kept walking. He remembers every citizen who died that night. He is looking for the other pieces of the Key, and he does not intend to stop until the rift is closed.',
     playstyle: 'Melee tank with shockwave AoE. Slow but devastating. Three paths: Wrath (damage auras), Bastion (near-immortal defense), or Quake (crowd control and knockback).',
   },
   { type: 'nazar', name: 'Nazar', role: 'Samurai', color: 0xc23616,
-    lore: 'A ronin who abandoned his clan after discovering their dark pact with the swarm. Nazar wields both blade and venom — his sword cuts through flesh, while his poisoned strikes rot enemies from within.',
+    lore: 'A desert assassin from the eastern reaches, Nazar was contracted to eliminate the Bramauthroba cult — the group that keeps the rift open. He completed the job. Then the cult killed his employers. He stayed because the contract is technically unfulfilled, and because Nazar does not like loose ends. He carries two things into the Pishane: his blades, and a list.',
     playstyle: 'Dual-stance melee. Sword stance for quick slashes and mobility. Venom stance for poison DoT and area denial. Branches: Blade (assassin), Venom (poison master), or Shadow (stealth and execution).',
   },
   { type: 'huntress', name: 'Lyra', role: 'Spear Thrower', color: 0x2ecc71,
-    lore: 'Raised by the forest wardens of the Green Veil, Lyra learned to throw before she could speak. Her spears fly true across any distance, and in close quarters her blade work is equally deadly.',
+    lore: 'Lyra comes from the Steel Kip tribes — nomads who have hunted the desert\'s edge for generations, reading the Pishane the way others read maps. She completed the Great Hunt twice and returned. The third time, she didn\'t come back. She found the Swarm more interesting than home. The desert ecosystem, she says, is just a food chain. The Bramauthroba broke it. She is fixing it.',
     playstyle: 'Dual-stance fighter. Spear stance hurls piercing projectiles across the screen. Melee stance delivers fast combo strikes. Branches: Predator (crits and marks), Stalker (mobility and traps), or Warden (spear mastery and AoE).',
   },
   { type: 'khashin', name: 'Khashin', role: 'Sand Assassin', color: 0xf39c12,
-    lore: 'Khashin has no origin that the desert remembers. The nomads who cross the Kharan Wastes speak of a figure glimpsed at dusk — walking against the wind when there is no wind, leaving no footprints in the sand. Some say he was a court sorcerer who bound the spirit of a dying sandstorm into his own body to survive a betrayal. Others say he is the storm, and the man-shape is simply the eye of it.',
+    lore: 'Khashin has no origin that the desert remembers. The nomads who cross the Kharan Wastes speak of a figure glimpsed at dusk — walking against the wind when there is no wind, leaving no footprints in the sand. Some say he was a wind elemental born inside a sandstorm ninety years ago and has simply always been here. Others say he is the storm, and the man-shape is just the eye of it. He helps because he is lonely. He admits this freely.',
     playstyle: 'Khashin rewards players who treat survival as a geometry problem. His exceptional base speed and auto-dash tools mean he is rarely where the horde expects him to be — but low HP punishes anyone who stands still. Toggle between Sirocco (cutting wind arcs) and Haboob (blinding sand) with Q.',
   },
   { type: 'muller', name: 'Givi', role: 'Crystal Gnome', color: 0x9b59b6,
-    lore: 'Givi was born three levels below the surface, in a mining settlement so deep that sunlight was a rumor. She spent her first forty years cracking open rock faces with a hammer twice her height, and it was during a routine deep-bore operation that she broke through into a vein of living crystal — formations that pulsed with warmth, that grew toward her lantern.',
+    lore: 'Givi was born three levels below the surface, in a mining settlement so deep that sunlight was a rumor. She spent her first forty years cracking open rock faces, and it was during a routine deep-bore operation that she broke through into a vein of living crystal — formations that pulsed, that grew toward her lantern, that shattered enemies like thrown glass when she slammed her maul nearby. She came above ground because something is destabilizing the lower strata. She calls it geological. Everyone else calls it the Bramauthroba. She just wants to remove it and go home.',
     playstyle: 'Givi does not cast spells — she reads the ground. Her hammer drives crystal shards erupting from the earth in a chain toward enemies. With Tectonic Fury, every 5th slam detonates a ring of massive crystals outward from a dark impact core. Upgrades leave crystal mines, walls, and pillars across the battlefield.',
   },
 ]
 
 // ============================================================
-// book_content.png — crop regions for hero element medallions
-// Each entry is [cropX, cropY, cropW, cropH] within the 336x448 image
-// ============================================================
-const HERO_MEDALLION: Record<string, [number, number, number, number]> = {
-  ignara:   [14,  13,  91, 101],  // fire medallion (orange)
-  sifra:    [66,  13, 120, 101],  // water/ice medallion (blue)
-  amun:     [146, 13, 120, 101],  // earth medallion (warm brown)
-  nazar:    [226, 13,  93, 100],  // dark element (navy blue)
-  huntress: [14, 136,  91, 121],  // nature/leaf art (green)
-}
-
-// ============================================================
 // Hero sprite definitions for animated portraits
 // ============================================================
 const HERO_SPRITE_DEFS: Record<string, { asset: string; fw: number; fh: number; scale: number; frames: number; yOff?: number }> = {
-  ignara:   { asset: 'assets/ignara/Idle.png',     fw: 150, fh: 150, scale: 1.1,   frames: 8 },
-  sifra:    { asset: 'assets/sifra/Idle.png',          fw: 231, fh: 190, scale: 0.65,  frames: 6 },
-  amun:     { asset: 'assets/amun/Idle.png',            fw: 160, fh: 111, scale: 1.3,   frames: 8, yOff: -30 },
-  nazar:    { asset: 'assets/nazar/Idle.png',    fw: 200, fh: 200, scale: 1.0,   frames: 8, yOff: 8 },
-  huntress: { asset: 'assets/lyra/Idle.png',        fw: 150, fh: 150, scale: 1.265, frames: 8 },
+  ignara:   { asset: 'assets/ignara/Idle.png',          fw: 150, fh: 150, scale: 1.58,  frames: 8 },
+  sifra:    { asset: 'assets/sifra/Idle.png',           fw: 231, fh: 190, scale: 0.94,  frames: 6 },
+  amun:     { asset: 'assets/amun/Idle.png',            fw: 160, fh: 111, scale: 1.56,  frames: 8, yOff: -30 },
+  nazar:    { asset: 'assets/nazar/Idle.png',           fw: 200, fh: 200, scale: 1.44,  frames: 8, yOff: 8 },
+  huntress: { asset: 'assets/lyra/Idle.png',            fw: 150, fh: 150, scale: 1.82,  frames: 8 },
+  khashin:  { asset: 'assets/khashin/Idle_cropped.png', fw: 48,  fh: 42,  scale: 2.2,   frames: 8 },
+  muller:   { asset: 'assets/givi/Idle_cropped.png',    fw: 51,  fh: 44,  scale: 2.0,   frames: 8, yOff: 10 },
 }
 
 // ============================================================
@@ -160,7 +150,8 @@ const HERO_ICON_BASE: Record<string, number> = {
 
 // For heroes with non-uniform branch spacing, list each branch's icon base explicitly.
 const HERO_BRANCH_ICON_BASES: Record<string, number[]> = {
-  amun: [55, 60, 65], // Wrath(55-59), Bastion(60-64), Quake(65-69)
+  sifra: [45, 40, 70],  // Lightning(45-49), Frost(40-44), Shatter(70-73)
+  amun: [55, 60, 65],   // Wrath(55-59), Bastion(60-64), Quake(65-69)
 }
 
 /** Return the icon frame for a given hero's branch + skill. */
@@ -178,17 +169,6 @@ function branchIconFrame(heroType: string, branchIdx: number, skillIdx: number):
 // EncyclopediaScene
 // ============================================================
 
-// Bookmark frame indices per hero:
-// bookmarks.png is 2 cols x 5 rows (32x28 per frame).
-// Left column = inactive frame, right column = active frame.
-// Frame numbering (Phaser row-major): 0=sifra-inactive, 1=sifra-active, 2=ignara-inactive...
-const BOOKMARK_FRAMES: Record<string, { inactive: number; active: number }> = {
-  sifra:    { inactive: 0, active: 1 },
-  ignara:   { inactive: 2, active: 3 },
-  amun:     { inactive: 4, active: 5 },
-  nazar:    { inactive: 6, active: 7 },
-  huntress: { inactive: 8, active: 9 },
-}
 
 export class EncyclopediaScene extends Phaser.Scene {
   private selectedHeroType: string | null = null
@@ -202,7 +182,6 @@ export class EncyclopediaScene extends Phaser.Scene {
   private rightContainer!: Phaser.GameObjects.Container
 
   // Bookmark sprite refs so we can update the active offset and frame
-  private bookmarkSprites: Phaser.GameObjects.Image[] = []
 
   // Main content container (hidden during open/close animation)
   private bookContent!: Phaser.GameObjects.Container
@@ -232,6 +211,7 @@ export class EncyclopediaScene extends Phaser.Scene {
   }
 
   create() {
+    this.cameras.main.fadeIn(200)
     // Create idle animations for hero portraits (reuse StartScene texture keys)
     for (const [type, def] of Object.entries(HERO_SPRITE_DEFS)) {
       const animKey = `enc_idle_${type}`
@@ -446,6 +426,15 @@ export class EncyclopediaScene extends Phaser.Scene {
     footerDecG.fillCircle(rfCX + 3, footY, 1)
     this.bookContent.add(footerDecG)
 
+    // Back button — top-left corner, consistent with ProfileScene / ForgeScene style
+    const backBtn = this.add.text(20, 20, '< BACK', {
+      fontFamily: 'monospace', fontSize: '16px',
+      color: '#888888', stroke: '#000000', strokeThickness: 2,
+    }).setInteractive({ useHandCursor: true }).setDepth(10)
+    backBtn.on('pointerover', () => backBtn.setColor('#ffffff'))
+    backBtn.on('pointerout',  () => backBtn.setColor('#888888'))
+    backBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
+
     // Close button — plays closing animation then goes to StartScene
     const closeBtn = this.add.text(bookX + bookW - 6, bookY - 2, 'X', {
       fontFamily: 'monospace', fontSize: '16px',
@@ -454,36 +443,11 @@ export class EncyclopediaScene extends Phaser.Scene {
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).setDepth(10)
     closeBtn.on('pointerover', () => closeBtn.setColor('#ffffff'))
     closeBtn.on('pointerout',  () => closeBtn.setColor('#d4b483'))
-    closeBtn.on('pointerdown', () => this.scene.start('StartScene'))
+    closeBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
 
     // ESC key to go back
-    this.input.keyboard?.on('keydown-ESC', () => this.scene.start('StartScene'))
+    this.input.keyboard?.on('keydown-ESC', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
 
-    // Bookmark tabs on left edge — use active/inactive frames
-    this.bookmarkSprites = []
-    if (this.textures.exists('book_bookmarks')) {
-      const bRowH = Math.min((bookH - 60) / HERO_INFO.length, 68)
-      const bStartY = bookY + 44
-      HERO_INFO.forEach((hero, i) => {
-        const frames = BOOKMARK_FRAMES[hero.type] ?? { inactive: i * 2, active: i * 2 + 1 }
-        const isActive = this.selectedHeroType === hero.type
-        const frame = isActive ? frames.active : frames.inactive
-        const bY = bStartY + i * bRowH + bRowH / 2
-        const bX = leftPageX - 4 + (isActive ? 10 : 0)
-        const bm = this.add.image(bX, bY, 'book_bookmarks', frame)
-          .setOrigin(1, 0.5)
-          .setDepth(5)
-          .setInteractive({ useHandCursor: true })
-        this.bookmarkSprites.push(bm)
-        this.bookContent.add(bm)
-
-        bm.on('pointerdown', () => {
-          this.selectedHeroType = hero.type
-          this.rightPage = 0
-          this._rebuild()
-        })
-      })
-    }
 
     // Build containers
     this.leftContainer  = this.add.container(0, 0)
@@ -569,21 +533,6 @@ export class EncyclopediaScene extends Phaser.Scene {
     const leftPageX = bookX
     const rightPageX = bookX + bookW / 2 + 8
 
-    // Update bookmark active offsets and frames
-    const bRowH = Math.min((bookH - 60) / HERO_INFO.length, 68)
-    const bStartY = bookY + 44
-    HERO_INFO.forEach((hero, i) => {
-      const bm = this.bookmarkSprites[i]
-      if (!bm) return
-      const isActive = this.selectedHeroType === hero.type
-      const frames = BOOKMARK_FRAMES[hero.type] ?? { inactive: i * 2, active: i * 2 + 1 }
-      const frame = isActive ? frames.active : frames.inactive
-      const bY = bStartY + i * bRowH + bRowH / 2
-      const bX = leftPageX - 4 + (isActive ? 10 : 0)
-      bm.setPosition(bX, bY)
-      bm.setFrame(frame)
-    })
-
     this.buildLeftPage(leftPageX, bookY, pageW, bookH)
     this.buildRightPage(rightPageX, bookY, pageW, bookH)
   }
@@ -612,35 +561,15 @@ export class EncyclopediaScene extends Phaser.Scene {
         this.leftContainer.add(highlight)
       }
 
-      // Element medallion from book_content for the active hero's row
-      // For non-selected rows: small colored bookmark-icon-sized medallion
-      const medallion = HERO_MEDALLION[hero.type]
-      if (medallion && this.textures.exists('book_content')) {
-        const [cx, cy, cw, ch] = medallion
-        const displaySz = isSelected ? Math.min(rowH - 8, 36) : Math.min(rowH - 12, 28)
-        const img = this.add.image(px + 22, rowY + rowH / 2, 'book_content')
-          .setOrigin(0.5)
-          .setCrop(cx, cy, cw, ch)
-          .setDisplaySize(displaySz, displaySz)
-          .setAlpha(isSelected ? 0.95 : 0.55)
-        this.leftContainer.add(img)
-      } else {
-        // Fallback: color circle
-        const circleG = this.add.graphics()
-        circleG.fillStyle(hero.color, 0.85)
-        circleG.fillCircle(px + 22, rowY + rowH / 2, 10)
-        this.leftContainer.add(circleG)
-      }
-
       // Hero name — always visible
-      const nameText = this.add.text(px + 42, rowY + rowH / 2 - 8, hero.name, {
+      const nameText = this.add.text(px + 18, rowY + rowH / 2 - 8, hero.name, {
         fontFamily: 'monospace', fontSize: '12px',
         color: isSelected ? '#ffffff' : colorHex,
       }).setOrigin(0, 0.5)
       this.leftContainer.add(nameText)
 
       // Role
-      this.leftContainer.add(this.add.text(px + 42, rowY + rowH / 2 + 8, hero.role, {
+      this.leftContainer.add(this.add.text(px + 18, rowY + rowH / 2 + 8, hero.role, {
         fontFamily: 'monospace', fontSize: '9px', color: '#665544',
       }).setOrigin(0, 0.5))
 
@@ -840,13 +769,14 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Lore text — wrapped, starts just below the line
     const textW = pw - 24
-    this.rightContainer.add(this.add.text(px + 15, py + 114, hero.lore, {
+    const loreText = this.add.text(px + 15, py + 114, hero.lore, {
       fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
-    }))
+    })
+    this.rightContainer.add(loreText)
 
-    // Playstyle section
-    const playstyleY = py + 114 + 80
+    // Playstyle section — positioned dynamically below lore text
+    const playstyleY = loreText.y + loreText.height + 10
     const lineG2 = this.add.graphics()
     lineG2.lineStyle(0.5, 0x2a1810, 0.25)
     lineG2.lineBetween(px + 20, playstyleY, px + pw - 20, playstyleY)
@@ -855,14 +785,15 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.add(this.add.text(px + 15, playstyleY + 6, 'PLAYSTYLE', {
       fontFamily: 'monospace', fontSize: '10px', color: colorHex,
     }))
-    this.rightContainer.add(this.add.text(px + 15, playstyleY + 22, hero.playstyle, {
+    const playstyleText = this.add.text(px + 15, playstyleY + 22, hero.playstyle, {
       fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
-    }))
+    })
+    this.rightContainer.add(playstyleText)
 
-    // Branch overview — always visible
+    // Branch overview — positioned dynamically below playstyle
     const branches = HERO_BRANCHES[heroType] || []
-    const branchStartY = playstyleY + 22 + 72
+    const branchStartY = playstyleText.y + playstyleText.height + 14
     const lineG3 = this.add.graphics()
     lineG3.lineStyle(0.5, 0x2a1810, 0.25)
     lineG3.lineBetween(px + 20, branchStartY, px + pw - 20, branchStartY)
@@ -873,27 +804,19 @@ export class EncyclopediaScene extends Phaser.Scene {
     }))
 
     branches.forEach((branch, i) => {
-      const bY = branchStartY + 22 + i * 22
+      const bY = branchStartY + 22 + i * 20
       const bColorHex = '#' + branch.color.toString(16).padStart(6, '0')
       const branchUnlocked = this.encData.branches.includes(branch.name)
 
-      // Small branch icon — use the first skill's icon frame for the branch
-      const lorIconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
-      if (this.textures.exists(lorIconTex)) {
-        const iconFrame = branchIconFrame(heroType, i, 0)
-        const branchIcon = this.add.image(px + 16, bY + 9, lorIconTex, iconFrame)
-          .setDisplaySize(14, 14)
-          .setOrigin(0.5)
-          .setAlpha(branchUnlocked ? 0.9 : 0.3)
-        this.rightContainer.add(branchIcon)
-      }
+      // Colored dot
+      const dotG = this.add.graphics()
+      dotG.fillStyle(branch.color, branchUnlocked ? 0.9 : 0.3)
+      dotG.fillCircle(px + 18, bY + 5, 3)
+      this.rightContainer.add(dotG)
 
-      this.rightContainer.add(this.add.text(px + 26, bY, `${branch.name}`, {
+      this.rightContainer.add(this.add.text(px + 26, bY, branch.name, {
         fontFamily: 'monospace', fontSize: '9px', color: branchUnlocked ? bColorHex : '#998866',
       }))
-      this.rightContainer.add(this.add.text(px + pw - 10, bY, branch.upgrades[0].desc, {
-        fontFamily: 'monospace', fontSize: '8px', color: '#665544',
-      }).setOrigin(1, 0))
     })
   }
 
@@ -904,21 +827,6 @@ export class EncyclopediaScene extends Phaser.Scene {
   private selectedSkillIdx = -1
 
   // Decoration rows in book_content.png (336x448) for each hero's element header.
-  // Each entry: [leftPieceX, leftPieceY, leftPieceW, leftPieceH,
-  //              centerX, centerY, centerW, centerH,
-  //              stripY, stripH]  — strip covers the full decoration band
-  private static readonly HERO_DECO: Record<string, {
-    stripY: number, stripH: number,
-    centerX: number, centerY: number, centerW: number, centerH: number,
-    leftX: number, leftY: number, leftW: number, leftH: number,
-  }> = {
-    ignara:   { stripY: 115, stripH: 60, centerX: 100, centerY: 115, centerW: 80, centerH: 60, leftX: 0,   leftY: 115, leftW: 60,  leftH: 60  },
-    sifra:    { stripY: 180, stripH: 60, centerX: 100, centerY: 180, centerW: 80, centerH: 60, leftX: 0,   leftY: 180, leftW: 60,  leftH: 60  },
-    huntress: { stripY: 245, stripH: 60, centerX: 100, centerY: 245, centerW: 80, centerH: 60, leftX: 0,   leftY: 245, leftW: 60,  leftH: 60  },
-    amun:     { stripY: 310, stripH: 60, centerX: 100, centerY: 310, centerW: 80, centerH: 60, leftX: 0,   leftY: 310, leftW: 60,  leftH: 60  },
-    nazar:    { stripY: 115, stripH: 60, centerX: 100, centerY: 115, centerW: 80, centerH: 60, leftX: 0,   leftY: 115, leftW: 60,  leftH: 60  },
-  }
-
   private buildSkillsPage(px: number, py: number, pw: number, ph: number) {
     const heroType = this.selectedHeroType!
     const branches = HERO_BRANCHES[heroType] || []
@@ -978,51 +886,15 @@ export class EncyclopediaScene extends Phaser.Scene {
     const activeBranch = branches[this.selectedBranchIdx]
     if (!activeBranch) return
 
-    // ── Element header decoration ────────────────────────────────────
-    const headerY = tabY + tabH + 2
-    const headerH = 54
-    const deco = EncyclopediaScene.HERO_DECO[heroType]
-
-    // Full-width decoration strip as background (tinted, subtle)
-    if (deco && this.textures.exists('book_content')) {
-      const strip = this.add.image(px + pw / 2, headerY, 'book_content')
-        .setOrigin(0.5, 0)
-        .setCrop(0, deco.stripY, 336, deco.stripH)
-        .setDisplaySize(pw - 8, headerH)
-        .setAlpha(0.18)
-      if (heroType === 'nazar') strip.setTint(0xff6666)
-      this.rightContainer.add(strip)
-    }
-
-    // Medallion portrait centered in header
-    const medallion = HERO_MEDALLION[heroType]
-    if (medallion && this.textures.exists('book_content')) {
-      const [mx, my, mw, mh] = medallion
-      const mSize = Math.min(headerH - 4, 44)
-      const medallionImg = this.add.image(px + pw / 2, headerY + headerH / 2, 'book_content')
-        .setOrigin(0.5)
-        .setCrop(mx, my, mw, mh)
-        .setDisplaySize(mSize, mSize)
-        .setAlpha(0.88)
-      if (heroType === 'nazar') medallionImg.setTint(0xff9999)
-      this.rightContainer.add(medallionImg)
-    }
-
-    // Branch name centered in header
+    // Branch name centered below tabs
     const branchColorHex = '#' + activeBranch.color.toString(16).padStart(6, '0')
-    const headerLabel = this.add.text(px + pw / 2, headerY + headerH - 10, activeBranch.name.toUpperCase(), {
-      fontFamily: 'monospace', fontSize: '9px',
+    const headerLabel = this.add.text(px + pw / 2, tabY + tabH + 12, activeBranch.name.toUpperCase(), {
+      fontFamily: 'monospace', fontSize: '10px',
       color: branchColorHex,
-      stroke: '#c8a97a', strokeThickness: 2,
-    }).setOrigin(0.5, 1)
+    }).setOrigin(0.5)
     this.rightContainer.add(headerLabel)
 
-    // Divider below header
-    const divY = headerY + headerH + 2
-    const divG = this.add.graphics()
-    divG.lineStyle(1.5, activeBranch.color, 0.45)
-    divG.lineBetween(px + 6, divY, px + pw - 6, divY)
-    this.rightContainer.add(divG)
+    const divY = tabY + tabH + 26
 
     // ── Skill icon grid ──────────────────────────────────────────────
     const gridStartY = divY + 8

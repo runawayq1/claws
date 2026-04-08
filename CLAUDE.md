@@ -8,6 +8,7 @@ Vampire Survivors-style game. Phaser 3 + Vite + TypeScript.
 - Agents CAN write code within their assigned domain (see profiles below).
 - If a task crosses domain boundaries or requires architectural decisions, escalate to the main agent (Opus).
 - Use **profile agents** (defined in `.claude/agents/`) instead of spawning ad-hoc agents. Each profile has its own context file with domain knowledge and conventions.
+- **Never spawn ad-hoc agents** when an existing profile agent fits the task. Match work to the profile whose domain and context covers it. Reuse running agents via SendMessage instead of launching new ones.
 - When spawning a profile agent, include: `Read .claude/agents/<profile>.md first for your domain context.`
 
 ## Agent Profiles

@@ -8,8 +8,10 @@ export interface SessionRecord {
   timeMs: number
   wave: number
   won: boolean
+  tookDamage: boolean
   date: string
   upgrades: string[]
+  goldEarned: number
 }
 
 export interface AchievementDef {
@@ -38,12 +40,43 @@ export interface MetaData {
   heroWins: Record<string, number>
   sessions: SessionRecord[]
   achievements: AchievementState[]
+  goldTotal: number
+  goldEarned: number
+  metaUpgrades: Record<string, number>
 }
+
+// ============================================================
+// META-UPGRADE DEFINITIONS
+// ============================================================
+export interface MetaUpgradeDef {
+  id: string
+  label: string
+  desc: string
+  maxTier: number
+  costs: number[]
+  perTier: number
+  icon: string
+}
+
+// Gold economy targets (100h to max all):
+// Average raid (5 min): ~300 mob kills × 35% drop = 105 mob gold
+//                       + ~10 mini-bosses × avg 7.5 = 75 boss gold = ~180 gold/raid
+// 100 hours = 1200 raids × 180 = ~216,000 total gold budget
+// 5 upgrades × 5 tiers, costs scale sharply: T1≈100, T2≈400, T3≈1500, T4≈6000, T5≈35000
+// Total sum: ~215,000 gold — aligns with 100h budget
+// Early tiers (T1+T2) reachable within first ~10 raids (~1h)
+export const META_UPGRADES: MetaUpgradeDef[] = [
+  { id: 'mu_hp',    label: 'Iron Constitution', desc: '+20 Max HP per tier',       maxTier: 5, costs: [100,  400,  1500,  6000, 34000], perTier: 20,   icon: 'hp' },
+  { id: 'mu_dmg',   label: 'Sharpened Claws',   desc: '+3 Damage per tier',        maxTier: 5, costs: [120,  450,  1600,  6500, 36000], perTier: 3,    icon: 'dmg' },
+  { id: 'mu_spd',   label: "Wanderer's Boots",  desc: '+8 Speed per tier',         maxTier: 5, costs: [ 80,  350,  1400,  5500, 33000], perTier: 8,    icon: 'spd' },
+  { id: 'mu_regen', label: 'Blood Mender',       desc: '+0.5 HP Regen/s per tier', maxTier: 5, costs: [100,  400,  1500,  6000, 34000], perTier: 0.5,  icon: 'regen' },
+  { id: 'mu_cd',    label: 'Honed Reflexes',     desc: '-8% Attack CD per tier',   maxTier: 5, costs: [150,  500,  1800,  7500, 38000], perTier: 0.08, icon: 'cd' },
+]
 
 // ============================================================
 // ACHIEVEMENT DEFINITIONS (25 total)
 // ============================================================
-const HEROES = ['ignara', 'nazar', 'sifra', 'amun', 'huntress']
+const HEROES = ['ignara', 'nazar', 'sifra', 'amun', 'huntress', 'khashin', 'muller']
 
 const ACHIEVEMENT_DEFS: AchievementDef[] = [
   // --- Kill milestones ---
@@ -66,6 +99,9 @@ const ACHIEVEMENT_DEFS: AchievementDef[] = [
   { id: 'win_nazar',    name: 'Shadow Master',        desc: 'Win with Nazar',           category: 'hero', check: m => (m.heroWins['nazar'] || 0) >= 1 },
   { id: 'win_sifra',    name: 'Ice Queen',            desc: 'Win with Sifra',           category: 'hero', check: m => (m.heroWins['sifra'] || 0) >= 1 },
   { id: 'win_amun',     name: 'Guardian King',        desc: 'Win with Amun',            category: 'hero', check: m => (m.heroWins['amun'] || 0) >= 1 },
+  { id: 'win_huntress', name: 'Apex Predator',        desc: 'Win with Huntress',        category: 'hero', check: m => (m.heroWins['huntress'] || 0) >= 1 },
+  { id: 'win_khashin',  name: 'Scarab Lord',          desc: 'Win with Khashin',         category: 'hero', check: m => (m.heroWins['khashin'] || 0) >= 1 },
+  { id: 'win_muller',   name: 'Iron Giant',           desc: 'Win with Muller',          category: 'hero', check: m => (m.heroWins['muller'] || 0) >= 1 },
   { id: 'win_all',      name: 'True Champion',        desc: 'Win with every hero',      category: 'hero', check: m => HEROES.every(h => (m.heroWins[h] || 0) >= 1) },
 
   // --- Progression ---
@@ -91,7 +127,7 @@ const ACHIEVEMENT_DEFS: AchievementDef[] = [
 
   // --- Secret ---
   { id: 'speed_kill',   name: 'Speed Demon',           desc: '50 kills in first 2 min', category: 'secret', check: (_m, s) => !!s && s.kills >= 50 && s.timeMs <= 120_000 },
-  { id: 'no_damage',    name: 'Untouchable',           desc: 'Reach wave 3 undamaged',  category: 'secret', check: () => false /* tracked separately via flag */ },
+  { id: 'no_damage',    name: 'Untouchable',           desc: 'Win a run without taking damage', category: 'secret', check: (_m, s) => !!s && s.won && !s.tookDamage },
 ]
 
 // ============================================================
@@ -105,6 +141,9 @@ export class MetaProgress {
       heroRuns: {}, heroWins: {},
       sessions: [],
       achievements: ACHIEVEMENT_DEFS.map(a => ({ id: a.id, unlocked: false })),
+      goldTotal: 0,
+      goldEarned: 0,
+      metaUpgrades: {},
     }
   }
 
@@ -119,6 +158,10 @@ export class MetaProgress {
           data.achievements.push({ id: def.id, unlocked: false })
         }
       }
+      // Migrate old saves missing gold fields
+      if (data.goldTotal === undefined) data.goldTotal = 0
+      if (data.goldEarned === undefined) data.goldEarned = 0
+      if (!data.metaUpgrades) data.metaUpgrades = {}
       return data
     } catch {
       return MetaProgress.defaultData()
@@ -150,6 +193,11 @@ export class MetaProgress {
     if (session.won) {
       meta.heroWins[session.hero] = (meta.heroWins[session.hero] || 0) + 1
     }
+
+    // Gold accumulation (minimum 5 per run for progression feel)
+    const earnedGold = Math.max(session.goldEarned || 0, 5)
+    meta.goldTotal += earnedGold
+    meta.goldEarned += earnedGold
 
     // Add session (keep last 20)
     session.id = meta.totalRuns

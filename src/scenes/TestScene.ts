@@ -3,7 +3,9 @@ import { Player, type HeroType } from '../entities/Player'
 import { Orc2 } from '../entities/Skeleton'
 import { Orc1 } from '../entities/Zergling'
 import { FlyingEye } from '../entities/Scorpion'
+import { Orc3 } from '../entities/Skeleton2'
 import { SandGolem } from '../entities/SandGolem'
+import { Orc0 } from '../entities/Grunt'
 
 export class TestScene extends Phaser.Scene {
   constructor() {
@@ -11,9 +13,15 @@ export class TestScene extends Phaser.Scene {
   }
 
   preload() {
-    // Monster enemy spritesheets (150x150 side-view — mushroom/flyingeye used by SandGolem/FlyingEye)
-    this.load.spritesheet('mushroom_attack', 'assets/mushroom/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+    // Monster enemy spritesheets
     this.load.spritesheet('flyingeye_attack', 'assets/flying_eye/Attack3.png', { frameWidth: 150, frameHeight: 150 })
+
+    // Orc3 — BigOrc mini-boss (64x64 top-down)
+    this.load.spritesheet('orc3_idle',   'assets/orc3/orc3_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_run',    'assets/orc3/orc3_run_without_shadow.png',    { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_attack', 'assets/orc3/orc3_attack_without_shadow.png', { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  { frameWidth: 64, frameHeight: 64 })
 
     // Orc enemies (64x64 top-down, 4 directional rows — we use row 0)
     this.load.spritesheet('orc1_idle',   'assets/orc/orc1_idle_without_shadow.png',   { frameWidth: 64, frameHeight: 64 })
@@ -136,6 +144,7 @@ export class TestScene extends Phaser.Scene {
     backBtn.on('pointerover', () => backBtn.setColor('#FFD700'))
     backBtn.on('pointerout', () => backBtn.setColor('#888888'))
     backBtn.on('pointerdown', () => this.scene.start('StartScene'))
+    this.input.keyboard!.on('keydown-ESC', () => this.scene.start('StartScene'))
 
     // Row labels
     this.add.text(20, 110, 'HEROES', {
@@ -151,6 +160,7 @@ export class TestScene extends Phaser.Scene {
     // Create animations
     Orc1.createAnimations(this)
     Orc2.createAnimations(this)
+    Orc3.createAnimations(this)
     Player.createAnimations(this)
 
     // -----------------------------------------------------------------------
@@ -199,6 +209,11 @@ export class TestScene extends Phaser.Scene {
 
     const enemyDefs = [
       {
+        name: 'Orc0',
+        bodyW: 24, bodyH: 24,
+        create: (x: number, y: number) => new Orc0(this, x, y, dummyPlayer, 1),
+      },
+      {
         name: 'Orc2',
         bodyW: 24, bodyH: 24,
         create: (x: number, y: number) => new Orc2(this, x, y, dummyPlayer, 1),
@@ -209,13 +224,18 @@ export class TestScene extends Phaser.Scene {
         create: (x: number, y: number) => new Orc1(this, x, y, dummyPlayer, 1),
       },
       {
+        name: 'Orc3',
+        bodyW: 24, bodyH: 24,
+        create: (x: number, y: number) => new Orc3(this, x, y, dummyPlayer, 1),
+      },
+      {
         name: 'FlyingEye',
         bodyW: 32, bodyH: 32,
         create: (x: number, y: number) => new FlyingEye(this, x, y, dummyPlayer, 1),
       },
       {
-        name: 'SandGolem',
-        bodyW: 32, bodyH: 40,
+        name: 'BigOrc',
+        bodyW: 24, bodyH: 24,
         create: (x: number, y: number) => new SandGolem(this, x, y, dummyPlayer, 1),
       },
     ]
@@ -259,13 +279,15 @@ export class TestScene extends Phaser.Scene {
     // Static physics group for rocks
     const rocksGroup = this.physics.add.staticGroup()
 
+    const objBottomY = objectRow + 50
     allObjKeys.forEach((key, i) => {
       const x = objStartX + i * objSpacing
       const isRock = rockKeys.includes(key)
 
       if (isRock) {
-        const rock = rocksGroup.create(x, objectRow, key) as Phaser.Physics.Arcade.Sprite
+        const rock = rocksGroup.create(x, 0, key) as Phaser.Physics.Arcade.Sprite
         rock.setDepth(5).setScale(0.9)
+        rock.setY(objBottomY - rock.displayHeight / 2)
         rock.refreshBody()
         const body = rock.body as Phaser.Physics.Arcade.StaticBody
         const dw = rock.displayWidth
@@ -274,11 +296,11 @@ export class TestScene extends Phaser.Scene {
         body.setSize(dw * 0.45, dh * 0.4)
         body.setOffset((rock.width - dw * 0.45 / scale) / 2, (rock.height - dh * 0.4 / scale) / 2)
       } else {
-        // Trees are decorative — no physics
-        this.add.image(x, objectRow, key).setDepth(5).setScale(0.7)
+        const img = this.add.image(x, 0, key).setDepth(5).setScale(0.7)
+        img.setY(objBottomY - img.displayHeight / 2)
       }
 
-      this.add.text(x, objectRow + 55, key, {
+      this.add.text(x, objBottomY + 8, key, {
         fontFamily: 'monospace', fontSize: '10px', color: '#ccccff',
         stroke: '#000000', strokeThickness: 2, align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)

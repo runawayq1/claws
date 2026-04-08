@@ -7,6 +7,7 @@ import * as nazar from './heroes/nazar'
 import * as huntress from './heroes/huntress'
 import * as khashin from './heroes/khashin'
 import * as muller from './heroes/muller'
+import { MetaProgress } from '../systems/MetaProgress'
 
 export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller'
 
@@ -47,11 +48,11 @@ const HERO_DEFS: Record<HeroType, HeroDef> = {
   // khet removed from playable roster
   // khet:    { hp: 55,  speed: 220, damage: 35, range: 48,  cooldown: 600,  color: 0x4a0072, attackType: 'dash' },
   sifra:   { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
-  amun:    { hp: 160, speed: 100, damage: 22, range: 80,  cooldown: 1200, color: 0xfff200, attackType: 'shockwave' },
-  nazar:   { hp: 90,  speed: 130, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
+  amun:    { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800, color: 0xfff200, attackType: 'shockwave' },
+  nazar:   { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
   huntress: { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
-  khashin:  { hp: 90,  speed: 130, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
-  muller:   { hp: 160, speed: 80,  damage: 52, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
+  khashin:  { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
+  muller:   { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
 }
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -128,6 +129,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   xp = 0
   level = 1
   kills = 0
+  goldThisRun = 0
   shieldHp = 0
   shieldMaxHp = 0
   shieldTimer = 0
@@ -153,6 +155,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   dmgAuraLastPulse = 0
   passiveAuraGfx: Phaser.GameObjects.Graphics | null = null
   dmgAuraGfx: Phaser.GameObjects.Graphics | null = null
+
+  // Amun stance system (unlocked by Quake branch)
+  amunStance: 'quake' | 'melee' = 'quake'
+  hasQuakeStance = false       // unlocked by aq1
+  quakeEnergy = 100
+  groundEnergy = 100
 
   // Amun upgrade mechanic flags
   hasTitansPulse = false      // launches boulder projectile on shockwave
@@ -244,6 +252,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private tectonicCounter = 0
   stoneSkinStacks = 0
   stoneSkinTimer = 0
+  private _stoneSkinAccum = 0
   geodeShellCooldown = 0
   crystalWallTimer = 0
   crystalPillarTimer = 0
@@ -268,6 +277,40 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   energyDrainPerShot = 8   // per ice shard volley
   energyRegenRate = 25     // per second for inactive stance
   lightningAngle = 0
+
+  // Branch Mastery system — XP earned by casting, levels up branch damage & reduces energy cost
+  static readonly MASTERY_THRESHOLDS = [50, 150, 300]
+  static readonly MASTERY_COST_MULT = [1.0, 0.90, 0.82, 0.76]  // energy cost multiplier per level
+  static readonly MASTERY_NAMES = ['', 'Practiced', 'Adept', 'Master']
+  branchMasteryXP: Record<string, number> = {}
+  branchMasteryLevel: Record<string, number> = {}
+  /** Which branch is currently attacking — set in tryAutoAttack, read by hero modules for kill XP */
+  currentAttackBranch = ''
+  private _lightningMasteryAccum = 0  // throttle continuous lightning XP
+
+  awardMasteryXP(branch: string, amount: number) {
+    if (!branch) return
+    const xp = (this.branchMasteryXP[branch] ?? 0) + amount
+    this.branchMasteryXP[branch] = xp
+    const curLevel = this.branchMasteryLevel[branch] ?? 0
+    if (curLevel < 3 && xp >= Player.MASTERY_THRESHOLDS[curLevel]) {
+      this.branchMasteryLevel[branch] = curLevel + 1
+      this.scene.events.emit('branch-mastery-levelup', { branch, level: curLevel + 1 })
+    }
+  }
+
+  getMasteryLevel(branch: string): number {
+    return this.branchMasteryLevel[branch] ?? 0
+  }
+
+  getMasteryDamageMult(branch: string): number {
+    return 1 + 0.1 * this.getMasteryLevel(branch)
+  }
+
+  getMasteryCostMult(branch: string): number {
+    return Player.MASTERY_COST_MULT[this.getMasteryLevel(branch)] ?? 0.76
+  }
+
   // flameGfx removed — using sprite-based flamethrower now
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null
   private wasd: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key } | null = null
@@ -300,22 +343,35 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.strikeCount = 1
     this.armor = 0
 
+    // Apply permanent meta-upgrades from Forge
+    const meta = MetaProgress.load()
+    const ups = meta.metaUpgrades || {}
+    if (ups['mu_hp'])    { this.maxHp += 20 * ups['mu_hp']; this.hp = this.maxHp }
+    if (ups['mu_dmg'])   { this.damage += 3 * ups['mu_dmg'] }
+    if (ups['mu_spd'])   { this.speed += 8 * ups['mu_spd'] }
+    if (ups['mu_regen']) { this.hpRegen += 0.5 * ups['mu_regen'] }
+    if (ups['mu_cd'])    { this.attackCooldown = Math.max(200, Math.floor(this.attackCooldown * Math.pow(0.92, ups['mu_cd']))) }
+
     this.baseSpeed = this.speed
     this.baseSpeedCache = this.speed
     if (sprCfg && hasSpr) {
       this.setScale(sprCfg.scale)
       this.baseScale = sprCfg.scale
       this.setBodySize(sprCfg.bodyW, sprCfg.bodyH)
+      this._baseBodyW = sprCfg.bodyW
+      this._baseBodyH = sprCfg.bodyH
       this.setOffset(sprCfg.bodyOffX, sprCfg.bodyOffY)
       if (sprCfg.tint) this.setTint(sprCfg.tint)
       this.playAnim('idle')
     } else {
       this.setScale(1.8)
       this.setBodySize(24, 28)
+      this._baseBodyW = 24
+      this._baseBodyH = 28
       this.setOffset(20, 22)
     }
 
-    this.setCollideWorldBounds(true)
+    this.setCollideWorldBounds(false)
     this.setDepth(10)
 
     // Shadow under hero — dark ellipse at feet level
@@ -361,6 +417,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (heroType === 'khashin') {
         scene.input.keyboard.addKey('Q').on('down', () => this.toggleKhashinStance())
       }
+      // Amun stance toggle (Q key) — activated when Quake branch chosen
+      if (heroType === 'amun') {
+        scene.input.keyboard.addKey('Q').on('down', () => this.toggleAmunStance())
+      }
       // Muller has no stance toggle — eruption is an upgrade ability
     }
   }
@@ -396,6 +456,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       case 'huntress': return this.huntressStance
       case 'khashin': return this.khashinStance
       case 'muller': return this.mullerStance
+      case 'amun': return this.hasQuakeStance ? this.amunStance : ''
       default: return ''
     }
   }
@@ -406,16 +467,48 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.events.emit('khashin-stance-changed', this.khashinStance)
   }
 
+  toggleAmunStance() {
+    if (this.heroType !== 'amun' || !this.hasQuakeStance) return
+    this.amunStance = this.amunStance === 'quake' ? 'melee' : 'quake'
+    this.scene.events.emit('amun-stance-changed', this.amunStance)
+  }
+
   private baseScale = 1
+  private _baseBodyW = 0
+  private _baseBodyH = 0
   private baseSpeed = 0
 
-  /** Apply Stone Skin visual: +5% scale, -2% speed per stack */
-  applyStoneSkinVisuals() {
+  /** Apply Stone Skin visual: +5% scale and hitbox per stack, smooth tween */
+  applyStoneSkinVisuals(animate = true) {
     const stacks = this.stoneSkinStacks
+    const targetScale = this.baseScale * (1 + stacks * 0.05)
+    // Speed INCREASES with stacks (+5 per stack)
+    this.speed = Math.floor(this.baseSpeed + stacks * 5)
+    // Armor increases (+5% per stack)
+    // (DR is handled in takeDamage via stoneSkinDR calculation)
+
     if (this.hasSprite) {
-      this.setScale(this.baseScale * (1 + stacks * 0.05))
+      if (animate) {
+        // Smooth tween to avoid jumps
+        this.scene.tweens.add({
+          targets: this,
+          scaleX: targetScale,
+          scaleY: targetScale,
+          duration: 300,
+          ease: 'Back.easeOut',
+        })
+      } else {
+        this.setScale(targetScale)
+      }
     }
-    this.speed = Math.floor(this.baseSpeed * (1 - stacks * 0.02))
+    // Scale hitbox proportionally
+    const body = this.body as Phaser.Physics.Arcade.Body
+    if (body && this._baseBodyW) {
+      body.setSize(
+        this._baseBodyW * (1 + stacks * 0.05),
+        this._baseBodyH * (1 + stacks * 0.05)
+      )
+    }
   }
 
   toggleMullerStance() {
@@ -442,7 +535,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         scene.anims.create({
           key,
           frames: scene.anims.generateFrameNumbers(key, { start: 0, end: count - 1 }),
-          frameRate: name === 'run' ? 12 : name === 'attack' ? 14 : 8,
+          frameRate: name === 'run' ? 12 : name === 'attack' ? (hero === 'amun' ? 22 : 14) : 8,
           repeat,
         })
       }
@@ -526,7 +619,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       scene.anims.create({
         key: 'amun_attack2',
         frames: scene.anims.generateFrameNumbers('amun_attack2', { start: 0, end: 3 }),
-        frameRate: 14,
+        frameRate: 22,
         repeat: 0,
       })
     }
@@ -535,7 +628,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       scene.anims.create({
         key: 'amun_attack3',
         frames: scene.anims.generateFrameNumbers('amun_attack3', { start: 0, end: 3 }),
-        frameRate: 14,
+        frameRate: 22,
         repeat: 0,
       })
     }
@@ -577,8 +670,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       'Way of Venom':     'nazar_attack2',
       'Way of Shadow':    'nazar_attack2',
       // Amun branches
-      'Bastion':          'amun_attack2',
-      'Quake':            'amun_attack3',
+      'Wrath':            'amun_attack2',
+      'Bastion':          'amun_attack3',
     }
     return BRANCH_ANIMS[this.chosenBranch] || null
   }
@@ -1019,7 +1112,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.shieldHp = 0
     }
     // Stone Skin DR: +2% per stack, max 5
-    const stoneSkinDR = this.hasStoneSkin ? this.stoneSkinStacks * 0.02 : 0
+    const stoneSkinDR = this.hasStoneSkin ? this.stoneSkinStacks * 0.05 : 0
     let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR))
 
     // Sand Armor (Khashin): absorb shield
@@ -1062,6 +1155,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.hp -= reduced
+
+    // Stone Skin: accumulate damage, gain stack every 10 HP lost
+    if (this.hasStoneSkin && reduced > 0 && this.stoneSkinStacks < 5) {
+      this._stoneSkinAccum += reduced
+      if (this._stoneSkinAccum >= 10) {
+        this._stoneSkinAccum -= 10
+        this.stoneSkinStacks++
+        this.stoneSkinTimer = 0
+        this.applyStoneSkinVisuals(true)
+        // Proc VFX — stone dust ring
+        const ring = this.scene.add.circle(this.x, this.y, 8, 0x99ddcc, 0.6).setDepth(12)
+        this.scene.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 300, onComplete: () => ring.destroy() })
+      }
+    }
 
     // Combined on-hit enemy scan — single loop for all reactive passives
     const needsScan = reduced >= 1 && (this.hasCryoShield || this.hasThorns || this.hasLivingGeode || this.hasWrath || this.hasMoltenSkin)
@@ -1128,41 +1235,42 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (now - this._lastDmgVfxTime > 300) {
         this._lastDmgVfxTime = now
 
-        // Floating damage number
-        const dmgText = this.scene.add.text(this.x, this.y - 20, `-${Math.ceil(reduced)}`, {
-          fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
-          stroke: '#000000', strokeThickness: 3,
+        // Floating damage number — large, bold, shakes up
+        const dmgText = this.scene.add.text(this.x + Phaser.Math.Between(-10, 10), this.y - 30, `-${Math.ceil(reduced)}`, {
+          fontFamily: 'monospace', fontSize: '22px', color: '#ff2222',
+          stroke: '#000000', strokeThickness: 4,
         }).setDepth(20).setOrigin(0.5)
         this.scene.tweens.add({
-          targets: dmgText, y: dmgText.y - 30, alpha: 0,
-          duration: 600, ease: 'Power2',
+          targets: dmgText, y: dmgText.y - 50, alpha: 0,
+          duration: 800, ease: 'Power2',
           onComplete: () => dmgText.destroy(),
         })
 
-        // Blood particles (procedural red dots)
-        const particleCount = Math.min(8, Math.ceil(reduced / 5))
+        // Blood particles — larger, more visible
+        const particleCount = Math.min(12, Math.ceil(reduced / 3))
         for (let i = 0; i < particleCount; i++) {
-          const size = Phaser.Math.Between(2, 4)
+          const size = Phaser.Math.Between(3, 6)
           const blood = this.scene.add.circle(
             this.x, this.y,
-            size, 0xcc0000, 0.8
+            size, 0xdd0000, 0.9
           ).setDepth(10)
           const angle = Math.random() * Math.PI * 2
-          const dist = Phaser.Math.Between(15, 35)
+          const dist = Phaser.Math.Between(20, 50)
           this.scene.tweens.add({
             targets: blood,
             x: blood.x + Math.cos(angle) * dist,
             y: blood.y + Math.sin(angle) * dist,
-            alpha: 0, scale: 0.3,
-            duration: Phaser.Math.Between(250, 450),
+            alpha: 0, scale: 0.2,
+            duration: Phaser.Math.Between(300, 600),
             ease: 'Power2',
             onComplete: () => blood.destroy(),
           })
         }
 
-        // Red camera flash for heavy hits (>15% max HP)
-        if (reduced > this.maxHp * 0.15) {
-          this.scene.cameras.main.flash(150, 180, 30, 30)
+        // Camera shake on every hit (mild), stronger flash for heavy hits
+        this.scene.cameras.main.shake(80, 0.003)
+        if (reduced > this.maxHp * 0.1) {
+          this.scene.cameras.main.flash(200, 200, 20, 20)
         }
       }
     }
@@ -1319,20 +1427,32 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (this.lightningEnergy <= 0) {
         this.toggleStance()
       } else {
-        this.lightningEnergy = Math.max(0, this.lightningEnergy - this.energyDrainRate * (delta / 1000))
+        this.currentAttackBranch = 'lightning'
+        this.lightningEnergy = Math.max(0, this.lightningEnergy - this.energyDrainRate * this.getMasteryCostMult('lightning') * (delta / 1000))
+        // Award mastery XP ~1.0 per second of channeling
+        this._lightningMasteryAccum += delta
+        if (this._lightningMasteryAccum >= 1000) {
+          this.awardMasteryXP('lightning', 1.0)
+          this._lightningMasteryAccum -= 1000
+        }
         this.attackLightning(enemies, delta)
       }
       return
     }
 
     if (this.isAttacking) return
-    if (time - this.lastAttackTime < this.attackCooldown) return
+    // Amun melee stance: faster attack speed (600ms vs 1200ms base)
+    let cd = this.attackCooldown
+    if (this.heroType === 'amun' && this.hasQuakeStance && this.amunStance === 'melee') cd = Math.min(cd, 600)
+    if (time - this.lastAttackTime < cd) return
 
     // Nazar venom / Huntress spear stance gets extended range
     let searchRange = this.range
     if (this.heroType === 'nazar' && this.nazarStance === 'venom') searchRange += 100
     if (this.heroType === 'huntress' && this.huntressStance === 'melee') searchRange = 80
     if (this.heroType === 'khashin' && this.khashinStance === 'haboob') searchRange = 90
+    if (this.heroType === 'amun' && this.hasQuakeStance && this.amunStance === 'melee') searchRange = 65
+    if (this.heroType === 'amun' && this.hasQuakeStance && this.amunStance === 'quake') searchRange = Math.ceil(this.range * 1.5)
     let closest: Phaser.Physics.Arcade.Sprite | null = null
     let closestDist = Infinity
     for (const enemy of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
@@ -1346,9 +1466,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (!closest) return
 
     this.lastAttackTime = time
-    this.isAttacking = true
+    const melee = (this.heroType === 'nazar' && this.nazarStance === 'sword')
+      || (this.heroType === 'amun' && (this.amunStance === 'melee' || !this.hasQuakeStance))
+      || (this.heroType === 'huntress' && this.huntressStance === 'melee')
+    this.isAttacking = melee
     this.setFlipX(closest.x < this.x)
-    if (this.hasSprite && this.heroType !== 'huntress' && this.heroType !== 'khashin' && this.heroType !== 'muller') {
+    if (this.hasSprite && this.heroType !== 'huntress' && this.heroType !== 'khashin' && this.heroType !== 'muller' && !(this.heroType === 'amun' && this.hasQuakeStance)) {
       const branchAnim = this.getBranchAttackAnim()
       if (branchAnim && this.scene.anims.exists(branchAnim)) {
         this.currentAnim = branchAnim; this.play(branchAnim)
@@ -1365,14 +1488,48 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.isAttacking = false
         return
       }
-      this.iceEnergy = Math.max(0, this.iceEnergy - this.energyDrainPerShot)
+      this.currentAttackBranch = 'ice'
+      this.iceEnergy = Math.max(0, this.iceEnergy - this.energyDrainPerShot * this.getMasteryCostMult('ice'))
+      this.awardMasteryXP('ice', 1.0)
     }
     switch (this.heroDef.attackType) {
       case 'dash':      this.attackDash(target, enemies); break
       case 'iceshard':   this.attackIceShard(target, enemies); break
-      case 'shockwave': this.attackShockwave(enemies); break
+      case 'shockwave':
+        if (this.hasQuakeStance && this.amunStance === 'quake') {
+          if (this.quakeEnergy <= 0) {
+            this.toggleAmunStance()
+            this.isAttacking = false
+            return
+          }
+          this.currentAttackBranch = 'quake'
+          this.quakeEnergy = Math.max(0, this.quakeEnergy - 15 * this.getMasteryCostMult('quake'))
+          this.awardMasteryXP('quake', 1.0)
+          this.attackShockwave(enemies)
+        } else if (this.hasQuakeStance && this.amunStance === 'melee') {
+          if (this.groundEnergy <= 0) {
+            this.toggleAmunStance()
+            this.isAttacking = false
+            return
+          }
+          this.currentAttackBranch = 'ground'
+          this.groundEnergy = Math.max(0, this.groundEnergy - 10 * this.getMasteryCostMult('ground'))
+          this.awardMasteryXP('ground', 1.0)
+          if (this.hasSprite) {
+            this.playAnim('attack')
+          }
+          this.attackAmunMelee(target, enemies)
+        } else {
+          // Base attack — always melee (no stance)
+          this.attackAmunMelee(target, enemies)
+        }
+        break
       case 'poison':    this.attackPoison(target, enemies); break
-      case 'fireball':  this.attackFireball(target, enemies); break
+      case 'fireball':
+        this.currentAttackBranch = 'fireball'
+        this.awardMasteryXP('fireball', 1.0)
+        this.attackFireball(target, enemies)
+        break
       case 'spear':
         if (this.huntressStance === 'melee') {
           if (this.meleeEnergy <= 0) {
@@ -1380,7 +1537,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isAttacking = false
             return
           }
-          this.meleeEnergy = Math.max(0, this.meleeEnergy - 8)
+          this.currentAttackBranch = 'melee'
+          this.meleeEnergy = Math.max(0, this.meleeEnergy - 8 * this.getMasteryCostMult('melee'))
+          this.awardMasteryXP('melee', 1.0)
           // Alternate Attack1 / Attack2 for melee combo
           if (this.hasSprite) {
             this.huntressMeleeCombo = !this.huntressMeleeCombo
@@ -1394,7 +1553,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isAttacking = false
             return
           }
-          this.spearEnergy = Math.max(0, this.spearEnergy - 12)
+          this.currentAttackBranch = 'spear'
+          this.spearEnergy = Math.max(0, this.spearEnergy - 12 * this.getMasteryCostMult('spear'))
+          this.awardMasteryXP('spear', 1.0)
           const frenzyBonus = (this.hasBattleFrenzy && this.battleFrenzyUntil > this.scene.time.now) ? 0.9 : 1
           this.lastAttackTime += Math.floor(900 * frenzyBonus)  // extra cooldown for ranged
           if (this.hasSprite) {
@@ -1411,7 +1572,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isAttacking = false
             return
           }
-          this.sandEnergy = Math.max(0, this.sandEnergy - 10)
+          this.currentAttackBranch = 'sand'
+          this.sandEnergy = Math.max(0, this.sandEnergy - 10 * this.getMasteryCostMult('sand'))
+          this.awardMasteryXP('sand', 1.0)
           // Haboob stance uses regular attack anim (melee)
           if (this.hasSprite) {
             const key = `${this.animPrefix}_attack`
@@ -1424,7 +1587,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isAttacking = false
             return
           }
-          this.windEnergy = Math.max(0, this.windEnergy - 8)
+          this.currentAttackBranch = 'wind'
+          this.windEnergy = Math.max(0, this.windEnergy - 8 * this.getMasteryCostMult('wind'))
+          this.awardMasteryXP('wind', 1.0)
           // Wind stance uses air attack anim (ranged)
           if (this.hasSprite) {
             const key = 'khashin_air_attack'
@@ -1434,6 +1599,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
         break
       case 'crystalwave': {
+        this.currentAttackBranch = 'crystal'
+        this.awardMasteryXP('crystal', 1.0)
         // Base attack: crystal wave toward target
         const isTectonicProc = this.hasTectonicFury && this.tectonicCounter > 0 && (this.tectonicCounter + 1) % 5 === 0
         if (this.hasSprite) {
@@ -1471,7 +1638,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isAttacking = false
             return
           }
-          this.venomEnergy = Math.max(0, this.venomEnergy - 8)
+          this.currentAttackBranch = 'venom'
+          this.venomEnergy = Math.max(0, this.venomEnergy - 8 * this.getMasteryCostMult('venom'))
+          this.awardMasteryXP('venom', 1.0)
           this.lastAttackTime += 400  // venom is slower than sword
           this.attackPoison(target, enemies)
         } else {
@@ -1480,7 +1649,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isAttacking = false
             return
           }
-          this.swordEnergy = Math.max(0, this.swordEnergy - 6)
+          this.currentAttackBranch = 'sword'
+          this.swordEnergy = Math.max(0, this.swordEnergy - 6 * this.getMasteryCostMult('sword'))
+          this.awardMasteryXP('sword', 1.0)
           this.attackMelee(enemies)
         }
         break
@@ -1516,9 +1687,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     sifra.attackIceShard(this, target, enemies)
   }
 
-  // AMUN — Shockwave ring
+  // AMUN — Shockwave ring (quake stance)
   private attackShockwave(enemies: Phaser.Physics.Arcade.Group) {
     amun.attackShockwave(this, enemies)
+  }
+
+  // AMUN — Melee ground slam (melee stance)
+  private attackAmunMelee(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
+    amun.attackMelee(this, target, enemies)
   }
 
   // NAZAR — Poison cloud (animated expanding puffs → ring → dissipate)
@@ -1575,6 +1751,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.heroType === 'sifra') sifra.updateSifraEnergy(this, delta)
     if (this.heroType === 'nazar') nazar.updateNazarEnergy(this, delta)
     if (this.heroType === 'huntress') huntress.updateHuntressEnergy(this, delta)
+    if (this.heroType === 'amun') amun.updateAmunEnergy(this, delta)
 
     // Hero-specific passive mechanics
     if (this.heroType === 'huntress') huntress.updateHuntressPassives(this, delta)
@@ -1623,33 +1800,33 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (this.cursors.down.isDown || this.wasd.S.isDown) kbY = 1
     }
 
+    // During melee attack: allow movement at 50% speed (no full freeze)
+    const atkSpeedMult = this.isAttacking ? 0.5 : 1
     let moving = false
-    if ((kbX !== 0 || kbY !== 0) && !this.isAttacking) {
-      // Keyboard movement — normalize diagonal
+    if (kbX !== 0 || kbY !== 0) {
       const len = Math.sqrt(kbX * kbX + kbY * kbY)
-      pBody.setVelocity((kbX / len) * this.speed, (kbY / len) * this.speed)
-      this.setFlipX(kbX < 0)
+      pBody.setVelocity((kbX / len) * this.speed * atkSpeedMult, (kbY / len) * this.speed * atkSpeedMult)
+      if (!this.isAttacking) this.setFlipX(kbX < 0)
       this.touchTarget = null
       this.joystickDir = null
       moving = true
-    } else if (this.joystickDir && !this.isAttacking) {
-      // Virtual joystick movement
+    } else if (this.joystickDir) {
       const { dx, dy } = this.joystickDir
-      pBody.setVelocity(dx * this.speed, dy * this.speed)
-      this.setFlipX(dx < 0)
+      pBody.setVelocity(dx * this.speed * atkSpeedMult, dy * this.speed * atkSpeedMult)
+      if (!this.isAttacking) this.setFlipX(dx < 0)
       moving = true
-    } else if (this.touchTarget && !this.isAttacking) {
+    } else if (this.touchTarget) {
       const dist = Phaser.Math.Distance.Between(this.x, this.y, this.touchTarget.x, this.touchTarget.y)
       if (dist > 10) {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, this.touchTarget.x, this.touchTarget.y)
-        pBody.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed)
-        this.setFlipX(this.touchTarget.x < this.x)
+        pBody.setVelocity(Math.cos(angle) * this.speed * atkSpeedMult, Math.sin(angle) * this.speed * atkSpeedMult)
+        if (!this.isAttacking) this.setFlipX(this.touchTarget.x < this.x)
         moving = true
       } else {
         pBody.setVelocity(0, 0)
         this.touchTarget = null
       }
-    } else if (!this.isAttacking) {
+    } else {
       pBody.setVelocity(0, 0)
     }
 

@@ -10,6 +10,7 @@ export class SandGolem extends BaseEnemy {
   private lastSlamTime = 0
   private slamCooldown = 5000
   private slamRadius = 80
+  private glow!: Phaser.GameObjects.Arc
 
   constructor(scene: Phaser.Scene, x: number, y: number, player: Player, wave: number) {
     super(scene, x, y, 'orc3_idle', player)
@@ -41,15 +42,15 @@ export class SandGolem extends BaseEnemy {
     this.baseTint = 0xcc4444
     this.setTint(this.baseTint)
     this.setBodySize(24, 24)
-    this.setOffset(20, 20)
+    this.setOffset(20, 17)
     this.setDepth(5)
 
     this.play('orc3_run')
 
-    // Pulsing red glow aura
-    const glow = scene.add.circle(x, y, 40, 0xff3333, 0.2).setDepth(4)
+    // Pulsing red glow aura — positioned each frame in onUpdate()
+    this.glow = scene.add.circle(x, y, 40, 0xff3333, 0.2).setDepth(4)
     scene.tweens.add({
-      targets: glow,
+      targets: this.glow,
       scale: { from: 1.0, to: 1.6 },
       alpha: { from: 0.25, to: 0.05 },
       duration: 800,
@@ -57,15 +58,10 @@ export class SandGolem extends BaseEnemy {
       repeat: -1,
       ease: 'Sine.easeInOut',
     })
-    // Follow the BigOrc
-    scene.events.on('update', () => {
-      if (!this.active) { glow.destroy(); return }
-      glow.setPosition(this.x, this.y)
-    })
-    this.once('destroy', () => glow.destroy())
   }
 
   protected onDeathVfx(onComplete: () => void): void {
+    this.glow.destroy()
     this.play('orc3_death')
     this.once('animationcomplete', () => {
       for (let i = 0; i < 5; i++) {
@@ -116,6 +112,7 @@ export class SandGolem extends BaseEnemy {
   }
 
   protected onUpdate(time: number, _delta: number): void {
+    this.glow.setPosition(this.x, this.y)
     this.trySlam(time)
   }
 }

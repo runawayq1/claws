@@ -49,6 +49,7 @@ export class BossTestScene extends Phaser.Scene {
     backBtn.on('pointerover', () => backBtn.setColor('#FFD700'))
     backBtn.on('pointerout', () => backBtn.setColor('#888888'))
     backBtn.on('pointerdown', () => this.scene.start('StartScene'))
+    this.input.keyboard!.on('keydown-ESC', () => this.scene.start('StartScene'))
 
     // Create all boss animations
     const anims: { key: string; start: number; end: number; rate: number; repeat: number }[] = [

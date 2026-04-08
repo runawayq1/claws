@@ -32,7 +32,7 @@ export class FlyingEye extends BaseEnemy {
     this.baseTint = 0xddccaa
     this.setTint(this.baseTint)
     this.setBodySize(32, 32)
-    this.setOffset(59, 59)
+    this.setOffset(64, 59)
     this.setDepth(6)
 
     this.play('flyingeye_walk')

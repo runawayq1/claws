@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
+import { BaseEnemy } from '../BaseEnemy'
 
 export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
-  const pp = p
   const hitRadius = 80
   const dmgRatio = Math.min(p.damage / 18, 4)
   const slashTint = dmgRatio > 2.5 ? 0xffffff : dmgRatio > 1.5 ? 0x7bed9f : 0x2ecc71
@@ -20,19 +20,19 @@ export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Gr
   for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
     if (!e.active) continue
     if (Phaser.Math.Distance.Between(p.cx, p.cy, e.x, e.y) <= hitRadius) {
-      let dmg = p.damage
+      let dmg = p.damage * p.getMasteryDamageMult('melee')
       // Critical Strike: 20% chance for 2x damage
       const isCrit = p.hasCriticalStrike && Math.random() < 0.2
       if (isCrit) dmg *= 2
       // Marked Target: +30% damage to marked enemies
-      if (p.hasMarkedTarget && (e as any).isMarked) dmg *= 1.3
-      ;(e as any).takeDamage(dmg, 'melee')
+      if (p.hasMarkedTarget && (e as BaseEnemy).isMarked) dmg *= 1.3
+      ;(e as BaseEnemy).takeDamage(dmg, 'melee')
       // Mark enemy on hit
       if (p.hasMarkedTarget) {
-        (e as any).isMarked = true
-        ;(e as any).markTimer = 5000
+        (e as BaseEnemy).isMarked = true
+        ;(e as BaseEnemy).markTimer = 5000
       }
-      pp.spearHitVfx(e.x, e.y, isCrit ? 0xff4444 : slashTint)
+      p.spearHitVfx(e.x, e.y, isCrit ? 0xff4444 : slashTint)
       // Crit text
       if (isCrit) {
         const ct = p.scene.add.text(e.x, e.y - 30, 'CRIT!', {
@@ -63,7 +63,7 @@ export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Gr
         for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active || hitEnemies.has(e)) continue
           if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) <= slamW) {
-            (e as any).takeDamage(p.damage * 0.6, 'shockwave')
+            (e as BaseEnemy).takeDamage(p.damage * 0.6 * p.getMasteryDamageMult('melee'), 'shockwave')
             hitEnemies.add(e)
           }
         }
@@ -72,12 +72,11 @@ export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Gr
     p.scene.cameras.main.shake(60, 0.003)
   }
 
-  // Hold isAttacking for anim duration
-  p.scene.time.delayedCall(350, () => { pp.isAttacking = false })
+  // Short lock — movement at 50% during attack, not full freeze
+  p.scene.time.delayedCall(120, () => { p.isAttacking = false })
 }
 
 export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
-  const pp = p
   const angle = Phaser.Math.Angle.Between(p.cx, p.cy, target.x, target.y)
   const cam = p.scene.cameras.main
   const maxDist = Math.sqrt(cam.width * cam.width + cam.height * cam.height)
@@ -138,13 +137,13 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
         for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active || hitSet.has(e)) continue
           if (Phaser.Math.Distance.Between(spear.x, spear.y, e.x, e.y) <= hitRadius) {
-            let dmg = isExtra ? p.damage * 0.6 : p.damage
+            let dmg = (isExtra ? p.damage * 0.6 : p.damage) * p.getMasteryDamageMult('spear')
             // Critical Strike
             const isCrit = p.hasCriticalStrike && Math.random() < 0.2
             if (isCrit) dmg *= 2
             // Marked Target bonus
-            if (p.hasMarkedTarget && (e as any).isMarked) dmg *= 1.3
-            ;(e as any).takeDamage(dmg, 'melee')
+            if (p.hasMarkedTarget && (e as BaseEnemy).isMarked) dmg *= 1.3
+            ;(e as BaseEnemy).takeDamage(dmg, 'melee')
             hitSet.add(e)
             // Heavy Spear: knockback on spear hit
             if (p.hasHeavySpear) {
@@ -155,18 +154,18 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
             }
             // Mark enemy
             if (p.hasMarkedTarget) {
-              (e as any).isMarked = true
-              ;(e as any).markTimer = 5000
+              (e as BaseEnemy).isMarked = true
+              ;(e as BaseEnemy).markTimer = 5000
             }
             // Net Throw: root enemies
             if (isNetThrow) {
-              (e as any).isRooted = true
-              ;(e as any).rootTimer = 1500
+              (e as BaseEnemy).isRooted = true
+              ;(e as BaseEnemy).rootTimer = 1500
               // Net VFX
               const net = p.scene.add.circle(e.x, e.y, 14, 0x44cc44, 0.3).setDepth(9)
               p.scene.tweens.add({ targets: net, alpha: 0, scale: 2, duration: 1500, onComplete: () => net.destroy() })
             }
-            pp.spearHitVfx(e.x, e.y, isCrit ? 0xff4444 : spearTint)
+            p.spearHitVfx(e.x, e.y, isCrit ? 0xff4444 : spearTint)
             if (isCrit) {
               const ct = p.scene.add.text(e.x, e.y - 30, 'CRIT!', {
                 fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
@@ -182,7 +181,7 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
               for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                 if (!e2.active || hitSet.has(e2)) continue
                 if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= blastR) {
-                  (e2 as any).takeDamage(p.damage * 0.35, 'shockwave')
+                  (e2 as BaseEnemy).takeDamage(p.damage * 0.35 * p.getMasteryDamageMult('spear'), 'shockwave')
                   hitSet.add(e2)
                 }
               }
@@ -205,7 +204,7 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
                 for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                   if (!e.active) continue
                   if (Phaser.Math.Distance.Between(shard.x, shard.y, e.x, e.y) <= 18) {
-                    (e as any).takeDamage(p.damage * 0.3, 'melee')
+                    (e as BaseEnemy).takeDamage(p.damage * 0.3 * p.getMasteryDamageMult('spear'), 'melee')
                   }
                 }
               },
@@ -237,12 +236,11 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
   }
 
   // Hold isAttacking for ranged anim duration
-  p.scene.time.delayedCall(580, () => { pp.isAttacking = false })
+  p.scene.time.delayedCall(580, () => { p.isAttacking = false })
 }
 
 export function updateHuntressEnergy(p: Player, delta: number) {
-  const pp = p
-  const regenAmt = pp.energyRegenRate * (delta / 1000)
+  const regenAmt = p.energyRegenRate * (delta / 1000)
   if (p.huntressStance === 'melee') {
     p.spearEnergy = Math.min(p.maxEnergy, p.spearEnergy + regenAmt)
   } else {
@@ -251,7 +249,6 @@ export function updateHuntressEnergy(p: Player, delta: number) {
 }
 
 export function updateHuntressPassives(p: Player, delta: number) {
-  const pp = p
   const now = p.scene.time.now
 
   // Battle Frenzy: temporary attack speed boost
@@ -277,12 +274,12 @@ export function updateHuntressPassives(p: Player, delta: number) {
 
   // Caltrops: drop spike zone behind while moving
   if (p.hasCaltrops) {
-    pp.caltropTimer += delta
-    if (pp.caltropTimer >= 800) {
+    p.caltropTimer += delta
+    if (p.caltropTimer >= 800) {
       const pBody2 = p.body as Phaser.Physics.Arcade.Body
       const isMoving = Math.abs(pBody2.velocity.x) > 10 || Math.abs(pBody2.velocity.y) > 10
       if (isMoving) {
-        pp.caltropTimer = 0
+        p.caltropTimer = 0
         const cx = p.x, cy = p.y
         // VFX: small spike cluster
         const calt = p.scene.add.circle(cx, cy, 10, 0x44cc44, 0.3).setDepth(3)
@@ -305,9 +302,9 @@ export function updateHuntressPassives(p: Player, delta: number) {
               for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
                 if (!e.active) continue
                 if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= 18) {
-                  (e as any).takeDamage(p.damage * 0.15, 'melee')
-                  if ((e as any).speed && (e as any).baseSpeed) {
-                    (e as any).speed = (e as any).baseSpeed * 0.5
+                  (e as BaseEnemy).takeDamage(p.damage * 0.15, 'melee')
+                  if ((e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed) {
+                    (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed * 0.5
                   }
                 }
               }
@@ -322,8 +319,8 @@ export function updateHuntressPassives(p: Player, delta: number) {
 
   // Leap: auto-leap away when 4+ enemies within 50px
   if (p.hasLeap) {
-    pp.leapCooldown -= delta
-    if (pp.leapCooldown <= 0) {
+    p.leapCooldown -= delta
+    if (p.leapCooldown <= 0) {
       const scn = p.scene as any
       if (scn.enemies) {
         let nearCount = 0
@@ -337,7 +334,7 @@ export function updateHuntressPassives(p: Player, delta: number) {
           }
         }
         if (nearCount >= 4) {
-          pp.leapCooldown = 4000 // 4s cooldown
+          p.leapCooldown = 4000 // 4s cooldown
           avgAngle /= nearCount
           const leapDist = 120
           // Ghost at old position
@@ -360,9 +357,9 @@ export function updateHuntressPassives(p: Player, delta: number) {
     if (scn.enemies) {
       for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
-        if ((e as any).hp > 0 && (e as any).maxHp && (e as any).hp < (e as any).maxHp * 0.15) {
+        if ((e as BaseEnemy).hp > 0 && (e as BaseEnemy).maxHp && (e as BaseEnemy).hp < (e as BaseEnemy).maxHp * 0.15) {
           if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= execR) {
-            (e as any).takeDamage((e as any).hp + 1, 'melee')
+            (e as BaseEnemy).takeDamage((e as BaseEnemy).hp + 1, 'melee')
             // VFX: red slash mark
             const xMark = p.scene.add.text(e.x, e.y - 10, '✕', {
               fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
@@ -377,47 +374,48 @@ export function updateHuntressPassives(p: Player, delta: number) {
 
   // Spear Wall: orbiting spears that damage nearby enemies
   if (p.hasSpearWall) {
-    pp.spearWallAngle += 2.5 * (delta / 1000) // ~2.5 rad/s rotation
-    if (!pp.spearWallGfx) pp.spearWallGfx = p.scene.add.graphics().setDepth(9)
-    pp.spearWallGfx.clear()
+    p.spearWallAngle += 2.5 * (delta / 1000) // ~2.5 rad/s rotation
+    if (!p.spearWallGfx) p.spearWallGfx = p.scene.add.graphics().setDepth(9)
+    const spearWallGfx = p.spearWallGfx!
+    spearWallGfx.clear()
     const orbitR = 55
     const spearCount = 3
     const scn = p.scene as any
     for (let i = 0; i < spearCount; i++) {
-      const a = pp.spearWallAngle + (i * Math.PI * 2 / spearCount)
+      const a = p.spearWallAngle + (i * Math.PI * 2 / spearCount)
       const sx = p.x + Math.cos(a) * orbitR
       const sy = p.y + Math.sin(a) * orbitR
       // Draw spear
-      pp.spearWallGfx.lineStyle(3, 0x2ecc71, 0.7)
-      pp.spearWallGfx.beginPath()
-      pp.spearWallGfx.moveTo(sx - Math.cos(a) * 8, sy - Math.sin(a) * 8)
-      pp.spearWallGfx.lineTo(sx + Math.cos(a) * 8, sy + Math.sin(a) * 8)
-      pp.spearWallGfx.strokePath()
+      spearWallGfx.lineStyle(3, 0x2ecc71, 0.7)
+      spearWallGfx.beginPath()
+      spearWallGfx.moveTo(sx - Math.cos(a) * 8, sy - Math.sin(a) * 8)
+      spearWallGfx.lineTo(sx + Math.cos(a) * 8, sy + Math.sin(a) * 8)
+      spearWallGfx.strokePath()
       // Tip
-      pp.spearWallGfx.fillStyle(0xeeeeee, 0.8)
-      pp.spearWallGfx.fillCircle(sx + Math.cos(a) * 10, sy + Math.sin(a) * 10, 2)
+      spearWallGfx.fillStyle(0xeeeeee, 0.8)
+      spearWallGfx.fillCircle(sx + Math.cos(a) * 10, sy + Math.sin(a) * 10, 2)
       // Damage enemies
       if (scn.enemies) {
         for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
           if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) <= 18) {
-            (e as any).takeDamage(p.damage * 0.2 * (delta / 1000), 'melee')
+            (e as BaseEnemy).takeDamage(p.damage * 0.2 * (delta / 1000), 'melee')
           }
         }
       }
     }
-  } else if (pp.spearWallGfx) {
-    pp.spearWallGfx.clear()
+  } else if (p.spearWallGfx) {
+    p.spearWallGfx.clear()
   }
 
   // Mark timer decay on enemies
   const scn2 = p.scene as any
   if (p.hasMarkedTarget && scn2.enemies) {
     for (const e of scn2.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!e.active || !(e as any).isMarked) continue
-      ;(e as any).markTimer -= delta
-      if ((e as any).markTimer <= 0) {
-        (e as any).isMarked = false
+      if (!e.active || !(e as BaseEnemy).isMarked) continue
+      ;(e as BaseEnemy).markTimer -= delta
+      if ((e as BaseEnemy).markTimer <= 0) {
+        (e as BaseEnemy).isMarked = false
       }
     }
   }

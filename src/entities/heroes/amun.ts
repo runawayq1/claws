@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
+import { BaseEnemy } from '../BaseEnemy'
 
 // Titan's Pulse boulder explosion (local helper)
 function boulderExplode(
@@ -14,7 +15,7 @@ function boulderExplode(
     if (!e.active || hitSet.has(e)) continue
     const d = Phaser.Math.Distance.Between(bx, by, e.x, e.y)
     if (d < radius) {
-      (e as any).takeDamage(dmg, 'shockwave')
+      (e as BaseEnemy).takeDamage(dmg, 'shockwave')
       hitSet.add(e)
       const kb = Phaser.Math.Angle.Between(bx, by, e.x, e.y);
       (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * 250, Math.sin(kb) * 250)
@@ -44,7 +45,6 @@ function boulderExplode(
 
 // AMUN — Shockwave ring
 export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group) {
-  const pp = p
   const cx = p.x, cy = p.y
   const useRing = p.scene.textures.exists('vfx_shockring')
   const useSpark = p.scene.textures.exists('vfx_hitspark')
@@ -119,7 +119,7 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
       const boulderRadius = 18
       const boulderSpeed = 320
       const boulderRange = 300
-      const boulderDmg = p.damage * 1.5
+      const boulderDmg = p.damage * 1.5 * p.getMasteryDamageMult('quake')
       const splashR = 60 + p.splashRadius * 0.5
 
       // Create boulder graphics
@@ -194,7 +194,7 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
             if (!e.active || hitSet.has(e)) continue
             const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
             if (dist <= radius && dist >= radius - band) {
-              (e as any).takeDamage(p.damage, 'shockwave')
+              (e as BaseEnemy).takeDamage(p.damage * p.getMasteryDamageMult('quake'), 'shockwave')
               hitSet.add(e)
               const kbAngle = Phaser.Math.Angle.Between(cx, cy, e.x, e.y);
               (e.body as Phaser.Physics.Arcade.Body).setVelocity(
@@ -202,9 +202,9 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
               )
 
               // Earthquake: stun enemies for 0.8s
-              if (p.hasEarthquake && (e as any).speed !== undefined) {
-                const origSpeed = (e as any).baseSpeed || (e as any).speed
-                ;(e as any).speed = 0
+              if (p.hasEarthquake && (e as BaseEnemy).speed !== undefined) {
+                const origSpeed = (e as BaseEnemy).baseSpeed || (e as BaseEnemy).speed
+                ;(e as BaseEnemy).speed = 0
                 // VFX: stun indicator — spinning star above enemy
                 const starGfx = p.scene.add.graphics().setDepth(12)
                 const stunEvt = p.scene.time.addEvent({
@@ -226,7 +226,7 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
                   },
                 })
                 p.scene.time.delayedCall(800, () => {
-                  if (e.active) (e as any).speed = origSpeed
+                  if (e.active) (e as BaseEnemy).speed = origSpeed
                   starGfx.destroy()
                   stunEvt.destroy()
                 })
@@ -247,7 +247,7 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
         onComplete: () => {
           ring.destroy()
           ringsFinished++
-          if (ringsFinished >= ringCount) pp.isAttacking = false
+          if (ringsFinished >= ringCount) p.isAttacking = false
         },
       })
     })
@@ -270,7 +270,7 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
             if (!e.active || hitSet2.has(e)) continue
             const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
             if (dist <= radius && dist >= radius - band) {
-              (e as any).takeDamage(p.damage * 0.6, 'shockwave')
+              (e as BaseEnemy).takeDamage(p.damage * 0.6 * p.getMasteryDamageMult('quake'), 'shockwave')
               hitSet2.add(e)
               const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y);
               (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * kbForce * 0.6, Math.sin(kb) * kbForce * 0.6)
@@ -284,30 +284,28 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
 }
 
 export function updateAmunPassives(p: Player, delta: number) {
-  const pp = p
-
   // Amun defense aura visual (Bastion)
-  if (p.heroType === 'amun' && pp.defenseAuraActive) {
-    if (!pp.defenseAuraGfx) {
-      pp.defenseAuraGfx = p.scene.add.graphics().setDepth(4)
+  if (p.heroType === 'amun' && p.defenseAuraActive) {
+    if (!p.defenseAuraGfx) {
+      p.defenseAuraGfx = p.scene.add.graphics().setDepth(4)
     }
-    pp.defenseAuraGfx.clear()
-    const auraRadius = 45 + pp.armor * 40  // grows with armor
+    p.defenseAuraGfx.clear()
+    const auraRadius = 45 + p.armor * 40  // grows with armor
     const pulse = 0.15 + Math.sin(p.scene.time.now / 600) * 0.05
     // Outer glow ring
-    pp.defenseAuraGfx.lineStyle(3, 0x4488ff, pulse + 0.1)
-    pp.defenseAuraGfx.strokeCircle(p.x, p.y, auraRadius)
+    p.defenseAuraGfx.lineStyle(3, 0x4488ff, pulse + 0.1)
+    p.defenseAuraGfx.strokeCircle(p.x, p.y, auraRadius)
     // Inner fill
-    pp.defenseAuraGfx.fillStyle(0x2266cc, pulse * 0.5)
-    pp.defenseAuraGfx.fillCircle(p.x, p.y, auraRadius)
+    p.defenseAuraGfx.fillStyle(0x2266cc, pulse * 0.5)
+    p.defenseAuraGfx.fillCircle(p.x, p.y, auraRadius)
     // Bright inner ring
-    pp.defenseAuraGfx.lineStyle(1, 0x88bbff, pulse + 0.15)
-    pp.defenseAuraGfx.strokeCircle(p.x, p.y, auraRadius * 0.6)
+    p.defenseAuraGfx.lineStyle(1, 0x88bbff, pulse + 0.15)
+    p.defenseAuraGfx.strokeCircle(p.x, p.y, auraRadius * 0.6)
   }
 
   // Amun passive aura (3 dmg/s in 60px — requires Aura of Might skill)
-  if (p.heroType === 'amun' && pp.hasPassiveAura) {
-    const hpScale = pp.hasLivingFortress ? (0.5 + (p.hp / p.maxHp) * 1.5) : 1
+  if (p.heroType === 'amun' && p.hasPassiveAura) {
+    const hpScale = p.hasLivingFortress ? (0.5 + (p.hp / p.maxHp) * 1.5) : 1
     const auraDps = 3 * hpScale
     const auraR = 60
     const scene = p.scene as any
@@ -315,33 +313,33 @@ export function updateAmunPassives(p: Player, delta: number) {
       for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= auraR) {
-          (e as any).takeDamage(auraDps * (delta / 1000), 'shockwave')
+          (e as BaseEnemy).takeDamage(auraDps * (delta / 1000), 'shockwave')
         }
       }
     }
 
     // Persistent passive aura visual — golden ring centered on player
-    if (!pp.passiveAuraGfx) {
-      pp.passiveAuraGfx = p.scene.add.graphics().setDepth(3)
+    if (!p.passiveAuraGfx) {
+      p.passiveAuraGfx = p.scene.add.graphics().setDepth(3)
     }
-    pp.passiveAuraGfx.clear()
+    p.passiveAuraGfx.clear()
     const t = p.scene.time.now
     const pulse = 0.10 + Math.sin(t / 500) * 0.04
     const breathe = auraR + Math.sin(t / 800) * 3
     // Outer ring
-    pp.passiveAuraGfx.lineStyle(2, 0xfff200, pulse + 0.12)
-    pp.passiveAuraGfx.strokeCircle(pp.cx, pp.cy, breathe)
+    p.passiveAuraGfx.lineStyle(2, 0xfff200, pulse + 0.12)
+    p.passiveAuraGfx.strokeCircle(p.cx, p.cy, breathe)
     // Inner fill
-    pp.passiveAuraGfx.fillStyle(0xffcc00, pulse * 0.3)
-    pp.passiveAuraGfx.fillCircle(pp.cx, pp.cy, breathe)
+    p.passiveAuraGfx.fillStyle(0xffcc00, pulse * 0.3)
+    p.passiveAuraGfx.fillCircle(p.cx, p.cy, breathe)
     // Rotating accent segments (4 small arcs)
     const rot = (t / 1200) % (Math.PI * 2)
-    pp.passiveAuraGfx.lineStyle(1.5, 0xffe066, pulse + 0.08)
+    p.passiveAuraGfx.lineStyle(1.5, 0xffe066, pulse + 0.08)
     for (let i = 0; i < 4; i++) {
       const a = rot + i * Math.PI / 2
-      pp.passiveAuraGfx.beginPath()
-      pp.passiveAuraGfx.arc(pp.cx, pp.cy, breathe - 4, a, a + 0.4)
-      pp.passiveAuraGfx.strokePath()
+      p.passiveAuraGfx.beginPath()
+      p.passiveAuraGfx.arc(p.cx, p.cy, breathe - 4, a, a + 0.4)
+      p.passiveAuraGfx.strokePath()
     }
   }
 
@@ -365,10 +363,10 @@ export function updateAmunPassives(p: Player, delta: number) {
   }
 
   // Amun Gravity Well: pull enemies toward player every 2s
-  if (pp.hasGravityWell) {
-    pp.gravityWellTimer += delta
-    if (pp.gravityWellTimer >= 2000) {
-      pp.gravityWellTimer = 0
+  if (p.hasGravityWell) {
+    p.gravityWellTimer += delta
+    if (p.gravityWellTimer >= 2000) {
+      p.gravityWellTimer = 0
       const pullRadius = 120 + p.range
       const scene2 = p.scene as any
       if (scene2.enemies) {
@@ -394,9 +392,9 @@ export function updateAmunPassives(p: Player, delta: number) {
     if (scene3.enemies) {
       for (const e of scene3.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
-        if ((e as any).hp > 0 && (e as any).maxHp && (e as any).hp < (e as any).maxHp * 0.15) {
+        if ((e as BaseEnemy).hp > 0 && (e as BaseEnemy).maxHp && (e as BaseEnemy).hp < (e as BaseEnemy).maxHp * 0.15) {
           if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= execRadius) {
-            (e as any).takeDamage((e as any).hp + 1, 'shockwave')
+            (e as BaseEnemy).takeDamage((e as BaseEnemy).hp + 1, 'shockwave')
             // VFX: golden beam
             const beam = p.scene.add.rectangle(
               (p.x + e.x) / 2, (p.y + e.y) / 2,
@@ -411,33 +409,33 @@ export function updateAmunPassives(p: Player, delta: number) {
   }
 
   // Amun pulsing damage aura (Sovereign — Consecration)
-  if (p.heroType === 'amun' && pp.dmgAuraActive) {
+  if (p.heroType === 'amun' && p.dmgAuraActive) {
     const dmgR = 70 + p.splashRadius * 0.8
     // Persistent orange ring visual
-    if (!pp.dmgAuraGfx) {
-      pp.dmgAuraGfx = p.scene.add.graphics().setDepth(3)
+    if (!p.dmgAuraGfx) {
+      p.dmgAuraGfx = p.scene.add.graphics().setDepth(3)
     }
-    pp.dmgAuraGfx.clear()
+    p.dmgAuraGfx.clear()
     const dt = p.scene.time.now
     const dPulse = 0.12 + Math.sin(dt / 400) * 0.06
     const dBreathe = dmgR + Math.sin(dt / 600) * 4
-    pp.dmgAuraGfx.lineStyle(2, 0xff8800, dPulse + 0.1)
-    pp.dmgAuraGfx.strokeCircle(pp.cx, pp.cy, dBreathe)
-    pp.dmgAuraGfx.fillStyle(0xff6600, dPulse * 0.2)
-    pp.dmgAuraGfx.fillCircle(pp.cx, pp.cy, dBreathe)
+    p.dmgAuraGfx.lineStyle(2, 0xff8800, dPulse + 0.1)
+    p.dmgAuraGfx.strokeCircle(p.cx, p.cy, dBreathe)
+    p.dmgAuraGfx.fillStyle(0xff6600, dPulse * 0.2)
+    p.dmgAuraGfx.fillCircle(p.cx, p.cy, dBreathe)
     // Flame-like segments rotating
     const dRot = (dt / 900) % (Math.PI * 2)
-    pp.dmgAuraGfx.lineStyle(2, 0xffaa33, dPulse + 0.15)
+    p.dmgAuraGfx.lineStyle(2, 0xffaa33, dPulse + 0.15)
     for (let i = 0; i < 6; i++) {
       const a = dRot + i * Math.PI / 3
-      pp.dmgAuraGfx.beginPath()
-      pp.dmgAuraGfx.arc(pp.cx, pp.cy, dBreathe - 5, a, a + 0.3)
-      pp.dmgAuraGfx.strokePath()
+      p.dmgAuraGfx.beginPath()
+      p.dmgAuraGfx.arc(p.cx, p.cy, dBreathe - 5, a, a + 0.3)
+      p.dmgAuraGfx.strokePath()
     }
 
-    pp.dmgAuraLastPulse += delta
-    if (pp.dmgAuraLastPulse >= pp.dmgAuraCooldown) {
-      pp.dmgAuraLastPulse = 0
+    p.dmgAuraLastPulse += delta
+    if (p.dmgAuraLastPulse >= p.dmgAuraCooldown) {
+      p.dmgAuraLastPulse = 0
       const pulseRadius = 70 + p.splashRadius * 0.8
       const pulseDmg = p.damage * 0.4
 
@@ -469,10 +467,82 @@ export function updateAmunPassives(p: Player, delta: number) {
         for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
           if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= pulseRadius) {
-            (e as any).takeDamage(pulseDmg, 'shockwave')
+            (e as BaseEnemy).takeDamage(pulseDmg, 'shockwave')
           }
         }
       }
     }
+  }
+}
+
+// AMUN — Melee ground slam (melee stance)
+export function attackMelee(
+  p: Player,
+  target: Phaser.Physics.Arcade.Sprite,
+  enemies: Phaser.Physics.Arcade.Group
+) {
+  const cx = p.x, cy = p.y
+  const meleeRange = Math.max(65, p.range)
+  const dmg = p.damage * 1.3 * p.getMasteryDamageMult('ground') // melee hits harder per swing
+  const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
+
+  // Hit all enemies in melee cone
+  for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+    if (!e.active || hitSet.has(e)) continue
+    const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
+    if (dist < meleeRange) {
+      (e as BaseEnemy).takeDamage(dmg, 'melee')
+      hitSet.add(e)
+      const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y)
+      const kbForce = p.hasColossus ? 350 : 150
+      ;(e.body as Phaser.Physics.Arcade.Body).setVelocity(
+        Math.cos(kb) * kbForce, Math.sin(kb) * kbForce
+      )
+
+      // Earthquake stun applies in melee too
+      if (p.hasEarthquake) {
+        ;(e as BaseEnemy).speed = 0
+        p.scene.time.delayedCall(800, () => {
+          if (e.active) (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed || (e as BaseEnemy).speed
+        })
+      }
+    }
+  }
+
+  // VFX: ground impact arc
+  const dir = Phaser.Math.Angle.Between(cx, cy, target.x, target.y)
+  const impactX = cx + Math.cos(dir) * 30
+  const impactY = cy + Math.sin(dir) * 30
+  const impact = p.scene.add.circle(impactX, impactY, 12, 0xffcc44, 0.6).setDepth(9)
+  p.scene.tweens.add({
+    targets: impact, scale: 4, alpha: 0, duration: 300,
+    onComplete: () => impact.destroy(),
+  })
+
+  // Dust particles
+  for (let i = 0; i < 4; i++) {
+    const a = dir + (Math.random() - 0.5) * 1.2
+    const d = 20 + Math.random() * 25
+    const dust = p.scene.add.circle(cx, cy, 2 + Math.random() * 2, 0xaa8844, 0.7).setDepth(8)
+    p.scene.tweens.add({
+      targets: dust,
+      x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d,
+      alpha: 0, duration: 250 + Math.random() * 100,
+      onComplete: () => dust.destroy(),
+    })
+  }
+
+  p.scene.cameras.main.shake(50, 0.003)
+  p.scene.time.delayedCall(120, () => { (p as any).isAttacking = false })
+}
+
+// AMUN — Stance energy regen (inactive stance recharges)
+export function updateAmunEnergy(p: Player, delta: number) {
+  if (!p.hasQuakeStance) return
+  const regenAmt = p.energyRegenRate * (delta / 1000)
+  if (p.amunStance === 'quake') {
+    p.groundEnergy = Math.min(p.maxEnergy, p.groundEnergy + regenAmt)
+  } else {
+    p.quakeEnergy = Math.min(p.maxEnergy, p.quakeEnergy + regenAmt)
   }
 }
