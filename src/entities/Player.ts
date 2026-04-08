@@ -167,11 +167,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasEarthquake = false       // stun enemies on shockwave
   hasColossus = false         // massive knockback on shockwave
   hasCataclysm = false        // double shockwave burst
-  hasPassiveAura = false      // constant dps ring around player
+  hasPassiveAura = false      // orbiting shield projectiles
+  passiveAuraLevel = 0        // 1/2/3 — controls shield count & appearance
+  orbitShields: Phaser.GameObjects.Image[] = []  // managed by updateAmunPassives
   hasThorns = false           // reflect damage to melee attackers
   hasIronWill = false         // cap incoming damage to 10% maxHP
   hasLowHpRegen = false       // regen ×3 when below 40% HP
-  hasUndying = false          // revive once at full HP
+  rebirthStacks = 0           // revive N times at full HP (Undying)
   hasLivingFortress = false   // aura damage scales with HP %
   hasWrath = false            // damage aura spike when hit
   hasGravityWell = false      // pull enemies toward Amun
@@ -1298,22 +1300,79 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return
     }
 
-    // Undying (Amun): revive once at full HP
-    if (this.hasUndying) {
-      this.hasUndying = false
+    // Undying (Amun): revive at full HP, consume one rebirth stack
+    if (this.rebirthStacks > 0) {
+      this.rebirthStacks--
       this.hp = this.maxHp
-      const ring = this.scene.add.circle(this.x, this.y, 10, 0xfff200, 0.7).setDepth(15)
-      this.scene.tweens.add({ targets: ring, scale: 10, alpha: 0, duration: 600, onComplete: () => ring.destroy() })
-      this.scene.cameras.main.flash(400, 255, 255, 100)
-      // Shockwave burst on revive
+
+      // --- Enhanced rebirth VFX ---
+      const cx = this.x, cy = this.y
+
+      // 1. Light beam from above
+      const beam = this.scene.add.rectangle(cx, cy - 300, 40, 600, 0xfff8cc, 0.8)
+        .setDepth(16).setBlendMode(Phaser.BlendModes.ADD).setOrigin(0.5, 1)
+      beam.setScale(0.3, 0)
+      this.scene.tweens.add({
+        targets: beam, scaleX: 1.5, scaleY: 1, alpha: 0.9, duration: 300, ease: 'Quad.easeOut',
+        onComplete: () => {
+          this.scene.tweens.add({
+            targets: beam, scaleX: 0.2, alpha: 0, duration: 500, delay: 200,
+            onComplete: () => beam.destroy(),
+          })
+        },
+      })
+
+      // 2. Expanding golden ring
+      const ring = this.scene.add.circle(cx, cy, 10, 0xfff200, 0.7).setDepth(15)
+      this.scene.tweens.add({ targets: ring, scale: 12, alpha: 0, duration: 700, onComplete: () => ring.destroy() })
+
+      // 3. Second slower ring
+      this.scene.time.delayedCall(150, () => {
+        const ring2 = this.scene.add.circle(cx, cy, 10, 0xffe066, 0.5).setDepth(15)
+        this.scene.tweens.add({ targets: ring2, scale: 8, alpha: 0, duration: 600, onComplete: () => ring2.destroy() })
+      })
+
+      // 4. Smoke/dust burst — 12 particles radiating outward
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2
+        const dist = 40 + Math.random() * 50
+        const size = 6 + Math.random() * 6
+        const smoke = this.scene.add.circle(cx, cy, size, 0xccaa66, 0.6).setDepth(14)
+        this.scene.tweens.add({
+          targets: smoke,
+          x: cx + Math.cos(a) * dist,
+          y: cy + Math.sin(a) * dist,
+          alpha: 0, scale: 2.5, duration: 500 + Math.random() * 300,
+          onComplete: () => smoke.destroy(),
+        })
+      }
+
+      // 5. Rising golden sparkles
+      for (let i = 0; i < 8; i++) {
+        this.scene.time.delayedCall(i * 60, () => {
+          const sx = cx + (Math.random() - 0.5) * 30
+          const spark = this.scene.add.circle(sx, cy, 2, 0xfff200, 0.9).setDepth(16)
+          this.scene.tweens.add({
+            targets: spark, y: cy - 40 - Math.random() * 30, alpha: 0,
+            duration: 400 + Math.random() * 200,
+            onComplete: () => spark.destroy(),
+          })
+        })
+      }
+
+      // Camera flash + shake
+      this.scene.cameras.main.flash(500, 255, 255, 100)
+      this.scene.cameras.main.shake(200, 0.008)
+
+      // Shockwave burst on revive — damages + knocks back enemies
       const scene = this.scene as any
       if (scene.enemies) {
         for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= 100) {
+          if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= 120) {
             (e as any).takeDamage(this.damage, 'shockwave');
-            const kb = Phaser.Math.Angle.Between(this.x, this.y, e.x, e.y);
-            (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * 300, Math.sin(kb) * 300)
+            const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y);
+            (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * 400, Math.sin(kb) * 400)
           }
         }
       }
@@ -1328,6 +1387,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.defenseAuraGfx) { this.defenseAuraGfx.destroy(); this.defenseAuraGfx = null }
     if (this.passiveAuraGfx) { this.passiveAuraGfx.destroy(); this.passiveAuraGfx = null }
     if (this.dmgAuraGfx) { this.dmgAuraGfx.destroy(); this.dmgAuraGfx = null }
+    for (const s of this.orbitShields) if (s) s.destroy()
+    this.orbitShields = []
 
     // Givi death: crystal ring burst VFX
     if (this.heroType === 'muller') {
@@ -1441,9 +1502,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (this.isAttacking) return
-    // Amun melee stance: faster attack speed (600ms vs 1200ms base)
     let cd = this.attackCooldown
-    if (this.heroType === 'amun' && this.hasQuakeStance && this.amunStance === 'melee') cd = Math.min(cd, 600)
     if (time - this.lastAttackTime < cd) return
 
     // Nazar venom / Huntress spear stance gets extended range

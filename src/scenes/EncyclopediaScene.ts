@@ -142,27 +142,14 @@ const HERO_SPRITE_DEFS: Record<string, { asset: string; fw: number; fh: number; 
 // Per-hero icon base frames for the branch overview and skills pages.
 // For most heroes the formula is: iconBase + branchIdx * 9 + skillIdx
 // Amun's branches are packed 5-apart (not 9), so we use explicit per-branch bases.
-const HERO_ICON_BASE: Record<string, number> = {
-  ignara: 0, sifra: 27, nazar: 18, huntress: 9,
-  // khashin/muller branches start at 70/85 but use the generic formula too
-  khashin: 70, muller: 85,
-}
-
-// For heroes with non-uniform branch spacing, list each branch's icon base explicitly.
-const HERO_BRANCH_ICON_BASES: Record<string, number[]> = {
-  sifra: [45, 40, 70],  // Lightning(45-49), Frost(40-44), Shatter(70-73)
-  amun: [55, 60, 65],   // Wrath(55-59), Bastion(60-64), Quake(65-69)
-}
-
-/** Return the icon frame for a given hero's branch + skill. */
+/** Return the icon frame for a given hero's branch + skill using actual ICON_FRAME_MAP. */
 function branchIconFrame(heroType: string, branchIdx: number, skillIdx: number): number {
-  const perBranch = HERO_BRANCH_ICON_BASES[heroType]
-  if (perBranch) {
-    const base = perBranch[branchIdx] ?? 0
-    return base + skillIdx
+  const branches = HERO_BRANCHES[heroType]
+  if (branches && branches[branchIdx]) {
+    const upgrade = branches[branchIdx].upgrades[skillIdx]
+    if (upgrade?.icon) return getIconFrame(upgrade.icon)
   }
-  const base = HERO_ICON_BASE[heroType] ?? 0
-  return (base + branchIdx * 9 + skillIdx) % 90
+  return 0
 }
 
 // ============================================================

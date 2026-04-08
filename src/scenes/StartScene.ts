@@ -18,12 +18,12 @@ interface HeroDef {
 }
 
 const HEROES: HeroDef[] = [
+  { type: 'amun', name: 'Amun', role: 'Guardian', color: 0xfff200,
+    asset: 'assets/amun/Idle.png', fw: 160, fh: 111, scale: 1.3, frames: 8, yOff: -30 },
   { type: 'sifra', name: 'Sifra', role: 'Ice Mage', color: 0x82ccdd,
     asset: 'assets/sifra/Idle.png', fw: 231, fh: 190, scale: 0.65, frames: 6 },
   { type: 'ignara', name: 'Ignara', role: 'Fire Mage', color: 0xe84118,
     asset: 'assets/ignara/Idle.png', fw: 150, fh: 150, scale: 1.1, frames: 8 },
-  { type: 'amun', name: 'Amun', role: 'Guardian', color: 0xfff200,
-    asset: 'assets/amun/Idle.png', fw: 160, fh: 111, scale: 1.3, frames: 8, yOff: -30 },
   { type: 'nazar', name: 'Nazar', role: 'Samurai', color: 0xc23616,
     asset: 'assets/nazar/Idle.png', fw: 200, fh: 200, scale: 1.0, frames: 8, yOff: 8 },
   { type: 'huntress', name: 'Lyra', role: 'Spear Thrower', color: 0x2ecc71,
@@ -35,7 +35,7 @@ const HEROES: HeroDef[] = [
 ]
 
 // Only first hero is unlocked; rest are locked
-const UNLOCKED_HEROES = new Set<HeroType>(['sifra'])
+const UNLOCKED_HEROES = new Set<HeroType>(['amun', 'sifra'])
 
 export class StartScene extends Phaser.Scene {
   private circles: Phaser.GameObjects.Graphics[] = []

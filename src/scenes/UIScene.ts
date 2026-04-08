@@ -67,7 +67,7 @@ export class UIScene extends Phaser.Scene {
   create(data: { gameScene: GameScene }) {
     this.gameScene = data.gameScene || (this.scene.get('GameScene') as GameScene)
     this._tookDamageThisRun = false  // reset at start of each run
-    this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+    this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
     // Slight UI scale-down on mobile so elements don't crowd the edges
     if (this.isMobile) {
@@ -96,14 +96,14 @@ export class UIScene extends Phaser.Scene {
     }).setDepth(2)
 
     // Kills (top-right) — with skull icon
-    this.killText = this.add.text(0, 14, '', {
+    this.killText = this.add.text(0, 22, '', {
       ...textStyle,
       fontSize: '14px',
       color: '#ff8888',
     }).setDepth(2)
 
     // Difficulty tier (top-right under kills)
-    this.tierText = this.add.text(0, 32, '', {
+    this.tierText = this.add.text(0, 40, '', {
       ...textStyle,
       fontSize: '11px',
       color: '#ffaa44',
@@ -121,15 +121,15 @@ export class UIScene extends Phaser.Scene {
       gc.generateTexture('hud_coin', 14, 14)
       gc.destroy()
     }
-    this.goldIcon = this.add.image(0, 52, 'hud_coin').setDepth(2)
-    this.goldText = this.add.text(0, 48, '', {
+    this.goldIcon = this.add.image(0, 60, 'hud_coin').setDepth(2)
+    this.goldText = this.add.text(0, 56, '', {
       ...textStyle,
       fontSize: '13px',
       color: '#FFD700',
     }).setDepth(2)
 
     // Countdown timer (top-center)
-    this.timerText = this.add.text(0, 26, '', {
+    this.timerText = this.add.text(0, 38, '', {
       fontFamily: 'monospace',
       fontSize: '24px',
       color: '#ffffff',
@@ -226,7 +226,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Mobile stance toggle button (big, right side)
-    const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+    const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
     const p = this.gameScene.player
     const hasStance = p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance)
     if (isMob && hasStance) {
@@ -323,12 +323,12 @@ export class UIScene extends Phaser.Scene {
 
   private updatePositions() {
     const { width, height } = this.scale
-    this.killText.setPosition(width - 20, 14).setOrigin(1, 0)
-    this.tierText.setPosition(width - 20, 32).setOrigin(1, 0)
-    this.goldText.setPosition(width - 20, 48).setOrigin(1, 0)
-    this.goldIcon.setPosition(width - 20 - this.goldText.width - 10, 55)
-    this.timerText.setPosition(width / 2, 30).setOrigin(0.5, 0)
-    this.announcement.setPosition(width / 2, 60)
+    this.killText.setPosition(width - 20, 22).setOrigin(1, 0)
+    this.tierText.setPosition(width - 20, 40).setOrigin(1, 0)
+    this.goldText.setPosition(width - 20, 56).setOrigin(1, 0)
+    this.goldIcon.setPosition(width - 20 - this.goldText.width - 10, 63)
+    this.timerText.setPosition(width / 2, 38).setOrigin(0.5, 0)
+    this.announcement.setPosition(width / 2, 68)
     if (this.stanceBtn) this.stanceBtn.setPosition(56, 72)
     if (this.mobileStanceBtn) {
       this.mobileStanceBtn.setPosition(width * 0.75, height / 2).setSize(width / 2, height)
@@ -687,7 +687,7 @@ export class UIScene extends Phaser.Scene {
     statRow('Damage', `${Math.ceil(p.damage)}`)
     statRow('Speed', `${Math.ceil(p.speed)}`)
     statRow('Range', `${Math.ceil(p.range)}px`)
-    statRow('Cooldown', `${p.attackCooldown}ms`)
+    statRow('Atk Spd', `${(1000 / p.attackCooldown).toFixed(1)}`)
     statRow('Armor', `${Math.round(p.armor * 100)}%`)
     statRow('HP Regen', `${p.hpRegen}/s`)
     statRow('Splash', `${p.splashRadius}px`)
@@ -1440,7 +1440,7 @@ export class UIScene extends Phaser.Scene {
     const ebW = 95, ebGap = 3
     const barW = ebW * 2 + ebGap               // HP bar = combined energy width (193px)
     const hpBarH = 24, ebH = 12
-    const hpBarY = 16                          // HP bar top
+    const hpBarY = 24                          // HP bar top (below XP bar)
     const ebY = hpBarY + hpBarH + 3            // energy bars top
     const lvlCY = hpBarY + (hpBarH + 3 + ebH) / 2  // vertically center with bars
 
@@ -1481,19 +1481,38 @@ export class UIScene extends Phaser.Scene {
     const xpPad = 40
     const xpTopY = 4
     const xpFullW = screenW - xpPad * 2
-    const xpTopH = 6
+    const xpTopH = 15
     const xpRatio = p.xp / p.xpToNextLevel()
     const xpFillW = Math.floor(xpFullW * xpRatio)
     g.fillStyle(0x080818, 0.8)
-    g.fillRoundedRect(xpPad, xpTopY, xpFullW, xpTopH, 3)
+    g.fillRoundedRect(xpPad, xpTopY, xpFullW, xpTopH, 4)
     if (xpFillW > 0) {
+      // Main fill
       g.fillStyle(0x2266cc)
-      g.fillRoundedRect(xpPad, xpTopY, xpFillW, xpTopH, 3)
-      g.fillStyle(0x4499ff, 0.5)
-      g.fillRect(xpPad + 1, xpTopY, xpFillW - 2, 1)
+      g.fillRoundedRect(xpPad, xpTopY, xpFillW, xpTopH, 4)
+      // Top highlight strip
+      g.fillStyle(0x4499ff, 0.6)
+      g.fillRect(xpPad + 2, xpTopY + 1, xpFillW - 4, 3)
+      // Bright specular line
+      g.fillStyle(0x88ccff, 0.4)
+      g.fillRect(xpPad + 2, xpTopY + 2, xpFillW - 4, 1)
+      // Bottom shadow
+      g.fillStyle(0x001133, 0.4)
+      g.fillRect(xpPad + 2, xpTopY + xpTopH - 3, xpFillW - 4, 2)
+      // Animated color glints (VS-style shimmer)
+      const t = this.time.now * 0.002
+      for (let i = 0; i < 3; i++) {
+        const glintX = xpPad + ((t * 80 + i * xpFullW / 3) % xpFillW)
+        if (glintX > xpPad && glintX < xpPad + xpFillW - 8) {
+          g.fillStyle(0xffffff, 0.25 + Math.sin(t + i * 2) * 0.15)
+          g.fillRect(glintX, xpTopY + 2, 6, xpTopH - 4)
+          g.fillStyle(0xaaddff, 0.3)
+          g.fillRect(glintX + 2, xpTopY + 1, 2, xpTopH - 2)
+        }
+      }
     }
     g.lineStyle(1, 0x1a2244, 0.6)
-    g.strokeRoundedRect(xpPad, xpTopY, xpFullW, xpTopH, 3)
+    g.strokeRoundedRect(xpPad, xpTopY, xpFullW, xpTopH, 4)
 
     // === ENERGY BARS (directly below HP, aligned) ===
     const hasEnergy = (p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance))
@@ -1665,6 +1684,10 @@ export class UIScene extends Phaser.Scene {
       // --- Ice Armor (Sifra) ---
       if (p.hasIceArmor && p.iceArmorHP > 0)
         drawBigBuff(51, 0x88ddff, `${Math.ceil(p.iceArmorHP)}`)
+
+      // --- Undying rebirth stacks (Amun) ---
+      if (p.rebirthStacks > 0)
+        drawBigBuff(63, 0xfff200, `${p.rebirthStacks}`)
 
     }
 

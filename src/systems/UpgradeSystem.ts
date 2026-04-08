@@ -440,7 +440,7 @@ const AMUN_BRANCHES: BranchDef[] = [
     theme: 'A thousand years of patience, ended.',
     upgrades: [
       {
-        id: 'aw1', label: 'Thorns', icon: 'aq1_titans_pulse',
+        id: 'aw1', label: 'Thorns', icon: 'aw1_thorns',
         desc: ['When hit: reflect 50% dmg to enemies in 6m, +5% armor', 'Reflect radius +2m, +5% armor', '+5% armor + Wrath AoE burst on hit'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasThorns = true; p.armor = Math.min(0.7, p.armor + 0.05) }
@@ -449,7 +449,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aw2', label: 'Wrath', icon: 'aq2_earthquake',
+        id: 'aw2', label: 'Wrath', icon: 'aw2_wrath',
         desc: ['When hit: AoE burst 60% dmg in 7m, +10% dmg', '+10% dmg, AoE radius +2m', '+10% dmg + Living Fortress: aura scales with HP%'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.1) }
@@ -458,8 +458,8 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aw3', label: 'Consecration', icon: 'aq3_colossus',
-        desc: ['Aura: pulse 40% dmg in 7m every 1.5s, +25 splash, +3 dmg', '+4 dmg, pulse rate increases to 1.2s', '+5 dmg, splash +20 + gains +30 max HP'],
+        id: 'aw3', label: 'Consecration', icon: 'aw3_consecration',
+        desc: ['Aura: pulse 40% dmg in 12m every 1.5s, +25 splash, +3 dmg', '+4 dmg, pulse rate increases to 1.2s', '+5 dmg, splash +20 + gains +30 max HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.splashRadius += 25; p.damage += 3; p.dmgAuraActive = true }
           else if (lvl === 2) { p.damage += 4 }
@@ -467,7 +467,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aw5', label: 'Divine Judgment', icon: 'aq5_cataclysm', isUltimate: true,
+        id: 'aw5', label: 'Divine Judgment', icon: 'aw5_divine_judgment', isUltimate: true,
         desc: ['Auto-execute enemies below 15% HP in range, +15% dmg', '+10% dmg, execute range doubled', '+15% dmg, execute threshold rises to 20% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.15) }
@@ -483,7 +483,7 @@ const AMUN_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'ab1', label: 'Fortify', icon: 'ab1_fortify',
-        desc: ['+15% armor, activates defense aura visual', '+10% more armor', '+10% armor, Iron Will: cap incoming hit at 10% maxHP'],
+        desc: ['+15% armor, activates defense aura', '+15% more armor', '+10% armor, Iron Will: cap incoming hit at 10% maxHP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.15); p.defenseAuraActive = true }
           else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.1) }
@@ -491,10 +491,12 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'ab2', label: 'Aura of Might', icon: 'ab2_thorns',
-        desc: ['Aura: 3 DPS to all enemies in 6m, +3 dmg', '+3 dmg, aura radius +2m, 4 DPS', '+4 dmg, aura DPS doubles + low HP regen ×3 below 40%'],
+        id: 'ab2', label: 'Aura of Might', icon: 'ab2_aura_of_might',
+        desc: ['Orbiting shield, +3 dmg', '+3 dmg, +1 shields', '+4 dmg, +2 shields + low HP regen ×3'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasPassiveAura = true; p.damage += 3 }
+          p.hasPassiveAura = true
+          p.passiveAuraLevel = lvl
+          if (lvl === 1) { p.damage += 3 }
           else if (lvl === 2) { p.damage += 3; p.splashRadius += 20 }
           else { p.damage += 4; p.hasLowHpRegen = true }
         },
@@ -505,16 +507,16 @@ const AMUN_BRANCHES: BranchDef[] = [
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasIronWill = true; p.armor = Math.min(0.7, p.armor + 0.1) }
           else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.1); p.hpRegen += 2 }
-          else { p.armor = Math.min(0.7, p.armor + 0.1); p.hpRegen += 2; p.hasUndying = true }
+          else { p.armor = Math.min(0.7, p.armor + 0.1); p.hpRegen += 2; p.rebirthStacks = Math.max(p.rebirthStacks, 1) }
         },
       },
       {
         id: 'ab5', label: 'Undying', icon: 'ab5_undying', isUltimate: true,
-        desc: ['Revive once at full HP + 10m shockwave, +30 max HP', '+30 max HP, revive shockwave is 15m', '+40 max HP, revive triggers a 2s invuln window'],
+        desc: ['1 rebirth at full HP + shockwave, +30 max HP', '+30 max HP, shockwave 15m', '+40 max HP, 2 rebirths'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasUndying = true; p.maxHp += 30; p.hp += 30 }
+          if (lvl === 1) { p.rebirthStacks = Math.max(p.rebirthStacks, 1); p.maxHp += 30; p.hp += 30 }
           else if (lvl === 2) { p.maxHp += 30; p.hp += 30 }
-          else { p.maxHp += 40; p.hp += 40 }
+          else { p.rebirthStacks = 2; p.maxHp += 40; p.hp += 40 }
         },
       },
     ],
@@ -524,7 +526,7 @@ const AMUN_BRANCHES: BranchDef[] = [
     theme: 'The Amunat wastes remember every earthquake. Make more.',
     upgrades: [
       {
-        id: 'aq1', label: "Titan's Pulse", icon: 'as1_living_fortress',
+        id: 'aq1', label: "Titan's Pulse", icon: 'aq1_titans_pulse',
         desc: ["Unlock stance toggle (Q): melee / quake. Boulder 30m, +5 dmg", '+5 dmg, shockwave boulder splits into 2', '+5 dmg, boulder AoE splash +20'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasQuakeStance = true; p.hasTitansPulse = true; p.damage += 5; p.splashRadius += 15 }
@@ -533,7 +535,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aq2', label: 'Earthquake', icon: 'as2_consecration',
+        id: 'aq2', label: 'Earthquake', icon: 'aq2_earthquake',
         desc: ['Shockwave hit: stun enemies 0.8s, +10% dmg', '+10% dmg, stun duration 1.2s', '+10% dmg + Gravity Well: pull enemies every 2s'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasEarthquake = true; p.damage = Math.ceil(p.damage * 1.1) }
@@ -542,7 +544,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aq3', label: 'Colossus', icon: 'as3_wrath',
+        id: 'aq3', label: 'Colossus', icon: 'aq3_colossus',
         desc: ['Shockwave knockback 50m (vs 20m), +5 dmg', '+5 dmg, knockback pulls enemies in after rebound', '+5 dmg + Gravity Well: pull every 2s in 12m range'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasColossus = true; p.damage += 5 }
@@ -551,7 +553,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aq5', label: 'Cataclysm', icon: 'as5_divine_judgment', isUltimate: true,
+        id: 'aq5', label: 'Cataclysm', icon: 'aq5_cataclysm', isUltimate: true,
         desc: ['2nd shockwave 60% dmg at 350ms delay, +15% dmg', '+10% dmg, 3rd shockwave 40% dmg at 700ms', '+15% dmg, all shockwaves 15% wider AoE'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCataclysm = true; p.damage = Math.ceil(p.damage * 1.15) }
@@ -1014,9 +1016,12 @@ export class UpgradeTracker {
       branches = KHASHIN_BRANCHES
     }
 
-    // For any hero with more than 3 branches, randomly pick 3
+    // Shuffle branch order so positions are random each time
+    branches = [...branches].sort(() => Math.random() - 0.5)
+
+    // For any hero with more than 3 branches, pick 3
     if (branches.length > 3) {
-      branches = [...branches].sort(() => Math.random() - 0.5).slice(0, 3)
+      branches = branches.slice(0, 3)
     }
 
     return branches.map(b => ({
@@ -1134,9 +1139,9 @@ const ICON_FRAME_MAP: Record<string, number> = {
   'sl1_spark_initiate': 45, 'sl2_arc_reach': 46, 'sl3_overcharge': 47, 'sl4_ball_lightning': 48, 'sl5_storm_lord': 49,
   'ss1_permafrost': 70, 'ss2_shatter': 71, 'ss3_ice_spear': 72, 'ss4_frostbite': 48, 'ss5_avalanche': 73,
   'sc1_glacial_pierce': 50, 'sc2_ice_armor': 51, 'sc3_mirror_ice': 52, 'sc4_cryo_shield': 53, 'sc5_diamond_dust': 54,
-  'aq1_titans_pulse': 55, 'aq2_earthquake': 56, 'aq3_colossus': 57, 'aq4_rally_cry': 58, 'aq5_cataclysm': 59,
-  'ab1_fortify': 60, 'ab2_thorns': 61, 'ab3_iron_will': 62, 'ab4_regenerate': 63, 'ab5_undying': 64,
-  'as1_living_fortress': 65, 'as2_consecration': 66, 'as3_wrath': 67, 'as4_gravity_well': 68, 'as5_divine_judgment': 69,
+  'aw1_thorns': 55, 'aw2_wrath': 56, 'aw3_consecration': 57, 'aw5_divine_judgment': 58,
+  'ab1_fortify': 60, 'ab2_aura_of_might': 61, 'ab3_iron_will': 62, 'ab5_undying': 63,
+  'aq1_titans_pulse': 65, 'aq2_earthquake': 66, 'aq3_colossus': 67, 'aq5_cataclysm': 68,
   'kw1_razor_wind': 70, 'kw2_gust_strike': 71, 'kw3_dust_devil': 72, 'kw4_cyclone_surge': 73, 'kw5_eye_of_the_storm': 74,
   'kd1_choking_sand': 75, 'kd2_sand_armor': 76, 'kd3_abrasion': 77, 'kd4_scarab_tide': 78, 'kd5_sandstorm_wall': 79,
   'km1_tailwind': 80, 'km2_phantom_step': 81, 'km3_mirage': 82, 'km4_drift': 83, 'km5_desert_wind': 84,

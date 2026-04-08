@@ -107,9 +107,11 @@ export class GameScene extends Phaser.Scene {
     // Terrain
     ss('terrain_grass', 'assets/terrain/TX Tileset Grass.png', 32, 32)
     ss('terrain_stone', 'assets/terrain/TX Tileset Stone Ground.png', 32, 32)
+    img('shield_blue', 'assets/vfx/shield_blue.png')
     img('deco_tree1', 'assets/terrain/tree1.png')
     img('deco_tree2', 'assets/terrain/tree2.png')
     img('deco_tree3', 'assets/terrain/tree3.png')
+    img('zone_marker', 'assets/terrain/zone.png')
 
     // Props
     img('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
@@ -234,6 +236,12 @@ export class GameScene extends Phaser.Scene {
       this.generateGraveTextures()
       this.events.emit('terrain-ready')
     }
+
+    // Zone marker centered on hero spawn
+    this.add.image(this.player.x, this.player.y, 'zone_marker').setOrigin(0.5).setScale(0.252).setDepth(1).setAlpha(0.85)
+
+    // ── Dark reveal effect: two shadow halves part to reveal the map ──
+    this.playMapReveal()
 
     // Collide player with rocks and trees
     this.physics.add.collider(this.player, this.rocks)
@@ -418,6 +426,188 @@ export class GameScene extends Phaser.Scene {
     if (dist < 1800) return 2
     if (dist < 2400) return 3
     return 4
+  }
+
+  /** Dark shadow halves part to reveal the map — runs once on scene start */
+  private playMapReveal() {
+    const cam = this.cameras.main
+    const sw = cam.width
+    const sh = cam.height
+    const cx = sw / 2
+
+    // ── Draw two demon-claw shadow halves with jagged claw edges ──
+    const leftGfx = this.add.graphics().setDepth(999).setScrollFactor(0)
+    const rightGfx = this.add.graphics().setDepth(999).setScrollFactor(0)
+
+    // Claw parameters — 5 claws per side reaching inward
+    const clawCount = 5
+    const clawData: { y: number; len: number; w: number; curve: number }[] = []
+    for (let i = 0; i < clawCount; i++) {
+      const t = (i + 0.5) / clawCount
+      clawData.push({
+        y: t * sh,
+        len: 50 + Math.random() * 40,   // how far the claw reaches past center
+        w: 25 + Math.random() * 20,      // width of claw base
+        curve: 10 + Math.random() * 15,  // curve offset for organic feel
+      })
+    }
+
+    const drawSide = (g: Phaser.GameObjects.Graphics, side: 'left' | 'right') => {
+      g.clear()
+      // Solid dark fill for the half
+      g.fillStyle(0x0a0008, 1)
+      if (side === 'left') {
+        g.fillRect(-sw, 0, sw + cx, sh)
+      } else {
+        g.fillRect(cx, 0, sw, sh)
+      }
+
+      // Draw claw fingers reaching toward center
+      for (const c of clawData) {
+        const dir = side === 'left' ? 1 : -1
+        const baseX = side === 'left' ? cx : cx
+        const tipX = baseX + dir * c.len
+
+        g.fillStyle(0x1a0015, 1)
+        g.beginPath()
+        // Claw shape: wide base tapering to sharp point
+        g.moveTo(baseX, c.y - c.w / 2)
+        g.lineTo(baseX + dir * c.len * 0.4, c.y - c.w * 0.35 + c.curve * 0.3)
+        g.lineTo(tipX, c.y + dir * 3)  // sharp tip, slightly curved
+        g.lineTo(baseX + dir * c.len * 0.4, c.y + c.w * 0.35 - c.curve * 0.2)
+        g.lineTo(baseX, c.y + c.w / 2)
+        g.closePath()
+        g.fillPath()
+
+        // Inner claw highlight (dark purple/red vein)
+        g.lineStyle(2, 0x330022, 0.6)
+        g.beginPath()
+        g.moveTo(baseX, c.y)
+        g.lineTo(baseX + dir * c.len * 0.5, c.y + c.curve * 0.15)
+        g.lineTo(tipX, c.y + dir * 3)
+        g.strokePath()
+
+        // Claw tip nail — lighter pointed triangle
+        const nailLen = 12
+        g.fillStyle(0x443344, 0.9)
+        g.beginPath()
+        g.moveTo(tipX, c.y + dir * 3)
+        g.lineTo(tipX + dir * nailLen, c.y + dir * 1)
+        g.lineTo(tipX + dir * 2, c.y + dir * 3 + 5)
+        g.lineTo(tipX + dir * 2, c.y + dir * 3 - 5)
+        g.closePath()
+        g.fillPath()
+      }
+
+      // Jagged edge along the seam (torn skin / shadow border)
+      g.fillStyle(0x0a0008, 1)
+      const edgeX = side === 'left' ? cx : cx
+      const jagSegments = 20
+      g.beginPath()
+      g.moveTo(edgeX, 0)
+      for (let i = 0; i <= jagSegments; i++) {
+        const py = (i / jagSegments) * sh
+        const jag = (Math.sin(i * 2.7) * 8 + Math.sin(i * 5.1) * 4) * (side === 'left' ? 1 : -1)
+        g.lineTo(edgeX + jag, py)
+      }
+      g.lineTo(edgeX, sh)
+      // Fill back to solid side
+      const solidX = side === 'left' ? -sw : sw * 2
+      g.lineTo(solidX, sh)
+      g.lineTo(solidX, 0)
+      g.closePath()
+      g.fillPath()
+    }
+
+    drawSide(leftGfx, 'left')
+    drawSide(rightGfx, 'right')
+
+    // ── Fog wisps along the seam ──
+    const fogParts: Phaser.GameObjects.Graphics[] = []
+    for (let i = 0; i < 18; i++) {
+      const fy = Math.random() * sh
+      const fg = this.add.graphics().setDepth(1000).setScrollFactor(0)
+      const size = 10 + Math.random() * 25
+      const alpha = 0.15 + Math.random() * 0.25
+      // Soft fog blob
+      fg.fillStyle(0x221133, alpha)
+      fg.fillCircle(cx + (Math.random() - 0.5) * 30, fy, size)
+      fg.fillStyle(0x110022, alpha * 0.6)
+      fg.fillCircle(cx + (Math.random() - 0.5) * 20, fy + (Math.random() - 0.5) * 10, size * 0.7)
+      fogParts.push(fg)
+    }
+
+    // ── Red glow eyes peering from the darkness (2 pairs) ──
+    const eyes: Phaser.GameObjects.Arc[] = []
+    const eyePositions = [
+      { x: cx - 80, y: sh * 0.25 }, { x: cx - 68, y: sh * 0.25 + 2 },
+      { x: cx + 68, y: sh * 0.65 }, { x: cx + 80, y: sh * 0.65 - 1 },
+    ]
+    for (const ep of eyePositions) {
+      const eye = this.add.circle(ep.x, ep.y, 3, 0xff2200, 0.8).setDepth(1001).setScrollFactor(0)
+      eyes.push(eye)
+      // Inner bright pupil
+      const pupil = this.add.circle(ep.x, ep.y, 1.5, 0xff6644, 1).setDepth(1002).setScrollFactor(0)
+      eyes.push(pupil)
+    }
+
+    // ── Animate: hold briefly, then part ──
+    const holdTime = 300
+    const partDuration = 800
+
+    // Eyes fade first
+    this.time.delayedCall(holdTime - 100, () => {
+      for (const e of eyes) {
+        this.tweens.add({
+          targets: e, alpha: 0, duration: 200,
+          onComplete: () => e.destroy(),
+        })
+      }
+    })
+
+    // Claws part — redraw each frame as x shifts
+    const leftTarget = { x: 0 }
+    const rightTarget = { x: 0 }
+
+    this.tweens.add({
+      targets: leftTarget, x: -(sw / 2 + 100), duration: partDuration,
+      ease: 'Cubic.easeIn', delay: holdTime,
+      onUpdate: () => {
+        leftGfx.setX(leftTarget.x)
+      },
+      onComplete: () => leftGfx.destroy(),
+    })
+
+    this.tweens.add({
+      targets: rightTarget, x: sw / 2 + 100, duration: partDuration,
+      ease: 'Cubic.easeIn', delay: holdTime,
+      onUpdate: () => {
+        rightGfx.setX(rightTarget.x)
+      },
+      onComplete: () => rightGfx.destroy(),
+    })
+
+    // Fog dissipates
+    for (const fg of fogParts) {
+      const goLeft = Math.random() < 0.5
+      this.tweens.add({
+        targets: fg,
+        x: goLeft ? -60 : 60,
+        alpha: 0, duration: 600 + Math.random() * 400,
+        delay: holdTime + 100 + Math.random() * 300,
+        onComplete: () => fg.destroy(),
+      })
+    }
+
+    // Final: subtle dark vignette fade
+    const vignette = this.add.graphics().setDepth(998).setScrollFactor(0)
+    vignette.fillStyle(0x000000, 0.3)
+    vignette.fillRect(0, 0, sw, sh)
+    this.tweens.add({
+      targets: vignette, alpha: 0, duration: 500,
+      delay: holdTime + partDuration * 0.5,
+      onComplete: () => vignette.destroy(),
+    })
   }
 
   /** Draw all terrain tiles synchronously onto the RenderTexture */
@@ -1135,8 +1325,8 @@ export class GameScene extends Phaser.Scene {
     for (const c of this.chests.getChildren() as Phaser.GameObjects.Sprite[]) {
       if (Phaser.Math.Distance.Between(x, y, c.x, c.y) < minDist) return false
     }
-    // Check rocks — wider zone since rocks can be scaled up to 1.8x
-    if (this._rockPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < 120)) return false
+    // Check rocks — wide zone: rocks scale up to 1.8x (~80px) + chest scale 2.4 (~48px)
+    if (this._rockPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < 180)) return false
     // Check trees — larger exclusion zone (trees are big sprites)
     if (this.treePositions.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < 150)) return false
     if (this._decoPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
@@ -1157,7 +1347,7 @@ export class GameScene extends Phaser.Scene {
     const MAX_ATTEMPTS = 30
 
     // Common chests — scattered in mid-range
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 8; i++) {
       for (let a = 0; a < MAX_ATTEMPTS; a++) {
         const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.5
         const dist = Phaser.Math.Between(400, 1200)
@@ -1170,7 +1360,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     // Rare chests — further out
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       for (let a = 0; a < MAX_ATTEMPTS; a++) {
         const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.3
         const dist = Phaser.Math.Between(800, 1400)
