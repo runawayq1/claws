@@ -2,3 +2,19 @@ node_modules/
 dist/
 .vercel
 .DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Claude Code / MCP config
+.mcp.json
+.claude/skills/
+.agents/
+
+# Editor state
+.obsidian/workspace.json
+
+# Test artifacts
+test-results/
