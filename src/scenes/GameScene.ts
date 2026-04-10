@@ -539,6 +539,7 @@ export class GameScene extends Phaser.Scene {
     // Online multiplayer: create network adapter (handles remote players, enemies, server sync)
     if (this._online) {
       console.log(`[GameScene] Online mode: seed=${this._seed}, players=${this._playerSlots.length}`)
+      this.localPlayer.serverAuthoritative = true
       this._networkAdapter = new NetworkGameAdapter(this, this.localPlayer)
       // Listen for network game events
       this.events.on('network-game-over', () => { this.gameOver = true })

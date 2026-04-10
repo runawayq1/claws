@@ -350,6 +350,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   public inputController: IInputController | null = null
   public isLocalPlayer = true
+  /** In online mode, server is authoritative — skip local physics movement */
+  public serverAuthoritative = false
 
   constructor(scene: Phaser.Scene, x: number, y: number, heroType: HeroType = 'ignara') {
     const sprCfg = SPRITE_HEROES[heroType]
@@ -1506,7 +1508,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const kbic = this.inputController as KeyboardInputController | null
     const activeTouchTarget = kbic?.getTouchTarget?.() ?? this.touchTarget
 
-    if (dir.dx !== 0 || dir.dy !== 0) {
+    if (this.serverAuthoritative) {
+      // Online mode: server controls position — only play animations from input
+      if (dir.dx !== 0 || dir.dy !== 0) {
+        if (!this.isAttacking) this.setFlipX(dir.dx < 0)
+        moving = true
+      }
+      // Don't set velocity — NetworkGameAdapter handles positioning
+    } else if (dir.dx !== 0 || dir.dy !== 0) {
       pBody.setVelocity(dir.dx * this.speed * atkSpeedMult, dir.dy * this.speed * atkSpeedMult)
       if (!this.isAttacking) this.setFlipX(dir.dx < 0)
       // Clear touch target when keyboard/joystick is active

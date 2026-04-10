@@ -75,6 +75,9 @@ export class NetworkGameAdapter {
   private remoteEnemies = new Map<string, RemoteEnemySprite>()
   private inputSendTimer = 0
   private readonly INPUT_SEND_INTERVAL = 50 // 20Hz
+  private serverTargetX = 0
+  private serverTargetY = 0
+  private hasServerPos = false
 
   constructor(scene: Phaser.Scene, localPlayer: Player) {
     this.scene = scene
@@ -277,16 +280,10 @@ export class NetworkGameAdapter {
         this.scene.events.emit('player-died')
       }
 
-      // Position reconciliation — snap if server and client diverge too much
-      const dx = localState.x - this.localPlayer.x
-      const dy = localState.y - this.localPlayer.y
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      if (dist > 80) {
-        const body = this.localPlayer.body as Phaser.Physics.Arcade.Body
-        if (body) {
-          body.reset(localState.x, localState.y)
-        }
-      }
+      // Server-authoritative position: store target, interpolate in update()
+      this.serverTargetX = localState.x
+      this.serverTargetY = localState.y
+      this.hasServerPos = true
     }
 
     // Sync remote players
@@ -325,6 +322,27 @@ export class NetworkGameAdapter {
       if (input) {
         const dir = input.getDirection()
         networkManager.sendInput(dir.dx, dir.dy, input.getStanceToggle())
+      }
+    }
+
+    // Server-authoritative: interpolate local player toward server position
+    // No client-side prediction — server is the truth, client just renders
+    if (this.hasServerPos) {
+      const body = this.localPlayer.body as Phaser.Physics.Arcade.Body
+      if (body) body.setVelocity(0, 0) // disable physics movement
+
+      const dx = this.serverTargetX - this.localPlayer.x
+      const dy = this.serverTargetY - this.localPlayer.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist > 300) {
+        // Large gap (spawn, reconnect) — hard snap
+        if (body) body.reset(this.serverTargetX, this.serverTargetY)
+      } else if (dist > 2) {
+        // Smooth interpolation toward server pos
+        const t = Math.min(1, delta / 80) // ~12 frames to converge
+        this.localPlayer.x += dx * t
+        this.localPlayer.y += dy * t
       }
     }
 
