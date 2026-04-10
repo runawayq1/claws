@@ -1620,9 +1620,11 @@ export class GameScene extends Phaser.Scene {
 
     this.gameTime += dt
 
+    // In online mode, use network adapter's enemy group for attack targeting
+    const attackTargets = this._networkAdapter?.enemySprites ?? this.enemies
     for (const p of this.players) {
       p.update(time, dt)
-      p.tryAutoAttack(this.enemies, time, dt)
+      p.tryAutoAttack(attackTargets, time, dt)
     }
 
     // Local coop: move camera target to midpoint between alive players
@@ -1686,6 +1688,10 @@ export class GameScene extends Phaser.Scene {
         this.enemyHpBars.fillStyle(color)
         this.enemyHpBars.fillRect(barX, barY, barWidth * hpRatio, barHeight)
         if (e.hpDirty !== undefined) e.hpDirty = false
+      }
+      // Online mode: draw HP bars for network enemies
+      if (this._networkAdapter) {
+        this._networkAdapter.drawEnemyHpBars(this.enemyHpBars)
       }
     }
   }

@@ -291,14 +291,32 @@ export class GameRoom extends Room<GameRoomState> {
 
   // ─── Player Movement ──────────────────────────────────────
 
+  /** Leash zone: players can't go further than LEASH_RADIUS from the group center */
+  private readonly LEASH_RADIUS = 450 // ~2x camera half-width
+
+  private getGroupCenter(): { x: number; y: number } {
+    let cx = 0, cy = 0, count = 0
+    this.state.players.forEach(p => {
+      if (p.isDead) return
+      cx += p.x; cy += p.y; count++
+    })
+    if (count === 0) return { x: 0, y: 0 }
+    return { x: cx / count, y: cy / count }
+  }
+
   private updatePlayers(dt: number) {
+    const center = this.getGroupCenter()
+
     this.state.players.forEach((p) => {
       if (p.isDead || p.isDowned) return
       if (p.inputDx === 0 && p.inputDy === 0) return
 
-      // No bounds clamping — infinite map on client
-      p.x += p.inputDx * p.speed * (dt / 1000)
-      p.y += p.inputDy * p.speed * (dt / 1000)
+      const newX = p.x + p.inputDx * p.speed * (dt / 1000)
+      const newY = p.y + p.inputDy * p.speed * (dt / 1000)
+
+      // Clamp to leash zone around group center (square)
+      p.x = Math.max(center.x - this.LEASH_RADIUS, Math.min(center.x + this.LEASH_RADIUS, newX))
+      p.y = Math.max(center.y - this.LEASH_RADIUS, Math.min(center.y + this.LEASH_RADIUS, newY))
     })
   }
 

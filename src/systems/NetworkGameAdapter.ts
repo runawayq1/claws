@@ -78,10 +78,13 @@ export class NetworkGameAdapter {
   private serverTargetX = 0
   private serverTargetY = 0
   private hasServerPos = false
+  /** Phaser group containing remote enemy sprites — used by tryAutoAttack for VFX targeting */
+  public enemySprites: Phaser.Physics.Arcade.Group
 
   constructor(scene: Phaser.Scene, localPlayer: Player) {
     this.scene = scene
     this.localPlayer = localPlayer
+    this.enemySprites = scene.physics.add.group()
     this.setupCallbacks()
     this.setupStateSync()
   }
@@ -239,6 +242,8 @@ export class NetworkGameAdapter {
     if (this.scene.anims.exists(walkAnim)) {
       sprite.play(walkAnim)
     }
+
+    this.enemySprites.add(sprite)
 
     this.remoteEnemies.set(key, {
       sprite,
