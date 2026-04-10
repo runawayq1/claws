@@ -1328,7 +1328,7 @@ export class UIScene extends Phaser.Scene {
       kills: gs.player.kills,
       level: gs.player.level,
       timeMs: survived,
-      wave: gs.waveManager?.currentWave || 1,
+      wave: gs._online ? (gs._networkAdapter?.serverWave || 1) : (gs.waveManager?.currentWave || 1),
       won: survived >= CONFIG.RUN_DURATION,
       tookDamage: this._tookDamageThisRun,
       date: new Date().toISOString(),
@@ -2276,7 +2276,9 @@ export class UIScene extends Phaser.Scene {
     const _killsOffY = _portrait ? CONFIG.MINIMAP_MARGIN + 76 + _mmSz + 8 : 0
     this.goldIcon.setPosition(this.scale.width - 20 - this.goldText.width - 10, _killsOffY + 55)
 
-    const tier = this.gameScene.waveManager?.currentWave || 1
+    const tier = this.gameScene._online
+      ? (this.gameScene._networkAdapter?.serverWave || 1)
+      : (this.gameScene.waveManager?.currentWave || 1)
     const tierStars = tier >= 8 ? 'DANGER' : tier >= 5 ? 'HARD' : tier >= 3 ? 'MEDIUM' : 'EASY'
     const tierColor = tier >= 8 ? '#ff4444' : tier >= 5 ? '#ffaa44' : tier >= 3 ? '#ffff66' : '#88ff88'
     this.tierText.setText(`TIER ${tier}  ${tierStars}`).setColor(tierColor)

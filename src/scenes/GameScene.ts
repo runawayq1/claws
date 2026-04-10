@@ -62,7 +62,7 @@ export class GameScene extends Phaser.Scene {
   private _cameraTarget: Phaser.GameObjects.Rectangle | null = null
   private _nameplates: Phaser.GameObjects.Text[] = []
   _online = false
-  private _networkAdapter: NetworkGameAdapter | null = null
+  _networkAdapter: NetworkGameAdapter | null = null
   private _playerSlots: Array<{ id: string; name: string; heroType: string; isHost: boolean }> = []
   private _seed = 0
 
@@ -380,7 +380,7 @@ export class GameScene extends Phaser.Scene {
       if (this.player.currentAttackBranch) {
         this.player.awardMasteryXP(this.player.currentAttackBranch, 0.25)
       }
-      this.waveManager.onEnemyKilled()
+      if (!this._online) this.waveManager.onEnemyKilled()
       this.spawnGrave(x, y)
 
       // Gold drop — bosses always, regular mobs 8% chance
@@ -541,6 +541,9 @@ export class GameScene extends Phaser.Scene {
       console.log(`[GameScene] Online mode: seed=${this._seed}, players=${this._playerSlots.length}`)
       this.localPlayer.serverAuthoritative = true
       this._networkAdapter = new NetworkGameAdapter(this, this.localPlayer)
+      // Replace the local enemies group with network adapter's group
+      // so ALL hero abilities (AoE, passives, splash) auto-target network enemies
+      this.enemies = this._networkAdapter.enemySprites
       // Listen for network game events
       this.events.on('network-game-over', () => { this.gameOver = true })
       this.events.on('network-game-won', () => { this.gameOver = true })
@@ -1620,11 +1623,9 @@ export class GameScene extends Phaser.Scene {
 
     this.gameTime += dt
 
-    // In online mode, use network adapter's enemy group for attack targeting
-    const attackTargets = this._networkAdapter?.enemySprites ?? this.enemies
     for (const p of this.players) {
       p.update(time, dt)
-      p.tryAutoAttack(attackTargets, time, dt)
+      p.tryAutoAttack(this.enemies, time, dt)
     }
 
     // Local coop: move camera target to midpoint between alive players

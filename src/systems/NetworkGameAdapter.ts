@@ -101,12 +101,29 @@ export class NetworkGameAdapter {
       },
 
       onEnemyKilled: (data) => {
-        // Remove enemy sprite, emit event for XP orb/gold
-        const enemy = this.remoteEnemies.get(String(data.enemyId))
+        const key = String(data.enemyId)
+        const enemy = this.remoteEnemies.get(key)
         if (enemy) {
-          this.scene.events.emit('enemy-died', data.x, data.y, 10, 0, false, false)
-          enemy.sprite.destroy()
-          this.remoteEnemies.delete(String(data.enemyId))
+          const isMiniBoss = enemy.type.includes('boss') || (enemy.maxHp > 100)
+          const isLarge = isMiniBoss || enemy.type === 'sandgolem' || enemy.type === 'orc3'
+          // XP scales with enemy type (approximate match to solo values)
+          const xpMap: Record<string, number> = { orc0: 5, orc1: 8, orc2: 8, orc3: 12, flyingeye: 12, sandgolem: 25 }
+          const xpValue = xpMap[enemy.type] ?? 8
+          const goldValue = isMiniBoss ? Phaser.Math.Between(5, 10) : (Math.random() < 0.35 ? Phaser.Math.Between(1, 3) : 0)
+
+          this.scene.events.emit('enemy-died', data.x, data.y, xpValue, goldValue, isMiniBoss, isLarge)
+
+          // Play death animation if available, then destroy
+          const deathAnim = `${enemy.type === 'orc0' ? 'orc1' : enemy.type}_death`
+          if (this.scene.anims.exists(deathAnim)) {
+            enemy.sprite.play(deathAnim)
+            enemy.sprite.once('animationcomplete', () => enemy.sprite.destroy())
+          } else {
+            // Fade out fallback
+            this.scene.tweens.add({ targets: enemy.sprite, alpha: 0, duration: 200, onComplete: () => enemy.sprite.destroy() })
+          }
+          this.enemySprites.remove(enemy.sprite)
+          this.remoteEnemies.delete(key)
         }
       },
 
@@ -259,13 +276,20 @@ export class NetworkGameAdapter {
   private removeRemoteEnemy(key: string) {
     const enemy = this.remoteEnemies.get(key)
     if (enemy) {
+      this.enemySprites.remove(enemy.sprite)
       enemy.sprite.destroy()
       this.remoteEnemies.delete(key)
     }
   }
 
+  /** Server wave number — exposed for UIScene tier display */
+  public serverWave = 1
+
   private syncState(state: any) {
     if (!state) return
+
+    // Sync wave from server
+    if (state.wave) this.serverWave = state.wave
 
     // Sync local player from server (authoritative)
     const localState = state.players?.get(networkManager.sessionId)
@@ -354,6 +378,8 @@ export class NetworkGameAdapter {
     // Interpolate remote player positions
     const lerpFactor = Math.min(1, delta / 100)
     this.remotePlayers.forEach(remote => {
+      const prevX = remote.sprite.x
+      const prevY = remote.sprite.y
       remote.sprite.x += (remote.targetX - remote.sprite.x) * lerpFactor
       remote.sprite.y += (remote.targetY - remote.sprite.y) * lerpFactor
       remote.nameplate.setPosition(remote.sprite.x, remote.sprite.y - 40)
@@ -361,6 +387,18 @@ export class NetworkGameAdapter {
       // Flip sprite based on movement direction
       if (remote.targetX < remote.sprite.x - 1) remote.sprite.setFlipX(true)
       else if (remote.targetX > remote.sprite.x + 1) remote.sprite.setFlipX(false)
+
+      // Toggle walk/idle animation based on movement
+      const dx = remote.sprite.x - prevX
+      const dy = remote.sprite.y - prevY
+      const moving = dx * dx + dy * dy > 0.5
+      const runKey = `${remote.heroType}_run`
+      const idleKey = `${remote.heroType}_idle_anim`
+      if (moving && remote.sprite.anims.currentAnim?.key !== runKey && this.scene.anims.exists(runKey)) {
+        remote.sprite.play(runKey)
+      } else if (!moving && remote.sprite.anims.currentAnim?.key === runKey && this.scene.anims.exists(idleKey)) {
+        remote.sprite.play(idleKey)
+      }
     })
 
     // Interpolate enemy positions + attack animation based on proximity
