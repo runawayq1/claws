@@ -14,6 +14,7 @@ import { ChunkManager } from '../systems/ChunkManager'
 import { MetaProgress } from '../systems/MetaProgress'
 import { KeyboardInputController } from '../systems/InputController'
 import { isMobileDevice, isMobileUserAgent, isPortrait } from '../utils/device'
+import { NetworkGameAdapter } from '../systems/NetworkGameAdapter'
 
 const ROCK_KEYS = [
   'rock1_1', 'rock1_2', 'rock2_1', 'rock2_2', 'rock3_1', 'rock3_2',
@@ -59,14 +60,21 @@ export class GameScene extends Phaser.Scene {
   private _p2Hero: HeroType = 'sifra'
   private _cameraTarget: Phaser.GameObjects.Rectangle | null = null
   private _nameplates: Phaser.GameObjects.Text[] = []
+  private _online = false
+  private _networkAdapter: NetworkGameAdapter | null = null
+  private _playerSlots: Array<{ id: string; name: string; heroType: string; isHost: boolean }> = []
+  private _seed = 0
 
   constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
     super(config ?? { key: 'GameScene' })
   }
 
-  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean }) {
+  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean; online?: boolean; seed?: number; playerSlots?: Array<{ id: string; name: string; heroType: string; isHost: boolean }> }) {
     this.selectedHero = data?.hero || 'ignara'
-    this._localCoop = data?.localCoop ?? new URL(location.href).searchParams.has('coop')
+    this._online = data?.online ?? false
+    this._seed = data?.seed ?? 0
+    this._playerSlots = data?.playerSlots ?? []
+    this._localCoop = data?.localCoop ?? (!this._online && new URL(location.href).searchParams.has('coop'))
     if (this._localCoop) {
       const HERO_LIST: HeroType[] = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
       this._p2Hero = (HERO_LIST.find(h => h !== this.selectedHero) || 'sifra') as HeroType
@@ -350,7 +358,7 @@ export class GameScene extends Phaser.Scene {
     // Chests — spawned by ChunkManager (infinite map) or manually (bounded map)
     if (!this.chests) this.chests = this.add.group()
 
-    // Wave manager — use full players array
+    // Wave manager — use full players array (skipped in online mode — server controls spawning)
     this.waveManager = new WaveManager(this, this.players, this.enemies)
 
     // Touch controls — virtual joystick on mobile, tap-to-move on desktop
@@ -525,10 +533,21 @@ export class GameScene extends Phaser.Scene {
     // Start UI
     this.scene.launch('UIScene', { gameScene: this })
 
-    // Start spawning after brief delay
-    this.time.delayedCall(2000, () => {
-      this.waveManager.start()
-    })
+    // Online multiplayer: create network adapter (handles remote players, enemies, server sync)
+    if (this._online) {
+      console.log(`[GameScene] Online mode: seed=${this._seed}, players=${this._playerSlots.length}`)
+      this._networkAdapter = new NetworkGameAdapter(this, this.localPlayer)
+      // Listen for network game events
+      this.events.on('network-game-over', () => { this.gameOver = true })
+      this.events.on('network-game-won', () => { this.gameOver = true })
+    }
+
+    // Start spawning after brief delay (skipped in online mode — server controls spawning)
+    if (!this._online) {
+      this.time.delayedCall(2000, () => {
+        this.waveManager.start()
+      })
+    }
 
     // ── Sifra NPC (Amun tutorial quest 3) ──
     // Spawn is gated: only after both q_forged_in_battle (kills) and
@@ -1588,6 +1607,11 @@ export class GameScene extends Phaser.Scene {
 
     this.chunkManager?.update(this.localPlayer.x, this.localPlayer.y)
 
+    // Online mode: network adapter handles remote players, enemies, input sending
+    if (this._networkAdapter) {
+      this._networkAdapter.update(time, dt)
+    }
+
     this.gameTime += dt
 
     for (const p of this.players) {
@@ -1697,6 +1721,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this._revealObjects.length = 0
+    this._networkAdapter?.destroy()
+    this._networkAdapter = null
     this.chunkManager?.destroy()
     this.chunkManager = undefined
     for (const p of this.players) {

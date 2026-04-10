@@ -1,0 +1,339 @@
+/**
+ * NetworkGameAdapter — bridges Colyseus server state with GameScene.
+ *
+ * In online multiplayer mode, this adapter:
+ * - Sends local player input to server at 20Hz
+ * - Syncs remote player positions from server state
+ * - Syncs enemy positions from server state (no local WaveManager)
+ * - Handles server events (level-up, death, game-over)
+ *
+ * GameScene remains the renderer and Phaser coordinator.
+ * This adapter just patches positions and triggers events.
+ */
+import Phaser from 'phaser'
+import { networkManager } from './NetworkManager'
+import type { Player } from '../entities/Player'
+
+interface RemotePlayerSprite {
+  sprite: Phaser.Physics.Arcade.Sprite
+  nameplate: Phaser.GameObjects.Text
+  targetX: number
+  targetY: number
+  heroType: string
+  playerId: string
+}
+
+interface RemoteEnemySprite {
+  sprite: Phaser.Physics.Arcade.Sprite
+  targetX: number
+  targetY: number
+  hp: number
+  maxHp: number
+  type: string
+}
+
+export class NetworkGameAdapter {
+  private scene: Phaser.Scene
+  private localPlayer: Player
+  private remotePlayers = new Map<string, RemotePlayerSprite>()
+  private remoteEnemies = new Map<string, RemoteEnemySprite>()
+  private inputSendTimer = 0
+  private readonly INPUT_SEND_INTERVAL = 50 // 20Hz
+
+  constructor(scene: Phaser.Scene, localPlayer: Player) {
+    this.scene = scene
+    this.localPlayer = localPlayer
+    this.setupCallbacks()
+    this.setupStateSync()
+  }
+
+  private setupCallbacks() {
+    networkManager.setCallbacks({
+      onLevelUp: (_data) => {
+        this.scene.events.emit('player-levelup', this.localPlayer)
+      },
+
+      onPlayerAttack: (data) => {
+        // Show VFX at attack location
+        this.scene.events.emit('network-attack-vfx', data)
+      },
+
+      onEnemyKilled: (data) => {
+        // Remove enemy sprite, emit event for XP orb/gold
+        const enemy = this.remoteEnemies.get(String(data.enemyId))
+        if (enemy) {
+          this.scene.events.emit('enemy-died', data.x, data.y, 10, 0, false, false)
+          enemy.sprite.destroy()
+          this.remoteEnemies.delete(String(data.enemyId))
+        }
+      },
+
+      onPlayerDowned: (data) => {
+        if (data.playerId === networkManager.sessionId) {
+          // Local player downed
+          this.localPlayer.isDead = true
+          this.scene.events.emit('player-died')
+        } else {
+          // Remote player downed — show visual
+          const remote = this.remotePlayers.get(data.playerId)
+          if (remote) {
+            remote.sprite.setAlpha(0.4)
+            remote.nameplate.setText(remote.nameplate.text + ' [DOWNED]')
+          }
+        }
+      },
+
+      onPlayerRevived: (data) => {
+        if (data.playerId === networkManager.sessionId) {
+          this.localPlayer.isDead = false
+        } else {
+          const remote = this.remotePlayers.get(data.playerId)
+          if (remote) {
+            remote.sprite.setAlpha(1)
+          }
+        }
+      },
+
+      onGameOver: (data) => {
+        this.scene.events.emit('network-game-over', data)
+      },
+
+      onGameWon: (data) => {
+        this.scene.events.emit('network-game-won', data)
+      },
+
+      onClawsIncoming: () => {
+        this.scene.events.emit('claws-incoming')
+      },
+
+      onStateChange: (state) => {
+        this.syncState(state)
+      },
+    })
+  }
+
+  private setupStateSync() {
+    const room = networkManager.currentRoom
+    if (!room) return
+
+    // Listen for player add/remove on the room state
+    const state = room.state as any
+    if (state.players) {
+      state.players.onAdd((player: any, key: string) => {
+        if (key === networkManager.sessionId) return // skip local player
+        this.addRemotePlayer(key, player)
+      })
+      state.players.onRemove((_player: any, key: string) => {
+        this.removeRemotePlayer(key)
+      })
+    }
+    if (state.enemies) {
+      state.enemies.onAdd((enemy: any, key: string) => {
+        this.addRemoteEnemy(key, enemy)
+      })
+      state.enemies.onRemove((_enemy: any, key: string) => {
+        this.removeRemoteEnemy(key)
+      })
+    }
+  }
+
+  private addRemotePlayer(id: string, playerState: any) {
+    // Create a lightweight sprite for the remote player
+    const texKey = `${playerState.heroType}_idle`
+    const sprite = this.scene.physics.add.sprite(playerState.x, playerState.y, texKey, 0)
+      .setDepth(5)
+      .setScale(0.8)
+
+    const nameplate = this.scene.add.text(playerState.x, playerState.y - 40, playerState.name, {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#aaffaa',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(15)
+
+    // Try to play idle animation
+    const animKey = `${playerState.heroType}_idle_anim`
+    if (this.scene.anims.exists(animKey)) {
+      sprite.play(animKey)
+    }
+
+    this.remotePlayers.set(id, {
+      sprite,
+      nameplate,
+      targetX: playerState.x,
+      targetY: playerState.y,
+      heroType: playerState.heroType,
+      playerId: id,
+    })
+  }
+
+  private removeRemotePlayer(id: string) {
+    const remote = this.remotePlayers.get(id)
+    if (remote) {
+      remote.sprite.destroy()
+      remote.nameplate.destroy()
+      this.remotePlayers.delete(id)
+    }
+  }
+
+  private addRemoteEnemy(key: string, enemyState: any) {
+    // Determine texture based on enemy type
+    const texKey = `${enemyState.type}_idle`
+    let sprite: Phaser.Physics.Arcade.Sprite
+
+    if (this.scene.textures.exists(texKey)) {
+      sprite = this.scene.physics.add.sprite(enemyState.x, enemyState.y, texKey, 0)
+        .setDepth(3)
+    } else {
+      // Fallback — generic sprite
+      sprite = this.scene.physics.add.sprite(enemyState.x, enemyState.y, 'orc1_idle', 0)
+        .setDepth(3)
+    }
+
+    // Play walk animation if available
+    const walkAnim = `${enemyState.type}_walk`
+    if (this.scene.anims.exists(walkAnim)) {
+      sprite.play(walkAnim)
+    }
+
+    if (enemyState.isMiniBoss) {
+      sprite.setScale(1.5)
+    }
+
+    this.remoteEnemies.set(key, {
+      sprite,
+      targetX: enemyState.x,
+      targetY: enemyState.y,
+      hp: enemyState.hp,
+      maxHp: enemyState.maxHp,
+      type: enemyState.type,
+    })
+  }
+
+  private removeRemoteEnemy(key: string) {
+    const enemy = this.remoteEnemies.get(key)
+    if (enemy) {
+      enemy.sprite.destroy()
+      this.remoteEnemies.delete(key)
+    }
+  }
+
+  private syncState(state: any) {
+    if (!state) return
+
+    // Sync local player position from server (reconciliation)
+    const localState = state.players?.get(networkManager.sessionId)
+    if (localState) {
+      this.localPlayer.hp = localState.hp
+      this.localPlayer.maxHp = localState.maxHp
+      this.localPlayer.level = localState.level
+      this.localPlayer.xp = localState.xp
+      // Don't override position — use client-side prediction
+      // But reconcile if too far off
+      const dx = localState.x - this.localPlayer.x
+      const dy = localState.y - this.localPlayer.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist > 50) {
+        // Snap if too far
+        this.localPlayer.x = localState.x
+        this.localPlayer.y = localState.y
+      }
+    }
+
+    // Sync remote players
+    if (state.players) {
+      state.players.forEach((p: any, key: string) => {
+        if (key === networkManager.sessionId) return
+        const remote = this.remotePlayers.get(key)
+        if (remote) {
+          remote.targetX = p.x
+          remote.targetY = p.y
+        }
+      })
+    }
+
+    // Sync enemies
+    if (state.enemies) {
+      state.enemies.forEach((e: any, key: string) => {
+        const remote = this.remoteEnemies.get(key)
+        if (remote) {
+          remote.targetX = e.x
+          remote.targetY = e.y
+          remote.hp = e.hp
+          remote.maxHp = e.maxHp
+        }
+      })
+    }
+  }
+
+  /** Call from GameScene.update() */
+  update(_time: number, delta: number) {
+    // Send input to server at 20Hz
+    this.inputSendTimer += delta
+    if (this.inputSendTimer >= this.INPUT_SEND_INTERVAL) {
+      this.inputSendTimer -= this.INPUT_SEND_INTERVAL
+      const input = this.localPlayer.inputController
+      if (input) {
+        const dir = input.getDirection()
+        networkManager.sendInput(dir.dx, dir.dy, input.getStanceToggle())
+      }
+    }
+
+    // Interpolate remote player positions
+    const lerpFactor = Math.min(1, delta / 100)
+    this.remotePlayers.forEach(remote => {
+      remote.sprite.x += (remote.targetX - remote.sprite.x) * lerpFactor
+      remote.sprite.y += (remote.targetY - remote.sprite.y) * lerpFactor
+      remote.nameplate.setPosition(remote.sprite.x, remote.sprite.y - 40)
+
+      // Flip sprite based on movement direction
+      if (remote.targetX < remote.sprite.x - 1) remote.sprite.setFlipX(true)
+      else if (remote.targetX > remote.sprite.x + 1) remote.sprite.setFlipX(false)
+    })
+
+    // Interpolate enemy positions
+    this.remoteEnemies.forEach(enemy => {
+      enemy.sprite.x += (enemy.targetX - enemy.sprite.x) * lerpFactor
+      enemy.sprite.y += (enemy.targetY - enemy.sprite.y) * lerpFactor
+
+      // Flip sprite based on movement direction
+      if (enemy.targetX < enemy.sprite.x - 1) enemy.sprite.setFlipX(true)
+      else if (enemy.targetX > enemy.sprite.x + 1) enemy.sprite.setFlipX(false)
+    })
+  }
+
+  /** Draw HP bars for remote enemies */
+  drawEnemyHpBars(g: Phaser.GameObjects.Graphics) {
+    this.remoteEnemies.forEach(e => {
+      if (e.hp >= e.maxHp) return
+      const barWidth = e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 24
+      const barHeight = e.maxHp > 100 ? 5 : 3
+      const bx = e.sprite.x - barWidth / 2
+      const by = e.sprite.y - 20
+
+      g.fillStyle(0x000000, 0.6)
+      g.fillRect(bx - 1, by - 1, barWidth + 2, barHeight + 2)
+      g.fillStyle(0x222222, 1)
+      g.fillRect(bx, by, barWidth, barHeight)
+
+      const ratio = Math.max(0, e.hp / e.maxHp)
+      const color = ratio > 0.5 ? 0x44ff44 : ratio > 0.25 ? 0xffaa00 : 0xff4444
+      g.fillStyle(color, 1)
+      g.fillRect(bx, by, barWidth * ratio, barHeight)
+    })
+  }
+
+  destroy() {
+    this.remotePlayers.forEach(r => {
+      r.sprite.destroy()
+      r.nameplate.destroy()
+    })
+    this.remotePlayers.clear()
+
+    this.remoteEnemies.forEach(e => {
+      e.sprite.destroy()
+    })
+    this.remoteEnemies.clear()
+  }
+}

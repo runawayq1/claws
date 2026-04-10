@@ -5,6 +5,9 @@ export class LoadingScene extends Phaser.Scene {
   private hero: HeroType = 'ignara'
   private map = 'GameScene'
   private playerName = ''
+  private online = false
+  private seed = 0
+  private playerSlots: any[] = []
   private barFill!: Phaser.GameObjects.Graphics
   private barX = 0
   private barY = 0
@@ -16,10 +19,13 @@ export class LoadingScene extends Phaser.Scene {
     super({ key: 'LoadingScene' })
   }
 
-  init(data: { hero: HeroType; map: string; playerName?: string }) {
+  init(data: { hero: HeroType; map: string; playerName?: string; online?: boolean; seed?: number; playerSlots?: any[] }) {
     this.hero = data.hero || 'ignara'
     this.map = data.map || 'GameScene'
     this.playerName = data.playerName || ''
+    this.online = data.online ?? false
+    this.seed = data.seed ?? 0
+    this.playerSlots = data.playerSlots ?? []
   }
 
   preload() {
@@ -188,8 +194,15 @@ export class LoadingScene extends Phaser.Scene {
     img('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
     img('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
 
-    // Hero-specific assets
+    // Hero-specific assets — in multiplayer, load all heroes in the lobby
     this.loadHeroAssets(this.hero, ss)
+    if (this.online && this.playerSlots.length > 0) {
+      for (const slot of this.playerSlots) {
+        if (slot.heroType && slot.heroType !== this.hero) {
+          this.loadHeroAssets(slot.heroType, ss)
+        }
+      }
+    }
 
     // Undead map assets (only when needed)
     if (this.map === 'UndeadMapScene') {
@@ -288,7 +301,13 @@ export class LoadingScene extends Phaser.Scene {
 
   create() {
     // Launch game scene behind us, keep LoadingScene on top
-    this.scene.launch(this.map, { hero: this.hero, playerName: this.playerName })
+    this.scene.launch(this.map, {
+      hero: this.hero,
+      playerName: this.playerName,
+      online: this.online,
+      seed: this.seed,
+      playerSlots: this.playerSlots,
+    })
     this.scene.bringToTop(this.scene.key)
 
     // Cycle flavor texts while waiting for terrain (timers work in create phase)

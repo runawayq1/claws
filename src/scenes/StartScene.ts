@@ -292,10 +292,32 @@ export class StartScene extends Phaser.Scene {
       this.tweens.add({ targets: [multiTitle, multiSub], scaleX: 1, scaleY: 1, duration: 80, ease: 'Sine.Out' })
     })
     multiZone.on('pointerdown', () => {
-      this.cameras.main.fadeOut(200)
-      this.cameras.main.once('camerafadeoutcomplete', () =>
-        this.scene.start('LobbyScene', { playerName: this.playerName })
-      )
+      // Show connecting state
+      multiTitle.setText('Connecting...')
+      multiSub.setText('')
+      multiZone.disableInteractive()
+
+      import('../systems/NetworkManager').then(({ networkManager }) => {
+        networkManager.connect().then(() => {
+          return networkManager.joinOrCreate(this.playerName, 'ignara')
+        }).then(() => {
+          this.cameras.main.fadeOut(200)
+          this.cameras.main.once('camerafadeoutcomplete', () =>
+            this.scene.start('LobbyScene', { playerName: this.playerName, online: true })
+          )
+        }).catch((err: Error) => {
+          console.error('[StartScene] Multiplayer connect failed:', err)
+          multiTitle.setText('MULTIPLAYER')
+          multiSub.setText('Server unavailable')
+          multiSub.setColor('#ff4444')
+          multiZone.setInteractive({ useHandCursor: true })
+          // Reset error text after 3 seconds
+          this.time.delayedCall(3000, () => {
+            multiSub.setText('Online co-op')
+            multiSub.setColor('#4466aa')
+          })
+        })
+      })
     })
 
     // Bottom button row: PROFILE | SCORES | FORGE

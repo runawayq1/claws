@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
+    "colyseus.js": "^0.16.22",
     "phaser": "^3.90.0"
   }
 }
