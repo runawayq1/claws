@@ -1445,7 +1445,15 @@ export class UIScene extends Phaser.Scene {
       this.cleanup()
       const sm = this.game.scene
       sm.stop('LevelUpScene'); sm.stop(map); sm.stop('UIScene')
-      sm.start(map, { hero })
+      if ((gs as any)._online) {
+        // Online mode: disconnect and return to start (can't re-use old room)
+        import('../systems/NetworkManager').then(({ networkManager }) => {
+          networkManager.leave()
+          sm.start('StartScene')
+        })
+      } else {
+        sm.start(map, { hero })
+      }
     })
 
     const t6 = this.add.text(cx, btnY + 46, 'Choose Hero', {
@@ -1459,7 +1467,14 @@ export class UIScene extends Phaser.Scene {
       this.cleanup()
       const sm = this.game.scene
       sm.stop('LevelUpScene'); sm.stop(sceneKey); sm.stop('UIScene')
-      sm.start('StartScene')
+      if ((gs as any)._online) {
+        import('../systems/NetworkManager').then(({ networkManager }) => {
+          networkManager.leave()
+          sm.start('StartScene')
+        })
+      } else {
+        sm.start('StartScene')
+      }
     })
 
     // Forge button — gets a glow + pulse + hint label when the player has

@@ -60,7 +60,7 @@ export class GameScene extends Phaser.Scene {
   private _p2Hero: HeroType = 'sifra'
   private _cameraTarget: Phaser.GameObjects.Rectangle | null = null
   private _nameplates: Phaser.GameObjects.Text[] = []
-  private _online = false
+  _online = false
   private _networkAdapter: NetworkGameAdapter | null = null
   private _playerSlots: Array<{ id: string; name: string; heroType: string; isHost: boolean }> = []
   private _seed = 0

@@ -132,10 +132,10 @@ export class GameRoom extends Room<GameRoomState> {
     p.name = options.playerName || 'Player'
     p.heroType = options.heroType || 'ignara'
 
-    // Spawn at world center with slight offset
+    // Spawn at origin (matches client infinite map origin) with slight offset
     const idx = this.state.players.size
-    p.x = CFG.WORLD_WIDTH / 2 + (idx - 1.5) * 80
-    p.y = CFG.WORLD_HEIGHT / 2
+    p.x = (idx - 1.5) * 80
+    p.y = 0
 
     // Apply hero stats
     const def = HERO_DEFS[p.heroType]
