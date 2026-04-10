@@ -15,6 +15,7 @@ import { MetaProgress } from '../systems/MetaProgress'
 import { KeyboardInputController } from '../systems/InputController'
 import { isMobileDevice, isMobileUserAgent, isPortrait } from '../utils/device'
 import { NetworkGameAdapter } from '../systems/NetworkGameAdapter'
+import { networkManager } from '../systems/NetworkManager'
 
 const ROCK_KEYS = [
   'rock1_1', 'rock1_2', 'rock2_1', 'rock2_2', 'rock3_1', 'rock3_2',
@@ -473,6 +474,8 @@ export class GameScene extends Phaser.Scene {
     this.upgradeTracker = new UpgradeTracker()
 
     this.events.on('player-levelup', (levelingPlayer?: Player) => {
+      // Online: server handles upgrades — never pause GameScene
+      if (this._online) return
       // Use the player that leveled up; fall back to localPlayer for backward compat
       const lvlPlayer = levelingPlayer ?? this.localPlayer
       // Kill nearby enemies so player can safely choose upgrades
@@ -541,7 +544,7 @@ export class GameScene extends Phaser.Scene {
       this.events.on('network-game-over', () => { this.gameOver = true })
       this.events.on('network-game-won', () => { this.gameOver = true })
       // Signal server that this client is loaded and ready
-      import('../systems/NetworkManager').then(({ networkManager }) => networkManager.sendReady())
+      networkManager.sendReady()
     }
 
     // Start spawning after brief delay (skipped in online mode — server controls spawning)

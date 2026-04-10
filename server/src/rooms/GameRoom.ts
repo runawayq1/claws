@@ -602,8 +602,8 @@ export class GameRoom extends Room<GameRoomState> {
     const angle = Math.random() * Math.PI * 2
     const dist = 500 + Math.random() * 200
     return {
-      x: Math.max(0, Math.min(CFG.WORLD_WIDTH, target.x + Math.cos(angle) * dist)),
-      y: Math.max(0, Math.min(CFG.WORLD_HEIGHT, target.y + Math.sin(angle) * dist)),
+      x: target.x + Math.cos(angle) * dist,
+      y: target.y + Math.sin(angle) * dist,
     }
   }
 

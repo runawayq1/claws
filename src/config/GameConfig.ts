@@ -23,9 +23,9 @@ export const CONFIG = {
   // Row 2 = facing down (toward camera) — best for top-down view
   SPRITE_DIR_ROW: 2,
 
-  // XP
-  XP_BASE: 100,
-  XP_SCALE: 1.4,
+  // XP — linear growth: XP_BASE + XP_PER_LEVEL * (level - 1)
+  XP_BASE: 120,
+  XP_PER_LEVEL: 55,
 
   // Zergling / Orc
   ZERGLING_BASE_HP: 40,

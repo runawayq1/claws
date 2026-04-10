@@ -12,6 +12,7 @@
  */
 import Phaser from 'phaser'
 import { networkManager } from './NetworkManager'
+import { getStateCallbacks } from 'colyseus.js'
 import type { Player } from '../entities/Player'
 
 // Scale per hero to match Player sprite proportions
@@ -122,36 +123,25 @@ export class NetworkGameAdapter {
     const room = networkManager.currentRoom
     if (!room) return
 
-    const state = room.state as any
-    if (state.players) {
-      // Process players already in state (joined during lobby)
-      state.players.forEach((player: any, key: string) => {
-        if (key === networkManager.sessionId) return
-        this.addRemotePlayer(key, player)
-      })
-      // Listen for future joins
-      state.players.onAdd((player: any, key: string) => {
-        if (key === networkManager.sessionId) return
-        if (this.remotePlayers.has(key)) return // already added
-        this.addRemotePlayer(key, player)
-      })
-      state.players.onRemove((_player: any, key: string) => {
-        this.removeRemotePlayer(key)
-      })
-    }
-    if (state.enemies) {
-      // Process enemies already in state
-      state.enemies.forEach((enemy: any, key: string) => {
-        this.addRemoteEnemy(key, enemy)
-      })
-      state.enemies.onAdd((enemy: any, key: string) => {
-        if (this.remoteEnemies.has(key)) return
-        this.addRemoteEnemy(key, enemy)
-      })
-      state.enemies.onRemove((_enemy: any, key: string) => {
-        this.removeRemoteEnemy(key)
-      })
-    }
+    // Colyseus schema v3: use getStateCallbacks() proxy for onAdd/onRemove
+    const $ = getStateCallbacks(room)
+
+    $(room.state).players.onAdd((player: any, key: string) => {
+      if (key === networkManager.sessionId) return
+      if (this.remotePlayers.has(key)) return
+      this.addRemotePlayer(key, player)
+    })
+    $(room.state).players.onRemove((_player: any, key: string) => {
+      this.removeRemotePlayer(key)
+    })
+
+    $(room.state).enemies.onAdd((enemy: any, key: string) => {
+      if (this.remoteEnemies.has(key)) return
+      this.addRemoteEnemy(key, enemy)
+    })
+    $(room.state).enemies.onRemove((_enemy: any, key: string) => {
+      this.removeRemoteEnemy(key)
+    })
   }
 
   private addRemotePlayer(id: string, playerState: any) {
@@ -263,8 +253,10 @@ export class NetworkGameAdapter {
       const dy = localState.y - this.localPlayer.y
       const dist = Math.sqrt(dx * dx + dy * dy)
       if (dist > 80) {
-        this.localPlayer.x = localState.x
-        this.localPlayer.y = localState.y
+        const body = this.localPlayer.body as Phaser.Physics.Arcade.Body
+        if (body) {
+          body.reset(localState.x, localState.y)
+        }
       }
     }
 

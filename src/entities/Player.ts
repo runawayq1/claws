@@ -1105,17 +1105,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   xpToNextLevel(): number {
-    let raw: number
-    if (this.level <= 2) {
-      raw = CONFIG.XP_BASE * Math.pow(CONFIG.XP_SCALE, this.level - 1)
-    } else {
-      // Level 3+: +25% more XP needed per level
-      const base = CONFIG.XP_BASE * Math.pow(CONFIG.XP_SCALE, 1) // level 2 base
-      raw = base * Math.pow(CONFIG.XP_SCALE * 1.25, this.level - 2)
-    }
-    // Early-game ramp: first 10 levels need 25% less XP
-    if (this.level <= 10) raw *= 0.75
-    return Math.floor(raw)
+    return CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * (this.level - 1)
   }
 
   tryAutoAttack(enemies: Phaser.Physics.Arcade.Group, time: number, delta: number) {

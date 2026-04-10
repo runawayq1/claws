@@ -82,9 +82,11 @@ export class LevelUpScene extends Phaser.Scene {
     const mobZoom = isMob ? 0.85 : 1
     if (isMob) {
       this.cameras.main.setZoom(mobZoom)
-      // Compensate scroll so world (0,0)..(width,height) maps to the visible area
-      this.cameras.main.scrollX = -(this.scale.width * (1 / mobZoom - 1) / 2)
-      this.cameras.main.scrollY = -(this.scale.height * (1 / mobZoom - 1) / 2)
+      // Shift scroll so visible world [0..width, 0..height] is centered on screen.
+      // Camera center = scrollX + scale.width/2; we need center at width/2 = scale.width/(2*zoom)
+      // → scrollX = scale.width/(2*zoom) - scale.width/2 = scale.width * (1/zoom - 1) / 2
+      this.cameras.main.scrollX = this.scale.width * (1 / mobZoom - 1) / 2
+      this.cameras.main.scrollY = this.scale.height * (1 / mobZoom - 1) / 2
     }
     // Use effective dimensions so layout centers correctly under zoom
     const width = this.scale.width / mobZoom
@@ -148,36 +150,61 @@ export class LevelUpScene extends Phaser.Scene {
     const availW = width - 40
     if (isBranch) {
       // ── Branch selection: big dramatic layout ──────────────────────────
-      const rawW = BRANCH_CARD_W * upgrades.length + BRANCH_GAP * (upgrades.length - 1)
-      const cardScale = rawW > availW ? availW / rawW : 1
-      const scaledCW = BRANCH_CARD_W * cardScale
-      const scaledCH = BRANCH_CARD_H * cardScale
-      const scaledGap = BRANCH_GAP * cardScale
+      const portraitBranch = isMob && isPortrait()
 
-      const headerY = height * 0.12
+      const headerY = portraitBranch ? height * 0.04 : height * 0.12
       this.add.text(width / 2, headerY, 'CHOOSE YOUR PATH', {
         fontFamily: 'monospace',
-        fontSize: isMob ? '28px' : '40px',
+        fontSize: isMob ? '22px' : '40px',
         color: '#FFD700',
         stroke: '#000000',
         strokeThickness: isMob ? 4 : 6,
       }).setOrigin(0.5)
 
-      this.add.text(width / 2, headerY + (isMob ? 34 : 48), 'Choose Specialization', {
+      this.add.text(width / 2, headerY + (isMob ? 28 : 48), 'Choose Specialization', {
         fontFamily: 'monospace',
-        fontSize: isMob ? '12px' : '16px',
+        fontSize: isMob ? '14px' : '16px',
         color: '#aaaaaa',
         stroke: '#000000',
         strokeThickness: 2,
       }).setOrigin(0.5)
 
-      const totalW = scaledCW * upgrades.length + scaledGap * (upgrades.length - 1)
-      const startX = width / 2 - totalW / 2
-      const targetY = height / 2 - scaledCH / 2 + (isMob ? 15 : 30)
+      if (portraitBranch) {
+        // Portrait: vertical stack — scale cards to fit width, stack vertically
+        const cardScale = Math.min(1, availW / BRANCH_CARD_W)
+        const scaledCH = BRANCH_CARD_H * cardScale
+        const vGap = 12
+        const totalH = scaledCH * upgrades.length + vGap * (upgrades.length - 1)
+        const topY = headerY + 50
+        const availH = height - topY - 20
+        // If stack doesn't fit vertically, scale down further
+        const vScale = totalH > availH ? availH / totalH : 1
+        const finalScale = cardScale * vScale
+        const finalCH = BRANCH_CARD_H * finalScale
+        const finalGap = vGap * vScale
+        const totalFinalH = finalCH * upgrades.length + finalGap * (upgrades.length - 1)
+        const startY = topY + (availH - totalFinalH) / 2
+        const startX = width / 2 - (BRANCH_CARD_W * finalScale) / 2
 
-      upgrades.forEach((upgrade, i) => {
-        this.createBranchCard(startX + i * (scaledCW + scaledGap), targetY, upgrade, i, cardScale)
-      })
+        upgrades.forEach((upgrade, i) => {
+          this.createBranchCard(startX, startY + i * (finalCH + finalGap), upgrade, i, finalScale)
+        })
+      } else {
+        // Desktop/landscape: horizontal row
+        const rawW = BRANCH_CARD_W * upgrades.length + BRANCH_GAP * (upgrades.length - 1)
+        const cardScale = rawW > availW ? availW / rawW : 1
+        const scaledCW = BRANCH_CARD_W * cardScale
+        const scaledCH = BRANCH_CARD_H * cardScale
+        const scaledGap = BRANCH_GAP * cardScale
+
+        const totalW = scaledCW * upgrades.length + scaledGap * (upgrades.length - 1)
+        const startX = width / 2 - totalW / 2
+        const targetY = height / 2 - scaledCH / 2 + (isMob ? 15 : 30)
+
+        upgrades.forEach((upgrade, i) => {
+          this.createBranchCard(startX + i * (scaledCW + scaledGap), targetY, upgrade, i, cardScale)
+        })
+      }
     } else {
       // ── Normal level-up: 5 compact cards ───────────────────────────────
       const gridMode = isMob && isPortrait()  // 3+2 grid on mobile portrait
@@ -185,11 +212,12 @@ export class LevelUpScene extends Phaser.Scene {
       if (gridMode) {
         // Portrait mobile: 3 cards on top row, 2 on bottom row (centered)
         const row1Count = 3
-        const rawW3 = CARD_W * row1Count + GAP * (row1Count - 1)
+        const portraitGap = 18  // wider gap than desktop for touch clarity
+        const rawW3 = CARD_W * row1Count + portraitGap * (row1Count - 1)
         const cardScale = Math.min(1, availW / rawW3)
         const scw = CARD_W * cardScale
         const sch = CARD_H * cardScale
-        const sgap = GAP * cardScale
+        const sgap = portraitGap * cardScale
 
         const headerBlockH = (32 + 8 + 14 + 20) * cardScale
         const rowGap = 16
@@ -308,7 +336,7 @@ export class LevelUpScene extends Phaser.Scene {
     // First skill name
     const nameLabel = this.add.text(0, iconY + BRANCH_ICON_SIZE / 2 + 16, upgrade.label, {
       fontFamily: 'monospace',
-      fontSize: '15px',
+      fontSize: '18px',
       color: '#FFD700',
       stroke: '#000000',
       strokeThickness: 2,
@@ -321,11 +349,11 @@ export class LevelUpScene extends Phaser.Scene {
       const descY = iconY + BRANCH_ICON_SIZE / 2 + 44
       const brDescStyle: Phaser.Types.GameObjects.Text.TextStyle = {
         fontFamily: 'monospace',
-        fontSize: '12px',
+        fontSize: '14px',
         color: '#cccccc',
         stroke: '#000000',
         strokeThickness: 1,
-        wordWrap: { width: cw - 40 },
+        wordWrap: { width: cw - 30 },
         align: 'center',
         lineSpacing: 4,
       }
@@ -503,7 +531,7 @@ export class LevelUpScene extends Phaser.Scene {
     if (isPersonal) {
       const heroLabel = this.add.text(0, ly + topOffset, isUltimate ? '★ ULTIMATE' : '★ HERO SKILL', {
         fontFamily: 'monospace',
-        fontSize: '7px',
+        fontSize: '9px',
         color: isUltimate ? '#ffcc44' : '#ffd700',
         stroke: '#000000',
         strokeThickness: 2,
@@ -572,7 +600,7 @@ export class LevelUpScene extends Phaser.Scene {
     const nameY = iconOffsetY + ICON_SIZE / 2 + 8
     const nameLabel = this.add.text(0, nameY, upgrade.label, {
       fontFamily: 'monospace',
-      fontSize: '16px',
+      fontSize: '20px',
       color: nameColor,
       stroke: '#000000',
       strokeThickness: 2,
@@ -585,11 +613,11 @@ export class LevelUpScene extends Phaser.Scene {
     const descAvail = descMaxY - descStartY
     const descStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace',
-      fontSize: '11px',
+      fontSize: '14px',
       color: isPersonal ? '#cccccc' : '#999999',
       stroke: '#000000',
       strokeThickness: 1,
-      wordWrap: { width: CARD_W - 20 },
+      wordWrap: { width: CARD_W - 16 },
       align: 'center',
       lineSpacing: 2,
     }
@@ -607,7 +635,7 @@ export class LevelUpScene extends Phaser.Scene {
     const btnColor = isPersonal ? '#ffd700' : '#88ff88'
     const selectText = this.add.text(0, btnY, btnLabel, {
       fontFamily: 'monospace',
-      fontSize: '12px',
+      fontSize: '14px',
       color: btnColor,
       stroke: '#000000',
       strokeThickness: 2,

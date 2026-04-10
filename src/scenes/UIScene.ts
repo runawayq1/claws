@@ -1833,7 +1833,13 @@ export class UIScene extends Phaser.Scene {
       const v = this.vignetteGfx
       v.clear()
       if (!this.isPaused && hpRatio <= 0.2 && hpRatio > 0) {
-        const { width, height } = this.scale
+        // Use actual visible world bounds (accounts for UIScene camera zoom 0.92)
+        const cam = this.cameras.main
+        const z = cam.zoom || 1
+        const vx = cam.scrollX + (cam.width / 2) - (cam.width / 2 / z)
+        const vy = cam.scrollY + (cam.height / 2) - (cam.height / 2 / z)
+        const vw = cam.width / z
+        const vh = cam.height / z
         const intensity = 0.3 + 0.2 * Math.sin(this.time.now / 200)  // pulse
         const edgeW = 75
         const strips = 10
@@ -1845,13 +1851,13 @@ export class UIScene extends Phaser.Scene {
           const pos = i * sw
           v.fillStyle(0xff0000, a)
           // Left edge
-          v.fillRect(pos, 0, sw + 1, height)
+          v.fillRect(vx + pos, vy, sw + 1, vh)
           // Right edge
-          v.fillRect(width - pos - sw, 0, sw + 1, height)
+          v.fillRect(vx + vw - pos - sw, vy, sw + 1, vh)
           // Top edge
-          v.fillRect(0, pos, width, sw + 1)
+          v.fillRect(vx, vy + pos, vw, sw + 1)
           // Bottom edge
-          v.fillRect(0, height - pos - sw, width, sw + 1)
+          v.fillRect(vx, vy + vh - pos - sw, vw, sw + 1)
         }
       }
     }
