@@ -3,13 +3,13 @@ import { Player } from '../entities/Player'
 
 export class XPSystem {
   private scene: Phaser.Scene
-  private player: Player
+  private players: Player[]
   private orbs: Phaser.Physics.Arcade.Group
   magnetRadius = 100
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  constructor(scene: Phaser.Scene, players: Player[]) {
     this.scene = scene
-    this.player = player
+    this.players = players
 
     this.orbs = scene.physics.add.group()
 
@@ -35,13 +35,15 @@ export class XPSystem {
     gl.generateTexture('xp_orb_large', 32, 32)
     gl.destroy()
 
-    // Collect orbs on overlap
-    scene.physics.add.overlap(player, this.orbs, (_p, orb) => {
-      const xpOrb = orb as Phaser.Physics.Arcade.Sprite
-      const xpValue = (xpOrb as any).xpValue || 10
-      this.player.addXP(xpValue)
-      xpOrb.destroy()
-    })
+    // Collect orbs on overlap — register for each player
+    for (const p of this.players) {
+      scene.physics.add.overlap(p, this.orbs, (_p, orb) => {
+        const xpOrb = orb as Phaser.Physics.Arcade.Sprite
+        const xpValue = (xpOrb as any).xpValue || 10
+        p.addXP(xpValue)
+        xpOrb.destroy()
+      })
+    }
   }
 
   spawnOrb(x: number, y: number, value: number) {
@@ -98,15 +100,21 @@ export class XPSystem {
     })
   }
 
-  /** Call every frame — pulls nearby orbs toward player */
+  /** Call every frame — pulls nearby orbs toward the nearest player */
   updateMagnet() {
     for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!orb.active) continue
-      const dist = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.cx, this.player.cy)
-      if (dist < this.magnetRadius) {
-        // Accelerate toward player — faster when closer
-        const speed = 200 + (1 - dist / this.magnetRadius) * 300
-        this.scene.physics.moveTo(orb, this.player.cx, this.player.cy, speed)
+      let nearest: Player | null = null
+      let minDist = this.magnetRadius
+      for (const p of this.players) {
+        if (p.isDead) continue
+        const dist = Phaser.Math.Distance.Between(orb.x, orb.y, p.cx, p.cy)
+        if (dist < minDist) { nearest = p; minDist = dist }
+      }
+      if (nearest) {
+        // Accelerate toward nearest player — faster when closer
+        const speed = 200 + (1 - minDist / this.magnetRadius) * 300
+        this.scene.physics.moveTo(orb, nearest.cx, nearest.cy, speed)
       }
     }
   }
@@ -118,13 +126,13 @@ export class XPSystem {
 
 export class GoldSystem {
   private scene: Phaser.Scene
-  private player: Player
+  private players: Player[]
   private orbs: Phaser.Physics.Arcade.Group
   magnetRadius = 100
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  constructor(scene: Phaser.Scene, players: Player[]) {
     this.scene = scene
-    this.player = player
+    this.players = players
     this.orbs = scene.physics.add.group()
 
     // Generate spinning coin spritesheet (8 frames, 16x16 each)
@@ -170,24 +178,26 @@ export class GoldSystem {
       })
     }
 
-    // Collect gold on overlap — fly-away +N text
-    scene.physics.add.overlap(player, this.orbs, (_p, orb) => {
-      const goldOrb = orb as Phaser.Physics.Arcade.Sprite
-      const value = (goldOrb as any).goldValue || 1
-      this.player.goldThisRun += value
+    // Collect gold on overlap — fly-away +N text — register for each player
+    for (const p of this.players) {
+      scene.physics.add.overlap(p, this.orbs, (_p, orb) => {
+        const goldOrb = orb as Phaser.Physics.Arcade.Sprite
+        const value = (goldOrb as any).goldValue || 1
+        p.goldThisRun += value
 
-      // Floating "+N" text
-      const txt = this.scene.add.text(goldOrb.x, goldOrb.y - 10, `+${value}`, {
-        fontFamily: 'monospace', fontSize: '13px', color: '#FFD700',
-        stroke: '#000000', strokeThickness: 2,
-      }).setOrigin(0.5).setDepth(25)
-      this.scene.tweens.add({
-        targets: txt, y: txt.y - 30, alpha: 0, duration: 600,
-        onComplete: () => txt.destroy(),
+        // Floating "+N" text
+        const txt = this.scene.add.text(goldOrb.x, goldOrb.y - 10, `+${value}`, {
+          fontFamily: 'monospace', fontSize: '13px', color: '#FFD700',
+          stroke: '#000000', strokeThickness: 2,
+        }).setOrigin(0.5).setDepth(25)
+        this.scene.tweens.add({
+          targets: txt, y: txt.y - 30, alpha: 0, duration: 600,
+          onComplete: () => txt.destroy(),
+        })
+
+        goldOrb.destroy()
       })
-
-      goldOrb.destroy()
-    })
+    }
   }
 
   spawnOrb(x: number, y: number, value: number) {
@@ -233,10 +243,16 @@ export class GoldSystem {
   updateMagnet() {
     for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!orb.active) continue
-      const dist = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.cx, this.player.cy)
-      if (dist < this.magnetRadius) {
-        const speed = 200 + (1 - dist / this.magnetRadius) * 300
-        this.scene.physics.moveTo(orb, this.player.cx, this.player.cy, speed)
+      let nearest: Player | null = null
+      let minDist = this.magnetRadius
+      for (const p of this.players) {
+        if (p.isDead) continue
+        const dist = Phaser.Math.Distance.Between(orb.x, orb.y, p.cx, p.cy)
+        if (dist < minDist) { nearest = p; minDist = dist }
+      }
+      if (nearest) {
+        const speed = 200 + (1 - minDist / this.magnetRadius) * 300
+        this.scene.physics.moveTo(orb, nearest.cx, nearest.cy, speed)
       }
     }
   }

@@ -248,14 +248,14 @@ export class UIScene extends Phaser.Scene {
     this.showControlsHint()
 
     // Stance toggle for Sifra
-    if (this.gameScene.player.heroType === 'sifra') {
+    if (this.gameScene.localPlayer.heroType === 'sifra') {
       this.stanceIcon = this.add.graphics().setDepth(3)
       this.stanceBtn = this.add.text(0, 0, '', {
         fontFamily: 'monospace', fontSize: '11px', color: '#88ddff',
         stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
-        this.gameScene.player.toggleStance()
+        this.gameScene.localPlayer.toggleStance()
       })
       this.stanceBtn.on('pointerover', () => this.stanceBtn?.setColor('#ffffff'))
       this.stanceBtn.on('pointerout', () => this.updateStanceBtn())
@@ -265,14 +265,14 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Stance toggle for Nazar (Samurai)
-    if (this.gameScene.player.heroType === 'nazar') {
+    if (this.gameScene.localPlayer.heroType === 'nazar') {
       this.stanceIcon = this.add.graphics().setDepth(3)
       this.stanceBtn = this.add.text(0, 0, '', {
         fontFamily: 'monospace', fontSize: '11px', color: '#ff6644',
         stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
-        this.gameScene.player.toggleNazarStance()
+        this.gameScene.localPlayer.toggleNazarStance()
       })
       this.stanceBtn.on('pointerover', () => this.stanceBtn?.setColor('#ffffff'))
       this.stanceBtn.on('pointerout', () => this.updateNazarStanceBtn())
@@ -281,14 +281,14 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Stance toggle for Huntress
-    if (this.gameScene.player.heroType === 'huntress') {
+    if (this.gameScene.localPlayer.heroType === 'huntress') {
       this.stanceIcon = this.add.graphics().setDepth(3)
       this.stanceBtn = this.add.text(0, 0, '', {
         fontFamily: 'monospace', fontSize: '11px', color: '#2ecc71',
         stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
-        this.gameScene.player.toggleHuntressStance()
+        this.gameScene.localPlayer.toggleHuntressStance()
       })
       this.stanceBtn.on('pointerover', () => this.stanceBtn?.setColor('#ffffff'))
       this.stanceBtn.on('pointerout', () => this.updateHuntressStanceBtn())
@@ -298,7 +298,7 @@ export class UIScene extends Phaser.Scene {
 
     // Mobile stance toggle button (big, right side)
     const isMob = isMobileUserAgent()
-    const p = this.gameScene.player
+    const p = this.gameScene.localPlayer
     const hasStance = p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance)
     if (isMob && hasStance) {
       const { width, height } = this.scale
@@ -465,7 +465,7 @@ export class UIScene extends Phaser.Scene {
 
   private updateMobileStanceBtn() {
     if (!this.mobileStanceLbl) return
-    const p = this.gameScene.player
+    const p = this.gameScene.localPlayer
     let label = ''
     if (p.heroType === 'sifra') {
       label = p.stance === 'lightning' ? '⚡' : '❄'
@@ -495,7 +495,7 @@ export class UIScene extends Phaser.Scene {
 
   private updateStanceBtn() {
     if (!this.stanceBtn || !this.stanceIcon) return
-    const p = this.gameScene.player
+    const p = this.gameScene.localPlayer
     const isLightning = p.stance === 'lightning'
     const label = isLightning ? '⚡ LIGHTNING [Q]' : '❄ ICE [Q]'
     const color = isLightning ? '#bb88ff' : '#88ddff'
@@ -505,7 +505,7 @@ export class UIScene extends Phaser.Scene {
 
   private updateNazarStanceBtn() {
     if (!this.stanceBtn || !this.stanceIcon) return
-    const p = this.gameScene.player
+    const p = this.gameScene.localPlayer
     const isVenom = p.nazarStance === 'venom'
     const label = isVenom ? '☠ VENOM [Q]' : '⚔ SWORD [Q]'
     const color = isVenom ? '#44cc44' : '#ff6644'
@@ -515,7 +515,7 @@ export class UIScene extends Phaser.Scene {
 
   private updateHuntressStanceBtn() {
     if (!this.stanceBtn || !this.stanceIcon) return
-    const p = this.gameScene.player
+    const p = this.gameScene.localPlayer
     const isSpear = p.huntressStance === 'spear'
     const label = isSpear ? '🏹 SPEAR [Q]' : '⚔ MELEE [Q]'
     const color = isSpear ? '#2ecc71' : '#e67e22'
@@ -1790,8 +1790,8 @@ export class UIScene extends Phaser.Scene {
   }
 
   update() {
-    if (!this.gameScene?.player) return
-    const p = this.gameScene.player
+    if (!this.gameScene?.localPlayer) return
+    const p = this.gameScene.localPlayer
 
     // Detect player death directly
     if (p.hp <= 0 && !this.endScreenShown) {
@@ -2532,7 +2532,7 @@ export class UIScene extends Phaser.Scene {
       if (this.endScreenShown) return
       this.scene.pause(this.gameScene.scene.key)
       this.scene.launch('LevelUpScene', {
-        player: this.gameScene.player,
+        player: this.gameScene.localPlayer,
         tracker: this.gameScene.upgradeTracker,
         callerSceneKey: this.gameScene.scene.key,
         bonusSpecialization: true,

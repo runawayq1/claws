@@ -10,8 +10,10 @@ dist/
 
 # Claude Code / MCP config
 .mcp.json
-.claude/skills/
+.claude/
 .agents/
+skills-lock.json
+CLAUDE.md
 
 # Editor state
 .obsidian/

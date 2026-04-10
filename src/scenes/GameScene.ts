@@ -26,7 +26,10 @@ interface ClawSegment {
 }
 
 export class GameScene extends Phaser.Scene {
-  player!: Player
+  localPlayer!: Player
+  players: Player[] = []
+  /** @deprecated Use localPlayer. Kept for backward compat during migration. */
+  get player(): Player { return this.localPlayer }
   enemies!: Phaser.Physics.Arcade.Group
   rocks!: Phaser.Physics.Arcade.StaticGroup
   waveManager!: WaveManager
@@ -235,11 +238,12 @@ export class GameScene extends Phaser.Scene {
       // Infinite map path
       this.physics.world.setBounds(-1e7, -1e7, 2e7, 2e7)
       this.rocks = this.physics.add.staticGroup()
-      this.player = new Player(this, 0, 0, this.selectedHero)
-      this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
+      this.localPlayer = new Player(this, 0, 0, this.selectedHero)
+      this.players = [this.localPlayer]
+      this.cameras.main.startFollow(this.localPlayer, true, 0.1, 0.1)
       // NO camera.setBounds — infinite scroll
       this.chests = this.add.group()
-      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.player, this.chests)
+      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.localPlayer, this.chests)
       this.chunkManager.create(0, 0)
       this.generateGraveTextures()
       this.events.emit('terrain-ready')
@@ -249,8 +253,9 @@ export class GameScene extends Phaser.Scene {
       this.rocks = this.physics.add.staticGroup()
       this.terrainRT = this.add.renderTexture(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT).setOrigin(0).setDepth(0)
       this.terrainRT.fill(0x4a7c3f)
-      this.player = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
-      this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
+      this.localPlayer = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
+      this.players = [this.localPlayer]
+      this.cameras.main.startFollow(this.localPlayer, true, 0.1, 0.1)
       this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
       this.drawTerrainProgressive()
       this.scatterDecorations(0, Infinity)
@@ -289,8 +294,8 @@ export class GameScene extends Phaser.Scene {
     })
 
     // XP + Gold systems
-    this.xpSystem = new XPSystem(this, this.player)
-    this.goldSystem = new GoldSystem(this, this.player)
+    this.xpSystem = new XPSystem(this, [this.localPlayer])
+    this.goldSystem = new GoldSystem(this, [this.localPlayer])
 
     // Pickups group (HP orbs, magnets)
     this.pickups = this.add.group()
@@ -986,11 +991,11 @@ export class GameScene extends Phaser.Scene {
     if (!isMobile) {
       // Desktop: tap-to-move
       this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-        this.player.setTouchTarget(pointer.worldX, pointer.worldY)
+        this.localPlayer.setTouchTarget(pointer.worldX, pointer.worldY)
       })
       this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
         if (pointer.isDown) {
-          this.player.setTouchTarget(pointer.worldX, pointer.worldY)
+          this.localPlayer.setTouchTarget(pointer.worldX, pointer.worldY)
         }
       })
       return
@@ -1026,7 +1031,7 @@ export class GameScene extends Phaser.Scene {
       joyKnob.clear()
       joyOrigin = null
       activePointerId = -1
-      this.player.clearJoystick()
+      this.localPlayer.clearJoystick()
     }
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -1049,7 +1054,7 @@ export class GameScene extends Phaser.Scene {
 
       if (dist < DEAD_ZONE) {
         drawKnob(joyOrigin.x, joyOrigin.y)
-        this.player.clearJoystick()
+        this.localPlayer.clearJoystick()
         return
       }
 
@@ -1061,7 +1066,7 @@ export class GameScene extends Phaser.Scene {
       const knobY = joyOrigin.y + ny * clampDist
 
       drawKnob(knobX, knobY)
-      this.player.setJoystickDirection(nx, ny)
+      this.localPlayer.setJoystickDirection(nx, ny)
     })
 
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
@@ -1516,12 +1521,14 @@ export class GameScene extends Phaser.Scene {
 
     this._frameKills = 0
 
-    this.chunkManager?.update(this.player.x, this.player.y)
+    this.chunkManager?.update(this.localPlayer.x, this.localPlayer.y)
 
     this.gameTime += dt
 
-    this.player.update(time, dt)
-    this.player.tryAutoAttack(this.enemies, time, dt)
+    for (const p of this.players) {
+      p.update(time, dt)
+      p.tryAutoAttack(this.enemies, time, dt)
+    }
 
     // XP/gold magnet pull — throttled to every 6 frames (velocity persists between recalcs)
     this._magnetFrame = (this._magnetFrame + 1) % 6
@@ -1608,7 +1615,10 @@ export class GameScene extends Phaser.Scene {
     this._revealObjects.length = 0
     this.chunkManager?.destroy()
     this.chunkManager = undefined
-    this.player?.destroy()
+    for (const p of this.players) {
+      p?.destroy()
+    }
+    this.players = []
   }
 
 }
