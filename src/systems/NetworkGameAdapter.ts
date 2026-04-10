@@ -21,6 +21,28 @@ const HERO_REMOTE_SCALE: Record<string, number> = {
   huntress: 1.61, khashin: 1.65, muller: 1.35,
 }
 
+// Scale per enemy type — matches client-side entity constructors
+const ENEMY_SCALE: Record<string, number> = {
+  orc0: 2.0, orc1: 1.58, orc2: 2.0, orc3: 2.0,
+  flyingeye: 1.12, sandgolem: 3.2,
+}
+
+// Walk animation key per enemy type — matches client entity constructors
+const ENEMY_WALK_ANIM: Record<string, string> = {
+  orc0: 'orc1_run', orc1: 'orc1_run', orc2: 'orc2_run', orc3: 'orc3_run',
+  flyingeye: 'flyingeye_walk', sandgolem: 'orc3_run',
+}
+
+// Tint per enemy type — orc0 uses a yellow-green tint to distinguish from orc1
+const ENEMY_TINT: Record<string, number> = {
+  orc0: 0xbbcc88,
+}
+
+// Idle texture fallback — orc0 uses orc1 sprites
+const ENEMY_TEXTURE: Record<string, string> = {
+  orc0: 'orc1_idle', sandgolem: 'orc3_idle',
+}
+
 interface RemotePlayerSprite {
   sprite: Phaser.Physics.Arcade.Sprite
   nameplate: Phaser.GameObjects.Text
@@ -186,27 +208,26 @@ export class NetworkGameAdapter {
   }
 
   private addRemoteEnemy(key: string, enemyState: any) {
-    // Determine texture based on enemy type
-    const texKey = `${enemyState.type}_idle`
-    let sprite: Phaser.Physics.Arcade.Sprite
+    // Determine texture — some enemies share sprites (orc0→orc1, sandgolem→orc3)
+    const texKey = ENEMY_TEXTURE[enemyState.type] ?? `${enemyState.type}_idle`
+    const sprite = this.scene.physics.add.sprite(
+      enemyState.x, enemyState.y,
+      this.scene.textures.exists(texKey) ? texKey : 'orc1_idle',
+      0,
+    ).setDepth(3)
 
-    if (this.scene.textures.exists(texKey)) {
-      sprite = this.scene.physics.add.sprite(enemyState.x, enemyState.y, texKey, 0)
-        .setDepth(3)
-    } else {
-      // Fallback — generic sprite
-      sprite = this.scene.physics.add.sprite(enemyState.x, enemyState.y, 'orc1_idle', 0)
-        .setDepth(3)
-    }
+    // Apply correct scale per enemy type (matches client entity constructors)
+    const baseScale = ENEMY_SCALE[enemyState.type] ?? 1.5
+    sprite.setScale(enemyState.isMiniBoss ? baseScale * 1.5 : baseScale)
 
-    // Play walk animation if available
-    const walkAnim = `${enemyState.type}_walk`
+    // Tint (orc0 has yellow-green tint)
+    const tint = ENEMY_TINT[enemyState.type]
+    if (tint) sprite.setTint(tint)
+
+    // Play walk animation
+    const walkAnim = ENEMY_WALK_ANIM[enemyState.type] ?? `${enemyState.type}_run`
     if (this.scene.anims.exists(walkAnim)) {
       sprite.play(walkAnim)
-    }
-
-    if (enemyState.isMiniBoss) {
-      sprite.setScale(1.5)
     }
 
     this.remoteEnemies.set(key, {

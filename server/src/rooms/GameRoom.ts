@@ -229,13 +229,13 @@ export class GameRoom extends Room<GameRoomState> {
     this.lock()
 
     // Tick starts when all clients send 'ready' (after loading)
-    // Safety: if clients don't send ready within 15s, start anyway
+    // Safety: if clients don't send ready within 5s, start anyway
     setTimeout(() => {
       if (!this.tickInterval && this.state.status === 'playing') {
         console.log(`[GameRoom] Ready timeout — force-starting game tick`)
         this.tickInterval = setInterval(() => this.gameTick(), CFG.TICK_MS)
       }
-    }, 15000)
+    }, 5000)
   }
 
   private endGame() {
