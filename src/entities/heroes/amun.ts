@@ -66,7 +66,7 @@ function boulderExplode(
     })
   }
   // Screen shake
-  p.scene.cameras.main.shake(80, 0.005)
+  if (p.isLocalPlayer) p.scene.cameras.main.shake(80, 0.005)
 }
 
 // AMUN — Shockwave ring
@@ -738,7 +738,7 @@ export function attackMelee(
     })
   }
 
-  p.scene.cameras.main.shake(50, 0.003)
+  if (p.isLocalPlayer) p.scene.cameras.main.shake(50, 0.003)
   p.scene.time.delayedCall(120, () => { (p as any).isAttacking = false })
 }
 

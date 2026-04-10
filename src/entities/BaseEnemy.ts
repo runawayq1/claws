@@ -16,7 +16,7 @@ const DMG_COLORS: Record<string, string> = {
   crystal: '#55bbff',
 }
 
-type PlayerLike = Phaser.Physics.Arcade.Sprite & { takeDamage(amount: number): void }
+type PlayerLike = Phaser.Physics.Arcade.Sprite & { takeDamage(amount: number): void; isDead?: boolean }
 
 export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // --- Public fields (hero modules access these) ---
@@ -40,6 +40,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public isRooted: boolean = false
   public rootTimer: number = 0
   public player: PlayerLike
+  public players: PlayerLike[] = []
   public hpDirty: boolean = true
 
   // --- Configurable per-enemy constants (set in subclass constructor) ---
@@ -62,6 +63,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // Pathfinding throttle cache
   private _steerFrame = 0
   private _steerCache: { x: number; y: number } | null = null
+  // Retarget timer — staggered so not all enemies retarget on the same frame
+  private _retargetTimer: number = Math.random() * 2000
   private _flashUntil = 0
   private poisonTimer?: Phaser.Time.TimerEvent
 
@@ -198,10 +201,32 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   // -------------------------------------------------------------------------
+  // retargetNearest — pick the closest alive player from this.players
+  // -------------------------------------------------------------------------
+  retargetNearest(): void {
+    if (this.players.length === 0) return
+    let nearest: PlayerLike | null = null
+    let nearestDist = Infinity
+    for (const p of this.players) {
+      if (p.isDead) continue
+      const d = Phaser.Math.Distance.Between(this.x, this.y, p.x, p.y)
+      if (d < nearestDist) { nearestDist = d; nearest = p }
+    }
+    if (nearest) this.player = nearest
+  }
+
+  // -------------------------------------------------------------------------
   // update — shared movement, root, tint, flip, melee damage
   // -------------------------------------------------------------------------
   update(time: number, delta: number) {
     if (!this.active || !this.player.active || this.isDying) return
+
+    // Retarget nearest player every 2000ms (staggered per-enemy)
+    this._retargetTimer += delta
+    if (this._retargetTimer >= 2000) {
+      this._retargetTimer = 0
+      this.retargetNearest()
+    }
 
     // Clear hit flash by timestamp (zero-allocation)
     if (this._flashUntil > 0 && time >= this._flashUntil) {

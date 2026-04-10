@@ -299,7 +299,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.chests) this.chests = this.add.group()
 
     // Wave manager
-    this.waveManager = new WaveManager(this, this.player, this.enemies)
+    this.waveManager = new WaveManager(this, [this.player], this.enemies)
 
     // Touch controls — virtual joystick on mobile, tap-to-move on desktop
     this.setupTouchControls()

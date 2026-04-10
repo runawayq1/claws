@@ -69,7 +69,7 @@ export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Gr
         }
       })
     }
-    p.scene.cameras.main.shake(60, 0.003)
+    if (p.isLocalPlayer) p.scene.cameras.main.shake(60, 0.003)
   }
 
   // Short lock — movement at 50% during attack, not full freeze

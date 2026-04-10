@@ -9,6 +9,7 @@ import * as khashin from './heroes/khashin'
 import * as muller from './heroes/muller'
 import { generateHeroFallbackTexture } from './heroes/fallbackTextures'
 import { MetaProgress } from '../systems/MetaProgress'
+import { type IInputController, KeyboardInputController } from '../systems/InputController'
 
 export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller'
 
@@ -145,7 +146,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private _shadow!: Phaser.GameObjects.Ellipse
   private lastAttackTime = 0
   isAttacking = false
-  private isDead = false
+  isDead = false
   private heroDef: HeroDef
   private poisonEndTime = 0
   private poisonDps = 0
@@ -345,9 +346,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   // flameGfx removed — using sprite-based flamethrower now
-  private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null
-  private wasd: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key } | null = null
   private _stanceKey: Phaser.Input.Keyboard.Key | null = null
+
+  public inputController: IInputController | null = null
+  public isLocalPlayer = true
 
   constructor(scene: Phaser.Scene, x: number, y: number, heroType: HeroType = 'ignara') {
     const sprCfg = SPRITE_HEROES[heroType]
@@ -426,28 +428,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body
     body.pushable = false
 
-    // Keyboard controls (desktop)
-    if (scene.input.keyboard) {
-      this.cursors = scene.input.keyboard.createCursorKeys()
-      this.wasd = {
-        W: scene.input.keyboard.addKey('W'),
-        A: scene.input.keyboard.addKey('A'),
-        S: scene.input.keyboard.addKey('S'),
-        D: scene.input.keyboard.addKey('D'),
-      }
-      // Stance toggle — Q key (stored for cleanup on destroy)
-      const stanceHandlers: Record<string, () => void> = {
-        sifra: () => this.toggleStance(),
-        nazar: () => this.toggleNazarStance(),
-        huntress: () => this.toggleHuntressStance(),
-        khashin: () => this.toggleKhashinStance(),
-        amun: () => this.toggleAmunStance(),
-        // Muller has no stance toggle — eruption is an upgrade ability
-      }
-      if (stanceHandlers[heroType]) {
-        this._stanceKey = scene.input.keyboard.addKey('Q')
-        this._stanceKey.on('down', stanceHandlers[heroType])
-      }
+    // Input controller — handles keyboard/joystick/touch input
+    if (this.isLocalPlayer) {
+      this.inputController = new KeyboardInputController(scene)
     }
   }
 
@@ -455,6 +438,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this._stanceKey) {
       this._stanceKey.destroy()
       this._stanceKey = null
+    }
+    if (this.inputController) {
+      this.inputController.destroy()
+      this.inputController = null
     }
     super.destroy(fromScene)
   }
@@ -721,26 +708,31 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   setTouchTarget(x: number, y: number) {
     if (this.isDead) return
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.setTouchTarget) kbic.setTouchTarget(x, y)
+    // Keep local touchTarget in sync for legacy access paths
     if (this.touchTarget) this.touchTarget.set(x, y)
     else this.touchTarget = new Phaser.Math.Vector2(x, y)
   }
 
-  clearTouchTarget() { this.touchTarget = null }
-
-  // Virtual joystick: dx/dy normalized direction, 0/0 = stop
-  private joystickDir: { dx: number; dy: number } | null = null
-
-  setJoystickDirection(dx: number, dy: number) {
-    if (this.isDead) return
-    if (dx === 0 && dy === 0) {
-      this.joystickDir = null
-    } else {
-      this.joystickDir = { dx, dy }
-    }
+  clearTouchTarget() {
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.clearTouchTarget) kbic.clearTouchTarget()
     this.touchTarget = null
   }
 
-  clearJoystick() { this.joystickDir = null }
+  // Virtual joystick: dx/dy normalized direction, 0/0 = stop
+  setJoystickDirection(dx: number, dy: number) {
+    if (this.isDead) return
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.setJoystickDirection) kbic.setJoystickDirection(dx, dy)
+    this.touchTarget = null
+  }
+
+  clearJoystick() {
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.clearJoystick) kbic.clearJoystick()
+  }
 
   takeDamage(amount: number) {
     if (this.isDead) return
@@ -904,9 +896,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         // Camera shake on every hit (mild), stronger flash for heavy hits
-        this.scene.cameras.main.shake(80, 0.003)
-        if (reduced > this.maxHp * 0.1) {
-          this.scene.cameras.main.flash(200, 200, 20, 20)
+        if (this.isLocalPlayer) {
+          this.scene.cameras.main.shake(80, 0.003)
+          if (reduced > this.maxHp * 0.1) {
+            this.scene.cameras.main.flash(200, 200, 20, 20)
+          }
         }
       }
     }
@@ -930,7 +924,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.hp = Math.ceil(this.maxHp * 0.5)
       const ring = this.scene.add.circle(this.x, this.y, 10, 0xff4400, 0.6).setDepth(15)
       this.scene.tweens.add({ targets: ring, scale: 8, alpha: 0, duration: 500, onComplete: () => ring.destroy() })
-      this.scene.cameras.main.flash(300, 255, 100, 0)
+      if (this.isLocalPlayer) this.scene.cameras.main.flash(300, 255, 100, 0)
       return
     }
 
@@ -995,8 +989,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
 
       // Camera flash + shake
-      this.scene.cameras.main.flash(500, 255, 255, 100)
-      this.scene.cameras.main.shake(200, 0.008)
+      if (this.isLocalPlayer) {
+        this.scene.cameras.main.flash(500, 255, 255, 100)
+        this.scene.cameras.main.shake(200, 0.008)
+      }
 
       // Shockwave burst on revive — damages + knocks back enemies
       const scene = this.scene as any
@@ -1105,7 +1101,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     })
 
     // Camera flash
-    this.scene.cameras.main.flash(150, 255, 215, 0, false)
+    if (this.isLocalPlayer) this.scene.cameras.main.flash(150, 255, 215, 0, false)
   }
 
   xpToNextLevel(): number {
@@ -1494,39 +1490,49 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const pBody = this.body as Phaser.Physics.Arcade.Body
 
-    // Keyboard movement (WASD / arrows) — takes priority
-    let kbX = 0, kbY = 0
-    if (this.cursors && this.wasd) {
-      if (this.cursors.left.isDown || this.wasd.A.isDown) kbX = -1
-      if (this.cursors.right.isDown || this.wasd.D.isDown) kbX = 1
-      if (this.cursors.up.isDown || this.wasd.W.isDown) kbY = -1
-      if (this.cursors.down.isDown || this.wasd.S.isDown) kbY = 1
+    // Update input controller before reading direction
+    if (this.inputController) this.inputController.update()
+
+    // Handle stance toggle via inputController (replaces direct Q key binding)
+    if (this.inputController?.getStanceToggle()) {
+      const stanceHandlers: Record<string, () => void> = {
+        sifra: () => this.toggleStance(),
+        nazar: () => this.toggleNazarStance(),
+        huntress: () => this.toggleHuntressStance(),
+        khashin: () => this.toggleKhashinStance(),
+        amun: () => this.toggleAmunStance(),
+      }
+      stanceHandlers[this.heroType]?.()
     }
 
     // During melee attack: allow movement at 50% speed (no full freeze)
     const atkSpeedMult = this.isAttacking ? 0.5 : 1
     let moving = false
-    if (kbX !== 0 || kbY !== 0) {
-      const len = Math.sqrt(kbX * kbX + kbY * kbY)
-      pBody.setVelocity((kbX / len) * this.speed * atkSpeedMult, (kbY / len) * this.speed * atkSpeedMult)
-      if (!this.isAttacking) this.setFlipX(kbX < 0)
+
+    // Get direction from inputController (keyboard + joystick)
+    const dir = this.inputController?.getDirection() ?? { dx: 0, dy: 0 }
+
+    // Resolve touch target from inputController (KeyboardInputController exposes it)
+    const kbic = this.inputController as KeyboardInputController | null
+    const activeTouchTarget = kbic?.getTouchTarget?.() ?? this.touchTarget
+
+    if (dir.dx !== 0 || dir.dy !== 0) {
+      pBody.setVelocity(dir.dx * this.speed * atkSpeedMult, dir.dy * this.speed * atkSpeedMult)
+      if (!this.isAttacking) this.setFlipX(dir.dx < 0)
+      // Clear touch target when keyboard/joystick is active
+      kbic?.clearTouchTarget?.()
       this.touchTarget = null
-      this.joystickDir = null
       moving = true
-    } else if (this.joystickDir) {
-      const { dx, dy } = this.joystickDir
-      pBody.setVelocity(dx * this.speed * atkSpeedMult, dy * this.speed * atkSpeedMult)
-      if (!this.isAttacking) this.setFlipX(dx < 0)
-      moving = true
-    } else if (this.touchTarget) {
-      const dist = Phaser.Math.Distance.Between(this.x, this.y, this.touchTarget.x, this.touchTarget.y)
+    } else if (activeTouchTarget) {
+      const dist = Phaser.Math.Distance.Between(this.x, this.y, activeTouchTarget.x, activeTouchTarget.y)
       if (dist > 10) {
-        const angle = Phaser.Math.Angle.Between(this.x, this.y, this.touchTarget.x, this.touchTarget.y)
+        const angle = Phaser.Math.Angle.Between(this.x, this.y, activeTouchTarget.x, activeTouchTarget.y)
         pBody.setVelocity(Math.cos(angle) * this.speed * atkSpeedMult, Math.sin(angle) * this.speed * atkSpeedMult)
-        if (!this.isAttacking) this.setFlipX(this.touchTarget.x < this.x)
+        if (!this.isAttacking) this.setFlipX(activeTouchTarget.x < this.x)
         moving = true
       } else {
         pBody.setVelocity(0, 0)
+        kbic?.consumeTouchTarget?.()
         this.touchTarget = null
       }
     } else {

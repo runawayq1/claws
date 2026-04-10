@@ -43,7 +43,8 @@ function pickWeighted(entries: SpawnEntry[], total: number): EnemyCtor {
 
 export class WaveManager {
   private scene: Phaser.Scene
-  private player: Player
+  private players: Player[]
+  private player: Player  // alias for players[0] — used by getSpawnPos and legacy code
   private enemies: Phaser.Physics.Arcade.Group
   private spawnTimer: Phaser.Time.TimerEvent | null = null
   private elapsedMs = 0
@@ -52,9 +53,10 @@ export class WaveManager {
   totalKills = 0
   currentWave = 0
 
-  constructor(scene: Phaser.Scene, player: Player, enemies: Phaser.Physics.Arcade.Group) {
+  constructor(scene: Phaser.Scene, players: Player[], enemies: Phaser.Physics.Arcade.Group) {
     this.scene = scene
-    this.player = player
+    this.players = players
+    this.player = players[0]
     this.enemies = enemies
   }
 
@@ -134,6 +136,7 @@ export class WaveManager {
     } else {
       mob = new SandGolem(this.scene, x, y, this.player, this.currentWave)
     }
+    mob.players = this.players
     mob.isMiniBoss = true
     mob.goldValue = Phaser.Math.Between(CONFIG.GOLD_BOSS_MIN, CONFIG.GOLD_BOSS_MAX)
       + Math.floor(this.currentWave * 3)
@@ -148,6 +151,7 @@ export class WaveManager {
     const spawnTable = ZONE_SPAWNS[zone] ?? ZONE_SPAWNS[4]
     const Factory = pickWeighted(spawnTable, ZONE_SPAWN_TOTALS[zone] ?? ZONE_SPAWN_TOTALS[4])
     const mob = new Factory(this.scene, x, y, this.player, tier)
+    mob.players = this.players
 
     this.enemies.add(mob)
 

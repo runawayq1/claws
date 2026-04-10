@@ -84,7 +84,7 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
       }
 
       // Camera shake
-      p.scene.cameras.main.shake(50, 0.003)
+      if (p.isLocalPlayer) p.scene.cameras.main.shake(50, 0.003)
 
       // Damage all enemies in explosion radius
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
