@@ -491,6 +491,9 @@ export class GameRoom extends Room<GameRoomState> {
   // ─── Spawning ─────────────────────────────────────────────
 
   private spawnEnemies() {
+    // Spawn protection: no enemies for first 3 seconds
+    if (this.state.elapsedMs < 3000) return
+
     const n = this.state.playerCount
     const wave = this.state.wave
     const cap = Math.min(
@@ -501,8 +504,9 @@ export class GameRoom extends Room<GameRoomState> {
     const alive = this.state.enemies.size
     if (alive >= cap) return
 
-    // Spawn 1-2 per tick
-    const toSpawn = Math.min(2, cap - alive)
+    // Ramp up spawn rate: 1 per tick for first 10s, then 2
+    const maxPerTick = this.state.elapsedMs < 10_000 ? 1 : 2
+    const toSpawn = Math.min(maxPerTick, cap - alive)
     for (let i = 0; i < toSpawn; i++) {
       this.spawnMob()
     }
@@ -585,15 +589,23 @@ export class GameRoom extends Room<GameRoomState> {
   }
 
   private getZone(x: number, y: number): number {
-    // Simplified zone calculation — distance from world center
-    const cx = CFG.WORLD_WIDTH / 2
-    const cy = CFG.WORLD_HEIGHT / 2
-    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+    // Zone = distance from player cluster center (not world center)
+    const center = this.getPlayerCenter()
+    const dist = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2)
     if (dist < 400) return 0
     if (dist < 800) return 1
     if (dist < 1200) return 2
     if (dist < 1600) return 3
     return 4
+  }
+
+  private getPlayerCenter(): { x: number; y: number } {
+    let sx = 0, sy = 0, count = 0
+    this.state.players.forEach(p => {
+      if (!p.isDead && !p.isDowned) { sx += p.x; sy += p.y; count++ }
+    })
+    if (count === 0) return { x: 0, y: 0 }
+    return { x: sx / count, y: sy / count }
   }
 
   // ─── Helpers ──────────────────────────────────────────────
