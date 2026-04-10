@@ -43,6 +43,12 @@ const ENEMY_TEXTURE: Record<string, string> = {
   orc0: 'orc1_idle', sandgolem: 'orc3_idle',
 }
 
+// Attack animation key per enemy type — matches client entity constructors
+const ENEMY_ATTACK_ANIM: Record<string, string> = {
+  orc0: 'orc1_attack', orc1: 'orc1_attack', orc2: 'orc2_attack', orc3: 'orc3_attack',
+  flyingeye: 'flyingeye_run', sandgolem: 'orc3_attack',
+}
+
 interface RemotePlayerSprite {
   sprite: Phaser.Physics.Arcade.Sprite
   nameplate: Phaser.GameObjects.Text
@@ -59,6 +65,7 @@ interface RemoteEnemySprite {
   hp: number
   maxHp: number
   type: string
+  isAttacking: boolean
 }
 
 export class NetworkGameAdapter {
@@ -237,6 +244,7 @@ export class NetworkGameAdapter {
       hp: enemyState.hp,
       maxHp: enemyState.maxHp,
       type: enemyState.type,
+      isAttacking: false,
     })
   }
 
@@ -332,7 +340,7 @@ export class NetworkGameAdapter {
       else if (remote.targetX > remote.sprite.x + 1) remote.sprite.setFlipX(false)
     })
 
-    // Interpolate enemy positions
+    // Interpolate enemy positions + attack animation based on proximity
     this.remoteEnemies.forEach(enemy => {
       enemy.sprite.x += (enemy.targetX - enemy.sprite.x) * lerpFactor
       enemy.sprite.y += (enemy.targetY - enemy.sprite.y) * lerpFactor
@@ -340,6 +348,32 @@ export class NetworkGameAdapter {
       // Flip sprite based on movement direction
       if (enemy.targetX < enemy.sprite.x - 1) enemy.sprite.setFlipX(true)
       else if (enemy.targetX > enemy.sprite.x + 1) enemy.sprite.setFlipX(false)
+
+      // Attack animation: check proximity to any known player (local + remote)
+      const ATTACK_RANGE = 45
+      let nearPlayer = false
+      // Check local player
+      const dx0 = enemy.sprite.x - this.localPlayer.x
+      const dy0 = enemy.sprite.y - this.localPlayer.y
+      if (dx0 * dx0 + dy0 * dy0 < ATTACK_RANGE * ATTACK_RANGE) nearPlayer = true
+      // Check remote players
+      if (!nearPlayer) {
+        this.remotePlayers.forEach(rp => {
+          const dx = enemy.sprite.x - rp.sprite.x
+          const dy = enemy.sprite.y - rp.sprite.y
+          if (dx * dx + dy * dy < ATTACK_RANGE * ATTACK_RANGE) nearPlayer = true
+        })
+      }
+
+      if (nearPlayer && !enemy.isAttacking) {
+        enemy.isAttacking = true
+        const atkAnim = ENEMY_ATTACK_ANIM[enemy.type]
+        if (atkAnim && this.scene.anims.exists(atkAnim)) enemy.sprite.play(atkAnim)
+      } else if (!nearPlayer && enemy.isAttacking) {
+        enemy.isAttacking = false
+        const walkAnim = ENEMY_WALK_ANIM[enemy.type] ?? `${enemy.type}_run`
+        if (this.scene.anims.exists(walkAnim)) enemy.sprite.play(walkAnim)
+      }
     })
   }
 
