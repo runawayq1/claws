@@ -132,9 +132,9 @@ export class GameRoom extends Room<GameRoomState> {
     p.name = options.playerName || 'Player'
     p.heroType = options.heroType || 'ignara'
 
-    // Spawn at origin (matches client infinite map origin) with slight offset
+    // Spawn at origin (matches client infinite map) with slight offset per player
     const idx = this.state.players.size
-    p.x = (idx - 1.5) * 80
+    p.x = idx * 60
     p.y = 0
 
     // Apply hero stats
@@ -276,10 +276,9 @@ export class GameRoom extends Room<GameRoomState> {
       if (p.isDead || p.isDowned) return
       if (p.inputDx === 0 && p.inputDy === 0) return
 
-      const moveX = p.inputDx * p.speed * (dt / 1000)
-      const moveY = p.inputDy * p.speed * (dt / 1000)
-      p.x = Math.max(0, Math.min(CFG.WORLD_WIDTH, p.x + moveX))
-      p.y = Math.max(0, Math.min(CFG.WORLD_HEIGHT, p.y + moveY))
+      // No bounds clamping — infinite map on client
+      p.x += p.inputDx * p.speed * (dt / 1000)
+      p.y += p.inputDy * p.speed * (dt / 1000)
     })
   }
 

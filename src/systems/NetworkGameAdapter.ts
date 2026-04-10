@@ -116,11 +116,17 @@ export class NetworkGameAdapter {
     const room = networkManager.currentRoom
     if (!room) return
 
-    // Listen for player add/remove on the room state
     const state = room.state as any
     if (state.players) {
+      // Process players already in state (joined during lobby)
+      state.players.forEach((player: any, key: string) => {
+        if (key === networkManager.sessionId) return
+        this.addRemotePlayer(key, player)
+      })
+      // Listen for future joins
       state.players.onAdd((player: any, key: string) => {
-        if (key === networkManager.sessionId) return // skip local player
+        if (key === networkManager.sessionId) return
+        if (this.remotePlayers.has(key)) return // already added
         this.addRemotePlayer(key, player)
       })
       state.players.onRemove((_player: any, key: string) => {
@@ -128,7 +134,12 @@ export class NetworkGameAdapter {
       })
     }
     if (state.enemies) {
+      // Process enemies already in state
+      state.enemies.forEach((enemy: any, key: string) => {
+        this.addRemoteEnemy(key, enemy)
+      })
       state.enemies.onAdd((enemy: any, key: string) => {
+        if (this.remoteEnemies.has(key)) return
         this.addRemoteEnemy(key, enemy)
       })
       state.enemies.onRemove((_enemy: any, key: string) => {
