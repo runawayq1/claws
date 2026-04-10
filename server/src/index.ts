@@ -7,6 +7,14 @@ import { GameRoom } from './rooms/GameRoom'
 
 const port = Number(process.env.PORT) || 2567
 
+// Prevent crashes from killing the server
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err)
+})
+process.on('unhandledRejection', (err) => {
+  console.error('[FATAL] Unhandled rejection:', err)
+})
+
 const app = express()
 app.use(cors())
 app.use(express.json())

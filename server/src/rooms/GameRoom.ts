@@ -33,6 +33,7 @@ export class GameRoom extends Room<GameRoomState> {
   private pendingLevelUps = new Map<string, string[]>() // playerId → offered upgrade IDs
 
   onCreate() {
+    console.log(`[GameRoom] Room created: ${this.roomId}`)
     this.setState(new GameRoomState())
     this.state.seed = Math.floor(Math.random() * 0xFFFFFFFF)
     this.state.status = 'waiting'
@@ -125,6 +126,7 @@ export class GameRoom extends Room<GameRoomState> {
   }
 
   onJoin(client: Client, options: JoinOptions) {
+    console.log(`[GameRoom] onJoin: ${client.sessionId}, name=${options.playerName}, hero=${options.heroType}, room=${this.roomId}, players=${this.state.players.size}`)
     const p = new PlayerState()
     p.id = client.sessionId
     p.name = options.playerName || 'Player'
@@ -159,32 +161,34 @@ export class GameRoom extends Room<GameRoomState> {
   }
 
   async onLeave(client: Client, consented: boolean) {
-    const p = this.state.players.get(client.sessionId)
-    if (!p) return
+    try {
+      console.log(`[GameRoom] onLeave: ${client.sessionId}, consented=${consented}`)
+      const p = this.state.players.get(client.sessionId)
+      if (!p) return
 
-    if (this.state.status === 'playing' && !consented) {
-      // Allow reconnection for 30 seconds
-      try {
-        await this.allowReconnection(client, CFG.RECONNECT_TIMEOUT)
-        // Player reconnected
-        return
-      } catch {
-        // Timeout — remove player
+      if (this.state.status === 'playing' && !consented) {
+        try {
+          await this.allowReconnection(client, CFG.RECONNECT_TIMEOUT)
+          console.log(`[GameRoom] Player reconnected: ${client.sessionId}`)
+          return
+        } catch {
+          console.log(`[GameRoom] Reconnect timeout: ${client.sessionId}`)
+        }
       }
-    }
 
-    this.state.players.delete(client.sessionId)
-    this.state.playerCount = this.state.players.size
-    this.broadcast('player-left', { playerId: client.sessionId })
+      this.state.players.delete(client.sessionId)
+      this.state.playerCount = this.state.players.size
+      this.broadcast('player-left', { playerId: client.sessionId })
 
-    // If host leaves during lobby, end the room
-    if (this.state.status === 'waiting' && this.state.players.size === 0) {
-      this.disconnect()
-    }
-
-    // If all players left during game, end it
-    if (this.state.status === 'playing' && this.state.players.size === 0) {
-      this.endGame()
+      // If all players left, dispose room gracefully
+      if (this.state.players.size === 0) {
+        if (this.state.status === 'playing') {
+          this.endGame()
+        }
+        // Room auto-disposes when empty — no need to call this.disconnect()
+      }
+    } catch (err) {
+      console.error(`[GameRoom] onLeave error:`, err)
     }
   }
 
