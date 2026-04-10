@@ -31,6 +31,7 @@ export class GameRoom extends Room<GameRoomState> {
   private playerAttackTimers = new Map<string, number>() // playerId → ms since last attack
   private enemyRetargetTimers = new Map<number, number>() // enemyId → ms until retarget
   private pendingLevelUps = new Map<string, string[]>() // playerId → offered upgrade IDs
+  private readyPlayers = new Set<string>() // clients that finished loading
 
   onCreate() {
     console.log(`[GameRoom] Room created: ${this.roomId}`)
@@ -105,6 +106,18 @@ export class GameRoom extends Room<GameRoomState> {
       if (!p) return
       // Apply upgrade (simple stat boosts for now)
       this.applyUpgrade(p, msg.upgradeId)
+    })
+
+    // --- Client finished loading, ready to play ---
+    this.onMessage('ready', (client: Client) => {
+      if (this.state.status !== 'playing') return
+      this.readyPlayers.add(client.sessionId)
+      console.log(`[GameRoom] Player ready: ${client.sessionId} (${this.readyPlayers.size}/${this.state.players.size})`)
+      // Start tick only when ALL players are ready
+      if (this.readyPlayers.size >= this.state.players.size && !this.tickInterval) {
+        console.log(`[GameRoom] All players ready — starting game tick`)
+        this.tickInterval = setInterval(() => this.gameTick(), CFG.TICK_MS)
+      }
     })
 
     // --- Revive request ---
@@ -205,6 +218,7 @@ export class GameRoom extends Room<GameRoomState> {
     this.state.status = 'playing'
     this.state.elapsedMs = 0
     this.state.wave = 1
+    this.readyPlayers.clear()
 
     this.broadcast('game-start', {
       seed: this.state.seed,
@@ -214,8 +228,14 @@ export class GameRoom extends Room<GameRoomState> {
     // Lock room — no more joins
     this.lock()
 
-    // Start server tick at 20Hz
-    this.tickInterval = setInterval(() => this.gameTick(), CFG.TICK_MS)
+    // Tick starts when all clients send 'ready' (after loading)
+    // Safety: if clients don't send ready within 15s, start anyway
+    setTimeout(() => {
+      if (!this.tickInterval && this.state.status === 'playing') {
+        console.log(`[GameRoom] Ready timeout — force-starting game tick`)
+        this.tickInterval = setInterval(() => this.gameTick(), CFG.TICK_MS)
+      }
+    }, 15000)
   }
 
   private endGame() {

@@ -540,6 +540,8 @@ export class GameScene extends Phaser.Scene {
       // Listen for network game events
       this.events.on('network-game-over', () => { this.gameOver = true })
       this.events.on('network-game-won', () => { this.gameOver = true })
+      // Signal server that this client is loaded and ready
+      import('../systems/NetworkManager').then(({ networkManager }) => networkManager.sendReady())
     }
 
     // Start spawning after brief delay (skipped in online mode — server controls spawning)

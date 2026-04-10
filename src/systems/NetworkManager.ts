@@ -117,6 +117,12 @@ class NetworkManager {
     this.room.send('start')
   }
 
+  /** Signal that client finished loading and is ready to play */
+  sendReady() {
+    if (!this.room) return
+    this.room.send('ready')
+  }
+
   /** Send chosen upgrade after level-up */
   sendUpgradeChoice(upgradeId: string) {
     if (!this.room) return

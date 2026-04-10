@@ -14,6 +14,12 @@ import Phaser from 'phaser'
 import { networkManager } from './NetworkManager'
 import type { Player } from '../entities/Player'
 
+// Scale per hero to match Player sprite proportions
+const HERO_REMOTE_SCALE: Record<string, number> = {
+  ignara: 1.36, sifra: 0.77, nazar: 1.25, amun: 1.5,
+  huntress: 1.61, khashin: 1.65, muller: 1.35,
+}
+
 interface RemotePlayerSprite {
   sprite: Phaser.Physics.Arcade.Sprite
   nameplate: Phaser.GameObjects.Text
@@ -151,9 +157,10 @@ export class NetworkGameAdapter {
   private addRemotePlayer(id: string, playerState: any) {
     // Create a lightweight sprite for the remote player
     const texKey = `${playerState.heroType}_idle`
+    const scale = HERO_REMOTE_SCALE[playerState.heroType] ?? 1
     const sprite = this.scene.physics.add.sprite(playerState.x, playerState.y, texKey, 0)
       .setDepth(5)
-      .setScale(0.8)
+      .setScale(scale)
 
     const nameplate = this.scene.add.text(playerState.x, playerState.y - 40, playerState.name, {
       fontFamily: 'monospace',
@@ -233,20 +240,29 @@ export class NetworkGameAdapter {
   private syncState(state: any) {
     if (!state) return
 
-    // Sync local player position from server (reconciliation)
+    // Sync local player from server (authoritative)
     const localState = state.players?.get(networkManager.sessionId)
     if (localState) {
       this.localPlayer.hp = localState.hp
       this.localPlayer.maxHp = localState.maxHp
       this.localPlayer.level = localState.level
       this.localPlayer.xp = localState.xp
-      // Don't override position — use client-side prediction
-      // But reconcile if too far off
+
+      // Sync death/downed state from server (covers missed messages during loading)
+      if (localState.isDead && !this.localPlayer.isDead) {
+        this.localPlayer.isDead = true
+        this.scene.events.emit('player-died')
+      }
+      if (localState.isDowned && !this.localPlayer.isDead) {
+        this.localPlayer.isDead = true
+        this.scene.events.emit('player-died')
+      }
+
+      // Position reconciliation — snap if server and client diverge too much
       const dx = localState.x - this.localPlayer.x
       const dy = localState.y - this.localPlayer.y
       const dist = Math.sqrt(dx * dx + dy * dy)
-      if (dist > 50) {
-        // Snap if too far
+      if (dist > 80) {
         this.localPlayer.x = localState.x
         this.localPlayer.y = localState.y
       }
