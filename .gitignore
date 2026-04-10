@@ -14,7 +14,17 @@ dist/
 .agents/
 
 # Editor state
-.obsidian/workspace.json
+.obsidian/
 
 # Test artifacts
 test-results/
+tests/*.png
+
+# Raw/scratch artwork at root
+/card_front.png
+/card_back.png
+/card_back2.png
+/icon.png
+/shield.png
+/wall.png
+/sifra icons/
