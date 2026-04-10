@@ -13,6 +13,7 @@
     "declaration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": false,
+    "useDefineForClassFields": false,
     "strictPropertyInitialization": false
   },
   "include": ["src/**/*"],
