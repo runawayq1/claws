@@ -11,6 +11,8 @@ export interface IInputController {
   destroy(): void
 }
 
+export type KeySet = 'wasd' | 'arrows' | 'both'
+
 export class KeyboardInputController implements IInputController {
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null
   private wasd: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key } | null = null
@@ -24,16 +26,25 @@ export class KeyboardInputController implements IInputController {
   // We track via Phaser key 'down' event (edge, not held)
   private _qPressed = false
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, keySet: KeySet = 'both') {
     if (scene.input.keyboard) {
-      this.cursors = scene.input.keyboard.createCursorKeys()
-      this.wasd = {
-        W: scene.input.keyboard.addKey('W'),
-        A: scene.input.keyboard.addKey('A'),
-        S: scene.input.keyboard.addKey('S'),
-        D: scene.input.keyboard.addKey('D'),
+      if (keySet === 'wasd' || keySet === 'both') {
+        this.wasd = {
+          W: scene.input.keyboard.addKey('W'),
+          A: scene.input.keyboard.addKey('A'),
+          S: scene.input.keyboard.addKey('S'),
+          D: scene.input.keyboard.addKey('D'),
+        }
       }
-      this.qKey = scene.input.keyboard.addKey('Q')
+      if (keySet === 'arrows' || keySet === 'both') {
+        this.cursors = scene.input.keyboard.createCursorKeys()
+      }
+      // Stance key: Q for player 1 (wasd/both), E for player 2 (arrows)
+      if (keySet === 'arrows') {
+        this.qKey = scene.input.keyboard.addKey('E')
+      } else {
+        this.qKey = scene.input.keyboard.addKey('Q')
+      }
       this.qKey.on('down', () => { this._qPressed = true })
     }
   }
@@ -65,11 +76,17 @@ export class KeyboardInputController implements IInputController {
   getDirection(): { dx: number; dy: number } {
     // Keyboard takes priority
     let kbX = 0, kbY = 0
-    if (this.cursors && this.wasd) {
-      if (this.cursors.left.isDown || this.wasd.A.isDown) kbX = -1
-      if (this.cursors.right.isDown || this.wasd.D.isDown) kbX = 1
-      if (this.cursors.up.isDown || this.wasd.W.isDown) kbY = -1
-      if (this.cursors.down.isDown || this.wasd.S.isDown) kbY = 1
+    if (this.cursors) {
+      if (this.cursors.left.isDown) kbX = -1
+      if (this.cursors.right.isDown) kbX = 1
+      if (this.cursors.up.isDown) kbY = -1
+      if (this.cursors.down.isDown) kbY = 1
+    }
+    if (this.wasd) {
+      if (this.wasd.A.isDown) kbX = -1
+      if (this.wasd.D.isDown) kbX = 1
+      if (this.wasd.W.isDown) kbY = -1
+      if (this.wasd.S.isDown) kbY = 1
     }
 
     if (kbX !== 0 || kbY !== 0) {

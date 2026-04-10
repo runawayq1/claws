@@ -12,6 +12,7 @@ import { Pickup } from '../entities/Pickup'
 import { Chest } from '../entities/Chest'
 import { ChunkManager } from '../systems/ChunkManager'
 import { MetaProgress } from '../systems/MetaProgress'
+import { KeyboardInputController } from '../systems/InputController'
 import { isMobileDevice, isMobileUserAgent, isPortrait } from '../utils/device'
 
 const ROCK_KEYS = [
@@ -54,13 +55,22 @@ export class GameScene extends Phaser.Scene {
   _frameKills = 0
   /** Active intro reveal objects — tracked so shutdown() can clean them up if scene ends mid-animation */
   private _revealObjects: Phaser.GameObjects.GameObject[] = []
+  private _localCoop = false
+  private _p2Hero: HeroType = 'sifra'
+  private _cameraTarget: Phaser.GameObjects.Rectangle | null = null
+  private _nameplates: Phaser.GameObjects.Text[] = []
 
   constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
     super(config ?? { key: 'GameScene' })
   }
 
-  init(data?: { hero?: HeroType; playerName?: string }) {
+  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean }) {
     this.selectedHero = data?.hero || 'ignara'
+    this._localCoop = data?.localCoop ?? new URL(location.href).searchParams.has('coop')
+    if (this._localCoop) {
+      const HERO_LIST: HeroType[] = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
+      this._p2Hero = (HERO_LIST.find(h => h !== this.selectedHero) || 'sifra') as HeroType
+    }
   }
 
   preload() {
@@ -139,6 +149,11 @@ export class GameScene extends Phaser.Scene {
 
     // Hero-specific assets
     this.loadHeroAssets(this.selectedHero, ss)
+
+    // Local coop: also load assets for player 2's hero
+    if (this._localCoop) {
+      this.loadHeroAssets(this._p2Hero, ss)
+    }
   }
 
   private loadHeroAssets(hero: string, ss: (key: string, path: string, fw: number, fh: number) => void) {
@@ -240,7 +255,6 @@ export class GameScene extends Phaser.Scene {
       this.rocks = this.physics.add.staticGroup()
       this.localPlayer = new Player(this, 0, 0, this.selectedHero)
       this.players = [this.localPlayer]
-      this.cameras.main.startFollow(this.localPlayer, true, 0.1, 0.1)
       // NO camera.setBounds — infinite scroll
       this.chests = this.add.group()
       this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.localPlayer, this.chests)
@@ -255,13 +269,46 @@ export class GameScene extends Phaser.Scene {
       this.terrainRT.fill(0x4a7c3f)
       this.localPlayer = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
       this.players = [this.localPlayer]
-      this.cameras.main.startFollow(this.localPlayer, true, 0.1, 0.1)
       this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
       this.drawTerrainProgressive()
       this.scatterDecorations(0, Infinity)
       this.scatterRocks(0, Infinity)
       this.generateGraveTextures()
       this.events.emit('terrain-ready')
+    }
+
+    // ── Local coop: spawn player 2 with a different hero ──
+    if (this._localCoop) {
+      // Player 1 uses WASD only
+      this.localPlayer.inputController?.destroy()
+      this.localPlayer.inputController = new KeyboardInputController(this, 'wasd')
+
+      // Player 2 spawns beside player 1 and uses arrow keys
+      const p2 = new Player(this, this.localPlayer.x + 80, this.localPlayer.y, this._p2Hero)
+      p2.isLocalPlayer = true  // both are local in local coop
+      p2.inputController?.destroy()
+      p2.inputController = new KeyboardInputController(this, 'arrows')
+      this.players.push(p2)
+
+      // Physics: player 2 collides with rocks
+      this.physics.add.collider(p2, this.rocks)
+
+      // Camera: follow invisible midpoint target with lerp
+      this._cameraTarget = this.add.rectangle(this.localPlayer.x, this.localPlayer.y, 1, 1, 0, 0)
+        .setVisible(false)
+      this.cameras.main.startFollow(this._cameraTarget, true, 0.1, 0.1)
+
+      // Nameplates for both players
+      const np1 = this.add.text(0, 0, this.selectedHero.toUpperCase(), {
+        fontSize: '11px', color: '#ffffff', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(15)
+      const np2 = this.add.text(0, 0, this._p2Hero.toUpperCase(), {
+        fontSize: '11px', color: '#aaffaa', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(15)
+      this._nameplates = [np1, np2]
+    } else {
+      // Single player: follow localPlayer normally
+      this.cameras.main.startFollow(this.localPlayer, true, 0.1, 0.1)
     }
 
     // Mobile-portrait camera zoom — zoom out 20% for wider field of view
@@ -293,9 +340,9 @@ export class GameScene extends Phaser.Scene {
       return !(enemy as any).isFlying
     })
 
-    // XP + Gold systems
-    this.xpSystem = new XPSystem(this, [this.localPlayer])
-    this.goldSystem = new GoldSystem(this, [this.localPlayer])
+    // XP + Gold systems — use full players array (includes p2 in coop)
+    this.xpSystem = new XPSystem(this, this.players)
+    this.goldSystem = new GoldSystem(this, this.players)
 
     // Pickups group (HP orbs, magnets)
     this.pickups = this.add.group()
@@ -303,8 +350,8 @@ export class GameScene extends Phaser.Scene {
     // Chests — spawned by ChunkManager (infinite map) or manually (bounded map)
     if (!this.chests) this.chests = this.add.group()
 
-    // Wave manager
-    this.waveManager = new WaveManager(this, [this.player], this.enemies)
+    // Wave manager — use full players array
+    this.waveManager = new WaveManager(this, this.players, this.enemies)
 
     // Touch controls — virtual joystick on mobile, tap-to-move on desktop
     this.setupTouchControls()
@@ -374,28 +421,40 @@ export class GameScene extends Phaser.Scene {
 
     })
 
-    // Pickup overlap — collect on touch
-    this.physics.add.overlap(this.player, this.pickups, (_player, pickup) => {
-      (pickup as Pickup).collect()
-    })
+    // Pickup overlap — collect on touch (all players)
+    for (const p of this.players) {
+      this.physics.add.overlap(p, this.pickups, (_player, pickup) => {
+        (pickup as Pickup).collect()
+      })
+    }
 
-    // Chest overlap — open on touch
-    this.physics.add.overlap(this.player, this.chests, (_player, chest) => {
-      (chest as Chest).open()
-    })
+    // Chest overlap — open on touch (all players)
+    for (const p of this.players) {
+      this.physics.add.overlap(p, this.chests, (_player, chest) => {
+        (chest as Chest).open()
+      })
+    }
 
-    // Magnet pickup — pull all XP orbs to player instantly
+    // Magnet pickup — pull all XP orbs to nearest alive player
     this.events.on('magnet-activated', () => {
       const orbs = this.xpSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]
       for (const orb of orbs) {
         if (!orb.active) continue
+        // Find nearest alive player to pull toward
+        let target = this.localPlayer
+        let minDist = Infinity
+        for (const p of this.players) {
+          if (p.isDead) continue
+          const d = Phaser.Math.Distance.Between(orb.x, orb.y, p.cx, p.cy)
+          if (d < minDist) { minDist = d; target = p }
+        }
         this.tweens.add({
           targets: orb,
-          x: this.player.cx, y: this.player.cy,
+          x: target.cx, y: target.cy,
           duration: 300,
           onComplete: () => {
             if (orb.active) {
-              this.player.addXP((orb as any).xpValue || 10)
+              target.addXP((orb as any).xpValue || 10)
               orb.destroy()
             }
           },
@@ -405,11 +464,13 @@ export class GameScene extends Phaser.Scene {
 
     this.upgradeTracker = new UpgradeTracker()
 
-    this.events.on('player-levelup', () => {
+    this.events.on('player-levelup', (levelingPlayer?: Player) => {
+      // Use the player that leveled up; fall back to localPlayer for backward compat
+      const lvlPlayer = levelingPlayer ?? this.localPlayer
       // Kill nearby enemies so player can safely choose upgrades
       const CLEAR_RADIUS = 150
-      const px = this.player.cx
-      const py = this.player.cy
+      const px = lvlPlayer.cx
+      const py = lvlPlayer.cy
       for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!enemy.active) continue
         const dist = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y)
@@ -429,8 +490,8 @@ export class GameScene extends Phaser.Scene {
       }
       const isBranch = this.upgradeTracker.isBranchSelection
       const choices = isBranch
-        ? this.upgradeTracker.getBranchChoices(this.player.heroType, this.player.getActiveStance())
-        : this.upgradeTracker.getChoices(this.player.heroType, this.player.getActiveStance())
+        ? this.upgradeTracker.getBranchChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
+        : this.upgradeTracker.getChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
       if (choices.length === 0) return  // all upgrades taken — skip level-up UI
       // Slow-motion cinematic pause before upgrade screen (300ms real-time at timeScale 0.15)
       this.physics.world.timeScale = 8
@@ -439,13 +500,17 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(45, () => {
         this.physics.world.timeScale = 1
         this.time.timeScale = 1
-        this.scene.launch('LevelUpScene', { player: this.player, tracker: this.upgradeTracker, callerSceneKey: this.scene.key })
+        this.scene.launch('LevelUpScene', { player: lvlPlayer, tracker: this.upgradeTracker, callerSceneKey: this.scene.key })
         this.scene.pause()
       })
     })
 
     this.events.on('player-died', () => {
-      this.gameOver = true
+      // In local coop, only trigger game over when ALL players are dead
+      const anyAlive = this.players.some(p => !p.isDead)
+      if (!anyAlive) {
+        this.gameOver = true
+      }
     })
 
     // CLAWS boss at 10 minutes
@@ -1530,6 +1595,25 @@ export class GameScene extends Phaser.Scene {
       p.tryAutoAttack(this.enemies, time, dt)
     }
 
+    // Local coop: move camera target to midpoint between alive players
+    if (this._cameraTarget && this.players.length > 1) {
+      const alive = this.players.filter(p => !p.isDead)
+      if (alive.length > 0) {
+        this._cameraTarget.x = alive.reduce((s, p) => s + p.x, 0) / alive.length
+        this._cameraTarget.y = alive.reduce((s, p) => s + p.y, 0) / alive.length
+      }
+    }
+
+    // Update nameplates (local coop)
+    if (this._nameplates.length > 0) {
+      for (let i = 0; i < this._nameplates.length && i < this.players.length; i++) {
+        const np = this._nameplates[i]
+        const p = this.players[i]
+        np.setPosition(p.x, p.y - 40)
+        np.setVisible(!p.isDead)
+      }
+    }
+
     // XP/gold magnet pull — throttled to every 6 frames (velocity persists between recalcs)
     this._magnetFrame = (this._magnetFrame + 1) % 6
     if (this._magnetFrame === 0) {
@@ -1619,6 +1703,10 @@ export class GameScene extends Phaser.Scene {
       p?.destroy()
     }
     this.players = []
+    for (const np of this._nameplates) np?.destroy()
+    this._nameplates = []
+    this._cameraTarget?.destroy()
+    this._cameraTarget = null
   }
 
 }

@@ -1053,7 +1053,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.maxHp += 8
       this.hp = Math.min(this.hp + 8, this.maxHp)
       this.showLevelUpVfx()
-      this.scene.events.emit('player-levelup')
+      this.scene.events.emit('player-levelup', this)
     }
   }
 
