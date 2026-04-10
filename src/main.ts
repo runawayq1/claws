@@ -14,6 +14,8 @@ import { EncyclopediaScene } from './scenes/EncyclopediaScene'
 import { ForgeScene } from './scenes/ForgeScene'
 import { LeaderboardScene } from './scenes/LeaderboardScene'
 import { LoadingScene } from './scenes/LoadingScene'
+import { HeroSelectScene } from './scenes/HeroSelectScene'
+import { LobbyScene } from './scenes/LobbyScene'
 
 // Bigger displays (anything wider than a 2020 MacBook Air's 1440 CSS px) get
 // a 30% logical zoom — Phaser renders at a smaller logical size, then the
@@ -52,7 +54,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [NameInputScene, StartScene, LoadingScene, ...(import.meta.env.DEV ? [TestScene, BossTestScene, SwordsTestScene] : []), GameScene, UndeadMapScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene, ForgeScene, LeaderboardScene],
+  scene: [NameInputScene, StartScene, HeroSelectScene, LoadingScene, LobbyScene, ...(import.meta.env.DEV ? [TestScene, BossTestScene, SwordsTestScene] : []), GameScene, UndeadMapScene, UIScene, LevelUpScene, ProfileScene, EncyclopediaScene, ForgeScene, LeaderboardScene],
   scale: {
     // NONE = we own canvas size; RESIZE auto-fits to parent and overrides our
     // CSS stretching, so the zoom strategy never took effect. resizeGame()
