@@ -1,3 +1,5 @@
+> **STATUS: NOT IMPLEMENTED** — Design only, no code exists yet. Last reviewed 2026-04-09.
+
 # CLAWS — Skill Challenge System Design
 
 **Version:** 1.0 | **Date:** 2026-04-06 | **Status:** Design (not yet implemented)

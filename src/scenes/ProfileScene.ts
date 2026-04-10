@@ -18,6 +18,7 @@ export class ProfileScene extends Phaser.Scene {
   create() {
     this.cameras.main.fadeIn(200)
     const { width, height } = this.scale
+    const isPortrait = height > width
     const meta = MetaProgress.load()
     const defs = MetaProgress.getAchievementDefs()
     const { unlocked, total } = MetaProgress.getUnlockedCount()
@@ -53,26 +54,29 @@ export class ProfileScene extends Phaser.Scene {
     this.drawPanel(panelX, y, panelW, 90, 'LIFETIME STATS')
 
     const statCol1 = panelX + 20
-    const statCol2 = panelX + panelW / 2 + 20
+    // In portrait, the panel is ~350px wide — keep col2 and its values within the right half
+    const statCol2 = isPortrait ? panelX + Math.floor(panelW / 2) + 10 : panelX + panelW / 2 + 20
+    const valOffset = isPortrait ? 90 : 120
     const statY = y + 30
 
-    const statStyle = { fontFamily: 'monospace', fontSize: '13px', color: '#cccccc', stroke: '#000000', strokeThickness: 1 }
-    const valStyle = { fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', stroke: '#000000', strokeThickness: 1 }
+    const statFontSize = isPortrait ? '14px' : '13px'
+    const statStyle = { fontFamily: 'monospace', fontSize: statFontSize, color: '#cccccc', stroke: '#000000', strokeThickness: 1 }
+    const valStyle = { fontFamily: 'monospace', fontSize: statFontSize, color: '#ffffff', stroke: '#000000', strokeThickness: 1 }
 
     this.add.text(statCol1, statY, 'Total Kills:', statStyle)
-    this.add.text(statCol1 + 120, statY, meta.totalKills.toLocaleString(), valStyle)
+    this.add.text(statCol1 + valOffset, statY, meta.totalKills.toLocaleString(), valStyle)
     this.add.text(statCol2, statY, 'Best Kills:', statStyle)
-    this.add.text(statCol2 + 120, statY, meta.bestKills.toLocaleString(), valStyle)
+    this.add.text(statCol2 + valOffset, statY, meta.bestKills.toLocaleString(), valStyle)
 
     this.add.text(statCol1, statY + 20, 'Total Runs:', statStyle)
-    this.add.text(statCol1 + 120, statY + 20, `${meta.totalRuns}`, valStyle)
+    this.add.text(statCol1 + valOffset, statY + 20, `${meta.totalRuns}`, valStyle)
     this.add.text(statCol2, statY + 20, 'Wins:', statStyle)
-    this.add.text(statCol2 + 120, statY + 20, `${meta.totalWins}`, valStyle)
+    this.add.text(statCol2 + valOffset, statY + 20, `${meta.totalWins}`, valStyle)
 
     this.add.text(statCol1, statY + 40, 'Time Played:', statStyle)
-    this.add.text(statCol1 + 120, statY + 40, this.formatDuration(meta.totalTimeMs), valStyle)
+    this.add.text(statCol1 + valOffset, statY + 40, this.formatDuration(meta.totalTimeMs), valStyle)
     this.add.text(statCol2, statY + 40, 'Best Time:', statStyle)
-    this.add.text(statCol2 + 120, statY + 40, this.formatTime(meta.bestTime), valStyle)
+    this.add.text(statCol2 + valOffset, statY + 40, this.formatTime(meta.bestTime), valStyle)
 
     y += 100
 

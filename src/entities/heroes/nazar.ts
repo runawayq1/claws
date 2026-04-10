@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
+import type { GameSceneContext } from '../../types/scene-context'
 
 export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
   // Shadow Step: blink 30px toward nearest enemy before slashing
@@ -643,9 +644,8 @@ export function updatePhantomTrail(p: Player, delta: number, moving: boolean) {
     if (p.phantomTrailTimer >= 500) {
       p.phantomTrailTimer = 0
       // Enforce max 6 trails
-      if (!(p as any)._phantomTrails) (p as any)._phantomTrails = [] as Phaser.GameObjects.Arc[]
-      const activeTrails = ((p as any)._phantomTrails as Phaser.GameObjects.Arc[]).filter(t => t.active)
-      ;(p as any)._phantomTrails = activeTrails
+      const activeTrails = p._phantomTrails.filter(t => t.active)
+      p._phantomTrails = activeTrails
       if (activeTrails.length >= 6) return
 
       const tx = p.x, ty = p.y
@@ -659,7 +659,7 @@ export function updatePhantomTrail(p: Player, delta: number, moving: boolean) {
         delay: 250, repeat: 7, callback: () => {
           ticks++
           const now = p.scene.time.now
-          const scene = p.scene as any
+          const scene = p.scene as GameSceneContext
           if (scene.enemies) {
             for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e.active) continue

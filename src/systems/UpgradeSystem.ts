@@ -1,4 +1,5 @@
 import { Player, type HeroType } from '../entities/Player'
+import { MetaProgress } from './MetaProgress'
 
 export interface Upgrade {
   id: string
@@ -16,16 +17,16 @@ export interface Upgrade {
 // GENERIC POOL (G1–G10) — available to all heroes, one-shot
 // ============================================================
 export const GENERIC_POOL: Upgrade[] = [
-  { id: 'g1',  label: 'Sharp Edge',   desc: ['+20% dmg to all attacks', '+10% dmg (total +32%)', '+10% dmg (total +45%)'],            icon: 'g1_sharp_edge',   apply: (p, lvl) => { if (lvl === 1) { p.damage = Math.ceil(p.damage * 1.2) } else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) } else { p.damage = Math.ceil(p.damage * 1.1) } } },
-  { id: 'g2',  label: 'Swift Feet',   desc: ['+15% move speed permanently', '+10% more speed', '+10% more speed'],                    icon: 'g2_swift_feet',   apply: (p, lvl) => { if (lvl === 1) { p.speed = Math.ceil(p.speed * 1.15) } else if (lvl === 2) { p.speed = Math.ceil(p.speed * 1.1) } else { p.speed = Math.ceil(p.speed * 1.1) } } },
-  { id: 'g3',  label: 'Eagle Eye',    desc: ['+20% attack range permanently', '+15% more range', '+15% more range'],                  icon: 'g3_eagle_eye',    apply: (p, lvl) => { if (lvl === 1) { p.range = Math.ceil(p.range * 1.2) } else if (lvl === 2) { p.range = Math.ceil(p.range * 1.15) } else { p.range = Math.ceil(p.range * 1.15) } } },
-  { id: 'g4',  label: 'Quick Hands',  desc: ['-20% attack cooldown (min 200ms)', '-10% more cooldown', '-10% more cooldown'],         icon: 'g4_quick_hands',  apply: (p, lvl) => { if (lvl === 1) { p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.8)) } else if (lvl === 2) { p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) } else { p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) } } },
-  { id: 'g5',  label: 'Vitality',     desc: ['+25% max HP, heal for the bonus', '+20% more max HP', '+20% more max HP'],              icon: 'g5_vitality',     apply: (p, lvl) => { if (lvl === 1) { const b = Math.ceil(p.maxHp * 0.25); p.maxHp += b; p.hp += b } else if (lvl === 2) { const b = Math.ceil(p.maxHp * 0.2); p.maxHp += b; p.hp += b } else { const b = Math.ceil(p.maxHp * 0.2); p.maxHp += b; p.hp += b } } },
-  { id: 'g6',  label: 'Regeneration', desc: ['+2 HP/s passive regen', '+2 HP/s more regen', '+3 HP/s more regen'],                   icon: 'g6_regeneration', apply: (p, lvl) => { if (lvl === 1) { p.hpRegen += 2 } else if (lvl === 2) { p.hpRegen += 2 } else { p.hpRegen += 3 } } },
-  { id: 'g7',  label: 'Cleave',       desc: ['AoE: attacks splash in 6m radius', 'Splash radius +3m', 'Splash radius +4m'],           icon: 'g7_cleave',       apply: (p, lvl) => { if (lvl === 1) { p.splashRadius = Math.max(p.splashRadius, 60) } else if (lvl === 2) { p.splashRadius += 30 } else { p.splashRadius += 40 } } },
-  { id: 'g8',  label: 'Wisdom',       desc: ['+25% XP from all sources', '+15% more XP', '+15% more XP'],                             icon: 'g8_wisdom',       apply: (p, lvl) => { if (lvl === 1) { p.xpMult += 0.25 } else if (lvl === 2) { p.xpMult += 0.15 } else { p.xpMult += 0.15 } } },
-  { id: 'g9',  label: 'Multistrike',  desc: ['+1 strike: attack hits one more time', '+1 more strike', '+1 more strike'],             icon: 'g9_multistrike',  apply: (p, _lvl) => { p.strikeCount += 1 } },
-  { id: 'g10', label: 'Iron Skin',    desc: ['+25% armor (reduces dmg taken)', '+15% more armor', '+15% more armor'],                 icon: 'g10_iron_skin',   apply: (p, lvl) => { if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.25) } else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.15) } else { p.armor = Math.min(0.7, p.armor + 0.15) } } },
+  { id: 'g1',  label: 'Sharp Edge',   desc: ['+12% dmg to all attacks', '+6% dmg (total ~19%)', '+6% dmg (total ~26%)'],              icon: 'g1_sharp_edge',   apply: (p, lvl) => { const m = [1.12, 1.06, 1.06][lvl - 1]; p.damage = Math.ceil(p.damage * m) } },
+  { id: 'g2',  label: 'Swift Feet',   desc: ['+9% move speed permanently', '+6% more speed', '+6% more speed'],                       icon: 'g2_swift_feet',   apply: (p, lvl) => { const m = [1.09, 1.06, 1.06][lvl - 1]; p.speed = Math.ceil(p.speed * m) } },
+  { id: 'g3',  label: 'Eagle Eye',    desc: ['+12% attack range permanently', '+9% more range', '+9% more range'],                    icon: 'g3_eagle_eye',    apply: (p, lvl) => { const m = [1.12, 1.09, 1.09][lvl - 1]; p.range = Math.ceil(p.range * m) } },
+  { id: 'g4',  label: 'Quick Hands',  desc: ['+12% attack speed (min 200ms)', '+6% attack speed', '+6% attack speed'],                icon: 'g4_quick_hands',  apply: (p, lvl) => { const m = [0.88, 0.94, 0.94][lvl - 1]; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * m)) } },
+  { id: 'g5',  label: 'Vitality',     desc: ['+15% max HP, heal for the bonus', '+12% more max HP', '+12% more max HP'],              icon: 'g5_vitality',     apply: (p, lvl) => { const pct = [0.15, 0.12, 0.12][lvl - 1]; const b = Math.ceil(p.maxHp * pct); p.maxHp += b; p.hp += b } },
+  { id: 'g6',  label: 'Regeneration', desc: ['+1 HP/s passive regen', '+1 HP/s more regen', '+2 HP/s more regen'],                    icon: 'g6_regeneration', apply: (p, lvl) => { p.hpRegen += [1, 1, 2][lvl - 1] } },
+  { id: 'g7',  label: 'Cleave',       desc: ['AoE: attacks splash in 4m radius', 'Splash radius +2m', 'Splash radius +2.5m'],         icon: 'g7_cleave',       apply: (p, lvl) => { if (lvl === 1) { p.splashRadius = Math.max(p.splashRadius, 40) } else { p.splashRadius += lvl === 2 ? 20 : 25 } } },
+  { id: 'g8',  label: 'Wisdom',       desc: ['+15% XP from all sources', '+9% more XP', '+9% more XP'],                               icon: 'g8_wisdom',       apply: (p, lvl) => { p.xpMult += [0.15, 0.09, 0.09][lvl - 1] } },
+  { id: 'g9',  label: 'Multistrike',  desc: ['+1 target for ranged, +1 strike for melee', '+5% dmg to all attacks', '+1 more target/strike'],             icon: 'g9_multistrike',  apply: (p, lvl) => { if (lvl === 1 || lvl === 3) { p.strikeCount += 1 } else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.05) } } },
+  { id: 'g10', label: 'Iron Skin',    desc: ['+10% armor (reduces dmg taken)', '+10% more armor', '+10% more armor'],                 icon: 'g10_iron_skin',   apply: (p, _lvl) => { p.armor = Math.min(0.7, p.armor + 0.10) } },
 ]
 
 // ============================================================
@@ -441,11 +442,12 @@ const AMUN_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'aw1', label: 'Thorns', icon: 'aw1_thorns',
-        desc: ['When hit: reflect 50% dmg to enemies in 6m, +5% armor', 'Reflect radius +2m, +5% armor', '+5% armor + Wrath AoE burst every 4 seconds'],
+        desc: ['4 orbiting swords slash nearby foes', '+2 swords, +5% sword dmg', '+2 swords, +10% sword dmg'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasThorns = true; p.armor = Math.min(0.7, p.armor + 0.05) }
-          else if (lvl === 2) { p.splashRadius += 20; p.armor = Math.min(0.7, p.armor + 0.05) }
-          else { p.armor = Math.min(0.7, p.armor + 0.05); p.hasWrathPulse = true }
+          p.hasThorns = true
+          p.thornsLevel = lvl
+          if (lvl === 2) p.thornsDmgBonus += 0.05
+          else if (lvl === 3) p.thornsDmgBonus += 0.10
         },
       },
       {
@@ -657,7 +659,7 @@ const KHASHIN_MIRAGE_BRANCH: BranchDef = {
   upgrades: [
     {
       id: 'km1', label: 'Tailwind', icon: 'km1_tailwind',
-      desc: ['+20 speed, -10% attack CD', '+15 speed, -10% more attack CD', '+15 speed, -10% CD + Drift: leave slow trails while moving'],
+      desc: ['+20 speed, +10% attack speed', '+15 speed, +10% attack speed', '+15 speed, +10% attack speed + Drift: leave slow trails while moving'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.speed += 20; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) }
         else if (lvl === 2) { p.speed += 15; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) }
@@ -854,7 +856,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hp3', label: 'Battle Frenzy', icon: 'g4_quick_hands',
-        desc: ['On kill: -10% attack CD for 5s, +3 dmg', '+3 dmg, frenzy duration 8s', '+4 dmg + Headhunter: auto-execute enemies below 15% HP'],
+        desc: ['On kill: +10% attack speed for 5s, +3 dmg', '+3 dmg, frenzy duration 8s', '+4 dmg + Headhunter: auto-execute enemies below 15% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasBattleFrenzy = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 3 }
@@ -1014,6 +1016,14 @@ export class UpgradeTracker {
       branches = SIFRA_BRANCHES
     } else if (heroType === 'khashin') {
       branches = KHASHIN_BRANCHES
+    }
+
+    // Filter out branches that haven't been unlocked yet.
+    // For Amun during the tutorial, Bastion and Quake start locked.
+    // getUnlockedBranches returns ['__all__'] for heroes with no gating.
+    const unlockedBranches = MetaProgress.getUnlockedBranches(heroType)
+    if (!unlockedBranches.includes('__all__')) {
+      branches = branches.filter(b => unlockedBranches.includes(b.name))
     }
 
     // Shuffle branch order so positions are random each time

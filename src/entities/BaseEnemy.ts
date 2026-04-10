@@ -1,7 +1,20 @@
 import Phaser from 'phaser'
 import { getSteeringTarget } from '../systems/Pathfinding'
+import type { GameSceneContext } from '../types/scene-context'
 
 export type DamageType = 'fire' | 'ice' | 'lightning' | 'poison' | 'melee' | 'shockwave'
+  | 'fireball' | 'frost' | 'venom' | 'sword' | 'ground' | 'quake' | 'wind' | 'sand' | 'crystal'
+
+const DMG_COLORS: Record<string, string> = {
+  fire: '#ff4444', fireball: '#ff4444',
+  ice: '#66ccff', frost: '#66ccff',
+  lightning: '#bb88ff',
+  poison: '#44dd44', venom: '#44dd44',
+  melee: '#ffaa44', sword: '#ffaa44',
+  shockwave: '#ddaa22', ground: '#ddaa22', quake: '#ddaa22',
+  wind: '#88ddcc', sand: '#88ddcc',
+  crystal: '#55bbff',
+}
 
 type PlayerLike = Phaser.Physics.Arcade.Sprite & { takeDamage(amount: number): void }
 
@@ -13,6 +26,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public baseSpeed: number = 0
   public xpValue: number = 0
   public goldValue: number = 0
+  public isMiniBoss: boolean = false
+  public isLarge: boolean = false
   public damagePerSecond: number = 0
   public isDying: boolean = false
   public isAttacking: boolean = false
@@ -25,6 +40,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public isRooted: boolean = false
   public rootTimer: number = 0
   public player: PlayerLike
+  public hpDirty: boolean = true
 
   // --- Configurable per-enemy constants (set in subclass constructor) ---
   protected kbForce: number = 120
@@ -58,6 +74,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   ) {
     super(scene, x, y, texture, 0)
     this.player = player
+    // Stagger steering frames so not all enemies compute pathfinding on the same frame
+    this._steerFrame = Math.floor(Math.random() * 4)
   }
 
   // -------------------------------------------------------------------------
@@ -67,6 +85,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     if (this.isDying) return
     this.lastDamageType = type ?? 'melee'
     this.hp -= amount
+    this.hpDirty = true
 
     // Skip visuals for tiny aura ticks
     if (amount < 1) {
@@ -82,13 +101,14 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
       const displayDmg = Math.floor(this.dmgAccum)
       this.dmgAccum = 0
 
+      const dmgColor = (type && DMG_COLORS[type]) ? DMG_COLORS[type] : this.dmgTextColor
       const dmgText = this.scene.add.text(
         this.x, this.y + this.dmgTextYOffset,
         displayDmg.toString(),
         {
           fontFamily: 'monospace',
           fontSize: this.dmgTextSize,
-          color: this.dmgTextColor,
+          color: dmgColor,
           stroke: '#000000',
           strokeThickness: 2,
         }
@@ -155,6 +175,10 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(0, 0)
     if (this.body) (this.body as Phaser.Physics.Arcade.Body).enable = false
 
+    // Increment per-frame kill counter for hit-stop detection
+    const sctx = this.scene as GameSceneContext
+    sctx._frameKills = (sctx._frameKills ?? 0) + 1
+
     this.scene.cameras.main.shake(this.shakeIntensity, this.shakeAmplitude)
 
     // Apply death tint
@@ -167,7 +191,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
 
     this.onDeathVfx(() => {
       if (this.scene) {
-        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue, this.goldValue)
+        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue, this.goldValue, this.isMiniBoss, this.isLarge)
       }
       this.destroy()
     })
@@ -193,9 +217,9 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     if (!this.isRooted) {
       if (this.usesSteering) {
         // Throttle pathfinding to every 4 frames — cache steering target
-        this._steerFrame = ((this._steerFrame || 0) + 1) % 4
+        this._steerFrame = (this._steerFrame + 1) % 4
         if (this._steerFrame === 0 || !this._steerCache) {
-          const rocks = (this.scene as any).rocks as Phaser.Physics.Arcade.StaticGroup | undefined
+          const rocks = (this.scene as GameSceneContext).rocks
           this._steerCache = rocks
             ? getSteeringTarget(this, this.player.x, this.player.y, rocks)
             : { x: this.player.x, y: this.player.y }

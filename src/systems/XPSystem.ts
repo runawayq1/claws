@@ -13,19 +13,27 @@ export class XPSystem {
 
     this.orbs = scene.physics.add.group()
 
-    // Generate XP orb texture — bright blue gem
+    // Generate XP orb texture — bright blue gem (16x16)
     const g = scene.add.graphics()
-    // Outer glow
     g.fillStyle(0x4488ff, 0.3)
     g.fillCircle(8, 8, 8)
-    // Core
     g.fillStyle(0x4488ff)
     g.fillCircle(8, 8, 5)
-    // Highlight
     g.fillStyle(0x88ccff)
     g.fillCircle(7, 6, 2)
     g.generateTexture('xp_orb', 16, 16)
     g.destroy()
+
+    // Generate large XP orb texture — purple gem (32x32, x2 size)
+    const gl = scene.add.graphics()
+    gl.fillStyle(0x9944ff, 0.3)
+    gl.fillCircle(16, 16, 16)
+    gl.fillStyle(0x9944ff)
+    gl.fillCircle(16, 16, 10)
+    gl.fillStyle(0xcc88ff)
+    gl.fillCircle(14, 12, 4)
+    gl.generateTexture('xp_orb_large', 32, 32)
+    gl.destroy()
 
     // Collect orbs on overlap
     scene.physics.add.overlap(player, this.orbs, (_p, orb) => {
@@ -50,6 +58,41 @@ export class XPSystem {
     })
 
     // Auto-expire after 30s to prevent unbounded accumulation
+    this.scene.time.delayedCall(30000, () => {
+      if (orb.active) orb.destroy()
+    })
+  }
+
+  /** Spawn a large purple XP orb (x2 value, x2 size) */
+  spawnLargeOrb(x: number, y: number, value: number) {
+    const orb = this.scene.physics.add.sprite(x, y, 'xp_orb_large')
+    orb.setDepth(3)
+    ;(orb as any).xpValue = value * 2
+    this.orbs.add(orb)
+
+    // Pop-in scale
+    orb.setScale(0)
+    this.scene.tweens.add({
+      targets: orb, scaleX: 1.3, scaleY: 1.3, duration: 150, ease: 'Back.easeOut',
+      onComplete: () => {
+        if (orb.active) this.scene.tweens.add({ targets: orb, scaleX: 1, scaleY: 1, duration: 100 })
+      },
+    })
+
+    // Scatter burst
+    const angle = Math.random() * Math.PI * 2
+    orb.setVelocity(Math.cos(angle) * 80, Math.sin(angle) * 80)
+    this.scene.time.delayedCall(300, () => {
+      if (orb.active) orb.setVelocity(0, 0)
+    })
+
+    // Gentle pulse glow
+    this.scene.tweens.add({
+      targets: orb, alpha: 0.6, duration: 500, yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+    })
+
+    // Auto-expire after 30s
     this.scene.time.delayedCall(30000, () => {
       if (orb.active) orb.destroy()
     })

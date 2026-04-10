@@ -1,5 +1,8 @@
 import Phaser from 'phaser'
 import { SessionLogger } from '../systems/SessionLogger'
+import { MetaProgress } from '../systems/MetaProgress'
+import { addDiagonalBg } from '../utils/bgScroll'
+import { isMobileDevice } from '../utils/device'
 
 const STORAGE_KEY = 'claws_player_name'
 
@@ -9,12 +12,18 @@ export class NameInputScene extends Phaser.Scene {
   }
 
   create() {
-    console.log('NameInputScene.create() called, height:', this.scale.height, 'width:', this.scale.width)
+    // If a name is already stored from a previous session, skip straight to hero select
+    const existing = localStorage.getItem(STORAGE_KEY)
+    if (existing && existing.trim().length >= 2) {
+      this.scene.start('StartScene', { playerName: existing.trim() })
+      return
+    }
 
     const { width, height } = this.scale
     const compact = height < 500
 
     this.cameras.main.setBackgroundColor(0x0d0d1a)
+    addDiagonalBg(this)
 
     // Title — left side on compact, centered on desktop
     const titleSize = compact ? '36px' : '64px'
@@ -142,13 +151,26 @@ export class NameInputScene extends Phaser.Scene {
       return
     }
 
+    // New profile: wipe all stale progression (stats, gold, meta-upgrades,
+    // hero/branch unlocks, hints, encyclopedia) from any prior device save
+    // so the fresh profile starts truly from zero.
+    const isFirstEntry = !localStorage.getItem(STORAGE_KEY)
     localStorage.setItem(STORAGE_KEY, name)
+    if (isFirstEntry) {
+      localStorage.removeItem('claws_meta')
+      localStorage.removeItem('claws_hints')
+      localStorage.removeItem('claws_encyclopedia')
+      localStorage.removeItem('claws_leaderboard')
+      localStorage.removeItem('claws_tutorial_reset_v1')
+      localStorage.removeItem('claws_tutorial_reset_v2')
+      MetaProgress.save(MetaProgress.load()) // re-seeds defaults
+    }
 
     // Fire-and-forget Supabase registration
     SessionLogger.registerPlayer(name).catch(() => {/* silently ignore */})
 
     // Enter fullscreen on mobile only
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+    const isMobile = isMobileDevice()
     if (isMobile) {
       const el = document.documentElement as any
       if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {

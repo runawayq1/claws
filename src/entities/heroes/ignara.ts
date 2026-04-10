@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
+import { spawnTrailCircle } from '../../utils/trailPool'
 
 /**
  * Ignara — Fireball projectile with AOE explosion.
@@ -27,18 +28,19 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
   const glow = p.scene.add.circle(p.x, p.y, ballSize * 1.5, ballTint, 0.3).setDepth(8)
     .setBlendMode(Phaser.BlendModes.ADD)
 
-  // Trail particles while flying
+  // Trail particles while flying — pooled to avoid GC pressure
   const trailTimer = p.scene.time.addEvent({
     delay: 30, loop: true,
     callback: () => {
-      const tp = p.scene.add.circle(
+      const tp = spawnTrailCircle(
+        p.scene,
         ball.x + Phaser.Math.Between(-4, 4),
         ball.y + Phaser.Math.Between(-4, 4),
         Phaser.Math.Between(2, 4), 0xff6600, 0.6
-      ).setDepth(8)
+      )
       p.scene.tweens.add({
         targets: tp, alpha: 0, scale: 0, duration: 200,
-        onComplete: () => tp.destroy(),
+        onComplete: () => { tp.setActive(false).setVisible(false) },
       })
     },
   })

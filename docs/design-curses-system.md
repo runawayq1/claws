@@ -1,3 +1,5 @@
+> **STATUS: NOT IMPLEMENTED** — Design only, no code exists yet. Last reviewed 2026-04-09.
+
 # Curses System — Design Document
 
 > Version: v1.0 | Date: 2026-04-07

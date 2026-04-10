@@ -43,7 +43,74 @@ export interface MetaData {
   goldTotal: number
   goldEarned: number
   metaUpgrades: Record<string, number>
+
+  // ── Tutorial / Hero Unlock ──────────────────────────────────
+  // Heroes the player has unlocked. Default: ['amun'] on fresh save.
+  unlockedHeroes: string[]
+  // True once the Amun tutorial (Run 1 quest trio) is fully complete.
+  tutorialComplete: boolean
+  // Per-hero branch unlocks. Shape: { amun: ['Wrath', 'Bastion', 'Quake'] }
+  // Missing key = hero not yet played; treat as "only free branches available".
+  unlockedBranches: Partial<Record<string, string[]>>
+  // Accumulated cross-run branch progress counters (reserved for future heroes).
+  branchProgress: Partial<Record<string, Partial<Record<string, number>>>>
+  // Persistently completed quest IDs (survive across runs/deaths).
+  completedQuests: string[]
 }
+
+// ── Quest system ──────────────────────────────────────────────
+// A QuestDef describes a single tutorial/unlock quest. Progress lives in
+// MetaData so it persists across runs (though Run 1 quests are checked
+// in-run and complete within the same run).
+export interface QuestDef {
+  id: string
+  title: string
+  description: string
+  goal: number
+  /** Called when the quest completes. Receives the MetaData so it can mutate it. */
+  onComplete: (meta: MetaData) => void
+}
+
+// The three Run-1 tutorial quests. Ordered by typical completion time.
+export const RUN1_QUESTS: QuestDef[] = [
+  {
+    id: 'q_forged_in_battle',
+    title: 'Forged in Battle',
+    description: 'Kill 100 enemies',
+    goal: 100,
+    onComplete: (meta) => {
+      // Unlock Amun's Bastion branch — add it if not already present
+      const branches = meta.unlockedBranches['amun'] || ['Wrath']
+      if (!branches.includes('Bastion')) branches.push('Bastion')
+      meta.unlockedBranches['amun'] = branches
+    },
+  },
+  {
+    id: 'q_the_long_watch',
+    title: 'The Long Watch',
+    description: 'Survive 150 seconds',
+    goal: 150_000, // ms
+    onComplete: (meta) => {
+      // Unlock Amun's Quake branch
+      const branches = meta.unlockedBranches['amun'] || ['Wrath']
+      if (!branches.includes('Quake')) branches.push('Quake')
+      meta.unlockedBranches['amun'] = branches
+    },
+  },
+  {
+    id: 'q_find_sifra',
+    title: 'Find Sifra',
+    description: 'Find Sifra in the wastes',
+    goal: 1,
+    onComplete: (meta) => {
+      // Unlock Sifra
+      if (!meta.unlockedHeroes.includes('sifra')) {
+        meta.unlockedHeroes.push('sifra')
+      }
+      meta.tutorialComplete = true
+    },
+  },
+]
 
 // ============================================================
 // META-UPGRADE DEFINITIONS
@@ -144,6 +211,12 @@ export class MetaProgress {
       goldTotal: 0,
       goldEarned: 0,
       metaUpgrades: {},
+      // Tutorial / unlock defaults
+      unlockedHeroes: ['amun'],
+      tutorialComplete: false,
+      unlockedBranches: { amun: ['Wrath'] },
+      branchProgress: {},
+      completedQuests: [],
     }
   }
 
@@ -152,6 +225,17 @@ export class MetaProgress {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return MetaProgress.defaultData()
       const data = JSON.parse(raw) as MetaData
+      // ── One-time tutorial reset migration (runs once per browser) ──
+      // Wipes Sifra unlock + branch unlocks so new players must complete
+      // Amun's tutorial to unlock Sifra. Bumped to v2 to re-run for existing
+      // players who had Sifra auto-unlocked by prior stale saves.
+      const RESET_FLAG = 'claws_tutorial_reset_v2'
+      if (!localStorage.getItem(RESET_FLAG)) {
+        data.tutorialComplete = false
+        data.unlockedHeroes = ['amun']
+        data.unlockedBranches = { amun: ['Wrath'] }
+        localStorage.setItem(RESET_FLAG, '1')
+      }
       // Ensure new achievements are included
       for (const def of ACHIEVEMENT_DEFS) {
         if (!data.achievements.find(a => a.id === def.id)) {
@@ -162,6 +246,25 @@ export class MetaProgress {
       if (data.goldTotal === undefined) data.goldTotal = 0
       if (data.goldEarned === undefined) data.goldEarned = 0
       if (!data.metaUpgrades) data.metaUpgrades = {}
+      // Migrate old saves missing tutorial/unlock fields
+      if (!data.unlockedHeroes) data.unlockedHeroes = ['amun']
+      if (data.tutorialComplete === undefined) data.tutorialComplete = false
+      if (!data.unlockedBranches) data.unlockedBranches = { amun: ['Wrath'] }
+      if (!data.branchProgress) data.branchProgress = {}
+      // Migrate old saves missing completedQuests
+      if (!data.completedQuests) data.completedQuests = []
+      // Back-compat: if tutorial is done but sifra not in unlockedHeroes, add it
+      if (data.tutorialComplete && !data.unlockedHeroes.includes('sifra')) {
+        data.unlockedHeroes.push('sifra')
+      }
+      // Back-compat: if tutorial is done but Amun branches incomplete, add them all
+      if (data.tutorialComplete) {
+        const ab = data.unlockedBranches['amun'] || []
+        for (const b of ['Wrath', 'Bastion', 'Quake']) {
+          if (!ab.includes(b)) ab.push(b)
+        }
+        data.unlockedBranches['amun'] = ab
+      }
       return data
     } catch {
       return MetaProgress.defaultData()
@@ -210,7 +313,7 @@ export class MetaProgress {
 
   /** Check all achievements, return newly unlocked IDs */
   static checkAchievements(lastSession?: SessionRecord): string[] {
-    const meta = MetaProgress.load()
+    const meta = MetaProgress._getMeta()
     const newlyUnlocked: string[] = []
 
     for (const def of ACHIEVEMENT_DEFS) {
@@ -239,5 +342,236 @@ export class MetaProgress {
     const meta = MetaProgress.load()
     const unlocked = meta.achievements.filter(a => a.unlocked).length
     return { unlocked, total: ACHIEVEMENT_DEFS.length }
+  }
+
+  // ============================================================
+  // HERO / BRANCH UNLOCK API
+  // ============================================================
+
+  static isHeroUnlocked(heroType: string): boolean {
+    const meta = MetaProgress.load()
+    return meta.unlockedHeroes.includes(heroType)
+  }
+
+  static unlockHero(heroType: string): void {
+    const meta = MetaProgress.load()
+    if (!meta.unlockedHeroes.includes(heroType)) {
+      meta.unlockedHeroes.push(heroType)
+      MetaProgress.save(meta)
+    }
+  }
+
+  /**
+   * Check post-run hero unlock conditions (ignara, nazar, khashin).
+   * Must be called AFTER recordSession() so meta totals are up-to-date.
+   * Returns list of newly unlocked hero type strings.
+   */
+  static checkPostRunUnlocks(session: SessionRecord): string[] {
+    const meta = MetaProgress.load()
+    const newlyUnlocked: string[] = []
+
+    const tryUnlock = (heroType: string, condition: boolean) => {
+      if (condition && !meta.unlockedHeroes.includes(heroType)) {
+        meta.unlockedHeroes.push(heroType)
+        newlyUnlocked.push(heroType)
+      }
+    }
+
+    // Ignara: complete 3 runs (any hero, any outcome)
+    tryUnlock('ignara', meta.totalRuns >= 3)
+
+    // Nazar: win at least 1 run (any hero)
+    tryUnlock('nazar', meta.totalWins >= 1)
+
+    // Khashin: survive 8 minutes as Sifra
+    tryUnlock('khashin', session.hero === 'sifra' && session.timeMs >= 480_000)
+
+    if (newlyUnlocked.length > 0) {
+      MetaProgress.save(meta)
+    }
+
+    return newlyUnlocked
+  }
+
+  /**
+   * Returns the set of unlocked branch names for a hero.
+   * If the tutorial is complete, Amun always gets all three branches.
+   * For heroes with no entry yet, returns their default free branches.
+   */
+  static getUnlockedBranches(heroType: string): string[] {
+    const meta = MetaProgress.load()
+    if (heroType === 'amun') {
+      if (meta.tutorialComplete) return ['Wrath', 'Bastion', 'Quake']
+      return meta.unlockedBranches['amun'] || ['Wrath']
+    }
+    // All other heroes: all branches free (future gating can be added here)
+    return meta.unlockedBranches[heroType] || ['__all__']
+  }
+
+  static isBranchUnlocked(heroType: string, branchName: string): boolean {
+    const unlocked = MetaProgress.getUnlockedBranches(heroType)
+    return unlocked.includes('__all__') || unlocked.includes(branchName)
+  }
+
+  static unlockBranch(heroType: string, branchName: string): void {
+    const meta = MetaProgress.load()
+    const branches = meta.unlockedBranches[heroType] || []
+    if (!branches.includes(branchName)) {
+      branches.push(branchName)
+      meta.unlockedBranches[heroType] = branches
+      MetaProgress.save(meta)
+    }
+  }
+
+  // ============================================================
+  // RUN-1 QUEST API (in-memory runtime state + persistence)
+  // ============================================================
+
+  /**
+   * Per-run in-memory quest state. Reset each time a run starts via initRun().
+   * We track kills/time in-memory to avoid hammering localStorage on every frame.
+   * Progress is committed to localStorage only when a quest completes or the run ends.
+   */
+  private static _runHero: string = ''
+  private static _runKills: number = 0
+  private static _runTimeMs: number = 0
+  private static _runEnded: boolean = false
+  // Which quests have already fired their onComplete this run (prevent double-fire)
+  private static _completedThisRun: Set<string> = new Set()
+  // Snapshot of quests already completed at run start (prior runs).
+  // Used by getActiveQuests() to filter out quests completed in earlier runs
+  // while keeping this-run completions visible in the side panel as "DONE".
+  private static _priorRunCompleted: Set<string> = new Set()
+  // Callbacks that UIScene registers to be notified when a quest completes mid-run
+  private static _onQuestComplete: ((questId: string, meta: MetaData) => void)[] = []
+
+  // In-memory cache of MetaData for the duration of a run. Populated in
+  // initRun() and nulled in reportRunEnded(). Hot paths that fire on every
+  // kill or every second (_checkQuestProgress, getActiveQuests, etc.) read
+  // this instead of doing a full localStorage parse each call.
+  private static _runMeta: MetaData | null = null
+
+  /** Returns the run-scoped meta cache if active, otherwise loads fresh from storage. */
+  private static _getMeta(): MetaData {
+    return MetaProgress._runMeta ?? MetaProgress.load()
+  }
+
+  /** Call at the start of each run (before first reportKill / reportTimeMs). */
+  static initRun(heroType: string): void {
+    MetaProgress._runHero = heroType
+    MetaProgress._runKills = 0
+    MetaProgress._runTimeMs = 0
+    MetaProgress._runEnded = false
+    MetaProgress._sifraFound = false
+    // Seed from persistent completed quests so already-done quests don't re-fire
+    const meta = MetaProgress.load()
+    MetaProgress._runMeta = meta
+    MetaProgress._completedThisRun = new Set(meta.completedQuests)
+    MetaProgress._priorRunCompleted = new Set(meta.completedQuests)
+    MetaProgress._onQuestComplete = []  // defensive: prevent stale callbacks across re-runs
+  }
+
+  /** Register a callback that fires when a quest completes mid-run. */
+  static onQuestComplete(cb: (questId: string, meta: MetaData) => void): void {
+    MetaProgress._onQuestComplete.push(cb)
+  }
+
+  /** Remove all mid-run quest-complete callbacks (call on scene shutdown). */
+  static clearQuestCallbacks(): void {
+    MetaProgress._onQuestComplete = []
+  }
+
+  /** Called by GameScene's enemy-died handler. Increments kill count and checks quests. */
+  static reportKill(): void {
+    if (MetaProgress._runHero !== 'amun') return  // only Amun has gated quests right now
+    MetaProgress._runKills++
+    MetaProgress._checkQuestProgress()
+  }
+
+  /**
+   * Called once per second from UIScene's update loop (not every frame).
+   * @param ms  Current gameTime in milliseconds.
+   */
+  static reportTimeMs(ms: number): void {
+    if (MetaProgress._runHero !== 'amun') return
+    MetaProgress._runTimeMs = ms
+    MetaProgress._checkQuestProgress()
+  }
+
+  /**
+   * Called by UIScene's showEndScreen (run ended — either death or win).
+   * Returns list of quest IDs that completed at run-end.
+   * Note: q_find_sifra only completes via reportSifraFound — not at run-end.
+   */
+  static reportRunEnded(_won: boolean, _heroType: string): string[] {
+    if (MetaProgress._runEnded) return []
+    MetaProgress._runEnded = true
+    // Drop the run-scoped cache so subsequent loads (recordSession, menus)
+    // read fresh state from storage.
+    MetaProgress._runMeta = null
+    return []
+  }
+
+  /** Returns true if the quest has been persistently completed (survived across runs). */
+  static isQuestPersistentlyComplete(questId: string): boolean {
+    const meta = MetaProgress._getMeta()
+    return meta.completedQuests.includes(questId)
+  }
+
+  /** Returns quests that are active (tutorial not yet complete and player is Amun).
+   * Filters out quests completed in a PRIOR run (snapshotted at initRun) so they
+   * don't clutter the side quest panel on subsequent runs, while keeping this-run
+   * completions visible as a "DONE" row until the run ends. */
+  static getActiveQuests(): QuestDef[] {
+    const meta = MetaProgress._getMeta()
+    if (meta.tutorialComplete) return []
+    if (MetaProgress._runHero !== 'amun') return []
+    return RUN1_QUESTS.filter(q => !MetaProgress._priorRunCompleted.has(q.id))
+  }
+
+  /** Returns current progress value for a given quest id (in-run, not persisted). */
+  static getQuestProgress(questId: string): number {
+    if (questId === 'q_forged_in_battle') return MetaProgress._runKills
+    if (questId === 'q_the_long_watch')   return MetaProgress._runTimeMs
+    if (questId === 'q_find_sifra')       return MetaProgress._sifraFound ? 1 : 0
+    return 0
+  }
+
+  /** In-memory flag set when the player finds Sifra this run. */
+  private static _sifraFound = false
+
+  /**
+   * Called by GameScene when the player walks within range of the Sifra NPC.
+   * Completes the q_find_sifra quest and fires callbacks.
+   */
+  static reportSifraFound(): void {
+    if (MetaProgress._runHero !== 'amun') return
+    if (MetaProgress._sifraFound) return
+    MetaProgress._sifraFound = true
+    MetaProgress._checkQuestProgress()
+  }
+
+  /** Internal: check all in-flight quests and fire callbacks on completion. */
+  private static _checkQuestProgress(): void {
+    const meta = MetaProgress._getMeta()
+    if (meta.tutorialComplete) return
+
+    const toCheck = RUN1_QUESTS
+
+    for (const quest of toCheck) {
+      if (MetaProgress._completedThisRun.has(quest.id)) continue
+      const progress = MetaProgress.getQuestProgress(quest.id)
+      if (progress >= quest.goal) {
+        MetaProgress._completedThisRun.add(quest.id)
+        quest.onComplete(meta)
+        // Persist completion so subsequent runs know this quest is already done
+        if (!meta.completedQuests.includes(quest.id)) {
+          meta.completedQuests.push(quest.id)
+        }
+        MetaProgress.save(meta)
+        // Notify UIScene (and any other listener)
+        for (const cb of MetaProgress._onQuestComplete) cb(quest.id, meta)
+      }
+    }
   }
 }

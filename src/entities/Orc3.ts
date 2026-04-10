@@ -19,6 +19,7 @@ export class Orc3 extends BaseEnemy {
     this.baseSpeed = this.speed
     this.xpValue = 12 + Math.floor(wave / 3)
     this.damagePerSecond = 10 + Math.floor(wave / 3)
+    this.isLarge = true
 
     this.attackRange = 40
     this.kbForce = 100

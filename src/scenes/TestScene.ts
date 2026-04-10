@@ -1,9 +1,9 @@
 import Phaser from 'phaser'
 import { Player, type HeroType } from '../entities/Player'
-import { Orc2 } from '../entities/Skeleton'
-import { Orc1 } from '../entities/Zergling'
-import { FlyingEye } from '../entities/Scorpion'
-import { Orc3 } from '../entities/Skeleton2'
+import { Orc2 } from '../entities/Orc2'
+import { Orc1 } from '../entities/Orc1'
+import { FlyingEye } from '../entities/FlyingEye'
+import { Orc3 } from '../entities/Orc3'
 import { SandGolem } from '../entities/SandGolem'
 import { Orc0 } from '../entities/Grunt'
 
@@ -114,6 +114,9 @@ export class TestScene extends Phaser.Scene {
     this.load.image('deco_tree1', 'assets/terrain/tree1.png')
     this.load.image('deco_tree2', 'assets/terrain/tree2.png')
     this.load.image('deco_tree3', 'assets/terrain/tree3.png')
+
+    // Amun thorns sword VFX
+    this.load.image('sword', 'assets/vfx/sword.png')
   }
 
   create() {
@@ -365,5 +368,19 @@ export class TestScene extends Phaser.Scene {
     bossBtn.on('pointerover', () => bossBtn.setColor('#FFD700'))
     bossBtn.on('pointerout', () => bossBtn.setColor('#ff4444'))
     bossBtn.on('pointerdown', () => this.scene.start('BossTestScene'))
+
+    // Swords Test button (right side, below boss button)
+    const swordsBtn = this.add.text(width - 16, 50, 'SWORDS TEST >', {
+      fontFamily: 'monospace',
+      fontSize: '14px',
+      color: '#ffaa44',
+      stroke: '#000000',
+      strokeThickness: 3,
+      backgroundColor: '#1a1a2e',
+      padding: { x: 10, y: 6 },
+    }).setOrigin(1, 0).setDepth(20).setInteractive({ useHandCursor: true })
+    swordsBtn.on('pointerover', () => swordsBtn.setColor('#FFD700'))
+    swordsBtn.on('pointerout', () => swordsBtn.setColor('#ffaa44'))
+    swordsBtn.on('pointerdown', () => this.scene.start('SwordsTestScene'))
   }
 }

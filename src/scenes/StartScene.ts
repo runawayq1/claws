@@ -1,7 +1,9 @@
 import Phaser from 'phaser'
 import { type HeroType } from '../entities/Player'
 import { unlockHero } from './EncyclopediaScene'
-import { shouldShowHint } from '../systems/HintFlags'
+import { MetaProgress } from '../systems/MetaProgress'
+import { addDiagonalBg } from '../utils/bgScroll'
+import { isMobileDevice } from '../utils/device'
 
 interface HeroDef {
   type: HeroType
@@ -34,12 +36,20 @@ const HEROES: HeroDef[] = [
     asset: 'assets/givi/Idle_cropped.png', fw: 51, fh: 44, scale: 1.12, frames: 8, yOff: 10 },
 ]
 
-// Only first hero is unlocked; rest are locked
-const UNLOCKED_HEROES = new Set<HeroType>(['amun', 'sifra'])
+// Unlock hint text shown in a toast when a locked hero is tapped.
+const HERO_UNLOCK_HINTS: Partial<Record<HeroType, string>> = {
+  sifra:    'Find her in the Ruin. (Complete Amun\'s tutorial)',
+  ignara:   'Complete 3 runs to unlock.',
+  nazar:    'Win a run to unlock.',
+  huntress: 'Purchase at the Forge for 300 gold.',
+  khashin:  'Survive 8 minutes as Sifra to unlock.',
+  muller:   'Someone is working in the deep crystal...',
+}
 
 export class StartScene extends Phaser.Scene {
   private circles: Phaser.GameObjects.Graphics[] = []
   private selectedIndex = -1
+  private activeLockedHint: Phaser.GameObjects.Text | null = null
   private playerName = ''
   private selectedMap: 'GameScene' | 'UndeadMapScene' = 'GameScene'
 
@@ -68,6 +78,7 @@ export class StartScene extends Phaser.Scene {
     const compact = height < 500
     this.circles = []
     this.selectedIndex = -1
+    this.activeLockedHint = null
 
     // Resolve name: passed via scene data, or fall back to localStorage
     this.playerName = data?.playerName
@@ -75,6 +86,7 @@ export class StartScene extends Phaser.Scene {
       || ''
 
     this.cameras.main.setBackgroundColor(0x0d0d1a)
+    addDiagonalBg(this)
 
     // Title
     this.add.text(width / 2, compact ? 18 : height * 0.08, 'CLAWS', {
@@ -133,9 +145,9 @@ export class StartScene extends Phaser.Scene {
     })
 
     // Boss demon art — loaded lazily so it doesn't block first frame
-    const bossScale = compact ? 3.5 : 5
-    const bossLeftX = compact ? 80 : 130
-    const bossRightX = width - (compact ? 80 : 130)
+    const bossScale = isPortrait ? 3 : (compact ? 3.5 : 5)
+    const bossLeftX = isPortrait ? 40 : (compact ? 80 : 130)
+    const bossRightX = width - (isPortrait ? 40 : (compact ? 80 : 130))
     const bossY = height - (compact ? 5 : 8)
     let bossOnLeft = true
     let bossSprite: Phaser.GameObjects.Sprite | null = null
@@ -191,13 +203,17 @@ export class StartScene extends Phaser.Scene {
       })
     }
 
-    // Load boss_demon lazily — don't block first frame
+    // Boss demon: only kick off the network load after the rest of the scene
+    // has finished settling, so it never competes with hero/book sprites for
+    // the first frame.
     if (this.textures.exists('boss_demon')) {
       this.time.delayedCall(2000, initBoss)
     } else {
-      this.load.spritesheet('boss_demon', 'assets/boss_demon/spritesheet.png', { frameWidth: 288, frameHeight: 160 })
-      this.load.once('complete', () => { this.time.delayedCall(2000, initBoss) })
-      this.load.start()
+      this.time.delayedCall(1500, () => {
+        this.load.spritesheet('boss_demon', 'assets/boss_demon/spritesheet.png', { frameWidth: 288, frameHeight: 160 })
+        this.load.once('complete', () => { this.time.delayedCall(800, initBoss) })
+        this.load.start()
+      })
     }
 
     // Encyclopedia book icon (bottom-right) with decorative frame
@@ -263,7 +279,7 @@ export class StartScene extends Phaser.Scene {
       color: '#888888', stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(10)
 
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+    const isMobile = isMobileDevice()
 
     if (!isMobile) {
       // Desktop: hover opens/closes, click goes straight
@@ -293,23 +309,36 @@ export class StartScene extends Phaser.Scene {
       })
     }
 
+    // Bottom button row: PROFILE | LEADERBOARD | FORGE — centered as a group
+    const btnY = compact ? height - 14 : height * 0.92
+    const btnSpacing = compact ? 90 : isPortrait ? 80 : 130
+    const btnPadX = compact ? 10 : isPortrait ? 10 : 16
+
     // Profile button
-    const profileBtn = this.add.text(width / 2 + (compact ? 52 : 72), compact ? height - 14 : height * 0.92, 'PROFILE', {
+    const profileBtn = this.add.text(width / 2 - btnSpacing, btnY, 'PROFILE', {
       fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
       color: '#888888', stroke: '#000000', strokeThickness: 3,
-      backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
+      backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
     profileBtn.on('pointerover', () => profileBtn.setColor('#FFD700'))
     profileBtn.on('pointerout', () => profileBtn.setColor('#888888'))
     profileBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('ProfileScene')) })
 
+    // Leaderboard button
+    const leaderboardBtn = this.add.text(width / 2, btnY, 'SCORES', {
+      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
+      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
+    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    leaderboardBtn.on('pointerover', () => leaderboardBtn.setColor('#FFD700'))
+    leaderboardBtn.on('pointerout', () => leaderboardBtn.setColor('#888888'))
+    leaderboardBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('LeaderboardScene')) })
+
     // Forge button (meta-upgrades)
-    const forgeBtnY = compact ? height - 14 : height * 0.92
-    const forgeBtnX = width / 2 + (compact ? 130 : 180)
-    const forgeBtn = this.add.text(forgeBtnX, forgeBtnY, 'FORGE', {
+    const forgeBtn = this.add.text(width / 2 + btnSpacing, btnY, 'FORGE', {
       fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
       color: '#FFD700', stroke: '#000000', strokeThickness: 3,
-      backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
+      backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
     forgeBtn.on('pointerover', () => forgeBtn.setColor('#ffffff'))
     forgeBtn.on('pointerout', () => forgeBtn.setColor('#FFD700'))
@@ -318,17 +347,49 @@ export class StartScene extends Phaser.Scene {
     // Map selector — hidden for now (only Grasslands available)
     this.selectedMap = 'GameScene'
 
-    // TEST button — corner shortcut to hitbox debug scene
-    const testBtn = this.add.text(width - 10, height - 10, 'TEST', {
-      fontFamily: 'monospace', fontSize: '10px',
-      color: '#444466', stroke: '#000000', strokeThickness: 2,
-      backgroundColor: '#111122', padding: { x: 6, y: 3 },
-    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(1, 1).setInteractive({ useHandCursor: true })
-    testBtn.on('pointerover', () => testBtn.setColor('#aaaaff'))
-    testBtn.on('pointerout', () => testBtn.setColor('#444466'))
-    testBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('TestScene')) })
+    // Logout button — top-right corner, procedural door+arrow icon
+    if (this.playerName) {
+      const lbSize = compact ? 22 : 28
+      const lbX = width - (compact ? 16 : 22)
+      const lbY = compact ? 16 : 22
+      const lbHit = this.add.zone(lbX, lbY, lbSize + 12, lbSize + 12)
+        .setOrigin(0.5).setDepth(20).setInteractive({ useHandCursor: true })
+      const lbG = this.add.graphics().setDepth(20)
+      const drawLogout = (hover: boolean) => {
+        lbG.clear()
+        const col = hover ? 0xffffff : 0x888888
+        const a = hover ? 1 : 0.85
+        const half = lbSize / 2
+        // Door frame (left side)
+        lbG.lineStyle(2, col, a)
+        lbG.strokeRect(lbX - half, lbY - half, lbSize * 0.55, lbSize)
+        // Arrow shaft
+        const ay = lbY
+        const ax0 = lbX - half + 3
+        const ax1 = lbX + half - 1
+        lbG.lineBetween(ax0, ay, ax1, ay)
+        // Arrow head
+        lbG.lineBetween(ax1, ay, ax1 - 5, ay - 5)
+        lbG.lineBetween(ax1, ay, ax1 - 5, ay + 5)
+      }
+      drawLogout(false)
+      lbHit.on('pointerover', () => drawLogout(true))
+      lbHit.on('pointerout', () => drawLogout(false))
+      lbHit.on('pointerdown', () => {
+        localStorage.removeItem('claws_player_name')
+        this.cameras.main.fadeOut(200)
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('NameInputScene'))
+      })
+    }
 
-    HEROES.forEach((hero, i) => {
+    // Sort: unlocked heroes first, locked heroes after
+    const sortedHeroes = [...HEROES].sort((a, b) => {
+      const aLocked = MetaProgress.isHeroUnlocked(a.type) ? 0 : 1
+      const bLocked = MetaProgress.isHeroUnlocked(b.type) ? 0 : 1
+      return aLocked - bLocked
+    })
+
+    sortedHeroes.forEach((hero, i) => {
       let cx: number, cy: number
       if (isPortrait) {
         const col = i % cols
@@ -340,7 +401,7 @@ export class StartScene extends Phaser.Scene {
         cy = heroY
       }
       const colorHex = `#${hero.color.toString(16).padStart(6, '0')}`
-      const isLocked = !UNLOCKED_HEROES.has(hero.type)
+      const isLocked = !MetaProgress.isHeroUnlocked(hero.type)
 
       // Circle background + border
       const g = this.add.graphics().setDepth(0)
@@ -362,9 +423,9 @@ export class StartScene extends Phaser.Scene {
       const mask = maskShape.createGeometryMask()
       sprite.setMask(mask)
 
-      // Locked overlay: darken sprite + lock icon
+      // Locked overlay: very dark tint + lock icon
       if (isLocked) {
-        sprite.setTint(0x333333)
+        sprite.setTint(0x111111)
         const lockOverlay = this.add.graphics().setDepth(3)
         lockOverlay.fillStyle(0x000000, 0.5)
         lockOverlay.fillCircle(cx, cy, circleRadius - 3)
@@ -388,14 +449,14 @@ export class StartScene extends Phaser.Scene {
       }
 
       // Hero name below circle
-      const nameText = this.add.text(cx, cy + circleRadius + (compact ? 8 : 14), hero.name, {
+      const nameText = this.add.text(cx, cy + circleRadius + (compact ? 8 : 14), isLocked ? '???' : hero.name, {
         fontFamily: 'monospace', fontSize: isPortrait ? '10px' : (compact ? '11px' : '14px'),
         color: isLocked ? '#555555' : colorHex, stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(2)
 
       // Role below name
-      this.add.text(cx, cy + circleRadius + (compact ? 22 : 32), hero.role, {
-        fontFamily: 'monospace', fontSize: isPortrait ? '7px' : (compact ? '8px' : '10px'),
+      this.add.text(cx, cy + circleRadius + (compact ? 22 : 32), isLocked ? '???' : hero.role, {
+        fontFamily: 'monospace', fontSize: isPortrait ? '9px' : (compact ? '8px' : '10px'),
         color: isLocked ? '#444444' : '#888888', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(2)
 
@@ -404,20 +465,31 @@ export class StartScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: !isLocked })
 
       if (isLocked) {
-        // Locked heroes: shake + show unlock condition
+        // Locked heroes: shake + show unlock condition on every tap
         zone.on('pointerdown', () => {
           // Brief shake to indicate locked
           this.tweens.add({ targets: g, x: 3, duration: 40, yoyo: true, repeat: 2, onComplete: () => g.setX(0) })
-          // Show floating unlock hint below the hero (fades after 2s)
-          shouldShowHint(`locked_hero_tapped_${hero.type}`) // mark first tap
-          const hintTxt = this.add.text(cx, cy + circleRadius + (compact ? 52 : 68), 'Play more runs to unlock', {
+          // Close any previously shown locked-hero hint before the new one appears
+          if (this.activeLockedHint) {
+            this.tweens.killTweensOf(this.activeLockedHint)
+            this.activeLockedHint.destroy()
+            this.activeLockedHint = null
+          }
+          const hint = HERO_UNLOCK_HINTS[hero.type] || 'Play more runs to unlock'
+          const hintW = isPortrait ? circleRadius * 2 + 80 : circleRadius * 2 + 40
+          const hintTxt = this.add.text(cx, cy + circleRadius + (compact ? 52 : 68), hint, {
             fontFamily: 'monospace', fontSize: isPortrait ? '8px' : (compact ? '9px' : '11px'),
             color: '#aaaaaa', stroke: '#000000', strokeThickness: 2,
+            wordWrap: { width: hintW },
           }).setOrigin(0.5).setDepth(5)
+          this.activeLockedHint = hintTxt
           this.tweens.add({
             targets: hintTxt, alpha: 0, duration: 600,
-            delay: 1400,
-            onComplete: () => hintTxt.destroy(),
+            delay: 1800,
+            onComplete: () => {
+              hintTxt.destroy()
+              if (this.activeLockedHint === hintTxt) this.activeLockedHint = null
+            },
           })
         })
       } else {
@@ -440,7 +512,7 @@ export class StartScene extends Phaser.Scene {
         zone.on('pointerdown', () => {
           // Deselect previous
           if (this.selectedIndex >= 0 && this.selectedIndex !== i) {
-            const prev = HEROES[this.selectedIndex]
+            const prev = sortedHeroes[this.selectedIndex]
             let prevCx: number, prevCy: number
             if (isPortrait) {
               const pc = this.selectedIndex % cols
@@ -459,7 +531,7 @@ export class StartScene extends Phaser.Scene {
           sprite.setScale(hero.scale * 1.15)
 
           // Enter fullscreen + lock landscape on mobile
-          const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1)
+          const isMob = isMobileDevice()
           if (isMob) {
             const el = document.documentElement as any
             if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {

@@ -134,8 +134,11 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
       targets: [spear, tip], x: eX, y: eY, duration: flyTime,
       onUpdate: () => {
         if (spearDead) return
-        for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+        const children = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+        for (const e of children) {
           if (!e.active || hitSet.has(e)) continue
+          // AABB pre-filter
+          if (Math.abs(e.x - spear.x) > hitRadius || Math.abs(e.y - spear.y) > hitRadius) continue
           if (Phaser.Math.Distance.Between(spear.x, spear.y, e.x, e.y) <= hitRadius) {
             let dmg = (isExtra ? p.damage * 0.6 : p.damage) * p.getMasteryDamageMult('spear')
             // Critical Strike
@@ -201,9 +204,13 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
             p.scene.tweens.add({
               targets: shard, x: sdx, y: sdy, alpha: 0, duration: 300,
               onUpdate: () => {
-                for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+                const splinterR = 18
+                const splinterChildren = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+                for (const e of splinterChildren) {
                   if (!e.active) continue
-                  if (Phaser.Math.Distance.Between(shard.x, shard.y, e.x, e.y) <= 18) {
+                  // AABB pre-filter
+                  if (Math.abs(e.x - shard.x) > splinterR || Math.abs(e.y - shard.y) > splinterR) continue
+                  if (Phaser.Math.Distance.Between(shard.x, shard.y, e.x, e.y) <= splinterR) {
                     (e as BaseEnemy).takeDamage(p.damage * 0.3 * p.getMasteryDamageMult('spear'), 'melee')
                   }
                 }
@@ -350,22 +357,25 @@ export function updateHuntressPassives(p: Player, delta: number) {
     }
   }
 
-  // Headhunter: execute enemies below 15% HP in range
+  // Headhunter: execute enemies below 15% HP in range (throttled to 200ms)
   if (p.hasHeadhunter) {
-    const execR = 100 + p.range * 0.3
-    const scn = p.scene as any
-    if (scn.enemies) {
-      for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active) continue
-        if ((e as BaseEnemy).hp > 0 && (e as BaseEnemy).maxHp && (e as BaseEnemy).hp < (e as BaseEnemy).maxHp * 0.15) {
-          if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= execR) {
-            (e as BaseEnemy).takeDamage((e as BaseEnemy).hp + 1, 'melee')
-            // VFX: red slash mark
-            const xMark = p.scene.add.text(e.x, e.y - 10, '✕', {
-              fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
-              stroke: '#000', strokeThickness: 2,
-            }).setOrigin(0.5).setDepth(21)
-            p.scene.tweens.add({ targets: xMark, y: xMark.y - 20, alpha: 0, scale: 2, duration: 400, onComplete: () => xMark.destroy() })
+    if (now - p.lastHeadhunterCheck >= 200) {
+      p.lastHeadhunterCheck = now
+      const execR = 100 + p.range * 0.3
+      const scn = p.scene as any
+      if (scn.enemies) {
+        for (const e of scn.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e.active) continue
+          if ((e as BaseEnemy).hp > 0 && (e as BaseEnemy).maxHp && (e as BaseEnemy).hp < (e as BaseEnemy).maxHp * 0.15) {
+            if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= execR) {
+              (e as BaseEnemy).takeDamage((e as BaseEnemy).hp + 1, 'melee')
+              // VFX: red slash mark
+              const xMark = p.scene.add.text(e.x, e.y - 10, '✕', {
+                fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
+                stroke: '#000', strokeThickness: 2,
+              }).setOrigin(0.5).setDepth(21)
+              p.scene.tweens.add({ targets: xMark, y: xMark.y - 20, alpha: 0, scale: 2, duration: 400, onComplete: () => xMark.destroy() })
+            }
           }
         }
       }

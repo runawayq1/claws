@@ -15,20 +15,31 @@ export interface GameSession {
 export class SessionLogger {
   static async logSession(session: GameSession): Promise<void> {
     try {
-      await supabase.from('sessions').insert(session)
+      // Coerce numeric fields to safe integers — Phaser's gameTime is a float
+      // and Postgres `integer` columns reject decimals.
+      const payload: GameSession = {
+        ...session,
+        kills:   Math.max(0, Math.floor(session.kills)),
+        level:   Math.max(1, Math.floor(session.level)),
+        time_ms: Math.max(0, Math.floor(session.time_ms)),
+        wave:    Math.max(0, Math.floor(session.wave)),
+      }
+      const { error } = await supabase.from('sessions').insert(payload)
+      if (error) console.error('[SessionLogger] insert error:', error, payload)
     } catch (e) {
-      console.warn('Failed to log session:', e)
+      console.error('[SessionLogger] threw:', e)
     }
   }
 
   static async registerPlayer(name: string): Promise<void> {
     try {
-      await supabase.from('players').upsert(
+      const { error } = await supabase.from('players').upsert(
         { name, last_seen: new Date().toISOString() },
         { onConflict: 'name' }
       )
+      if (error) console.error('[SessionLogger] upsert error:', error, name)
     } catch (e) {
-      console.warn('Failed to register player:', e)
+      console.error('[SessionLogger] threw:', e)
     }
   }
 }

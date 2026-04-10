@@ -1,3 +1,5 @@
+// Note: not `as const` — CHUNK_SIZE/CHUNK_TILES are sized to the viewport in
+// main.ts before scenes start, so the 3x3 chunk grid always covers the canvas.
 export const CONFIG = {
   WORLD_WIDTH: 3000,
   WORLD_HEIGHT: 3000,
@@ -58,7 +60,7 @@ export const CONFIG = {
   // Gold drops
   GOLD_MOB_CHANCE: 0.35,
   GOLD_MOB_MIN: 1,
-  GOLD_MOB_MAX: 1,
+  GOLD_MOB_MAX: 3,
   GOLD_BOSS_MIN: 5,
   GOLD_BOSS_MAX: 10,
-} as const
+}

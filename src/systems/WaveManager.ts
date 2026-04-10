@@ -1,11 +1,12 @@
 import Phaser from 'phaser'
 import { CONFIG } from '../config/GameConfig'
 import { Player } from '../entities/Player'
-import { Orc2 } from '../entities/Skeleton'
-import { Orc1 } from '../entities/Zergling'
-import { FlyingEye } from '../entities/Scorpion'
+import { Orc2 } from '../entities/Orc2'
+import { Orc1 } from '../entities/Orc1'
+import { FlyingEye } from '../entities/FlyingEye'
 import { SandGolem } from '../entities/SandGolem'
-import { Orc3 } from '../entities/Skeleton2'
+import BaseEnemy from '../entities/BaseEnemy'
+import { Orc3 } from '../entities/Orc3'
 import { Orc0 } from '../entities/Grunt'
 
 type EnemyCtor = new (scene: Phaser.Scene, x: number, y: number, player: Player, tier: number) => Orc0 | Orc1 | Orc2 | Orc3 | FlyingEye
@@ -120,7 +121,20 @@ export class WaveManager {
   private spawnMiniBoss() {
     if (this.enemies.countActive() >= CONFIG.MOB_CAP_MAX) return
     const { x, y } = this.getSpawnPos()
-    const mob = new SandGolem(this.scene, x, y, this.player, this.currentWave)
+
+    // After wave 5, FlyingEye mini-boss can appear; chance grows with waves
+    const flyingEyeChance = this.currentWave >= 5
+      ? Math.min(0.5, (this.currentWave - 5) * 0.1)
+      : 0
+    const useFlyingEye = Math.random() < flyingEyeChance
+
+    let mob: BaseEnemy
+    if (useFlyingEye) {
+      mob = new FlyingEye(this.scene, x, y, this.player, this.currentWave, true)
+    } else {
+      mob = new SandGolem(this.scene, x, y, this.player, this.currentWave)
+    }
+    mob.isMiniBoss = true
     mob.goldValue = Phaser.Math.Between(CONFIG.GOLD_BOSS_MIN, CONFIG.GOLD_BOSS_MAX)
       + Math.floor(this.currentWave * 3)
     this.enemies.add(mob)

@@ -1,409 +1,448 @@
-# Icon Generation Prompts — GPT Image Gen
+# Icon Generation Prompts — DALL-E Archive
 
-Стиль для всіх: **pixel art icon, 128x128, dark fantasy RPG style, transparent background, vivid colors, centered composition, no text, game UI icon**
+> Archive of DALL-E prompts used to generate the skill icon spritesheet for CLAWS.
+> Spritesheet: `public/assets/icons/skill_icons_sheet.png` (1280×1280, 10×10 grid).
+> After adding new frames, update `ICON_FRAME_MAP` in `src/systems/UpgradeSystem.ts`.
 
----
+## Guidelines
 
-## GENERIC SKILLS (G1–G10)
-
-### g1_sharp_edge
-Pixel art game icon 128x128, transparent background. A gleaming steel blade edge with motion lines, sharp metallic look, dark fantasy RPG style. Vivid steel-blue highlight on cutting edge.
-
-### g2_swift_feet
-Pixel art game icon 128x128, transparent background. Winged boots or feet with speed trail effects, wind swirls around ankles, dark fantasy RPG style. Cyan/teal speed lines.
-
-### g3_eagle_eye
-Pixel art game icon 128x128, transparent background. A glowing golden eagle eye with targeting reticle, piercing gaze, dark fantasy RPG style. Gold and amber tones.
-
-### g4_quick_hands
-Pixel art game icon 128x128, transparent background. Two hands in rapid motion with afterimage blur, holding daggers, dark fantasy RPG style. Green speed lines.
-
-### g5_vitality
-Pixel art game icon 128x128, transparent background. A large glowing red heart with golden aura, pulsing with life energy, dark fantasy RPG style. Red and gold.
-
-### g6_regeneration
-Pixel art game icon 128x128, transparent background. Green healing cross or caduceus with swirling green particles and leaves, regeneration effect, dark fantasy RPG style.
-
-### g7_cleave
-Pixel art game icon 128x128, transparent background. A massive axe swing arc with energy wave, cleaving motion, dark fantasy RPG style. Silver and red impact sparks.
-
-### g8_wisdom
-Pixel art game icon 128x128, transparent background. An ancient glowing tome or book with floating arcane symbols, purple and blue magical energy, dark fantasy RPG style.
-
-### g9_multistrike
-Pixel art game icon 128x128, transparent background. Three sword slashes overlapping in rapid succession, triple strike pattern with afterimages, dark fantasy RPG style. White and yellow slashes.
-
-### g10_iron_skin
-Pixel art game icon 128x128, transparent background. A steel shield with iron plates and rivets, defensive aura glow, dark fantasy RPG style. Metallic grey with blue defensive shimmer.
+- **Style**: 128x128 pixel art RPG skill icon, 32-bit retro style
+- **Generic skills**: Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel
+- **Hero-specific (personal) skills**: Ornate colored pixel border frame matching the hero/branch color theme — each hero and branch has unique frame colors and stud shapes
+- **Base structure**: `128x128 pixel art RPG skill icon, 32-bit retro style. [FRAME DESCRIPTION]. Inside the frame on a solid black background: [CONTENT]. Bold silhouette, high contrast, limited palette 5-6 colors, slight [COLOR] inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the [gray/gold] frame.`
+- DALL-E generations: request 1024x1024 and resize to 128x128 after
 
 ---
 
-## AMUN — Wrath Branch (red-orange: 0xff6633)
+## Generic Skills
 
-### ab2_thorns (Thorns)
-Pixel art game icon 128x128, transparent background. A warrior surrounded by sharp thorns/spikes, damage reflection aura, enemies impaled on thorns, dark fantasy RPG, red-orange glow.
+All generic icons use a **stone-gray pixel border frame** — light gray #999999 outer edge, darker gray #555555 inner bevel, small round rivets in corners.
 
-### as3_wrath (Wrath)
-Pixel art game icon 128x128, transparent background. An explosive burst of fiery rage energy, fist slamming ground with shockwave of fury, dark fantasy RPG, intense red-orange flames.
+### Sharp Edge (g1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: a gleaming steel sword edge in close-up, sharp cutting blade catching blue-white light with faint motion lines. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-### as2_consecration (Consecration)
-Pixel art game icon 128x128, transparent background. A sacred fire circle on the ground, pulsing holy fire aura, ring of divine flames expanding outward, dark fantasy RPG, orange-gold sacred fire.
+### Swift Feet (g2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: armored boots mid-stride with cyan speed-trail arcs behind them and a wind swirl at the ankles. Bold silhouette, high contrast, limited palette 5-6 colors, slight cyan inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-### as1_living_fortress (Living Fortress)
-Pixel art game icon 128x128, transparent background. A stone fortress merged with a living body, HP scaling aura, cracks glowing with power, dark fantasy RPG, golden stone with red energy veins.
+### Eagle Eye (g3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: a single large eagle eye with amber iris and a crosshair targeting reticle overlaid, gold rim-light. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-### as5_divine_judgment (Divine Judgment)
-Pixel art game icon 128x128, transparent background. A golden beam of light striking down from above, divine execution ray, heavenly judgment, dark fantasy RPG, bright gold and white holy beam.
+### Quick Hands (g4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: two gauntleted fists in rapid alternating strikes with motion-blur afterimages and green speed lines. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
----
+### Vitality (g5)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: a large stylized heart glowing with crimson inner light, amber energy veins radiating from center. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-## AMUN — Bastion Branch (blue: 0x4488ff)
+### Regeneration (g6)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: a caduceus healing symbol wreathed in green wisps with leaf-like particle sparks drifting upward. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-### ab1_fortify (Fortify)
-Pixel art game icon 128x128, transparent background. A glowing blue shield with fortification runes, defensive stance, layered armor plates, dark fantasy RPG, blue defensive energy.
+### Cleave (g7)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: a heavy axe blade mid-swing with a wide silver cleave arc energy trail and crimson impact sparks at the cutting edge. Bold silhouette, high contrast, limited palette 5-6 colors, slight silver inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-### aq1_titans_pulse (Aura of Might — used in Bastion)
-Pixel art game icon 128x128, transparent background. A golden pulsing aura ring around a warrior silhouette, passive damage field, radiating power waves, dark fantasy RPG, warm gold energy ripples.
+### Wisdom (g8)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: an ancient tome floating open with violet arcane runes hovering above its pages, magical light from the spine. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-### ab3_iron_will (Iron Will)
-Pixel art game icon 128x128, transparent background. An unbreakable iron crown or helm with damage cap symbol, stoic determination, dark fantasy RPG, steel blue with adamantine glow.
+### Multistrike (g9)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: three overlapping sword-slash arcs in rapid succession, each offset in angle with yellow-white blade trails fading behind them. Bold silhouette, high contrast, limited palette 5-6 colors, slight yellow inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
-### ab4_regenerate (Regenerate)
-Pixel art game icon 128x128, transparent background. Green healing energy swirling around a cracked body being repaired, low HP regeneration burst, dark fantasy RPG, green and gold restoration light.
-
-### ab5_undying (Undying)
-Pixel art game icon 128x128, transparent background. A fallen warrior rising from death with phoenix-like energy, resurrection burst, second life, dark fantasy RPG, blue and white revival glow.
+### Iron Skin (g10)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Simple stone-gray pixel border frame with small round rivets in corners, light gray #999999 outer edge, darker gray #555555 inner bevel. Inside the frame on a solid black background: a torso covered in riveted iron plates, steel-grey with a faint blue defensive shimmer outlining the edge and small cracks revealing the hardness within. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the gray frame.
 
 ---
 
-## AMUN — Quake Branch (yellow-gold: 0xffcc44)
+## Ignara Skills
 
-### aq1_titans_pulse (Titan's Pulse)
-Pixel art game icon 128x128, transparent background. A massive earth shockwave with a boulder projectile launching forward, seismic pulse, ground cracking, dark fantasy RPG, golden-brown earth energy, dust clouds.
+Ignara is a fire mage — consecration, divine fire, wrath. Each branch has 3 regular skills + 1 ultimate.
+Ignara skills use **branch-colored frames** — Inferno (fire-red #CC3300), Fortress (ember-orange #CC6600), Havoc (crimson #FF4400).
 
-### aq2_earthquake (Earthquake)
-Pixel art game icon 128x128, transparent background. The ground shattering with seismic cracks radiating outward, stun effect with stars, enemies stunned by quake, dark fantasy RPG, brown and golden seismic waves.
+### Inferno Branch
 
-### aq3_colossus (Colossus)
-Pixel art game icon 128x128, transparent background. A giant fist or massive titan figure pushing enemies away with extreme force, colossal knockback shockwave, dark fantasy RPG, golden-brown with immense power aura.
+#### Wide Burn (if1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a fireball explosion with a wide circular blast ring expanding outward, deep orange and burnt-amber fire with a visible heat-wave radius ring. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
 
-### as4_gravity_well (Gravity Well — used in Quake)
-Pixel art game icon 128x128, transparent background. A purple-gold vortex pulling enemies inward, gravity singularity, swirling gravitational force field, dark fantasy RPG, purple and gold energy spiral.
+#### Inferno Reach (if2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a fireball stretched long with a fiery comet tail showing extreme range, deep orange with a bright ember core fading to smoke. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
 
-### aq5_cataclysm (Cataclysm)
-Pixel art game icon 128x128, transparent background. A double shockwave explosion — two expanding rings of devastating seismic energy, apocalyptic ground destruction, dark fantasy RPG, fiery orange and gold, earth and fire combining.
+#### White Fire (if3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a fireball with a white-hot core radiating outward to orange then dark-edged smoke, supernatural heat beyond normal flame. Bold silhouette, high contrast, limited palette 5-6 colors, slight white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
 
----
+#### Firestorm (if5) — ULTIMATE
+Unlocks when Wide Burn, Inferno Reach, and White Fire are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a central fireball flanked by two smaller satellite fire orbs orbiting it, swirling flame arcs connecting all three. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
 
-## IGNARA — Inferno Branch (orange: 0xff6600)
+### Fortress Branch
 
-### if1_wide_burn (Wide Burn)
-Pixel art game icon 128x128, transparent background. A massive fireball explosion with expanding orange blast radius, wide circular detonation ring, dark fantasy RPG, vivid orange and yellow fire burst.
+#### Heat Shield (io1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a round shield forged from volcanic red metal with heat shimmer waves radiating off its surface, faint orange glow at the rim. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
 
-### if2_inferno_reach (Inferno Reach)
-Pixel art game icon 128x128, transparent background. A blazing fireball stretched long with a fiery comet tail, extended range trajectory, dark fantasy RPG, deep orange with bright flame core and trailing embers.
+#### Pyromaniac (io2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a smoldering skull wreathed in dark red flames with a small green HP orb rising from its crown, crimson fire with a single vivid emerald spark. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
 
-### if3_white_fire (White Fire)
-Pixel art game icon 128x128, transparent background. An intensely hot white-hot flame ball at the center radiating to orange edges, supernatural fire beyond normal heat, dark fantasy RPG, white core fading to brilliant orange.
+#### Molten Skin (io3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a humanoid silhouette with cracked skin revealing molten lava beneath, a reactive AoE burst ring expanding outward, red-orange with dark obsidian outer surface. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
 
-### if4_scorched_earth (Scorched Earth)
-Pixel art game icon 128x128, transparent background. Cracked burning ground with ember DOT flames seeping up through fissures, lingering fire damage zone, dark fantasy RPG, orange and deep red with glowing cracks.
+#### Phoenix Heart (io5) — ULTIMATE
+Unlocks when Heat Shield, Pyromaniac, and Molten Skin are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a radiant phoenix rising from flames with a glowing heart at its chest, red-orange wings spread wide with a warm gold revival aura at the core. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
 
-### if5_firestorm (Firestorm)
-Pixel art game icon 128x128, transparent background. A central fireball flanked by two smaller orbiting fire projectiles, triple fire volley, dark fantasy RPG, vivid orange with swirling flame satellites.
+### Havoc Branch
 
----
+#### Backdraft (ih1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a fireball with a massive concussive shockwave ring blasting backward, amber-orange fire with fierce concentric blast-wave rings. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
 
-## IGNARA — Fortress Branch (red: 0xff4444)
+#### Eruption (ih2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a volcanic eruption bursting upward from the ground with columns of fire and lava, amber-orange with dark ash clouds rising alongside. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
 
-### io1_heat_shield (Heat Shield)
-Pixel art game icon 128x128, transparent background. A fiery red shield radiating heat waves, armor forged from volcanic fire, protective flame barrier, dark fantasy RPG, crimson red with heat shimmer aura.
+#### Lava Trail (ih3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: glowing lava footprints trailing behind a striding figure, molten ground pools dripping orange-red in each print. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
 
-### io2_pyromaniac (Pyromaniac)
-Pixel art game icon 128x128, transparent background. A skull wreathed in red flames with a green HP orb rising from it, on-kill life steal from fire, dark fantasy RPG, red fire with small green life pulse.
-
-### io3_molten_skin (Molten Skin)
-Pixel art game icon 128x128, transparent background. A humanoid silhouette with cracked glowing lava-skin, retaliatory heat aura exploding outward when struck, dark fantasy RPG, dark red with orange molten cracks and explosion burst.
-
-### io4_ember_veil (Ember Veil)
-Pixel art game icon 128x128, transparent background. A swirling veil of embers and ash forming a protective shroud, defensive ember cloud cloak, dark fantasy RPG, crimson with drifting orange ember particles.
-
-### io5_phoenix_heart (Phoenix Heart)
-Pixel art game icon 128x128, transparent background. A radiant phoenix rising from flames with a glowing heart at its center, resurrection and rebirth at half HP, dark fantasy RPG, red and orange with brilliant gold revival light.
+#### Meltdown (ih5) — ULTIMATE
+Unlocks when Backdraft, Eruption, and Lava Trail are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a crumbling warrior glowing molten from within, deep cracks blazing orange-red while the outer shell crumbles in dark amber. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
 
 ---
 
-## IGNARA — Havoc Branch (amber: 0xffaa00)
+## Nazar Skills
 
-### ih1_backdraft (Backdraft)
-Pixel art game icon 128x128, transparent background. A fireball with massive reverse shockwave blast pushing enemies back, explosive knockback force, dark fantasy RPG, amber and orange with fierce concussive wave rings.
+Nazar is a shadow assassin — stealth, poison, shadow strikes. Each branch has 3 regular skills + 1 ultimate.
+Nazar skills use **branch-colored frames** — Blade (dark-red #882222), Venom (poison-green #228822), Shadow (dark-purple #442266).
 
-### ih2_eruption (Eruption)
-Pixel art game icon 128x128, transparent background. A volcanic eruption explosion from the ground, massive radius AoE blast with lava splash, dark fantasy RPG, amber-orange with rising fire columns and ash cloud.
+### Way of the Blade Branch
 
-### ih3_lava_trail (Lava Trail)
-Pixel art game icon 128x128, transparent background. Glowing lava footprints trailing behind a running figure, molten ground hazard pools left while moving, dark fantasy RPG, amber with dripping orange-red lava pools.
+#### Shadow Step (nb1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-red pixel border frame with small dagger-shaped studs in corners, dark-red #882222 outer edge, darker #551111 inner bevel. Inside the frame on a solid black background: a shadowy figure blinking forward with a dark afterimage trail left behind, silver-white with dark shadow blur fading at the origin. Bold silhouette, high contrast, limited palette 5-6 colors, slight silver inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-red frame.
 
-### ih4_wildfire (Wildfire)
-Pixel art game icon 128x128, transparent background. A chain of fire explosions spreading from one enemy to another, on-kill cascade detonation, dark fantasy RPG, amber-gold with spreading fire chain arcs.
+#### Twin Blades (nb2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-red pixel border frame with small dagger-shaped studs in corners, dark-red #882222 outer edge, darker #551111 inner bevel. Inside the frame on a solid black background: two crossed daggers with overlapping motion-blur arcs showing rapid dual strikes, silver blades with faint white metallic sheen and slash trails. Bold silhouette, high contrast, limited palette 5-6 colors, slight silver inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-red frame.
 
-### ih5_meltdown (Meltdown)
-Pixel art game icon 128x128, transparent background. A cracked crumbling warrior figure glowing molten from within, enraged low-HP power surge, dark fantasy RPG, amber with deep red cracks and inner volcanic glow intensifying.
+#### Blade Surge (nb3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-red pixel border frame with small dagger-shaped studs in corners, dark-red #882222 outer edge, darker #551111 inner bevel. Inside the frame on a solid black background: a dagger lunging in a straight piercing line cutting through two enemy silhouettes, silver with a thin white energy line tracing the path. Bold silhouette, high contrast, limited palette 5-6 colors, slight silver inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-red frame.
 
----
+#### Assassinate (nb5) — ULTIMATE
+Unlocks when Shadow Step, Twin Blades, and Blade Surge are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-red pixel border frame with small dagger-shaped studs in corners, dark-red #882222 outer edge, darker #551111 inner bevel. Inside the frame on a solid black background: a single dagger poised over a lone enemy silhouette with a cold white execution-glow targeting highlight on the target. Bold silhouette, high contrast, limited palette 5-6 colors, slight silver inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-red frame.
 
-## NAZAR — Way of the Blade Branch (silver-white: 0xccccdd)
+### Way of Venom Branch
 
-### nb1_shadow_step (Shadow Step)
-Pixel art game icon 128x128, transparent background. A shadowy figure blinking forward with afterimage trail, rapid dash toward an enemy, dark fantasy RPG, silver-white with dark shadow blur.
+#### Toxic Slash (nv1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate poison-green pixel border frame with small skull-shaped studs in corners, poison-green #228822 outer edge, darker #114411 inner bevel. Inside the frame on a solid black background: a blade dripping green venom mid-slash with a toxic puddle splash forming below, silver blade with a sickly green puddle. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the poison-green frame.
 
-### nb2_twin_blades (Twin Blades)
-Pixel art game icon 128x128, transparent background. Two crossed daggers with motion blur arcs, dual-strike pattern, dark fantasy RPG, silver blades with white metallic sheen and slash trails.
+#### Virulent Strain (nv2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate poison-green pixel border frame with small skull-shaped studs in corners, poison-green #228822 outer edge, darker #114411 inner bevel. Inside the frame on a solid black background: an enlarged poison cloud spreading wider with spore particles drifting outward, olive-green haze with yellow-green spores at the edges. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the poison-green frame.
 
-### nb3_chain_dash (Blade Surge)
-Pixel art game icon 128x128, transparent background. A blade lunging forward in a straight piercing line, extended lunge strike cutting through multiple enemies, dark fantasy RPG, silver with white energy line and impact sparks.
+#### Pandemic (nv3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate poison-green pixel border frame with small skull-shaped studs in corners, poison-green #228822 outer edge, darker #114411 inner bevel. Inside the frame on a solid black background: a skull-shaped green cloud splitting into two smaller satellite clouds, dark green with small secondary cloud wisps branching outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the poison-green frame.
 
-### nb4_hemorrhage (Hemorrhage)
-Pixel art game icon 128x128, transparent background. A dripping blood-red blade with crimson DOT droplets, bleed effect spreading from a wound, dark fantasy RPG, silver blade with vivid red blood trails and tick marks.
+#### Necrosis (nv5) — ULTIMATE
+Unlocks when Toxic Slash, Virulent Strain, and Pandemic are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate poison-green pixel border frame with small skull-shaped studs in corners, poison-green #228822 outer edge, darker #114411 inner bevel. Inside the frame on a solid black background: rotting tissue with poison ticks brightening with each successive tick, dark green fading to near-black necrotic patches with intensifying toxic sparks at center. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the poison-green frame.
 
-### nb5_assassinate (Assassinate)
-Pixel art game icon 128x128, transparent background. A single dagger poised above a lone target with a glowing execution marker, double damage vs isolated foe, dark fantasy RPG, silver and cold white with red targeting reticle.
+### Way of Shadow Branch
 
----
+#### Vanish (ns1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-purple pixel border frame with small crescent studs in corners, dark-purple #442266 outer edge, darker #221133 inner bevel. Inside the frame on a solid black background: a figure dissolving into dark purple shadow, a fading translucent silhouette with shadow wisps, deep purple near-invisibility. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-purple frame.
 
-## NAZAR — Way of Venom Branch (green: 0x44cc44)
+#### Phantom Trail (ns2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-purple pixel border frame with small crescent studs in corners, dark-purple #442266 outer edge, darker #221133 inner bevel. Inside the frame on a solid black background: a running figure leaving dark shadow afterimages behind it, purple and charcoal grey shadow clones with faint damage sparks at their edges. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-purple frame.
 
-### nv1_toxic_slash (Toxic Slash)
-Pixel art game icon 128x128, transparent background. A blade dripping green venom leaving a toxic puddle, poison DOT on-hit, dark fantasy RPG, vivid green with sickly yellow-green puddle splash.
+#### Smoke Bomb (ns3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-purple pixel border frame with small crescent studs in corners, dark-purple #442266 outer edge, darker #221133 inner bevel. Inside the frame on a solid black background: a round smoke bomb exploding into a spreading purple-grey cloud with a swirling deceleration spiral within the smoke. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-purple frame.
 
-### nv2_virulent_strain (Virulent Strain)
-Pixel art game icon 128x128, transparent background. A swirling enlarged poison cloud spreading wider, virulent gas expanding its radius and duration, dark fantasy RPG, green with yellow-green toxic haze and spore particles.
-
-### nv3_pandemic (Pandemic)
-Pixel art game icon 128x128, transparent background. A skull-shaped green cloud splitting into smaller satellite clouds after a kill, spreading contagion, dark fantasy RPG, vivid green with dark spore tendrils branching outward.
-
-### nv4_weakness (Weakness)
-Pixel art game icon 128x128, transparent background. A cracked enemy silhouette with green poison cracks amplifying incoming damage, debuff vulnerability, dark fantasy RPG, green with red wound lines on a weakened dark figure.
-
-### nv5_necrosis (Necrosis)
-Pixel art game icon 128x128, transparent background. A rotting tissue pattern with intensifying green poison ticks ramping up in power, escalating decay, dark fantasy RPG, dark green with black necrotic spread and brightening toxic sparks.
+#### Death Mark (ns5) — ULTIMATE
+Unlocks when Vanish, Phantom Trail, and Smoke Bomb are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-purple pixel border frame with small crescent studs in corners, dark-purple #442266 outer edge, darker #221133 inner bevel. Inside the frame on a solid black background: a glowing purple rune branded onto a target silhouette, the mark pulsing with a double-strike arrow glyph overlaid. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-purple frame.
 
 ---
 
-## NAZAR — Way of Shadow Branch (purple: 0x9955dd)
+## Sifra Skills
 
-### ns1_vanish (Vanish)
-Pixel art game icon 128x128, transparent background. A figure dissolving into purple shadow after a strike, brief post-attack invulnerability, dark fantasy RPG, deep purple with fading silhouette and shadow wisps.
+Sifra is an ice/frost mage with an alternate lightning path. Each branch has 3 regular skills + 1 ultimate.
+Sifra skills use **branch-colored frames** — Lightning (electric-purple #7744CC), Frost (frost-blue #3388CC), Shatter (ice-blue #4499BB), Crystal (ice-white #AAEEFF).
 
-### ns2_phantom_trail (Phantom Trail)
-Pixel art game icon 128x128, transparent background. A running silhouette leaving a trail of dark shadow clones doing damage, phantom movement trail, dark fantasy RPG, purple and dark grey shadow afterimages with damage sparks.
+### Lightning Branch
 
-### ns3_smoke_bomb (Smoke Bomb)
-Pixel art game icon 128x128, transparent background. A thrown dark smoke bomb exploding into a purple-grey cloud, slowing enemies in the area of effect, dark fantasy RPG, purple-grey smoke cloud with slow spiral effect.
+#### Spark Initiate (sl1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate electric-purple pixel border frame with small lightning-bolt studs in corners, electric-purple #7744CC outer edge, darker #553388 inner bevel. Inside the frame on a solid black background: a crackling electric cone chaining to a second nearby enemy, forked lightning arc bridging two targets, violet and pale blue-white lightning. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the electric-purple frame.
 
-### ns4_blood_scent (Blood Scent)
-Pixel art game icon 128x128, transparent background. A predatory eye glowing red with blood droplets forming a targeting crosshair, execute low-HP enemies, dark fantasy RPG, purple with bright crimson blood scent aura.
+#### Arc Reach (sl2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate electric-purple pixel border frame with small lightning-bolt studs in corners, electric-purple #7744CC outer edge, darker #553388 inner bevel. Inside the frame on a solid black background: a wide broadened arc of electricity fanning outward with lateral side-bolts spreading the cone, violet with pale electric arcs at the wide fringes. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the electric-purple frame.
 
-### ns5_death_mark (Death Mark)
-Pixel art game icon 128x128, transparent background. A glowing purple rune branded onto a target, second-hit amplification mark, dark fantasy RPG, deep purple mark with ominous glow and double-hit arrow indicator.
+#### Overcharge (sl3)
+Lvl 3 unlocks Ball Lightning orbit.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate electric-purple pixel border frame with small lightning-bolt studs in corners, electric-purple #7744CC outer edge, darker #553388 inner bevel. Inside the frame on a solid black background: a blinding electrical overload burst with a central white flash, violet outer ring fading to near-white explosive core. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the electric-purple frame.
 
----
+#### Storm Lord (sl5) — ULTIMATE
+Unlocks when Spark Initiate, Arc Reach, and Overcharge are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate electric-purple pixel border frame with small lightning-bolt studs in corners, electric-purple #7744CC outer edge, darker #553388 inner bevel. Inside the frame on a solid black background: a storm deity silhouette wreathed in lightning hurling a massive bolt downward at a target, violet with a commanding white thunder-bolt and faint storm-crown. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the electric-purple frame.
 
-## SIFRA — Lightning Branch (violet: 0x9966ff)
+### Frost Branch
 
-### sf1_deep_freeze (Spark Initiate — Lightning)
-Pixel art game icon 128x128, transparent background. A crackling electric cone chaining to a second nearby enemy, forked lightning arc, dark fantasy RPG, violet and bright white lightning with chain spark.
+#### Deep Freeze (sf1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: an enemy encased in a solid block of ice with frost shards radiating outward, sky blue and white with thick crystalline ice walls. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
 
-### sf2_blizzard_aura (Arc Reach — Lightning)
-Pixel art game icon 128x128, transparent background. A wide spreading arc of electricity with side bolts, broadened lightning cone with lateral arcs, dark fantasy RPG, violet with brilliant electric arcs fanning outward.
+#### Blizzard Aura (sf2)
+Lvl 3 unlocks Frost Nova every 4th shot.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a swirling blizzard aura ring surrounding a caster, sky blue with white snowflakes and a gentle spiral wind extending outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
 
-### sf3_frost_nova (Overcharge — Lightning)
-Pixel art game icon 128x128, transparent background. A blinding electrical overload burst, sudden triple-damage surge from overcharged power, dark fantasy RPG, violet core with white explosive lightning discharge.
+#### Ice Armor (sf3 / sc2)
+Lvl 3 unlocks Blizzard Aura when shield is up.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a figure encased in glowing crystal ice armor plates, icy white with crystalline plate segments and a blue shield glow. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
 
-### sf4_absolute_zero (Ball Lightning)
-Pixel art game icon 128x128, transparent background. A crackling orb of electricity orbiting around a figure, ball lightning zapping nearby enemies, dark fantasy RPG, violet and electric blue orbiting plasma sphere with zap arcs.
+#### Eternal Winter (sf5) — ULTIMATE
+Unlocks when Deep Freeze, Blizzard Aura, and Ice Armor are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: an ever-expanding frost field consuming the ground with a perpetual blizzard above it, sky blue with a spreading white snowstorm field. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
 
-### sf5_eternal_winter (Storm Lord)
-Pixel art game icon 128x128, transparent background. A storm deity hurling a massive lightning bolt at a random target, supreme lightning strike every 2s, dark fantasy RPG, violet and white with a commanding storm bolt and thunder crown.
+### Shatter Branch
 
----
+#### Permafrost (ss1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-blue pixel border frame with small crystal-shard studs in corners, ice-blue #4499BB outer edge, darker #226688 inner bevel. Inside the frame on a solid black background: a frozen enemy surface covered in permafrost cracks with a damage-boost halo above it, pale blue with white frost crackle and a faint red up-arrow. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-blue frame.
 
-## SIFRA — Frost Branch (sky blue: 0x55aaff)
+#### Shatter (ss2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-blue pixel border frame with small crystal-shard studs in corners, ice-blue #4499BB outer edge, darker #226688 inner bevel. Inside the frame on a solid black background: a single ice shard striking a target and fracturing into two smaller seeker shards splitting off in different directions, pale blue and white with crisp crystal-break lines. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-blue frame.
 
-### sf1_deep_freeze (Deep Freeze)
-Pixel art game icon 128x128, transparent background. An enemy encased in a solid block of ice, deep freeze slow effect, dark fantasy RPG, sky blue and white with crystalline ice prison.
+#### Ice Spear (ss3)
+Lvl 2 adds pierce, Lvl 3 unlocks Mirror Ice (+2 pierce).
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-blue pixel border frame with small crystal-shard studs in corners, ice-blue #4499BB outer edge, darker #226688 inner bevel. Inside the frame on a solid black background: a long sharp ice lance pointing forward with a faceted crystalline spear tip and light frost aura along the shaft. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-blue frame.
 
-### sf2_blizzard_aura (Blizzard Aura)
-Pixel art game icon 128x128, transparent background. A swirling blizzard aura ring around a caster slowing nearby enemies, cold slow field, dark fantasy RPG, sky blue with white snowflakes and wind spiral.
+#### Avalanche (ss5) — ULTIMATE
+Unlocks when Permafrost, Shatter, and Ice Spear are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-blue pixel border frame with small crystal-shard studs in corners, ice-blue #4499BB outer edge, darker #226688 inner bevel. Inside the frame on a solid black background: three clustered ice shard bundles crashing forward like an avalanche, pale blue and white with overlapping shard clusters rolling forward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-blue frame.
 
-### sf3_frost_nova (Frost Nova)
-Pixel art game icon 128x128, transparent background. Eight ice shards bursting outward in a ring pattern, frost nova ring explosion, dark fantasy RPG, sky blue with white crystalline spike ring.
+### Crystal Branch (ice-white: #AAEEFF)
 
-### sf4_absolute_zero (Absolute Zero)
-Pixel art game icon 128x128, transparent background. A frozen enemy locked in a blue-white stasis field, full freeze stun at extreme slow, dark fantasy RPG, deep sky blue and white with absolute zero freeze crystal.
+#### Wide Shard (sc1 / glacial_pierce)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a crystal shard with expanded AoE glow ring, wider splash radius upgrade, icy white-blue with blast radius ring expanding outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
 
-### sf5_eternal_winter (Eternal Winter)
-Pixel art game icon 128x128, transparent background. An ever-expanding frost field consuming the ground, perpetual winter damage zone, dark fantasy RPG, sky blue with icy white snowstorm field spreading outward.
+#### Mirror Ice (sc3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a shard piercing through multiple enemies in sequence, pierce chain through targets, icy white with refracted pierce lines through translucent crystal. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
 
----
+#### Cryo Shield (sc4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a retaliatory ice shield firing shards outward when struck, reactive cryo burst on damage received, icy white with defensive burst shards radiating outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
 
-## SIFRA — Shatter Branch (pale blue: 0x88ddff)
-
-### ss1_permafrost (Permafrost)
-Pixel art game icon 128x128, transparent background. An iced-over ground surface with a damage boost aura on a slowed enemy, bonus damage vs slowed foes, dark fantasy RPG, pale blue with white frost crackle and damage up indicator.
-
-### ss2_shatter (Shatter)
-Pixel art game icon 128x128, transparent background. A shard striking and fracturing into two seeking mini-shards splitting off, shard multiplication on hit, dark fantasy RPG, pale blue and white with fragmenting crystal pieces.
-
-### ss3_ice_spear (Ice Spear)
-Pixel art game icon 128x128, transparent background. A long sharp ice lance stabbing forward, extended ranged ice projectile, dark fantasy RPG, pale blue with crystalline spear tip and frost aura.
-
-### ss4_frostbite (Frostbite)
-Pixel art game icon 128x128, transparent background. A frost-bitten wound with seeking shard shards breaking off and homing toward enemies, enhanced shatter fragments, dark fantasy RPG, pale blue with homing shard trails.
-
-### ss5_avalanche (Avalanche)
-Pixel art game icon 128x128, transparent background. A cascading wave of ice shards crashing forward like a snow avalanche, massive shard volley, dark fantasy RPG, pale blue and white with three sharp shard clusters tumbling forward.
+#### Diamond Dust (sc5) — ULTIMATE
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a sparkling cloud of diamond-fine ice particles with multiple pierce trails, ultra-sharp crystalline dust damage, brilliant white and pale blue with prismatic diamond sparkle. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
 
 ---
 
-## SIFRA — Crystal Branch (ice white: 0xaaeeff)
+## Amun Skills
 
-### sc1_glacial_pierce (Wide Shard)
-Pixel art game icon 128x128, transparent background. A crystal shard with expanded AoE glow ring, wider splash radius upgrade, dark fantasy RPG, icy white-blue with blast radius ring expanding outward.
+Amun is an Egyptian sun warrior — thorns, wrath, consecration, quake. Each branch has 3 regular skills + 1 ultimate.
+Amun skills use **branch-colored frames** — Wrath (solar-gold #CCAA00), Bastion (bronze-gold #CC8800), Quake (earth-bronze #CC6622).
 
-### sc2_ice_armor (Ice Armor)
-Pixel art game icon 128x128, transparent background. A figure encased in glowing crystal ice armor absorbing hits, ice shield recharging, dark fantasy RPG, icy white with crystalline armor plates and blue shield glow.
+### Wrath Branch
 
-### sc3_mirror_ice (Mirror Ice)
-Pixel art game icon 128x128, transparent background. A shard piercing through multiple enemies in sequence, pierce chain through targets, dark fantasy RPG, icy white with refracted pierce lines through translucent crystal.
+#### Thorns (aw1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate solar-gold pixel border frame with small sun-disc studs in corners, solar-gold #CCAA00 outer edge, darker #887700 inner bevel. Inside the frame on a solid black background: a warrior silhouette surrounded by outward-facing thorns and spikes in a retaliatory damage-reflect aura, red-orange with dark iron thorns radiating defensively. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the solar-gold frame.
 
-### sc4_cryo_shield (Cryo Shield)
-Pixel art game icon 128x128, transparent background. A retaliatory ice shield firing shards outward when struck, reactive cryo burst on damage received, dark fantasy RPG, icy white with defensive burst shards radiating outward.
+#### Wrath (aw2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate solar-gold pixel border frame with small sun-disc studs in corners, solar-gold #CCAA00 outer edge, darker #887700 inner bevel. Inside the frame on a solid black background: a fist slamming the ground with an explosive burst of fiery rage energy, red-orange with fierce shockwave rings and dark flame wisps. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the solar-gold frame.
 
-### sc5_diamond_dust (Diamond Dust)
-Pixel art game icon 128x128, transparent background. A sparkling cloud of diamond-fine ice particles with multiple pierce trails, ultra-sharp crystalline dust damage, dark fantasy RPG, brilliant white and pale blue with prismatic diamond sparkle.
+#### Consecration (aw3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate solar-gold pixel border frame with small sun-disc studs in corners, solar-gold #CCAA00 outer edge, darker #887700 inner bevel. Inside the frame on a solid black background: a sacred fire circle on the ground pulsing outward with divine flames, orange-gold with a dark border separating the sacred ring from outside. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the solar-gold frame.
 
----
+#### Divine Judgment (aw5) — ULTIMATE
+Unlocks when Thorns, Wrath, and Consecration are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate solar-gold pixel border frame with small sun-disc studs in corners, solar-gold #CCAA00 outer edge, darker #887700 inner bevel. Inside the frame on a solid black background: a narrow golden beam of divine light striking down from above onto a doomed enemy, warm gold and pale white execution ray against dark background. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the solar-gold frame.
 
-## KHASHIN — Gale Branch (sky blue: 0x88DDFF)
+### Bastion Branch
 
-### kw1_razor_wind (Razor Wind)
-Pixel art game icon 128x128, transparent background. A slicing crescent wind blade cutting through enemies, razor-edged wind slash with pierce, dark fantasy RPG, sky blue with sharp white wind arc and cutting edge glow.
+#### Fortify (ab1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bronze-gold pixel border frame with small shield-shaped studs in corners, bronze-gold #CC8800 outer edge, darker #885500 inner bevel. Inside the frame on a solid black background: a thick kite shield with fortification runes carved into its face, defensive stance with a soft blue energy aura and layered armor plates behind it. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bronze-gold frame.
 
-### kw2_gust_strike (Gust Strike)
-Pixel art game icon 128x128, transparent background. A powerful wind blast hitting an enemy and sending them flying backward, knockback gust strike, dark fantasy RPG, sky blue with explosive wind burst and trailing push lines.
+#### Aura of Might (ab2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bronze-gold pixel border frame with small shield-shaped studs in corners, bronze-gold #CC8800 outer edge, darker #885500 inner bevel. Inside the frame on a solid black background: a golden pulsing aura ring radiating from a warrior silhouette, warm concentric rings of force emanating outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bronze-gold frame.
 
-### kw3_dust_devil (Dust Devil)
-Pixel art game icon 128x128, transparent background. A small drifting sand tornado spawning and wandering across the ground, summoned dust devil, dark fantasy RPG, sky blue mixed with tan sand spinning in a tight vortex.
+#### Iron Will (ab3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bronze-gold pixel border frame with small shield-shaped studs in corners, bronze-gold #CC8800 outer edge, darker #885500 inner bevel. Inside the frame on a solid black background: an iron helm with a damage-cap glyph etched onto the brow, stoic and unyielding, steel-blue with faint adamantine highlights. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bronze-gold frame.
 
-### kw4_cyclone_surge (Cyclone Surge)
-Pixel art game icon 128x128, transparent background. A larger more ferocious cyclone tower spinning faster and taller, empowered dust devil upgrade, dark fantasy RPG, sky blue with intensified wind spiral and sand particles surging upward.
+#### Undying (ab5) — ULTIMATE
+Unlocks when Fortify, Aura of Might, and Iron Will are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bronze-gold pixel border frame with small shield-shaped studs in corners, bronze-gold #CC8800 outer edge, darker #885500 inner bevel. Inside the frame on a solid black background: a fallen warrior rising from death surrounded by a full-HP revival burst and a shockwave ring blasting outward, blue and pale white revival glow. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bronze-gold frame.
 
-### kw5_eye_of_the_storm (Eye of the Storm)
-Pixel art game icon 128x128, transparent background. A massive anchored tornado with a calm eye at the center, permanent storm pillar, dark fantasy RPG, deep sky blue with a still white eye and violent cyclone walls surrounding it.
+### Quake Branch
 
----
+#### Titan's Pulse (aq1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate earth-bronze pixel border frame with small boulder-shaped studs in corners, earth-bronze #CC6622 outer edge, darker #884411 inner bevel. Inside the frame on a solid black background: a massive fist slamming the earth launching a boulder projectile forward, ground cracking beneath with golden-brown earth energy and dust clouds rising. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the earth-bronze frame.
 
-## KHASHIN — Dune Branch (amber: 0xE8A040)
+#### Earthquake (aq2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate earth-bronze pixel border frame with small boulder-shaped studs in corners, earth-bronze #CC6622 outer edge, darker #884411 inner bevel. Inside the frame on a solid black background: the ground shattering with seismic cracks radiating outward and stunned enemy silhouettes with stun stars above their heads, brown and gold seismic waves. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the earth-bronze frame.
 
-### kd1_choking_sand (Choking Sand)
-Pixel art game icon 128x128, transparent background. A cloud of blinding sand particles engulfing an enemy face, choking blind debuff, dark fantasy RPG, amber with tan sand burst and enemy silhouette with blinded eyes.
+#### Colossus (aq3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate earth-bronze pixel border frame with small boulder-shaped studs in corners, earth-bronze #CC6622 outer edge, darker #884411 inner bevel. Inside the frame on a solid black background: a giant fist sending a shockwave that pushes enemies far away, golden-brown with impact lines showing vast push distance. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the earth-bronze frame.
 
-### kd2_sand_armor (Sand Armor)
-Pixel art game icon 128x128, transparent background. A warrior coated in a swirling layer of sand forming protective plates, absorb shield from sand, dark fantasy RPG, amber with flowing sand coating the body as defensive armor.
-
-### kd3_abrasion (Abrasion)
-Pixel art game icon 128x128, transparent background. Sand particles grinding away enemy armor with abrasive force, armor reduction debuff on blinded foes, dark fantasy RPG, amber with sharp sand grain close-up and crumbling armor fragments.
-
-### kd4_scarab_tide (Scarab Tide)
-Pixel art game icon 128x128, transparent background. Four glowing scarab beetles swarming toward enemies after a kill, seeking scarab swarm applying blind, dark fantasy RPG, amber with golden scarab beetles trailing toward targets.
-
-### kd5_sandstorm_wall (Sandstorm Wall)
-Pixel art game icon 128x128, transparent background. A dense towering wall of swirling sand blocking and lingering on the battlefield, persistent sandstorm cloud barrier, dark fantasy RPG, amber with thick sand wall obscuring the background.
+#### Cataclysm (aq5) — ULTIMATE
+Unlocks when Titan's Pulse, Earthquake, and Colossus are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate earth-bronze pixel border frame with small boulder-shaped studs in corners, earth-bronze #CC6622 outer edge, darker #884411 inner bevel. Inside the frame on a solid black background: two shockwave rings expanding outward at different sizes — first immediate and small, second delayed and larger — fiery orange and gold with earth and fire combining. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the earth-bronze frame.
 
 ---
 
-## KHASHIN — Mirage Branch (lavender: 0xCCAAFF)
+## Khashin Skills
 
-### km1_tailwind (Tailwind)
-Pixel art game icon 128x128, transparent background. Rushing wind at the back of a sprinting figure, speed burst from a favorable tail wind, dark fantasy RPG, lavender with flowing wind lines accelerating movement and attack speed.
+Khashin is a martial arts fighter with desert/wind motifs. Each branch has 3 regular skills + 1 ultimate.
+Khashin skills use **branch-colored frames** — Gale (sky-blue #4488CC), Dune (sand-gold #AA8833), Mirage (haze-lavender #9977CC).
 
-### km2_phantom_step (Phantom Step)
-Pixel art game icon 128x128, transparent background. A figure auto-dashing away leaving a shadow blur, automatic escape dash every few seconds, dark fantasy RPG, lavender and pale purple with ghost afterimage left at the origin point.
+### Gale Branch
 
-### km3_mirage (Mirage)
-Pixel art game icon 128x128, transparent background. A shimmering heat-mirage decoy standing in place as the real figure dashes away, decoy illusion after dash, dark fantasy RPG, lavender with wavering translucent duplicate silhouette.
+#### Razor Wind (kw1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sky-blue pixel border frame with small wind-spiral studs in corners, sky-blue #4488CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a slicing crescent wind blade cutting through two enemy silhouettes, sky blue with a sharp white wind arc and a clearly defined cutting edge. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sky-blue frame.
 
-### km4_drift (Drift)
-Pixel art game icon 128x128, transparent background. A trail of slow-inducing shimmer lines left by a moving figure, movement slow trails on the ground, dark fantasy RPG, lavender with ethereal slow-field footprint wisps.
+#### Gust Strike (kw2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sky-blue pixel border frame with small wind-spiral studs in corners, sky-blue #4488CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a powerful wind blast hitting an enemy and sending them flying backward, sky blue with an explosive wind burst and trailing push-lines behind the airborne enemy. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sky-blue frame.
 
-### km5_desert_wind (Desert Wind)
-Pixel art game icon 128x128, transparent background. A 180-degree gust explosion sending enemies flying outward, massive wind burst every 10 seconds, dark fantasy RPG, lavender and white with a sweeping hemicircle blast of desert wind.
+#### Dust Devil (kw3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sky-blue pixel border frame with small wind-spiral studs in corners, sky-blue #4488CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a small drifting sand tornado wandering across the ground, sky blue mixed with tan sand spinning in a compact vortex column. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sky-blue frame.
 
----
+#### Cyclone Surge (kw4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sky-blue pixel border frame with small wind-spiral studs in corners, sky-blue #4488CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a larger more ferocious cyclone tower spinning faster and taller, empowered dust devil upgrade, sky blue with intensified wind spiral and sand particles surging upward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sky-blue frame.
 
-## MULLER — Shardfall Branch (blue: 0x44AAFF)
+#### Eye of the Storm (kw5) — ULTIMATE
+Unlocks when Razor Wind, Gust Strike, and Dust Devil are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sky-blue pixel border frame with small wind-spiral studs in corners, sky-blue #4488CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a massive anchored tornado with a calm white eye at the center surrounded by violent cyclone walls, deep sky blue outer walls with a tranquil pale center. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sky-blue frame.
 
-### cm1_coarse_cut (Coarse Cut)
-Pixel art game icon 128x128, transparent background. A wide crystal wave cone fanning out broadly, wider angle crystal wave slam, dark fantasy RPG, blue with crystalline spike cone spreading outward at a broader angle.
+### Dune Branch
 
-### cm2_deep_vein (Deep Vein)
-Pixel art game icon 128x128, transparent background. Crystal spikes erupting at maximum reach with boosted damage, deep range spike amplification, dark fantasy RPG, blue with tall crystal spikes at the far edge glowing more intensely.
+#### Choking Sand (kd1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sand-gold pixel border frame with small scarab-shaped studs in corners, sand-gold #AA8833 outer edge, darker #775522 inner bevel. Inside the frame on a solid black background: a cloud of blinding sand engulfing an enemy face with closed blinded eyes, amber with a tan sand burst around a silhouette whose eyes are covered. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sand-gold frame.
 
-### cm3_shardstorm (Shardstorm)
-Pixel art game icon 128x128, transparent background. Two crystal wave slams launching simultaneously from a single ground pound, double wave per impact, dark fantasy RPG, blue with two mirrored crystal wave arcs erupting at once.
+#### Sand Armor (kd2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sand-gold pixel border frame with small scarab-shaped studs in corners, sand-gold #AA8833 outer edge, darker #775522 inner bevel. Inside the frame on a solid black background: a warrior coated in a swirling layer of compressed sand forming protective armor plates, amber with flowing sand coating the torso in layered defensive form. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sand-gold frame.
 
-### cm4_crystal_shrapnel (Crystal Shrapnel)
-Pixel art game icon 128x128, transparent background. A destroyed crystal spike exploding into shrapnel fragments, spikes spraying shards on death, dark fantasy RPG, blue with a shattering spike bursting into three shrapnel arcs.
+#### Abrasion (kd3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sand-gold pixel border frame with small scarab-shaped studs in corners, sand-gold #AA8833 outer edge, darker #775522 inner bevel. Inside the frame on a solid black background: sharp sand particles grinding away at armor plates with abrasive force, amber with sand grains scraping crumbling dark armor fragments. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sand-gold frame.
 
-### cm5_tectonic_fury (Tectonic Fury)
-Pixel art game icon 128x128, transparent background. A ring of crystal spikes erupting outward from a central slam point, eruption ring on every fifth slam, dark fantasy RPG, vivid blue with a full radial crystal ring burst and ground crack.
+#### Sandstorm Wall (kd5) — ULTIMATE
+Unlocks when Choking Sand, Sand Armor, and Abrasion are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sand-gold pixel border frame with small scarab-shaped studs in corners, sand-gold #AA8833 outer edge, darker #775522 inner bevel. Inside the frame on a solid black background: a dense towering wall of swirling sand looming over the battlefield, amber with a thick sand wall filling the upper portion and darkening the background behind it. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sand-gold frame.
 
----
+### Mirage Branch
 
-## MULLER — Geode Shell Branch (teal: 0x99DDCC)
+#### Tailwind (km1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate haze-lavender pixel border frame with small crescent studs in corners, haze-lavender #9977CC outer edge, darker #664488 inner bevel. Inside the frame on a solid black background: a figure surging forward with rushing lavender wind lines flowing behind them, elongated flowing acceleration lines. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the haze-lavender frame.
 
-### cr1_stone_skin (Stone Skin)
-Pixel art game icon 128x128, transparent background. A rocky skin texture growing in layers with each kill, stacking kill-based DR buff, dark fantasy RPG, teal-grey with layered stone plates forming over a silhouette.
+#### Phantom Step (km2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate haze-lavender pixel border frame with small crescent studs in corners, haze-lavender #9977CC outer edge, darker #664488 inner bevel. Inside the frame on a solid black background: a figure mid-dash leaving a ghost silhouette blur at the origin point, lavender and pale purple with a faint afterimage standing where the figure was. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the haze-lavender frame.
 
-### cr2_geode_shell (Geode Shell)
-Pixel art game icon 128x128, transparent background. A geode crystal half-shell opening to reveal a glowing interior, absorb-next-hit shield, dark fantasy RPG, teal with a cracked geode revealing shimmering interior crystal and a shield glow.
+#### Mirage (km3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate haze-lavender pixel border frame with small crescent studs in corners, haze-lavender #9977CC outer edge, darker #664488 inner bevel. Inside the frame on a solid black background: a shimmering heat-mirage decoy standing still while the real figure dashes away, lavender with a wavering translucent decoy silhouette and heat distortion lines. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the haze-lavender frame.
 
-### cr3_crystal_wall (Crystal Wall)
-Pixel art game icon 128x128, transparent background. A solid crystal barrier rising from the ground blocking an enemy path, barrier crystal wall every 8 seconds, dark fantasy RPG, teal and pale blue with translucent crystal wall blocking the frame.
-
-### cr4_resonance_armor (Resonance Armor)
-Pixel art game icon 128x128, transparent background. A shockwave impact triggering a brief invulnerability flash, short invuln on wave hit, dark fantasy RPG, teal with a resonance ripple burst from crystal armor and white invuln glow.
-
-### cr5_living_geode (Living Geode)
-Pixel art game icon 128x128, transparent background. A warrior merged with a living geode crystal, reflecting melee damage and gaining HP, dark fantasy RPG, teal with crystalline body armor fused to flesh and melee reflect sparks.
+#### Desert Wind (km5) — ULTIMATE
+Unlocks when Tailwind, Phantom Step, and Mirage are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate haze-lavender pixel border frame with small crescent studs in corners, haze-lavender #9977CC outer edge, darker #664488 inner bevel. Inside the frame on a solid black background: a sweeping 180-degree desert wind blast exploding outward sending enemies flying with a hemicircular blast arc, lavender and white. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the haze-lavender frame.
 
 ---
 
-## MULLER — Deep Seam Branch (purple: 0xCC99FF)
+## Muller Skills
 
-### cf1_planted_shard (Planted Shard)
-Pixel art game icon 128x128, transparent background. A crystal shard planted in the ground as a mine, slam-left crystal mine, dark fantasy RPG, purple with a glowing crystal spike embedded in cracked earth, pulsing with trap energy.
+Muller is a crystal/gem warrior — crystal waves, geode shields, deep-seam traps. Each branch has 3 regular skills + 1 ultimate.
+Muller skills use **branch-colored frames** — Shardfall (crystal-blue #3388AA), Geode Shell (teal-green #448899), Deep Seam (slate-purple #556688).
 
-### cf2_crystal_pillar (Crystal Pillar)
-Pixel art game icon 128x128, transparent background. A tall crystal pillar automatically erupting from the ground, auto-summoned crystal structure every 12 seconds, dark fantasy RPG, purple with a towering glowing crystal column shooting upward.
+### Shardfall Branch
 
-### cf3_fault_line (Fault Line)
-Pixel art game icon 128x128, transparent background. A crack in the earth left by a wave carving a glowing ground hazard line, persistent 4-second ground hazard, dark fantasy RPG, purple with a luminous fault crack running across the ground.
+#### Coarse Cut (cm1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crystal-blue pixel border frame with small crystal-shard studs in corners, crystal-blue #3388AA outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: a wide crystal wave cone fanning out broadly, blue with a crystalline spike cone spreading at a very wide angle. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crystal-blue frame.
 
-### cf4_resonance_field (Resonance Field)
-Pixel art game icon 128x128, transparent background. Crystal structures emitting slow-pulse rings reducing enemy movement speed, structure-based slow field, dark fantasy RPG, purple with crystal formation emitting concentric resonance slow rings.
+#### Deep Vein (cm2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crystal-blue pixel border frame with small crystal-shard studs in corners, crystal-blue #3388AA outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: crystal spikes erupting at maximum range with amplified damage glow at the tips, blue with tall crystal spikes at the far edge radiating brighter intensity. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crystal-blue frame.
 
-### cf5_mother_lode (The Mother Lode)
-Pixel art game icon 128x128, transparent background. A massive crystal eruption detonating upward from the earth, enormous periodic crystal explosion, dark fantasy RPG, vivid purple with a colossal crystal formation bursting from the ground every 12 seconds.
+#### Shardstorm (cm3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crystal-blue pixel border frame with small crystal-shard studs in corners, crystal-blue #3388AA outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: two crystal wave arcs erupting simultaneously from a single ground slam, blue with two mirrored crystal wave cones launching at once. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crystal-blue frame.
+
+#### Tectonic Fury (cm5) — ULTIMATE
+Unlocks when Coarse Cut, Deep Vein, and Shardstorm are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crystal-blue pixel border frame with small crystal-shard studs in corners, crystal-blue #3388AA outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: a full radial ring of crystal spikes erupting outward from a central slam point, vivid blue with a complete circular crystal burst and ground crack at center. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crystal-blue frame.
+
+### Geode Shell Branch
+
+#### Stone Skin (cr1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate teal-green pixel border frame with small geode-shard studs in corners, teal-green #448899 outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: a rocky stone-skin texture layering onto a figure, teal-grey with layered stone plates forming progressively over a silhouette with five stack marks visible. Bold silhouette, high contrast, limited palette 5-6 colors, slight teal inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the teal-green frame.
+
+#### Geode Shell (cr2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate teal-green pixel border frame with small geode-shard studs in corners, teal-green #448899 outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: a geode half-shell opening to reveal a glowing crystal interior, teal with a cracked geode revealing a shimmering crystal hollow and shield-glow emanating from within. Bold silhouette, high contrast, limited palette 5-6 colors, slight teal inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the teal-green frame.
+
+#### Crystal Wall (cr3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate teal-green pixel border frame with small geode-shard studs in corners, teal-green #448899 outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: a solid translucent crystal barrier rising from the ground blocking a path, teal and pale blue with a translucent crystal wall filling the upper frame. Bold silhouette, high contrast, limited palette 5-6 colors, slight teal inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the teal-green frame.
+
+#### Living Geode (cr5) — ULTIMATE
+Unlocks when Stone Skin, Geode Shell, and Crystal Wall are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate teal-green pixel border frame with small geode-shard studs in corners, teal-green #448899 outer edge, darker #225566 inner bevel. Inside the frame on a solid black background: a warrior whose torso is fused with a living geode crystal, teal with crystalline armor fused to flesh and melee-reflect sparks at the outer surface. Bold silhouette, high contrast, limited palette 5-6 colors, slight teal inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the teal-green frame.
+
+### Deep Seam Branch
+
+#### Planted Shard (cf1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate slate-purple pixel border frame with small ore-chunk studs in corners, slate-purple #556688 outer edge, darker #334455 inner bevel. Inside the frame on a solid black background: a crystal shard embedded point-down in cracked earth as a mine, purple with a glowing crystal spike planted vertically in the ground pulsing with trap energy. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the slate-purple frame.
+
+#### Crystal Pillar (cf2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate slate-purple pixel border frame with small ore-chunk studs in corners, slate-purple #556688 outer edge, darker #334455 inner bevel. Inside the frame on a solid black background: a tall crystal pillar auto-erupting upward from the ground, purple with a towering glowing crystal column shooting skyward. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the slate-purple frame.
+
+#### Fault Line (cf3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate slate-purple pixel border frame with small ore-chunk studs in corners, slate-purple #556688 outer edge, darker #334455 inner bevel. Inside the frame on a solid black background: a luminous crack running across the ground left by a crystal wave, purple with a glowing fault crack splitting the terrain from one side to the other. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the slate-purple frame.
+
+#### The Mother Lode (cf5) — ULTIMATE
+Unlocks when Planted Shard, Crystal Pillar, and Fault Line are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate slate-purple pixel border frame with small ore-chunk studs in corners, slate-purple #556688 outer edge, darker #334455 inner bevel. Inside the frame on a solid black background: a colossal crystal eruption detonating upward from the earth, vivid purple with a massive crystal formation bursting from cracked ground in a dramatic upward spray. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the slate-purple frame.
 
 ---
 
-## Примітки
+## Huntress Skills
 
-- Всі іконки 128x128 пікселів
-- Прозорий фон (transparent background)
-- Стиль: pixel art, dark fantasy, RPG game UI
-- Іконка має заповнювати 90%+ площі (не дрібна по центру)
-- Кольори відповідають гілці: Wrath = red-orange, Bastion = blue, Quake = gold
-- Після генерації — зібрати в спрайтшит 10 колонок × 7 рядків = 70 кадрів
+Huntress is a ranged/agile spear fighter — piercing shots, traps, predator instincts. Each branch has 3 regular skills + 1 ultimate.
+Huntress skills use **branch-colored frames** — Predator (blood-red #CC4422), Stalker (forest-green #22AA44), Warden (bark-brown #886622).
+
+Note: Huntress currently borrows generic/other-hero icon frames as placeholders. These prompts define the intended original icons.
+
+### Predator Branch
+
+#### Critical Strike (hp1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate blood-red pixel border frame with small arrowhead studs in corners, blood-red #CC4422 outer edge, darker #882211 inner bevel. Inside the frame on a solid black background: a spear tip striking with a critical-hit starburst flash, red with a sharp impact highlight and crack-pattern radiating from the strike point. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the blood-red frame.
+
+#### Marked Target (hp2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate blood-red pixel border frame with small arrowhead studs in corners, blood-red #CC4422 outer edge, darker #882211 inner bevel. Inside the frame on a solid black background: a target silhouette with a glowing red marker rune branded onto it, dark red with a pulsing marking glyph. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the blood-red frame.
+
+#### Battle Frenzy (hp3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate blood-red pixel border frame with small arrowhead studs in corners, blood-red #CC4422 outer edge, darker #882211 inner bevel. Inside the frame on a solid black background: a clenched fist surrounded by speed-slash arcs with manic energy lines radiating outward, red with intense frenzy lines. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the blood-red frame.
+
+#### Volley (hp5) — ULTIMATE
+Unlocks when Critical Strike, Marked Target, and Battle Frenzy are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate blood-red pixel border frame with small arrowhead studs in corners, blood-red #CC4422 outer edge, darker #882211 inner bevel. Inside the frame on a solid black background: three spears launching simultaneously in a tight spread volley, red with three spear silhouettes fanned slightly apart in synchronized release. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the blood-red frame.
+
+### Stalker Branch
+
+#### Kill Stride (hs1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate forest-green pixel border frame with small leaf-shaped studs in corners, forest-green #22AA44 outer edge, darker #116622 inner bevel. Inside the frame on a solid black background: a hunter striding over a downed enemy with speed lines surging from their boots, hunter-green with acceleration lines and a fallen foe silhouette below. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the forest-green frame.
+
+#### Caltrops (hs2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate forest-green pixel border frame with small leaf-shaped studs in corners, forest-green #22AA44 outer edge, darker #116622 inner bevel. Inside the frame on a solid black background: spiked metal caltrops scattered across a patch of ground, hunter-green with dark iron caltrops embedded in the earth. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the forest-green frame.
+
+#### Net Throw (hs3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate forest-green pixel border frame with small leaf-shaped studs in corners, forest-green #22AA44 outer edge, darker #116622 inner bevel. Inside the frame on a solid black background: a weighted hunting net mid-throw spreading open, hunter-green with a rope net spreading outward in flight. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the forest-green frame.
+
+#### Leap (hs5) — ULTIMATE
+Unlocks when Kill Stride, Caltrops, and Net Throw are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate forest-green pixel border frame with small leaf-shaped studs in corners, forest-green #22AA44 outer edge, darker #116622 inner bevel. Inside the frame on a solid black background: a figure leaping away from a crowd of enemies with enemy silhouettes below being left behind, hunter-green with a jumping silhouette. Bold silhouette, high contrast, limited palette 5-6 colors, slight green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the forest-green frame.
+
+### Warden Branch
+
+#### Heavy Spear (hw1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bark-brown pixel border frame with small spear-tip studs in corners, bark-brown #886622 outer edge, darker #554411 inner bevel. Inside the frame on a solid black background: a massive oversized spear with a thick heavy tip and knockback force lines, steel-blue with a thick powerful shaft and impact blast wave. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bark-brown frame.
+
+#### Explosive Tips (hw2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bark-brown pixel border frame with small spear-tip studs in corners, bark-brown #886622 outer edge, darker #554411 inner bevel. Inside the frame on a solid black background: a spear tip with a small explosive charge detonating on impact, steel-blue with an explosion burst at the spear tip and a radius ring. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bark-brown frame.
+
+#### Splinter Shot (hw3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bark-brown pixel border frame with small spear-tip studs in corners, bark-brown #886622 outer edge, darker #554411 inner bevel. Inside the frame on a solid black background: a spear breaking apart into three smaller shard fragments spraying outward, steel-blue with a broken spear shaft and three diverging splinter arcs. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bark-brown frame.
+
+#### Earth Slam (hw5) — ULTIMATE
+Unlocks when Heavy Spear, Explosive Tips, and Splinter Shot are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bark-brown pixel border frame with small spear-tip studs in corners, bark-brown #886622 outer edge, darker #554411 inner bevel. Inside the frame on a solid black background: a spear slammed point-first into the earth sending a shockwave line forward, steel-blue with the impact point and a straight shockwave crack extending outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bark-brown frame.
+
+---
+
+## Generation Notes
+
+- Request images at **1024x1024** and resize to 128x128 after cutting
+- DALL-E tends to add decorative borders — lean into the frame descriptions
+- Use the batch workflow: one generation per branch (4 icons per image)
+- After generation, run the PIL script from the icon workflow to auto-cut and paste into `skill_icons_sheet.png`
+- Spritesheet layout: `public/assets/icons/skill_icons_sheet.png` (1280×1280, 10×10 grid)
+- After adding new frames, update `ICON_FRAME_MAP` in `src/systems/UpgradeSystem.ts`
+- Each hero has exactly 3 branches × 4 skills (3 regular + 1 ultimate) = 12 skills per hero

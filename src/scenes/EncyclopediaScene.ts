@@ -98,7 +98,7 @@ const HERO_INFO: HeroInfo[] = [
   },
   { type: 'sifra', name: 'Sifra', role: 'Ice Mage', color: 0x82ccdd,
     lore: 'Daughter of North-Union diplomats stationed on the border of the Pishane, Sifra grew up watching the desert from the cold side of a trade wall. Her parents were killed in the Swarm\'s first crossing. The frost came from her mother\'s bloodline. The lightning came from the Bramauthroba itself — she touched it once and survived. She came south to understand why.',
-    playstyle: 'Dual-stance caster. Switch between Ice shards (piercing projectiles) and Lightning (continuous beam). Branches: Frost (crowd control), Shatter (split projectiles), Crystal (defense), or Lightning (chain damage).',
+    playstyle: 'Dual-stance caster. Switch between Ice shards (piercing projectiles) and Lightning (continuous beam). Specializations: Frost (crowd control), Shatter (split projectiles), Crystal (defense), or Lightning (chain damage).',
   },
   { type: 'amun', name: 'Amun', role: 'Guardian', color: 0xfff200,
     lore: 'Amun is not a king. He is an artifact — a golem-guardian forged by the Amunat civilization to protect the Key of Balance, the object that can seal the Bramauthroba. When Amunat fell a thousand years ago, Amun kept walking. He remembers every citizen who died that night. He is looking for the other pieces of the Key, and he does not intend to stop until the rift is closed.',
@@ -106,11 +106,11 @@ const HERO_INFO: HeroInfo[] = [
   },
   { type: 'nazar', name: 'Nazar', role: 'Samurai', color: 0xc23616,
     lore: 'A desert assassin from the eastern reaches, Nazar was contracted to eliminate the Bramauthroba cult — the group that keeps the rift open. He completed the job. Then the cult killed his employers. He stayed because the contract is technically unfulfilled, and because Nazar does not like loose ends. He carries two things into the Pishane: his blades, and a list.',
-    playstyle: 'Dual-stance melee. Sword stance for quick slashes and mobility. Venom stance for poison DoT and area denial. Branches: Blade (assassin), Venom (poison master), or Shadow (stealth and execution).',
+    playstyle: 'Dual-stance melee. Sword stance for quick slashes and mobility. Venom stance for poison DoT and area denial. Specializations: Blade (assassin), Venom (poison master), or Shadow (stealth and execution).',
   },
   { type: 'huntress', name: 'Lyra', role: 'Spear Thrower', color: 0x2ecc71,
     lore: 'Lyra comes from the Steel Kip tribes — nomads who have hunted the desert\'s edge for generations, reading the Pishane the way others read maps. She completed the Great Hunt twice and returned. The third time, she didn\'t come back. She found the Swarm more interesting than home. The desert ecosystem, she says, is just a food chain. The Bramauthroba broke it. She is fixing it.',
-    playstyle: 'Dual-stance fighter. Spear stance hurls piercing projectiles across the screen. Melee stance delivers fast combo strikes. Branches: Predator (crits and marks), Stalker (mobility and traps), or Warden (spear mastery and AoE).',
+    playstyle: 'Dual-stance fighter. Spear stance hurls piercing projectiles across the screen. Melee stance delivers fast combo strikes. Specializations: Predator (crits and marks), Stalker (mobility and traps), or Warden (spear mastery and AoE).',
   },
   { type: 'khashin', name: 'Khashin', role: 'Sand Assassin', color: 0xf39c12,
     lore: 'Khashin has no origin that the desert remembers. The nomads who cross the Kharan Wastes speak of a figure glimpsed at dusk — walking against the wind when there is no wind, leaving no footprints in the sand. Some say he was a wind elemental born inside a sandstorm ninety years ago and has simply always been here. Others say he is the storm, and the man-shape is just the eye of it. He helps because he is lonely. He admits this freely.',
@@ -162,7 +162,7 @@ export class EncyclopediaScene extends Phaser.Scene {
   private encData!: EncyclopediaData
 
   // For page system on right page
-  private rightPage = 0  // 0 = lore, 1 = branch skills, 2 = generic upgrades
+  private rightPage = 0  // 0 = lore, 1 = specialization skills, 2 = generic upgrades
 
   // Containers rebuilt on hero select / page flip
   private leftContainer!: Phaser.GameObjects.Container
@@ -215,14 +215,15 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     this.encData = loadEncyclopedia()
     const { width, height } = this.scale
+    const isPortrait = height > width
 
     // Full screen dark bg
     this.add.rectangle(0, 0, width, height, 0x0d0d1a).setOrigin(0, 0)
 
     this.bookContent = this.add.container(0, 0)
 
-    // Book dimensions
-    const bookW = Math.min(width * 0.9, 900)
+    // Book dimensions — on portrait use nearly full width to avoid tiny pages
+    const bookW = isPortrait ? Math.min(width - 16, 900) : Math.min(width * 0.9, 900)
     const bookH = Math.min(height * 0.82, 620)
     const bookX = (width - bookW) / 2
     const bookY = (height - bookH) / 2
@@ -512,7 +513,8 @@ export class EncyclopediaScene extends Phaser.Scene {
   // Helper: recalculate layout constants and rebuild both pages
   private _rebuild() {
     const { width: w, height: h } = this.scale
-    const bookW = Math.min(w * 0.9, 900)
+    const isPortrait = h > w
+    const bookW = isPortrait ? Math.min(w - 16, 900) : Math.min(w * 0.9, 900)
     const bookH = Math.min(h * 0.82, 620)
     const bookX = (w - bookW) / 2
     const bookY = (h - bookH) / 2
@@ -557,7 +559,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Role
       this.leftContainer.add(this.add.text(px + 18, rowY + rowH / 2 + 8, hero.role, {
-        fontFamily: 'monospace', fontSize: '9px', color: '#665544',
+        fontFamily: 'monospace', fontSize: '11px', color: '#665544',
       }).setOrigin(0, 0.5))
 
       // "Played" indicator — use a sell slot with golden tint
@@ -569,7 +571,7 @@ export class EncyclopediaScene extends Phaser.Scene {
             .setOrigin(0.5)
           this.leftContainer.add(badge)
           this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
-            fontFamily: 'monospace', fontSize: '8px', color: '#2a1810',
+            fontFamily: 'monospace', fontSize: '10px', color: '#2a1810',
           }).setOrigin(0.5))
         } else {
           this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
@@ -614,7 +616,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       }).setOrigin(0.5))
     this.leftContainer.add(this.add.text(px + pw / 2, py + ph - 10,
       'Tap a hero to read about them', {
-        fontFamily: 'monospace', fontSize: '8px', color: '#998866',
+        fontFamily: 'monospace', fontSize: '10px', color: '#998866',
       }).setOrigin(0.5))
   }
 
@@ -653,50 +655,61 @@ export class EncyclopediaScene extends Phaser.Scene {
     // Page nav tabs at bottom
     const heroInfo = HERO_INFO.find(h => h.type === this.selectedHeroType)
     const heroColorHex = heroInfo ? '#' + heroInfo.color.toString(16).padStart(6, '0') : '#d4b483'
-    const navY = py + ph - 18
-    const labels = ['Lore', 'Branches', 'Generics']
+    // navY is the vertical centre of the tap area; the zone extends 18px above and below
+    const navY = py + ph - 22
+    const tabH = 36   // minimum touch target height
+    const labels = ['Lore', 'Specialization', 'Generics']
+    const tabW = pw / labels.length
 
     labels.forEach((label, idx) => {
       const isActive = this.rightPage === idx
       const btnX = px + pw * ((idx + 0.5) / labels.length)
 
-      // Sell slot background for active tab
-      if (isActive && this.textures.exists('book_sells')) {
-        const tabSlot = this.add.image(btnX, navY, 'book_sells', 3)
-          .setDisplaySize(52, 18)
-          .setTint(heroInfo ? heroInfo.color : 0xd4b483)
-          .setAlpha(0.35)
-          .setOrigin(0.5)
-        this.rightContainer.add(tabSlot)
+      // Subtle background pill — darker for active, barely-visible for inactive
+      const tabBg = this.add.graphics()
+      if (isActive) {
+        tabBg.fillStyle(heroInfo ? heroInfo.color : 0xd4b483, 0.18)
+        tabBg.fillRoundedRect(btnX - tabW / 2 + 3, navY - tabH / 2, tabW - 6, tabH, 4)
+        tabBg.lineStyle(1, heroInfo ? heroInfo.color : 0xd4b483, 0.45)
+        tabBg.strokeRoundedRect(btnX - tabW / 2 + 3, navY - tabH / 2, tabW - 6, tabH, 4)
+      } else {
+        tabBg.fillStyle(0x000000, 0.08)
+        tabBg.fillRoundedRect(btnX - tabW / 2 + 3, navY - tabH / 2, tabW - 6, tabH, 4)
       }
+      this.rightContainer.add(tabBg)
 
+      // Label text (visual only — interaction on the zone below)
       const btn = this.add.text(btnX, navY, label, {
         fontFamily: 'monospace', fontSize: '9px',
         color: isActive ? heroColorHex : '#998866',
         stroke: '#c8a97a', strokeThickness: 0.5,
-      }).setOrigin(0.5).setInteractive({ useHandCursor: !isActive })
+      }).setOrigin(0.5)
+      this.rightContainer.add(btn)
 
+      // Large invisible zone for touch target (at least 36px tall)
       if (!isActive) {
-        btn.on('pointerover', () => btn.setColor('#2a1810'))
-        btn.on('pointerout', () => btn.setColor('#998866'))
-        btn.on('pointerdown', () => {
+        const zone = this.add.zone(btnX, navY, tabW - 6, tabH)
+          .setInteractive({ useHandCursor: true })
+        zone.on('pointerover', () => btn.setColor('#2a1810'))
+        zone.on('pointerout', () => btn.setColor('#998866'))
+        zone.on('pointerdown', () => {
           this.rightPage = idx
           this._rebuild()
         })
+        this.rightContainer.add(zone)
       }
-      this.rightContainer.add(btn)
     })
 
     // Separator above nav
     const navLineG = this.add.graphics()
     navLineG.lineStyle(0.5, 0x2a1810, 0.2)
-    navLineG.lineBetween(px + 10, py + ph - 28, px + pw - 10, py + ph - 28)
+    navLineG.lineBetween(px + 10, py + ph - 44, px + pw - 10, py + ph - 44)
     this.rightContainer.add(navLineG)
   }
 
   // ── Lore page ─────────────────────────────────────────────────────────────
 
-  private buildLorePage(px: number, py: number, pw: number, _ph: number) {
+  private buildLorePage(px: number, py: number, pw: number, ph: number) {
     const heroType = this.selectedHeroType!
     const hero = HERO_INFO.find(h => h.type === heroType)!
     const colorHex = '#' + hero.color.toString(16).padStart(6, '0')
@@ -745,7 +758,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '16px', color: colorHex,
     }).setOrigin(0, 0))
     this.rightContainer.add(this.add.text(px + 12, py + 38, hero.role, {
-      fontFamily: 'monospace', fontSize: '10px', color: '#665544',
+      fontFamily: 'monospace', fontSize: '12px', color: '#665544',
     }).setOrigin(0, 0))
 
     // Decorative line below header — shifted below circle bottom (circleCY + r = py + 104)
@@ -756,8 +769,10 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Lore text — wrapped, starts just below the line
     const textW = pw - 24
+    const { width: _lw, height: _lh } = this.scale
+    const loreFontSize = _lh > _lw ? '11px' : '9px'
     const loreText = this.add.text(px + 15, py + 114, hero.lore, {
-      fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
+      fontFamily: 'monospace', fontSize: loreFontSize, color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
     })
     this.rightContainer.add(loreText)
@@ -770,15 +785,15 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.add(lineG2)
 
     this.rightContainer.add(this.add.text(px + 15, playstyleY + 6, 'PLAYSTYLE', {
-      fontFamily: 'monospace', fontSize: '10px', color: colorHex,
+      fontFamily: 'monospace', fontSize: '12px', color: colorHex,
     }))
     const playstyleText = this.add.text(px + 15, playstyleY + 22, hero.playstyle, {
-      fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
+      fontFamily: 'monospace', fontSize: loreFontSize, color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
     })
     this.rightContainer.add(playstyleText)
 
-    // Branch overview — positioned dynamically below playstyle
+    // Specialization cards — full-height cards from header to nav buttons
     const branches = HERO_BRANCHES[heroType] || []
     const branchStartY = playstyleText.y + playstyleText.height + 14
     const lineG3 = this.add.graphics()
@@ -786,28 +801,96 @@ export class EncyclopediaScene extends Phaser.Scene {
     lineG3.lineBetween(px + 20, branchStartY, px + pw - 20, branchStartY)
     this.rightContainer.add(lineG3)
 
-    this.rightContainer.add(this.add.text(px + 15, branchStartY + 6, 'BRANCHES', {
+    this.rightContainer.add(this.add.text(px + 15, branchStartY + 6, 'SPECIALIZATION', {
       fontFamily: 'monospace', fontSize: '10px', color: '#2a1810',
     }))
 
-    branches.forEach((branch, i) => {
-      const bY = branchStartY + 22 + i * 20
-      const bColorHex = '#' + branch.color.toString(16).padStart(6, '0')
-      const branchUnlocked = this.encData.branches.includes(branch.name)
+    const cardsTopY = branchStartY + 22
+    const navBottomY = py + ph - 30
+    const availH = navBottomY - cardsTopY
+    const cardH = availH * 0.85
+    const cardGap = 4
+    const areaW = pw * 0.85
+    const areaX = px + (pw - areaW) / 2
+    const cardW = (areaW - cardGap * (branches.length + 1)) / branches.length
 
-      // Colored dot
-      const dotG = this.add.graphics()
-      dotG.fillStyle(branch.color, branchUnlocked ? 0.9 : 0.3)
-      dotG.fillCircle(px + 18, bY + 5, 3)
-      this.rightContainer.add(dotG)
+    branches.forEach((branch, bi) => {
+      const cardX = areaX + cardGap + bi * (cardW + cardGap)
+      const branchColorHex = '#' + branch.color.toString(16).padStart(6, '0')
+      const cardCX = cardX + cardW / 2
+      const cardCY = cardsTopY + cardH / 2
+      const lx = -cardW / 2
+      const ly = -cardH / 2
 
-      this.rightContainer.add(this.add.text(px + 26, bY, branch.name, {
-        fontFamily: 'monospace', fontSize: '9px', color: branchUnlocked ? bColorHex : '#998866',
-      }))
+      const cont = this.add.container(cardCX, cardCY)
+
+      // Card bg image
+      if (this.textures.exists('card_back')) {
+        cont.add(this.add.image(0, 0, 'card_back').setDisplaySize(cardW, cardH))
+      }
+
+      // Colored top strip
+      const stripG = this.add.graphics()
+      stripG.fillStyle(branch.color, 0.25)
+      stripG.fillRoundedRect(lx, ly, cardW, cardH * 0.18, { tl: 6, tr: 6, bl: 0, br: 0 })
+      cont.add(stripG)
+
+      // Bottom gradient
+      const gradG = this.add.graphics()
+      gradG.fillStyle(0x000000, 0.3)
+      gradG.fillRoundedRect(lx, ly + cardH * 0.6, cardW, cardH * 0.4, { tl: 0, tr: 0, bl: 12, br: 12 })
+      cont.add(gradG)
+
+
+      // Branch name at top
+      cont.add(this.add.text(0, ly + cardH * 0.09, branch.name, {
+        fontFamily: 'monospace', fontSize: '10px',
+        color: branchColorHex,
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5))
+
+      // Icon with glow
+      const iconY = ly + cardH * 0.4
+      const iconSize = Math.min(cardW * 0.65, cardH * 0.3)
+      const glowG = this.add.graphics()
+      glowG.fillStyle(branch.color, 0.12)
+      glowG.fillCircle(0, iconY, iconSize * 0.7)
+      cont.add(glowG)
+
+      const iconFrame = branchIconFrame(heroType, bi, 0)
+      const iconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
+      if (this.textures.exists(iconTex)) {
+        cont.add(this.add.image(0, iconY, iconTex, iconFrame)
+          .setDisplaySize(iconSize, iconSize).setOrigin(0.5))
+      }
+
+      // Theme text below icon
+      if (branch.theme) {
+        cont.add(this.add.text(0, iconY + iconSize / 2 + 10, branch.theme, {
+          fontFamily: 'monospace', fontSize: '9px',
+          color: '#cccccc', stroke: '#000000', strokeThickness: 1,
+          wordWrap: { width: cardW - 8 }, align: 'center', lineSpacing: 2,
+        }).setOrigin(0.5, 0))
+      }
+
+      this.rightContainer.add(cont)
+
+      // Hover + click → navigate to specialization detail
+      const hitZone = this.add.zone(cardCX, cardCY, cardW, cardH)
+        .setInteractive({ useHandCursor: true })
+      hitZone.on('pointerover', () => cont.setScale(1.04))
+      hitZone.on('pointerout', () => cont.setScale(1))
+      hitZone.on('pointerdown', () => {
+        this.selectedBranchIdx = bi
+        this.selectedSkillIdx = -1
+        this.rightPage = 1
+        this._rebuild()
+      })
+      this.rightContainer.add(hitZone)
     })
   }
 
-  // ── Branch skills page ────────────────────────────────────────────────────
+  // ── Specialization skills page ─────────────────────────────────────────────
 
   // Track which branch tab and which skill slot is selected within this page
   private selectedBranchIdx = 0
@@ -854,7 +937,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         this.rightContainer.add(iconImg)
       }
       this.rightContainer.add(this.add.text(tabX + 22, tabY + tabH / 2 + (isActive ? 0 : 1), branch.name, {
-        fontFamily: 'monospace', fontSize: isActive ? '9px' : '8px',
+        fontFamily: 'monospace', fontSize: isActive ? '11px' : '10px',
         color: isActive ? branchColorHex : '#665544',
       }).setOrigin(0, 0.5))
 
@@ -876,7 +959,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     // Branch name centered below tabs
     const branchColorHex = '#' + activeBranch.color.toString(16).padStart(6, '0')
     const headerLabel = this.add.text(px + pw / 2, tabY + tabH + 12, activeBranch.name.toUpperCase(), {
-      fontFamily: 'monospace', fontSize: '10px',
+      fontFamily: 'monospace', fontSize: '12px',
       color: branchColorHex,
     }).setOrigin(0.5)
     this.rightContainer.add(headerLabel)
@@ -942,7 +1025,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Skill index number below icon (1-based) as tiny label
       this.rightContainer.add(this.add.text(cellCX, gridStartY + cellDisplayH - 4, `${ui + 1}`, {
-        fontFamily: 'monospace', fontSize: '7px',
+        fontFamily: 'monospace', fontSize: '9px',
         color: unlocked ? branchColorHex : '#554433',
       }).setOrigin(0.5, 1).setAlpha(0.75))
 
@@ -1020,14 +1103,14 @@ export class EncyclopediaScene extends Phaser.Scene {
       // ── Skill name centered below icon ──
       const nameY = iconCY + iconSize / 2 + 10
       this.rightContainer.add(this.add.text(iconCX, nameY, skill.label, {
-        fontFamily: 'monospace', fontSize: '11px',
+        fontFamily: 'monospace', fontSize: '13px',
         color: unlocked ? branchColorHex : '#887766',
         stroke: '#c8a97a', strokeThickness: 2,
       }).setOrigin(0.5, 0))
 
       // Branch tag
       this.rightContainer.add(this.add.text(iconCX, nameY + 14, activeBranch.name, {
-        fontFamily: 'monospace', fontSize: '8px', color: '#998866',
+        fontFamily: 'monospace', fontSize: '10px', color: '#998866',
       }).setOrigin(0.5, 0))
 
       // Divider
@@ -1040,13 +1123,13 @@ export class EncyclopediaScene extends Phaser.Scene {
       // Description text
       if (unlocked) {
         this.rightContainer.add(this.add.text(cardX + cardW / 2, cardDivY + 8, skill.desc, {
-          fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
+          fontFamily: 'monospace', fontSize: '11px', color: '#2a1810',
           wordWrap: { width: cardW - 24 }, lineSpacing: 3,
           align: 'center',
         }).setOrigin(0.5, 0))
       } else {
         this.rightContainer.add(this.add.text(cardX + cardW / 2, cardDivY + 8, 'Undiscovered ability.\nDefeat enemies to reveal this skill.', {
-          fontFamily: 'monospace', fontSize: '9px', color: '#998866',
+          fontFamily: 'monospace', fontSize: '11px', color: '#998866',
           fontStyle: 'italic', wordWrap: { width: cardW - 24 }, lineSpacing: 3,
           align: 'center',
         }).setOrigin(0.5, 0))
@@ -1055,7 +1138,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       // Skill number badge (bottom-right of card)
       this.rightContainer.add(this.add.text(cardX + cardW - 8, cardStartY + cardH - 6,
         `${this.selectedSkillIdx + 1} / ${numSkills}`, {
-          fontFamily: 'monospace', fontSize: '8px', color: branchColorHex,
+          fontFamily: 'monospace', fontSize: '10px', color: branchColorHex,
         }).setOrigin(1, 1).setAlpha(0.6))
 
     } else {
@@ -1086,7 +1169,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.add(titleLineG)
 
     const contentH = ph - 62
-    const rowH = Math.min(contentH / GENERIC_POOL.length, 22)
+    const rowH = Math.min(contentH / GENERIC_POOL.length, 44)
 
     GENERIC_POOL.forEach((upgrade, i) => {
       const rowY = py + 40 + i * rowH
@@ -1095,7 +1178,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Row background — alternating sell slot frames
       if (this.textures.exists('book_sells')) {
-        const slotFrame = unlocked ? (i % 3) : 9  // vary frames for unlocked
+        const slotFrame = unlocked ? (i % 3) : 9
         const rowSlot = this.add.image(px + pw / 2, rowY + rowH / 2, 'book_sells', slotFrame)
           .setDisplaySize(pw - 12, rowH - 2)
           .setAlpha(unlocked ? 0.15 : 0.08)
@@ -1105,38 +1188,38 @@ export class EncyclopediaScene extends Phaser.Scene {
       }
 
       if (unlocked) {
-        // Skill icon
+        // Skill icon — 28px (2x)
         const genIconTex = this.textures.exists('skill_icons') ? 'skill_icons' : 'book_icons'
         if (this.textures.exists(genIconTex)) {
-          const icon = this.add.image(px + 14, rowY + rowH / 2, genIconTex, iconFrame)
-            .setDisplaySize(14, 14)
+          const icon = this.add.image(px + 20, rowY + rowH / 2, genIconTex, iconFrame)
+            .setDisplaySize(28, 28)
             .setOrigin(0.5)
           this.rightContainer.add(icon)
         }
 
-        const labelText = this.add.text(px + 24, rowY + 2, `${upgrade.label}`, {
-          fontFamily: 'monospace', fontSize: '9px', color: '#2a1810',
-        }).setOrigin(0, 0)
-        this.rightContainer.add(labelText)
+        this.rightContainer.add(this.add.text(px + 38, rowY + 3, upgrade.label, {
+          fontFamily: 'monospace', fontSize: '13px', color: '#2a1810',
+        }))
 
-        const descText = this.add.text(px + pw - 10, rowY + 2, upgrade.desc, {
-          fontFamily: 'monospace', fontSize: '8px', color: '#665544',
-        }).setOrigin(1, 0)
-        this.rightContainer.add(descText)
+        const descStr = Array.isArray(upgrade.desc) ? upgrade.desc[0] : upgrade.desc
+        this.rightContainer.add(this.add.text(px + 38, rowY + 20, descStr, {
+          fontFamily: 'monospace', fontSize: '11px', color: '#665544',
+          wordWrap: { width: pw - 52 },
+        }))
       } else {
-        // Locked slot — lock icon + dashes
+        // Locked slot
         if (this.textures.exists('book_sells')) {
-          const slot = this.add.image(px + 14, rowY + rowH / 2, 'book_sells', 9)
-            .setDisplaySize(12, 12)
+          const slot = this.add.image(px + 20, rowY + rowH / 2, 'book_sells', 9)
+            .setDisplaySize(24, 24)
             .setTint(0x665544)
             .setAlpha(0.5)
             .setOrigin(0.5)
           this.rightContainer.add(slot)
         }
 
-        this.rightContainer.add(this.add.text(px + 24, rowY + 2, `— Undiscovered —`, {
-          fontFamily: 'monospace', fontSize: '9px', color: '#998866',
-        }).setOrigin(0, 0))
+        this.rightContainer.add(this.add.text(px + 38, rowY + rowH / 2, '— Undiscovered —', {
+          fontFamily: 'monospace', fontSize: '13px', color: '#998866',
+        }).setOrigin(0, 0.5))
       }
 
       // Row divider every 2 items
