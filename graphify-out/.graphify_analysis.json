@@ -1,0 +1,1191 @@
+{
+  "communities": {
+    "0": [
+      "bgscroll",
+      "bgscroll_adddiagonalbg",
+      "bgscroll_ensuretexture",
+      "chunkmanager",
+      "device",
+      "device_ismobiledevice",
+      "device_ismobileuseragent",
+      "device_isportrait",
+      "fallbacktextures",
+      "fallbacktextures_generateherofallbacktexture",
+      "flyingeye",
+      "forgescene",
+      "gameconfig",
+      "gamescene",
+      "grunt",
+      "grunt_orc0",
+      "grunt_orc0_constructor",
+      "grunt_orc0_ondeathvfx",
+      "heroselectscene",
+      "hintflags",
+      "hintflags_load",
+      "hintflags_save",
+      "hintflags_shouldshowhint",
+      "inputcontroller",
+      "leaderboardscene",
+      "levelupscene",
+      "loadingscene",
+      "lobbyscene",
+      "main",
+      "main_getrenderzoom",
+      "main_resizegame",
+      "metaprogress",
+      "nameinputscene",
+      "nameinputscene_nameinputscene",
+      "nameinputscene_nameinputscene_constructor",
+      "nameinputscene_nameinputscene_create",
+      "nameinputscene_nameinputscene_submit",
+      "networkgameadapter",
+      "networkmanager",
+      "orc1",
+      "orc2",
+      "orc3",
+      "orc3_orc3",
+      "orc3_orc3_constructor",
+      "orc3_orc3_createanimations",
+      "orc3_orc3_ondeathvfx",
+      "pickup",
+      "player",
+      "profilescene",
+      "sandgolem",
+      "sessionlogger",
+      "sessionlogger_sessionlogger",
+      "sessionlogger_sessionlogger_logsession",
+      "sessionlogger_sessionlogger_registerplayer",
+      "startscene",
+      "supabaseclient",
+      "swordstestscene",
+      "testscene",
+      "uiscene",
+      "undeadmapscene",
+      "upgradesystem",
+      "upgradesystem_geticonframe",
+      "upgradesystem_geticontexture",
+      "wavemanager",
+      "xpsystem"
+    ],
+    "1": [
+      "bossteststcene_BossTestScene",
+      "encyclopediascene_EncyclopediaScene",
+      "encyclopediascene_HERO_INFO",
+      "encyclopediascene_UNLOCK_ALL_flag",
+      "encyclopediascene_localStorage",
+      "encyclopediascene_unlockBranch",
+      "encyclopediascene_unlockHero",
+      "encyclopediascene_unlockUpgrade",
+      "forgescene_ForgeScene",
+      "forgescene_META_ICON_NAMES",
+      "forgescene_RECRUITS",
+      "gamescene_GameScene",
+      "gamescene_bounded_map",
+      "gamescene_claws_boss",
+      "gamescene_enemy_died_event",
+      "gamescene_getzone",
+      "gamescene_infinite_map",
+      "gamescene_loadheroassets",
+      "gamescene_local_coop",
+      "gamescene_map_reveal",
+      "gamescene_online_mode",
+      "gamescene_player_levelup_event",
+      "gamescene_sifra_npc",
+      "heroselectscene_HEROES",
+      "heroselectscene_HERO_UNLOCK_HINTS",
+      "heroselectscene_HeroSelectScene",
+      "leaderboardscene_LeaderboardScene",
+      "levelupscene_LevelUpScene",
+      "levelupscene_bonus_specialization",
+      "levelupscene_branch_card",
+      "levelupscene_card_flip",
+      "levelupscene_confetti",
+      "levelupscene_highlight_desc",
+      "loadingscene_LoadingScene",
+      "lobbyscene_HEROES",
+      "lobbyscene_LobbyScene",
+      "main_entrypoint",
+      "main_resize_game",
+      "main_scene_registry",
+      "main_visibility_pause",
+      "main_zoom_logic",
+      "nameinputscene_NameInputScene",
+      "profilescene_ProfileScene",
+      "startscene_StartScene",
+      "startscene_boss_animation",
+      "startscene_multiplayer_connect",
+      "swordsteststcene_SwordsTestScene",
+      "testscene_TestScene",
+      "uiscene_BRANCH_COLOR",
+      "uiscene_UIScene",
+      "uiscene_minimap",
+      "uiscene_pause",
+      "uiscene_quest_panel",
+      "uiscene_stance_btn",
+      "undeadmapscene_UndeadMapScene"
+    ],
+    "2": [
+      "player_player",
+      "player_player_addxp",
+      "player_player_animprefix",
+      "player_player_applypoison",
+      "player_player_applystoneskinvisuals",
+      "player_player_attackamunmelee",
+      "player_player_attackcrystaleruption",
+      "player_player_attackcrystalwave",
+      "player_player_attackdash",
+      "player_player_attackfireball",
+      "player_player_attackhuntressmelee",
+      "player_player_attackiceshard",
+      "player_player_attacklightning",
+      "player_player_attackmelee",
+      "player_player_attackpoison",
+      "player_player_attacksandswipe",
+      "player_player_attackshockwave",
+      "player_player_attackspear",
+      "player_player_attackwindslash",
+      "player_player_awardmasteryxp",
+      "player_player_clearjoystick",
+      "player_player_cleartouchtarget",
+      "player_player_constructor",
+      "player_player_createanimations",
+      "player_player_crystalringburst",
+      "player_player_cx",
+      "player_player_cy",
+      "player_player_destroy",
+      "player_player_die",
+      "player_player_getactivestance",
+      "player_player_getbranchattackanim",
+      "player_player_getmasterycostmult",
+      "player_player_getmasterydamagemult",
+      "player_player_getmasterylevel",
+      "player_player_getmasterythresholds",
+      "player_player_playanim",
+      "player_player_setjoystickdirection",
+      "player_player_settouchtarget",
+      "player_player_showlevelupvfx",
+      "player_player_spawnbuffparticles",
+      "player_player_spearhitvfx",
+      "player_player_takedamage",
+      "player_player_toggleamunstance",
+      "player_player_togglehuntressstance",
+      "player_player_togglekhashinstance",
+      "player_player_togglemullerstance",
+      "player_player_togglenazarstance",
+      "player_player_togglestance",
+      "player_player_tryautoattack",
+      "player_player_update",
+      "player_player_xptonextlevel"
+    ],
+    "3": [
+      "amun",
+      "amun_applystun",
+      "amun_attackmelee",
+      "amun_attackshockwave",
+      "amun_boulderexplode",
+      "amun_updateamunenergy",
+      "amun_updateamunpassives",
+      "baseenemy",
+      "baseenemy_applypoison",
+      "baseenemy_constructor",
+      "baseenemy_die",
+      "baseenemy_onupdate",
+      "baseenemy_retargetnearest",
+      "baseenemy_takedamage",
+      "baseenemy_update",
+      "huntress",
+      "huntress_attackhuntressmelee",
+      "huntress_attackspear",
+      "huntress_updatehuntressenergy",
+      "huntress_updatehuntresspassives",
+      "ignara",
+      "ignara_attackfireball",
+      "ignara_updatelavatrail",
+      "khashin",
+      "khashin_attacksandswipe",
+      "khashin_attackwindslash",
+      "khashin_spawndustdevil",
+      "khashin_updatekhashinpassives",
+      "nazar",
+      "nazar_attackdash",
+      "nazar_attackmelee",
+      "nazar_attackpoison",
+      "nazar_spawnpoisoncloud",
+      "nazar_updatenazarenergy",
+      "nazar_updatephantomtrail",
+      "pathfinding",
+      "pathfinding_getsteeringtarget",
+      "scene_context",
+      "sifra",
+      "sifra_attackiceshard",
+      "sifra_attacklightning",
+      "sifra_spawnshattershards",
+      "sifra_updatesifraenergy",
+      "sifra_updatesifrapassives",
+      "trailpool",
+      "trailpool_gettrailpool",
+      "trailpool_spawntrailcircle"
+    ],
+    "4": [
+      "branch_mastery_damage_bonuses",
+      "branch_mastery_energy_reduction",
+      "branch_mastery_levels",
+      "branch_mastery_overview",
+      "branch_mastery_rationale_dimret",
+      "branch_mastery_rationale_xpgap",
+      "branch_mastery_single_bar",
+      "branch_mastery_xp_sources",
+      "curses_branch_mastery_interaction",
+      "hero_unlock_amun",
+      "hero_unlock_amun_branches",
+      "hero_unlock_branch_design",
+      "hero_unlock_design_goals",
+      "hero_unlock_huntress",
+      "hero_unlock_ignara",
+      "hero_unlock_khashin",
+      "hero_unlock_muller",
+      "hero_unlock_nazar",
+      "hero_unlock_rationale_khashin",
+      "hero_unlock_rationale_muller",
+      "hero_unlock_rationale_nazar",
+      "hero_unlock_secret_muller",
+      "hero_unlock_sifra",
+      "hero_unlock_table",
+      "session_09_hero_unlock_gating",
+      "session_09_mastery_impl",
+      "skill_challenges_condition_types",
+      "skill_challenges_generics",
+      "skill_challenges_overview",
+      "tutorial_dialogue",
+      "tutorial_overview",
+      "tutorial_quest1",
+      "tutorial_quest2",
+      "tutorial_quest3",
+      "tutorial_rationale_no_popup",
+      "tutorial_rationale_sifra_fixed_pos",
+      "tutorial_sifra_npc"
+    ],
+    "5": [
+      "uiscene_uiscene",
+      "uiscene_uiscene_buildquestpanel",
+      "uiscene_uiscene_cleanup",
+      "uiscene_uiscene_clearpause",
+      "uiscene_uiscene_constructor",
+      "uiscene_uiscene_create",
+      "uiscene_uiscene_destroyquestpanel",
+      "uiscene_uiscene_drawminimap",
+      "uiscene_uiscene_drawxpshimmer",
+      "uiscene_uiscene_launchbastionbonuspicker",
+      "uiscene_uiscene_onquestcompletedmidrun",
+      "uiscene_uiscene_populateendleaderboard",
+      "uiscene_uiscene_questprogressstr",
+      "uiscene_uiscene_refreshquestpanel",
+      "uiscene_uiscene_renderinventorytab",
+      "uiscene_uiscene_renderstatstab",
+      "uiscene_uiscene_showachievementnotification",
+      "uiscene_uiscene_showannounce",
+      "uiscene_uiscene_showcontrolshint",
+      "uiscene_uiscene_showendscreen",
+      "uiscene_uiscene_showherounlockpopup",
+      "uiscene_uiscene_showquesttoast",
+      "uiscene_uiscene_togglepause",
+      "uiscene_uiscene_update",
+      "uiscene_uiscene_updatehuntressstancebtn",
+      "uiscene_uiscene_updatemobilestancebtn",
+      "uiscene_uiscene_updatenazarstancebtn",
+      "uiscene_uiscene_updatepositions",
+      "uiscene_uiscene_updatequestpanelinplace",
+      "uiscene_uiscene_updatestancebtn"
+    ],
+    "6": [
+      "metaprogress_metaprogress",
+      "metaprogress_metaprogress_checkachievements",
+      "metaprogress_metaprogress_checkpostrununlocks",
+      "metaprogress_metaprogress_checkquestprogress",
+      "metaprogress_metaprogress_clearquestcallbacks",
+      "metaprogress_metaprogress_defaultdata",
+      "metaprogress_metaprogress_getachievementdefs",
+      "metaprogress_metaprogress_getactivequests",
+      "metaprogress_metaprogress_getmeta",
+      "metaprogress_metaprogress_getquestprogress",
+      "metaprogress_metaprogress_getunlockedbranches",
+      "metaprogress_metaprogress_getunlockedcount",
+      "metaprogress_metaprogress_initrun",
+      "metaprogress_metaprogress_isbranchunlocked",
+      "metaprogress_metaprogress_isherounlocked",
+      "metaprogress_metaprogress_isquestpersistentlycomplete",
+      "metaprogress_metaprogress_load",
+      "metaprogress_metaprogress_onquestcomplete",
+      "metaprogress_metaprogress_recordsession",
+      "metaprogress_metaprogress_reportkill",
+      "metaprogress_metaprogress_reportrunended",
+      "metaprogress_metaprogress_reportsifrafound",
+      "metaprogress_metaprogress_reporttimems",
+      "metaprogress_metaprogress_save",
+      "metaprogress_metaprogress_unlockbranch",
+      "metaprogress_metaprogress_unlockhero"
+    ],
+    "7": [
+      "amun_applyStun",
+      "amun_attackShockwave",
+      "baseenemy_BaseEnemy",
+      "baseenemy_EnemySprite",
+      "chest_Chest",
+      "chest_ChestRarity",
+      "fallbacktextures_generateHeroFallbackTexture",
+      "flyingeye_FlyingEye",
+      "grunt_Orc0",
+      "huntress_attackHuntressMelee",
+      "ignara_attackFireball",
+      "khashin_attackSandSwipe",
+      "muller_attackCrystalWave",
+      "muller_spawnCrystalSpike",
+      "nazar_attackMelee",
+      "orc1_Orc1",
+      "orc2_Orc2",
+      "orc3_Orc3",
+      "pickup_Pickup",
+      "pickup_PickupType",
+      "player_BranchMastery",
+      "player_HeroType",
+      "player_Player",
+      "player_StanceSystem",
+      "sandgolem_SandGolem",
+      "sifra_attackIceShard"
+    ],
+    "8": [
+      "gamescene_gamescene",
+      "gamescene_gamescene_applyhitstop",
+      "gamescene_gamescene_constructor",
+      "gamescene_gamescene_create",
+      "gamescene_gamescene_drawterrainprogressive",
+      "gamescene_gamescene_fadeoutsifra",
+      "gamescene_gamescene_generategravetextures",
+      "gamescene_gamescene_generatevfxtextures",
+      "gamescene_gamescene_getzone",
+      "gamescene_gamescene_init",
+      "gamescene_gamescene_loadheroassets",
+      "gamescene_gamescene_player",
+      "gamescene_gamescene_playmapreveal",
+      "gamescene_gamescene_preload",
+      "gamescene_gamescene_scatterdecorations",
+      "gamescene_gamescene_scatterrocks",
+      "gamescene_gamescene_selectedherotype",
+      "gamescene_gamescene_setuptouchcontrols",
+      "gamescene_gamescene_shutdown",
+      "gamescene_gamescene_spawnclawsboss",
+      "gamescene_gamescene_spawngrave",
+      "gamescene_gamescene_spawnsifranpc",
+      "gamescene_gamescene_tryspawnsifranpc",
+      "gamescene_gamescene_update",
+      "gamescene_gamescene_useinfinitemap"
+    ],
+    "9": [
+      "lobbyscene_lobbyscene",
+      "lobbyscene_lobbyscene_buildbuttons",
+      "lobbyscene_lobbyscene_buildherogrid",
+      "lobbyscene_lobbyscene_buildslots",
+      "lobbyscene_lobbyscene_circlegap",
+      "lobbyscene_lobbyscene_circler",
+      "lobbyscene_lobbyscene_circlerowy",
+      "lobbyscene_lobbyscene_circlestartx",
+      "lobbyscene_lobbyscene_constructor",
+      "lobbyscene_lobbyscene_create",
+      "lobbyscene_lobbyscene_drawbtn",
+      "lobbyscene_lobbyscene_drawherocircle",
+      "lobbyscene_lobbyscene_drawleavebtn",
+      "lobbyscene_lobbyscene_leave",
+      "lobbyscene_lobbyscene_preload",
+      "lobbyscene_lobbyscene_refreshherodimming",
+      "lobbyscene_lobbyscene_refreshslotui",
+      "lobbyscene_lobbyscene_renderslot",
+      "lobbyscene_lobbyscene_selecthero",
+      "lobbyscene_lobbyscene_setstartenabled",
+      "lobbyscene_lobbyscene_setupnetworkcallbacks",
+      "lobbyscene_lobbyscene_slots",
+      "lobbyscene_lobbyscene_syncfromroomstate",
+      "lobbyscene_lobbyscene_texkey",
+      "lobbyscene_lobbyscene_updatestatustext"
+    ],
+    "10": [
+      "encyclopediascene",
+      "encyclopediascene_branchiconframe",
+      "encyclopediascene_encyclopediascene",
+      "encyclopediascene_encyclopediascene_addpagecorners",
+      "encyclopediascene_encyclopediascene_buildgenericspage",
+      "encyclopediascene_encyclopediascene_buildleftpage",
+      "encyclopediascene_encyclopediascene_buildlorepage",
+      "encyclopediascene_encyclopediascene_buildrightpage",
+      "encyclopediascene_encyclopediascene_buildskillspage",
+      "encyclopediascene_encyclopediascene_constructor",
+      "encyclopediascene_encyclopediascene_create",
+      "encyclopediascene_encyclopediascene_preload",
+      "encyclopediascene_encyclopediascene_rebuild",
+      "encyclopediascene_isbranchunlocked",
+      "encyclopediascene_isherounlocked",
+      "encyclopediascene_isupgradeunlocked",
+      "encyclopediascene_loadencyclopedia",
+      "encyclopediascene_saveencyclopedia",
+      "encyclopediascene_unlockbranch",
+      "encyclopediascene_unlockhero",
+      "encyclopediascene_unlockupgrade"
+    ],
+    "11": [
+      "networkmanager_networkmanager",
+      "networkmanager_networkmanager_connect",
+      "networkmanager_networkmanager_connected",
+      "networkmanager_networkmanager_createroom",
+      "networkmanager_networkmanager_currentroom",
+      "networkmanager_networkmanager_disconnect",
+      "networkmanager_networkmanager_ishost",
+      "networkmanager_networkmanager_joinorcreate",
+      "networkmanager_networkmanager_joinroom",
+      "networkmanager_networkmanager_leave",
+      "networkmanager_networkmanager_selecthero",
+      "networkmanager_networkmanager_sendinput",
+      "networkmanager_networkmanager_sendrevive",
+      "networkmanager_networkmanager_sendupgradechoice",
+      "networkmanager_networkmanager_sessionid",
+      "networkmanager_networkmanager_setcallbacks",
+      "networkmanager_networkmanager_setuproomlisteners",
+      "networkmanager_networkmanager_startgame"
+    ],
+    "12": [
+      "inputcontroller_dummyinputcontroller",
+      "inputcontroller_dummyinputcontroller_destroy",
+      "inputcontroller_dummyinputcontroller_getdirection",
+      "inputcontroller_dummyinputcontroller_getstancetoggle",
+      "inputcontroller_dummyinputcontroller_update",
+      "inputcontroller_keyboardinputcontroller",
+      "inputcontroller_keyboardinputcontroller_clearjoystick",
+      "inputcontroller_keyboardinputcontroller_cleartouchtarget",
+      "inputcontroller_keyboardinputcontroller_constructor",
+      "inputcontroller_keyboardinputcontroller_consumetouchtarget",
+      "inputcontroller_keyboardinputcontroller_destroy",
+      "inputcontroller_keyboardinputcontroller_getdirection",
+      "inputcontroller_keyboardinputcontroller_getstancetoggle",
+      "inputcontroller_keyboardinputcontroller_gettouchtarget",
+      "inputcontroller_keyboardinputcontroller_setjoystickdirection",
+      "inputcontroller_keyboardinputcontroller_settouchtarget",
+      "inputcontroller_keyboardinputcontroller_update"
+    ],
+    "13": [
+      "hintflags_shouldShowHint",
+      "metaprogress_AchievementDef",
+      "metaprogress_META_UPGRADES",
+      "metaprogress_MetaData",
+      "metaprogress_MetaProgress",
+      "metaprogress_MetaUpgradeDef",
+      "metaprogress_QuestDef",
+      "metaprogress_RUN1_QUESTS",
+      "metaprogress_SessionRecord",
+      "sessionlogger_GameSession",
+      "sessionlogger_SessionLogger",
+      "supabaseclient_supabase",
+      "upgradesystem_BranchDef",
+      "upgradesystem_GENERIC_POOL",
+      "upgradesystem_HERO_BRANCHES",
+      "upgradesystem_Upgrade",
+      "upgradesystem_UpgradeTracker"
+    ],
+    "14": [
+      "levelupscene_addhighlighteddesc",
+      "levelupscene_levelupscene",
+      "levelupscene_levelupscene_buildbonusspecializationlayout",
+      "levelupscene_levelupscene_constructor",
+      "levelupscene_levelupscene_create",
+      "levelupscene_levelupscene_createbranchcard",
+      "levelupscene_levelupscene_createcard",
+      "levelupscene_levelupscene_drawcardhover",
+      "levelupscene_levelupscene_drawcardnormal",
+      "levelupscene_levelupscene_flipallcards",
+      "levelupscene_levelupscene_handlepick",
+      "levelupscene_levelupscene_showbastionupgrades",
+      "levelupscene_levelupscene_showstancetutorial",
+      "levelupscene_levelupscene_shutdown",
+      "levelupscene_levelupscene_spawnconfetti",
+      "levelupscene_levelupscene_spawnmobileconfetti"
+    ],
+    "15": [
+      "networkgameadapter_networkgameadapter",
+      "networkgameadapter_networkgameadapter_addremoteenemy",
+      "networkgameadapter_networkgameadapter_addremoteplayer",
+      "networkgameadapter_networkgameadapter_constructor",
+      "networkgameadapter_networkgameadapter_destroy",
+      "networkgameadapter_networkgameadapter_drawenemyhpbars",
+      "networkgameadapter_networkgameadapter_removeremoteenemy",
+      "networkgameadapter_networkgameadapter_removeremoteplayer",
+      "networkgameadapter_networkgameadapter_setupcallbacks",
+      "networkgameadapter_networkgameadapter_setupstatesync",
+      "networkgameadapter_networkgameadapter_syncstate",
+      "networkgameadapter_networkgameadapter_update"
+    ],
+    "16": [
+      "chunkmanager_chunkmanager",
+      "chunkmanager_chunkmanager_buildchunk",
+      "chunkmanager_chunkmanager_constructor",
+      "chunkmanager_chunkmanager_create",
+      "chunkmanager_chunkmanager_destroy",
+      "chunkmanager_chunkmanager_drawterraintiles",
+      "chunkmanager_chunkmanager_recyclechunk",
+      "chunkmanager_chunkmanager_scatterprops",
+      "chunkmanager_chunkmanager_seededrng",
+      "chunkmanager_chunkmanager_seededrngint",
+      "chunkmanager_chunkmanager_slotindex",
+      "chunkmanager_chunkmanager_update"
+    ],
+    "17": [
+      "leaderboardscene_leaderboardscene",
+      "leaderboardscene_leaderboardscene_buildtabs",
+      "leaderboardscene_leaderboardscene_clearcontent",
+      "leaderboardscene_leaderboardscene_constructor",
+      "leaderboardscene_leaderboardscene_create",
+      "leaderboardscene_leaderboardscene_fetchandrender",
+      "leaderboardscene_leaderboardscene_formattime",
+      "leaderboardscene_leaderboardscene_goback",
+      "leaderboardscene_leaderboardscene_rendertabbg",
+      "leaderboardscene_leaderboardscene_rendertable",
+      "leaderboardscene_leaderboardscene_showmessage"
+    ],
+    "18": [
+      "chest",
+      "chest_chest",
+      "chest_chest_constructor",
+      "chest_chest_createanimsifneeded",
+      "chest_chest_open",
+      "chest_chest_spawnloot",
+      "chest_closedframe",
+      "chest_contentsframe",
+      "chest_openframe",
+      "chest_openingframe"
+    ],
+    "19": [
+      "wavemanager_pickweighted",
+      "wavemanager_wavemanager",
+      "wavemanager_wavemanager_constructor",
+      "wavemanager_wavemanager_getspawnpos",
+      "wavemanager_wavemanager_onenemykilled",
+      "wavemanager_wavemanager_spawnminiboss",
+      "wavemanager_wavemanager_spawnmob",
+      "wavemanager_wavemanager_start",
+      "wavemanager_wavemanager_tick"
+    ],
+    "20": [
+      "session_07b_arch_skill_levels",
+      "session_07b_sifra_branch_merge",
+      "session_07b_skill_leveling",
+      "session_09_generics_nerf",
+      "skill_descriptions_generic_upgrades",
+      "skill_descriptions_ignara",
+      "skill_descriptions_sifra",
+      "skill_levels_design",
+      "skill_stance_combos_sifra"
+    ],
+    "21": [
+      "crystal_muller_shardfall",
+      "crystal_muller_stance",
+      "khashin_design_dune",
+      "khashin_design_gale",
+      "khashin_design_mirage",
+      "khashin_design_stance",
+      "skill_descriptions_khashin",
+      "skill_stance_combos_khashin",
+      "skill_stance_combos_muller"
+    ],
+    "22": [
+      "undeadmapscene_undeadmapscene",
+      "undeadmapscene_undeadmapscene_constructor",
+      "undeadmapscene_undeadmapscene_drawterrainprogressive",
+      "undeadmapscene_undeadmapscene_getzone",
+      "undeadmapscene_undeadmapscene_isonground",
+      "undeadmapscene_undeadmapscene_preload",
+      "undeadmapscene_undeadmapscene_scatterdecorations",
+      "undeadmapscene_undeadmapscene_useinfinitemap"
+    ],
+    "23": [
+      "forgescene_forgescene",
+      "forgescene_forgescene_constructor",
+      "forgescene_forgescene_create",
+      "forgescene_forgescene_drawallcards",
+      "forgescene_forgescene_drawcard",
+      "forgescene_forgescene_drawrecruitsection",
+      "forgescene_forgescene_preload",
+      "forgescene_forgescene_rendercardbg"
+    ],
+    "24": [
+      "chunkmanager_ChunkManager",
+      "gameconfig_CONFIG",
+      "pathfinding_getSteeringTarget",
+      "scene_context_GameSceneContext",
+      "wavemanager_WaveManager",
+      "wavemanager_ZONE_SPAWNS",
+      "xpsystem_GoldSystem",
+      "xpsystem_XPSystem"
+    ],
+    "25": [
+      "inputcontroller_DummyInputController",
+      "inputcontroller_IInputController",
+      "inputcontroller_KeyboardInputController",
+      "networkgameadapter_NetworkGameAdapter",
+      "networkmanager_NetworkCallbacks",
+      "networkmanager_NetworkManager",
+      "networkmanager_PlayerSlot",
+      "networkmanager_networkManager"
+    ],
+    "26": [
+      "upgradesystem_upgradetracker",
+      "upgradesystem_upgradetracker_branchprogress",
+      "upgradesystem_upgradetracker_getbranchchoices",
+      "upgradesystem_upgradetracker_getchoices",
+      "upgradesystem_upgradetracker_getlevel",
+      "upgradesystem_upgradetracker_isbranchselection",
+      "upgradesystem_upgradetracker_pick"
+    ],
+    "27": [
+      "muller",
+      "muller_attackcrystaleruption",
+      "muller_attackcrystalwave",
+      "muller_crystalringburst",
+      "muller_spawncrystalshard",
+      "muller_spawncrystalspike",
+      "muller_updatemullerpassives"
+    ],
+    "28": [
+      "asset_inventory_skill_icons",
+      "icon_prompts_guidelines",
+      "session_06_icon_fix",
+      "session_06_lesson_icons",
+      "skill_descriptions_upgrade_system_ref",
+      "systems_overview_upgrades",
+      "upgrade_registry"
+    ],
+    "29": [
+      "profilescene_profilescene",
+      "profilescene_profilescene_constructor",
+      "profilescene_profilescene_create",
+      "profilescene_profilescene_drawpanel",
+      "profilescene_profilescene_formatduration",
+      "profilescene_profilescene_formattime"
+    ],
+    "30": [
+      "loadingscene_loadingscene",
+      "loadingscene_loadingscene_constructor",
+      "loadingscene_loadingscene_create",
+      "loadingscene_loadingscene_init",
+      "loadingscene_loadingscene_loadheroassets",
+      "loadingscene_loadingscene_preload"
+    ],
+    "31": [
+      "xpsystem_xpsystem",
+      "xpsystem_xpsystem_constructor",
+      "xpsystem_xpsystem_getorbs",
+      "xpsystem_xpsystem_spawnlargeorb",
+      "xpsystem_xpsystem_spawnorb",
+      "xpsystem_xpsystem_updatemagnet"
+    ],
+    "32": [
+      "curses_duality_test",
+      "curses_list",
+      "curses_prestige",
+      "curses_rationale_duality",
+      "curses_synergies",
+      "roadmap_curses_relics"
+    ],
+    "33": [
+      "heroselectscene_heroselectscene",
+      "heroselectscene_heroselectscene_constructor",
+      "heroselectscene_heroselectscene_create",
+      "heroselectscene_heroselectscene_drawcircle",
+      "heroselectscene_heroselectscene_preload"
+    ],
+    "34": [
+      "bosstestscene",
+      "bosstestscene_bosstestscene",
+      "bosstestscene_bosstestscene_constructor",
+      "bosstestscene_bosstestscene_create",
+      "bosstestscene_bosstestscene_preload"
+    ],
+    "35": [
+      "swordstestscene_swordstestscene",
+      "swordstestscene_swordstestscene_constructor",
+      "swordstestscene_swordstestscene_create",
+      "swordstestscene_swordstestscene_preload",
+      "swordstestscene_swordstestscene_update"
+    ],
+    "36": [
+      "xpsystem_goldsystem",
+      "xpsystem_goldsystem_constructor",
+      "xpsystem_goldsystem_getorbs",
+      "xpsystem_goldsystem_spawnorb",
+      "xpsystem_goldsystem_updatemagnet"
+    ],
+    "37": [
+      "flyingeye_flyingeye",
+      "flyingeye_flyingeye_applypoison",
+      "flyingeye_flyingeye_constructor",
+      "flyingeye_flyingeye_ondeathvfx",
+      "flyingeye_flyingeye_onupdate"
+    ],
+    "38": [
+      "sandgolem_sandgolem",
+      "sandgolem_sandgolem_constructor",
+      "sandgolem_sandgolem_ondeathvfx",
+      "sandgolem_sandgolem_onupdate",
+      "sandgolem_sandgolem_tryslam"
+    ],
+    "39": [
+      "startscene_startscene",
+      "startscene_startscene_constructor",
+      "startscene_startscene_create",
+      "startscene_startscene_preload"
+    ],
+    "40": [
+      "testscene_testscene",
+      "testscene_testscene_constructor",
+      "testscene_testscene_create",
+      "testscene_testscene_preload"
+    ],
+    "41": [
+      "pickup_pickup",
+      "pickup_pickup_collect",
+      "pickup_pickup_constructor",
+      "pickup_pickup_generatetextures"
+    ],
+    "42": [
+      "orc1_orc1",
+      "orc1_orc1_constructor",
+      "orc1_orc1_createanimations",
+      "orc1_orc1_ondeathvfx"
+    ],
+    "43": [
+      "orc2_orc2",
+      "orc2_orc2_constructor",
+      "orc2_orc2_createanimations",
+      "orc2_orc2_ondeathvfx"
+    ],
+    "44": [
+      "curses_reward_scaling",
+      "enemy_registry_boss",
+      "roadmap_core_loop",
+      "roadmap_feature_status"
+    ],
+    "45": [
+      "crystal_muller_lore",
+      "khashin_design_lore",
+      "roadmap_lore"
+    ],
+    "46": [
+      "enemy_registry_sandgolem",
+      "project_status_miniboss_design",
+      "tutorial_sandstone_sentinel"
+    ],
+    "47": [
+      "player_fields",
+      "project_status",
+      "systems_overview_heroes"
+    ],
+    "48": [
+      "upgradesystem_ICON_FRAME_MAP",
+      "upgradesystem_getIconFrame",
+      "upgradesystem_getIconTexture"
+    ],
+    "49": [
+      "skill_descriptions_amun",
+      "skill_stance_combos_amun"
+    ],
+    "50": [
+      "session_07b_arch_hero_locking",
+      "session_07b_hero_selection"
+    ],
+    "51": [
+      "khashin_design_attack",
+      "khashin_design_unique"
+    ],
+    "52": [
+      "hero_unlock_metaschema",
+      "tutorial_metaprogress"
+    ],
+    "53": [
+      "crystal_muller_attack",
+      "crystal_muller_design_notes"
+    ],
+    "54": [
+      "branch_mastery_ui",
+      "session_09_mastery_hud"
+    ],
+    "55": [
+      "session_06_frost_aura",
+      "session_06_lesson_procedural_vfx"
+    ],
+    "56": [
+      "session_06_lesson_rendertexture",
+      "session_06_perf"
+    ],
+    "57": [
+      "session_07_lesson_scene_lifecycle",
+      "session_07_loading"
+    ],
+    "58": [
+      "enemy_registry",
+      "systems_overview_enemies"
+    ],
+    "59": [
+      "undeadmapscene_islands",
+      "undeadmapscene_isonground"
+    ],
+    "60": [
+      "bgscroll_addDiagonalBg",
+      "trailpool_spawnTrailCircle"
+    ],
+    "61": [
+      "device_isMobileDevice",
+      "device_isMobileUserAgent"
+    ],
+    "62": [
+      "skill_descriptions_nazar"
+    ],
+    "63": [
+      "skill_descriptions_huntress"
+    ],
+    "64": [
+      "skill_descriptions_muller"
+    ],
+    "65": [
+      "session_07b_levelup_5card"
+    ],
+    "66": [
+      "session_07b_esc_hotkey"
+    ],
+    "67": [
+      "khashin_design_stats"
+    ],
+    "68": [
+      "crystal_muller_stats"
+    ],
+    "69": [
+      "crystal_muller_geode"
+    ],
+    "70": [
+      "crystal_muller_deepseam"
+    ],
+    "71": [
+      "skill_stance_combos_ignara"
+    ],
+    "72": [
+      "skill_stance_combos_nazar"
+    ],
+    "73": [
+      "skill_stance_combos_huntress"
+    ],
+    "74": [
+      "skill_stance_combos_generics"
+    ],
+    "75": [
+      "session_07_bugs"
+    ],
+    "76": [
+      "session_07_chest"
+    ],
+    "77": [
+      "session_07_bigorc"
+    ],
+    "78": [
+      "session_07_spawn_camera"
+    ],
+    "79": [
+      "curses_overview"
+    ],
+    "80": [
+      "curses_unlocks"
+    ],
+    "81": [
+      "curses_stacking_rules"
+    ],
+    "82": [
+      "session_08_card_ui"
+    ],
+    "83": [
+      "session_08_mobile"
+    ],
+    "84": [
+      "session_09_card_ui"
+    ],
+    "85": [
+      "session_09_pause_menu"
+    ],
+    "86": [
+      "icon_prompts_generics"
+    ],
+    "87": [
+      "icon_prompts_ignara"
+    ],
+    "88": [
+      "roadmap_elemental_combos"
+    ],
+    "89": [
+      "asset_inventory"
+    ],
+    "90": [
+      "systems_overview_waves"
+    ],
+    "91": [
+      "systems_overview_encyclopedia"
+    ],
+    "92": [
+      "project_status_known_issues"
+    ],
+    "93": [
+      "device_isPortrait"
+    ],
+    "94": [
+      "baseenemy_DamageType"
+    ],
+    "95": [
+      "muller_spawnCrystalShard"
+    ]
+  },
+  "cohesion": {
+    "0": 0.06,
+    "1": 0.06,
+    "2": 0.07,
+    "3": 0.05,
+    "4": 0.06,
+    "5": 0.12,
+    "6": 0.15,
+    "7": 0.17,
+    "8": 0.12,
+    "9": 0.16,
+    "10": 0.19,
+    "11": 0.14,
+    "12": 0.12,
+    "13": 0.13,
+    "14": 0.17,
+    "15": 0.23,
+    "16": 0.38,
+    "17": 0.33,
+    "18": 0.33,
+    "19": 0.33,
+    "20": 0.22,
+    "21": 0.28,
+    "22": 0.29,
+    "23": 0.43,
+    "24": 0.29,
+    "25": 0.36,
+    "26": 0.29,
+    "27": 0.43,
+    "28": 0.29,
+    "29": 0.53,
+    "30": 0.4,
+    "31": 0.33,
+    "32": 0.33,
+    "33": 0.4,
+    "34": 0.4,
+    "35": 0.4,
+    "36": 0.4,
+    "37": 0.4,
+    "38": 0.5,
+    "39": 0.5,
+    "40": 0.5,
+    "41": 0.67,
+    "42": 0.5,
+    "43": 0.5,
+    "44": 0.5,
+    "45": 0.67,
+    "46": 0.67,
+    "47": 0.67,
+    "48": 0.67,
+    "49": 1.0,
+    "50": 1.0,
+    "51": 1.0,
+    "52": 1.0,
+    "53": 1.0,
+    "54": 1.0,
+    "55": 1.0,
+    "56": 1.0,
+    "57": 1.0,
+    "58": 1.0,
+    "59": 1.0,
+    "60": 1.0,
+    "61": 1.0,
+    "62": 1.0,
+    "63": 1.0,
+    "64": 1.0,
+    "65": 1.0,
+    "66": 1.0,
+    "67": 1.0,
+    "68": 1.0,
+    "69": 1.0,
+    "70": 1.0,
+    "71": 1.0,
+    "72": 1.0,
+    "73": 1.0,
+    "74": 1.0,
+    "75": 1.0,
+    "76": 1.0,
+    "77": 1.0,
+    "78": 1.0,
+    "79": 1.0,
+    "80": 1.0,
+    "81": 1.0,
+    "82": 1.0,
+    "83": 1.0,
+    "84": 1.0,
+    "85": 1.0,
+    "86": 1.0,
+    "87": 1.0,
+    "88": 1.0,
+    "89": 1.0,
+    "90": 1.0,
+    "91": 1.0,
+    "92": 1.0,
+    "93": 1.0,
+    "94": 1.0,
+    "95": 1.0
+  },
+  "gods": [
+    {
+      "id": "player_player",
+      "label": "Player",
+      "edges": 51
+    },
+    {
+      "id": "uiscene_uiscene",
+      "label": "UIScene",
+      "edges": 30
+    },
+    {
+      "id": "metaprogress_metaprogress",
+      "label": "MetaProgress",
+      "edges": 26
+    },
+    {
+      "id": "gamescene_gamescene",
+      "label": "GameScene",
+      "edges": 25
+    },
+    {
+      "id": "lobbyscene_lobbyscene",
+      "label": "LobbyScene",
+      "edges": 25
+    },
+    {
+      "id": "gamescene_GameScene",
+      "label": "GameScene",
+      "edges": 19
+    },
+    {
+      "id": "networkmanager_networkmanager",
+      "label": "NetworkManager",
+      "edges": 18
+    },
+    {
+      "id": "main_entrypoint",
+      "label": "Game Entry Point (main.ts)",
+      "edges": 18
+    },
+    {
+      "id": "player_Player",
+      "label": "Player",
+      "edges": 18
+    },
+    {
+      "id": "baseenemy_BaseEnemy",
+      "label": "BaseEnemy",
+      "edges": 16
+    }
+  ],
+  "surprises": [
+    {
+      "source": "TestScene (dev-only)",
+      "target": "GameScene",
+      "source_files": [
+        "src/scenes/TestScene.ts",
+        "src/scenes/GameScene.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; semantically similar concepts with no structural link; peripheral node `TestScene (dev-only)` unexpectedly reaches hub `GameScene`"
+    },
+    {
+      "source": "shouldShowHint Function",
+      "target": "MetaProgress Class",
+      "source_files": [
+        "src/systems/HintFlags.ts",
+        "src/systems/MetaProgress.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; semantically similar concepts with no structural link; peripheral node `shouldShowHint Function` unexpectedly reaches hub `MetaProgress Class`"
+    },
+    {
+      "source": "Khashin Sirocco/Haboob Stance System",
+      "target": "Crystal Muller Spike/Eruption Stance System",
+      "source_files": [
+        "docs/khashin-design.md",
+        "docs/crystal-muller-design.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "Per-Hero Branch Unlock Design (Section 14)",
+      "target": "Branch Mastery System Overview",
+      "source_files": [
+        "docs/design-hero-unlock-progression.md",
+        "docs/design-branch-mastery.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "Skill Challenge System Overview",
+      "target": "Per-Hero Branch Unlock Design (Section 14)",
+      "source_files": [
+        "docs/skill-challenges-design.md",
+        "docs/design-hero-unlock-progression.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; semantically similar concepts with no structural link"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `Player` connect `Community 2` to `Community 0`?",
+      "why": "High betweenness centrality (0.082) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `UIScene` connect `Community 5` to `Community 0`?",
+      "why": "High betweenness centrality (0.049) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `MetaProgress` connect `Community 6` to `Community 0`?",
+      "why": "High betweenness centrality (0.042) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `Nazar Skill Descriptions`, `Amun Skill Descriptions`, `Huntress (Lyra) Skill Descriptions` to the rest of the system?",
+      "why": "138 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.06 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.06 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 2` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07 - nodes in this community are weakly interconnected."
+    }
+  ]
+}
