@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { SessionLogger } from '../systems/SessionLogger'
 import { MetaProgress } from '../systems/MetaProgress'
 import { addDiagonalBg } from '../utils/bgScroll'
-import { isMobileDevice } from '../utils/device'
+import { isMobileDevice, gameFont } from '../utils/device'
 
 const STORAGE_KEY = 'claws_player_name'
 
@@ -31,20 +31,17 @@ export class NameInputScene extends Phaser.Scene {
     const leftCol = compact ? width * 0.28 : width / 2
     const rightCol = compact ? width * 0.65 : width / 2
 
-    this.add.text(leftCol, titleY, 'CLAWS', {
-      fontFamily: 'monospace',
+    const nameInputTitle = this.add.text(leftCol, titleY, 'CLAWS', {
+      fontFamily: gameFont(),
       fontSize: titleSize,
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: compact ? 5 : 8,
     }).setOrigin(0.5)
+    nameInputTitle.setShadow(0, 1, '#000000', 2, true, true)
 
     this.add.text(leftCol, titleY + (compact ? 34 : 60), 'Survive the Swarm', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: compact ? '11px' : '16px',
       color: '#888888',
-      stroke: '#000000',
-      strokeThickness: 3,
     }).setOrigin(0.5)
 
     // Right column (or center on desktop): input group
@@ -52,11 +49,9 @@ export class NameInputScene extends Phaser.Scene {
 
     // Prompt
     this.add.text(rightCol, inputGroupY - (compact ? 38 : 60), 'Enter your name', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: compact ? '15px' : '20px',
       color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 4,
     }).setOrigin(0.5)
 
     // DOM input element
@@ -72,7 +67,7 @@ export class NameInputScene extends Phaser.Scene {
       'color: #FFD700',
       'border: 2px solid #444466',
       'border-radius: 6px',
-      'font-family: monospace',
+      `font-family: ${gameFont()}`,
       `font-size: ${inputFS}`,
       'text-align: center',
       `padding: ${inputPad}`,
@@ -85,21 +80,17 @@ export class NameInputScene extends Phaser.Scene {
 
     // Error text (hidden initially)
     const errorText = this.add.text(rightCol, inputGroupY + (compact ? 32 : 52), '', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: compact ? '11px' : '13px',
       color: '#ff4444',
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5)
 
     // PLAY button
     const btnY = inputGroupY + (compact ? 62 : 86)
     const playBtn = this.add.text(rightCol, btnY, 'PLAY', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: compact ? '18px' : '22px',
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 5,
       backgroundColor: '#2a2a4e',
       padding: { x: compact ? 24 : 32, y: compact ? 8 : 12 },
     } as Phaser.Types.GameObjects.Text.TextStyle)
@@ -122,11 +113,9 @@ export class NameInputScene extends Phaser.Scene {
 
     // Instruction hint
     this.add.text(rightCol, btnY + (compact ? 32 : 52), '2–16 characters', {
-      fontFamily: 'monospace',
-      fontSize: compact ? '10px' : '12px',
+      fontFamily: gameFont(),
+      fontSize: compact ? '13px' : '12px',
       color: '#555577',
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5)
 
     this.scale.on('resize', () => {

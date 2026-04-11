@@ -52,6 +52,8 @@ export class WaveManager {
   private lastMiniBossMs = 0
   totalKills = 0
   currentWave = 0
+  /** Tracked active enemy count — avoids O(n) countActive() in tick(). */
+  private _aliveCount = 0
 
   constructor(scene: Phaser.Scene, players: Player[], enemies: Phaser.Physics.Arcade.Group) {
     this.scene = scene
@@ -82,10 +84,9 @@ export class WaveManager {
         CONFIG.MOB_CAP_MAX,
         CONFIG.MOB_CAP_BASE + this.currentWave * CONFIG.MOB_CAP_PER_WAVE
       )
-      const alive = this.enemies.countActive()
-      if (alive < cap) {
+      if (this._aliveCount < cap) {
         this.spawnMob()
-        if (alive + 1 < cap) this.spawnMob()
+        if (this._aliveCount < cap) this.spawnMob()
       }
     }
 
@@ -121,7 +122,7 @@ export class WaveManager {
   }
 
   private spawnMiniBoss() {
-    if (this.enemies.countActive() >= CONFIG.MOB_CAP_MAX) return
+    if (this._aliveCount >= CONFIG.MOB_CAP_MAX) return
     const { x, y } = this.getSpawnPos()
 
     // After wave 5, FlyingEye mini-boss can appear; chance grows with waves
@@ -141,6 +142,7 @@ export class WaveManager {
     mob.goldValue = Phaser.Math.Between(CONFIG.GOLD_BOSS_MIN, CONFIG.GOLD_BOSS_MAX)
       + Math.floor(this.currentWave * 3)
     this.enemies.add(mob)
+    this._aliveCount++
   }
 
   private spawnMob() {
@@ -154,6 +156,7 @@ export class WaveManager {
     mob.players = this.players
 
     this.enemies.add(mob)
+    this._aliveCount++
 
     // Random buffs at higher tiers
     if (tier >= 5 && Math.random() < 0.3) {
@@ -167,5 +170,6 @@ export class WaveManager {
 
   onEnemyKilled() {
     this.totalKills++
+    this._aliveCount = Math.max(0, this._aliveCount - 1)
   }
 }

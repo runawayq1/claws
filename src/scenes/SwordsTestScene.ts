@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { Player } from '../entities/Player'
 import { Orc1 } from '../entities/Orc1'
 import * as amun from '../entities/heroes/amun'
@@ -43,20 +44,16 @@ export class SwordsTestScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 24, 'AMUN THORNS — SWORDS DEBUG', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '24px',
       color: '#ffaa44',
-      stroke: '#000000',
-      strokeThickness: 4,
     }).setOrigin(0.5, 0).setDepth(20)
 
     // Back button
     const backBtn = this.add.text(16, 16, '< BACK', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#888888',
-      stroke: '#000000',
-      strokeThickness: 3,
       backgroundColor: '#1a1a2e',
       padding: { x: 10, y: 6 },
     }).setOrigin(0, 0).setDepth(20).setInteractive({ useHandCursor: true })
@@ -109,8 +106,7 @@ export class SwordsTestScene extends Phaser.Scene {
 
     // Info panel
     this.add.text(width / 2, height - 30, 'Thorns lvl 3 · 8 swords · orbit r=160 · hit 72×20 OBB · physics debug ON · enemies pinned', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#ffcc88',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '11px', color: '#ffcc88',
     }).setOrigin(0.5).setDepth(20)
   }
 

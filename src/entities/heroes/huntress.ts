@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../../utils/device'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
 
@@ -36,7 +37,7 @@ export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Gr
       // Crit text
       if (isCrit) {
         const ct = p.scene.add.text(e.x, e.y - 30, 'CRIT!', {
-          fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
+          fontFamily: gameFont(), fontSize: '12px', color: '#ff4444',
           stroke: '#000', strokeThickness: 2,
         }).setOrigin(0.5).setDepth(21)
         p.scene.tweens.add({ targets: ct, y: ct.y - 20, alpha: 0, duration: 500, onComplete: () => ct.destroy() })
@@ -150,10 +151,7 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
             hitSet.add(e)
             // Heavy Spear: knockback on spear hit
             if (p.hasHeavySpear) {
-              const kb = 180
-              const angle = Math.atan2(e.y - spear.y, e.x - spear.x)
-              const body = e.body as Phaser.Physics.Arcade.Body
-              if (body) body.setVelocity(Math.cos(angle) * kb, Math.sin(angle) * kb)
+              ;(e as BaseEnemy).applyKnockback(spear.x, spear.y, 180)
             }
             // Mark enemy
             if (p.hasMarkedTarget) {
@@ -171,7 +169,7 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
             p.spearHitVfx(e.x, e.y, isCrit ? 0xff4444 : spearTint)
             if (isCrit) {
               const ct = p.scene.add.text(e.x, e.y - 30, 'CRIT!', {
-                fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
+                fontFamily: gameFont(), fontSize: '12px', color: '#ff4444',
                 stroke: '#000', strokeThickness: 2,
               }).setOrigin(0.5).setDepth(21)
               p.scene.tweens.add({ targets: ct, y: ct.y - 20, alpha: 0, duration: 500, onComplete: () => ct.destroy() })
@@ -371,7 +369,7 @@ export function updateHuntressPassives(p: Player, delta: number) {
               (e as BaseEnemy).takeDamage((e as BaseEnemy).hp + 1, 'melee')
               // VFX: red slash mark
               const xMark = p.scene.add.text(e.x, e.y - 10, '✕', {
-                fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
+                fontFamily: gameFont(), fontSize: '18px', color: '#ff2222',
                 stroke: '#000', strokeThickness: 2,
               }).setOrigin(0.5).setDepth(21)
               p.scene.tweens.add({ targets: xMark, y: xMark.y - 20, alpha: 0, scale: 2, duration: 400, onComplete: () => xMark.destroy() })

@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { type HeroType } from '../entities/Player'
+import { gameFont } from '../utils/device'
 
 export class LoadingScene extends Phaser.Scene {
   private hero: HeroType = 'ignara'
@@ -34,14 +35,15 @@ export class LoadingScene extends Phaser.Scene {
     // ── Progress bar UI ──
     this.cameras.main.setBackgroundColor(0x0d0d1a)
 
-    this.add.text(width / 2, height * 0.35, 'CLAWS', {
-      fontFamily: 'monospace', fontSize: '48px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 6,
+    const loadTitle = this.add.text(width / 2, height * 0.35, 'CLAWS', {
+      fontFamily: gameFont(), fontSize: '48px',
+      color: '#FFD700',
     }).setOrigin(0.5)
+    loadTitle.setShadow(0, 1, '#000000', 2, true, true)
 
     this.add.text(width / 2, height * 0.35 + 48, 'Survive the Swarm', {
-      fontFamily: 'monospace', fontSize: '16px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: '16px',
+      color: '#888888',
     }).setOrigin(0.5)
 
     this.barW = width * 0.6
@@ -61,8 +63,8 @@ export class LoadingScene extends Phaser.Scene {
 
     // Percentage text centered ON the bar
     const pctText = this.add.text(width / 2, this.barY + this.barH / 2, '0%', {
-      fontFamily: 'monospace', fontSize: '11px',
-      color: '#000000', stroke: '#FFD700', strokeThickness: 1,
+      fontFamily: gameFont(), fontSize: '11px',
+      color: '#000000',
     }).setOrigin(0.5).setDepth(1)
 
     // Flavor text below the bar — cycles on each progress tick
@@ -82,8 +84,8 @@ export class LoadingScene extends Phaser.Scene {
     ]
 
     this.loadingText = this.add.text(width / 2, this.barY + this.barH + 18, flavorTexts[0], {
-      fontFamily: 'monospace', fontSize: '13px',
-      color: '#888888', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px',
+      color: '#888888',
     }).setOrigin(0.5)
 
     // Asset loading fills bar to 90% — swap flavor text every ~10% progress

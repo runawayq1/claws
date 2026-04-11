@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { Player } from './Player'
 import { Pickup, type PickupType } from './Pickup'
 
@@ -94,7 +95,7 @@ export class Chest extends Phaser.Physics.Arcade.Sprite {
     const label = this.rarity === 'rare' ? 'RARE CHEST!' : 'Chest!'
     const color = this.rarity === 'rare' ? '#ffd700' : '#daa520'
     const txt = scene.add.text(this.x, this.y - 20, label, {
-      fontFamily: 'monospace', fontSize: '12px', color, stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '12px', color, stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(20)
     scene.tweens.add({ targets: txt, y: txt.y - 20, alpha: 0, duration: 1000, onComplete: () => txt.destroy() })
   }

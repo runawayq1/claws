@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { MetaProgress } from '../systems/MetaProgress'
+import { gameFont } from '../utils/device'
 
 const CAT_COLORS: Record<string, number> = {
   kills: 0xff4444,
@@ -29,15 +30,16 @@ export class ProfileScene extends Phaser.Scene {
     bg.fillRect(0, 0, width, height)
 
     // Header
-    this.add.text(width / 2, 30, 'CLAWS PROFILE', {
-      fontFamily: 'monospace', fontSize: '28px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 4,
+    const profileTitleTxt = this.add.text(width / 2, 30, 'CLAWS PROFILE', {
+      fontFamily: gameFont(), fontSize: '28px',
+      color: '#FFD700',
     }).setOrigin(0.5)
+    profileTitleTxt.setShadow(0, 1, '#000000', 2, true, true)
 
     // Back button
     const back = this.add.text(20, 20, '< BACK', {
-      fontFamily: 'monospace', fontSize: '16px',
-      color: '#888888', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '16px',
+      color: '#888888',
     }).setInteractive({ useHandCursor: true })
     back.on('pointerover', () => back.setColor('#ffffff'))
     back.on('pointerout', () => back.setColor('#888888'))
@@ -60,8 +62,8 @@ export class ProfileScene extends Phaser.Scene {
     const statY = y + 30
 
     const statFontSize = isPortrait ? '14px' : '13px'
-    const statStyle = { fontFamily: 'monospace', fontSize: statFontSize, color: '#cccccc', stroke: '#000000', strokeThickness: 1 }
-    const valStyle = { fontFamily: 'monospace', fontSize: statFontSize, color: '#ffffff', stroke: '#000000', strokeThickness: 1 }
+    const statStyle = { fontFamily: gameFont(), fontSize: statFontSize, color: '#cccccc' }
+    const valStyle = { fontFamily: gameFont(), fontSize: statFontSize, color: '#ffffff' }
 
     this.add.text(statCol1, statY, 'Total Kills:', statStyle)
     this.add.text(statCol1 + valOffset, statY, meta.totalKills.toLocaleString(), valStyle)
@@ -94,7 +96,7 @@ export class ProfileScene extends Phaser.Scene {
     this.drawPanel(panelX, y, panelW, heroH, 'HERO STATS')
 
     const hdrY = y + 26
-    const hdrStyle = { fontFamily: 'monospace', fontSize: '10px', color: '#666666' } as Phaser.Types.GameObjects.Text.TextStyle
+    const hdrStyle = { fontFamily: gameFont(), fontSize: '10px', color: '#666666' } as Phaser.Types.GameObjects.Text.TextStyle
     this.add.text(panelX + 20, hdrY, 'HERO', hdrStyle)
     this.add.text(panelX + 100, hdrY, 'RUNS', hdrStyle)
     this.add.text(panelX + 145, hdrY, 'WINS', hdrStyle)
@@ -113,9 +115,9 @@ export class ProfileScene extends Phaser.Scene {
       const bestT = heroSessions.length > 0 ? Math.max(...heroSessions.map(s => s.timeMs)) : 0
 
       this.add.text(panelX + 20, hy, h.name, {
-        fontFamily: 'monospace', fontSize: '12px', color: h.color, stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: '12px', color: h.color,
       })
-      const rs = { fontFamily: 'monospace', fontSize: '12px', color: '#bbbbbb', stroke: '#000000', strokeThickness: 1 } as Phaser.Types.GameObjects.Text.TextStyle
+      const rs = { fontFamily: gameFont(), fontSize: '12px', color: '#bbbbbb' } as Phaser.Types.GameObjects.Text.TextStyle
       this.add.text(panelX + 100, hy, `${runs}`, rs)
       this.add.text(panelX + 145, hy, `${wins}`, rs)
       this.add.text(panelX + 190, hy, `${winPct}%`, { ...rs, color: winPct >= 50 ? '#88ff88' : '#bbbbbb' })
@@ -153,12 +155,12 @@ export class ProfileScene extends Phaser.Scene {
       const mark = isUnlocked ? 'V' : 'x'
       const markColor = isUnlocked ? '#88ff88' : '#444444'
       this.add.text(ax + 14, ay, mark, {
-        fontFamily: 'monospace', fontSize: '11px', color: markColor,
+        fontFamily: gameFont(), fontSize: '11px', color: markColor,
       })
 
       // Name
       this.add.text(ax + 26, ay, def.name, {
-        fontFamily: 'monospace', fontSize: '11px',
+        fontFamily: gameFont(), fontSize: '11px',
         color: isUnlocked ? '#dddddd' : '#555555',
       })
 
@@ -173,7 +175,7 @@ export class ProfileScene extends Phaser.Scene {
       this.drawPanel(panelX, y, panelW, sessH, 'RECENT SESSIONS')
 
       const sessY = y + 28
-      const headerStyle = { fontFamily: 'monospace', fontSize: '10px', color: '#666666' }
+      const headerStyle = { fontFamily: gameFont(), fontSize: '10px', color: '#666666' }
       this.add.text(panelX + 20, sessY, '#', headerStyle)
       this.add.text(panelX + 45, sessY, 'HERO', headerStyle)
       this.add.text(panelX + 120, sessY, 'KILLS', headerStyle)
@@ -181,7 +183,7 @@ export class ProfileScene extends Phaser.Scene {
       this.add.text(panelX + 215, sessY, 'TIME', headerStyle)
       this.add.text(panelX + 275, sessY, 'W/L', headerStyle)
 
-      const rowStyle = { fontFamily: 'monospace', fontSize: '11px', color: '#bbbbbb' }
+      const rowStyle = { fontFamily: gameFont(), fontSize: '11px', color: '#bbbbbb' }
 
       for (let i = 0; i < Math.min(meta.sessions.length, 6); i++) {
         const s = meta.sessions[i]
@@ -215,8 +217,8 @@ export class ProfileScene extends Phaser.Scene {
     g.strokeRoundedRect(x, y, w, h, 6)
 
     this.add.text(x + 12, y + 6, title, {
-      fontFamily: 'monospace', fontSize: '12px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '12px',
+      color: '#FFD700',
     })
   }
 

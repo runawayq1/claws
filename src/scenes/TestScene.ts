@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { Player, type HeroType } from '../entities/Player'
 import { Orc2 } from '../entities/Orc2'
 import { Orc1 } from '../entities/Orc1'
@@ -127,20 +128,16 @@ export class TestScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 30, 'HITBOX TEST', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '28px',
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 4,
     }).setOrigin(0.5, 0).setDepth(20)
 
     // Back button
     const backBtn = this.add.text(16, 16, '< BACK', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#888888',
-      stroke: '#000000',
-      strokeThickness: 3,
       backgroundColor: '#1a1a2e',
       padding: { x: 10, y: 6 },
     }).setOrigin(0, 0).setDepth(20).setInteractive({ useHandCursor: true })
@@ -151,13 +148,13 @@ export class TestScene extends Phaser.Scene {
 
     // Row labels
     this.add.text(20, 110, 'HEROES', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#aaffaa', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#aaffaa',
     }).setDepth(20)
     this.add.text(20, 310, 'ENEMIES', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#ffaaaa', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#ffaaaa',
     }).setDepth(20)
     this.add.text(20, 500, 'OBJECTS', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#aaaaff', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#aaaaff',
     }).setDepth(20)
 
     // Create animations
@@ -195,8 +192,8 @@ export class TestScene extends Phaser.Scene {
 
       const bw = body.width, bh = body.height
       this.add.text(x, heroBottomY + 10, `${heroNames[i]}\n${Math.round(bw)}×${Math.round(bh)}`, {
-        fontFamily: 'monospace', fontSize: '11px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '11px', color: '#ffffff',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -261,8 +258,8 @@ export class TestScene extends Phaser.Scene {
 
       const bw = body.width, bh = body.height
       this.add.text(x, enemyBottomY + 10, `${def.name}\n${Math.round(bw)}×${Math.round(bh)}`, {
-        fontFamily: 'monospace', fontSize: '11px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '11px', color: '#ffffff',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -304,8 +301,8 @@ export class TestScene extends Phaser.Scene {
       }
 
       this.add.text(x, objBottomY + 8, key, {
-        fontFamily: 'monospace', fontSize: '10px', color: '#ccccff',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '10px', color: '#ccccff',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -313,7 +310,7 @@ export class TestScene extends Phaser.Scene {
     // ROW 4: Boss (y=700)
     // -----------------------------------------------------------------------
     this.add.text(20, 640, 'BOSS', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#ff4444', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#ff4444',
     }).setDepth(20)
 
     // Create boss animations
@@ -343,8 +340,8 @@ export class TestScene extends Phaser.Scene {
       const sprite = this.add.sprite(x, bossRowY, 'boss_demon').setScale(2).setDepth(10)
       sprite.play(a.key)
       this.add.text(x, bossRowY + 80, bossLabels[i], {
-        fontFamily: 'monospace', fontSize: '11px', color: '#ff8888',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '11px', color: '#ff8888',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -357,11 +354,9 @@ export class TestScene extends Phaser.Scene {
 
     // Boss Test button
     const bossBtn = this.add.text(width - 16, 16, 'BOSS TEST >', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#ff4444',
-      stroke: '#000000',
-      strokeThickness: 3,
       backgroundColor: '#1a1a2e',
       padding: { x: 10, y: 6 },
     }).setOrigin(1, 0).setDepth(20).setInteractive({ useHandCursor: true })
@@ -371,11 +366,9 @@ export class TestScene extends Phaser.Scene {
 
     // Swords Test button (right side, below boss button)
     const swordsBtn = this.add.text(width - 16, 50, 'SWORDS TEST >', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#ffaa44',
-      stroke: '#000000',
-      strokeThickness: 3,
       backgroundColor: '#1a1a2e',
       padding: { x: 10, y: 6 },
     }).setOrigin(1, 0).setDepth(20).setInteractive({ useHandCursor: true })

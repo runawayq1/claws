@@ -1,15 +1,13 @@
 import Phaser from 'phaser'
 import { CONFIG } from '../config/GameConfig'
 import { GameScene } from './GameScene'
-import { FlyingEye } from '../entities/FlyingEye'
-import { SandGolem } from '../entities/SandGolem'
 import { GENERIC_POOL, HERO_BRANCHES, getIconFrame } from '../systems/UpgradeSystem'
 import { MetaProgress, META_UPGRADES, RUN1_QUESTS, type SessionRecord, type QuestDef } from '../systems/MetaProgress'
 import { SessionLogger } from '../systems/SessionLogger'
 import { supabase } from '../systems/SupabaseClient'
 import { Player } from '../entities/Player'
 import { shouldShowHint } from '../systems/HintFlags'
-import { isMobileUserAgent, isPortrait } from '../utils/device'
+import { isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
 
 const HERO_DISPLAY_NAMES: Record<string, string> = {
   huntress: 'Lyra', muller: 'Givi', ignara: 'Ignara',
@@ -41,6 +39,10 @@ const HUD_HERO_BRANCHES: Record<string, string[]> = {
   huntress: ['melee', 'spear'], khashin: ['wind', 'sand'],
   ignara: ['fireball'], muller: ['crystal'],
 }
+
+const KILL_MILESTONES: [number, string][] = [
+  [50, '50 KILLS'], [100, 'CENTURION'], [250, 'SLAUGHTER'], [500, 'MASSACRE'], [1000, 'GENOCIDE'],
+]
 
 export class UIScene extends Phaser.Scene {
   private gameScene!: GameScene
@@ -111,6 +113,8 @@ export class UIScene extends Phaser.Scene {
   // Track which quest IDs have already been toasted this run
   private _toastedQuests: Set<string> = new Set()
   private _sifraMarkerSince = 0  // ms timestamp when Sifra marker first appeared on minimap
+  private _tutorialComplete = false  // cached from MetaProgress — avoids JSON.parse in drawMinimap
+  private _vignetteWasVisible = false
 
   constructor() {
     super({ key: 'UIScene' })
@@ -123,6 +127,7 @@ export class UIScene extends Phaser.Scene {
     // don't show toasts or trigger the bonus picker on subsequent runs.
     const _metaAtStart = MetaProgress.load()
     this._toastedQuests = new Set(_metaAtStart.completedQuests)
+    this._tutorialComplete = _metaAtStart.tutorialComplete
     this._sifraMarkerSince = 0       // reset Sifra minimap pulse anchor
     // Reset cached game objects — they are destroyed when UIScene stops, and must
     // not be reused across runs (stale refs cause setColor/drawImage crash on restart)
@@ -137,11 +142,9 @@ export class UIScene extends Phaser.Scene {
     }
 
     const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '13px',
       color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 3,
     }
 
     // Main HUD graphics layer
@@ -149,26 +152,28 @@ export class UIScene extends Phaser.Scene {
 
     // HP text (on bar)
     this.hpText = this.add.text(0, 0, '', {
-      ...textStyle, fontSize: '11px',
+      ...textStyle, fontSize: '14px',
     }).setDepth(3)
 
     // Level text (below bars)
     this.lvlText = this.add.text(0, 0, '', {
-      ...textStyle, fontSize: '11px', color: '#66bbff',
+      ...textStyle, fontSize: '14px', color: '#66bbff',
     }).setDepth(2)
 
     // Kills (top-right) — with skull icon
     this.killText = this.add.text(0, 22, '', {
       ...textStyle,
-      fontSize: '14px',
+      fontSize: this.isMobile ? '20px' : '14px',
       color: '#ff8888',
+      fontStyle: this.isMobile ? 'bold' : 'normal',
     }).setDepth(2)
 
     // Difficulty tier (top-right under kills)
     this.tierText = this.add.text(0, 40, '', {
       ...textStyle,
-      fontSize: '11px',
+      fontSize: this.isMobile ? '16px' : '11px',
       color: '#ffaa44',
+      fontStyle: this.isMobile ? 'bold' : 'normal',
     }).setDepth(2)
 
     // Gold counter (top-right under tier) with coin icon
@@ -186,27 +191,26 @@ export class UIScene extends Phaser.Scene {
     this.goldIcon = this.add.image(0, 60, 'hud_coin').setDepth(2)
     this.goldText = this.add.text(0, 56, '', {
       ...textStyle,
-      fontSize: '13px',
+      fontSize: this.isMobile ? '20px' : '13px',
       color: '#FFD700',
+      fontStyle: this.isMobile ? 'bold' : 'normal',
     }).setDepth(2)
 
     // Countdown timer (top-center)
-    this.timerText = this.add.text(0, 38, '', {
-      fontFamily: 'monospace',
-      fontSize: '24px',
+    this.timerText = this.add.text(0, this.isMobile ? 52 : 38, '', {
+      fontFamily: gameFont(),
+      fontSize: this.isMobile ? '30px' : '24px',
       color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 5,
+      fontStyle: 'bold',
     }).setDepth(2)
 
     // Top-area announcement (kill milestones, claws warning)
     this.announcement = this.add.text(0, 0, '', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '20px',
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 4,
     }).setOrigin(0.5).setAlpha(0).setDepth(20)
+    this.announcement.setShadow(0, 1, '#000000', 2, true, true)
 
     // Minimap with clip mask
     this.minimap = this.add.graphics().setDepth(2)
@@ -251,8 +255,7 @@ export class UIScene extends Phaser.Scene {
     if (this.gameScene.localPlayer.heroType === 'sifra') {
       this.stanceIcon = this.add.graphics().setDepth(3)
       this.stanceBtn = this.add.text(0, 0, '', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#88ddff',
-        stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: '11px', color: '#88ddff',
       }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
         this.gameScene.localPlayer.toggleStance()
@@ -268,8 +271,7 @@ export class UIScene extends Phaser.Scene {
     if (this.gameScene.localPlayer.heroType === 'nazar') {
       this.stanceIcon = this.add.graphics().setDepth(3)
       this.stanceBtn = this.add.text(0, 0, '', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#ff6644',
-        stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: '11px', color: '#ff6644',
       }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
         this.gameScene.localPlayer.toggleNazarStance()
@@ -284,8 +286,7 @@ export class UIScene extends Phaser.Scene {
     if (this.gameScene.localPlayer.heroType === 'huntress') {
       this.stanceIcon = this.add.graphics().setDepth(3)
       this.stanceBtn = this.add.text(0, 0, '', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#2ecc71',
-        stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: '11px', color: '#2ecc71',
       }).setOrigin(0, 0.5).setInteractive().setDepth(3)
       this.stanceBtn.on('pointerdown', () => {
         this.gameScene.localPlayer.toggleHuntressStance()
@@ -320,8 +321,8 @@ export class UIScene extends Phaser.Scene {
       this.mobileStancePill = pill
       // Small stance indicator label (bottom-right)
       const lbl = this.add.text(width - 12, height - 12, '', {
-        fontFamily: 'monospace', fontSize: '18px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 3, align: 'center',
+        fontFamily: gameFont(), fontSize: '18px', color: '#ffffff',
+        align: 'center',
       }).setOrigin(1, 1).setDepth(21).setAlpha(0.8)
       this.mobileStanceLbl = lbl
       this.gameScene.events.on('stance-changed', () => this.updateMobileStanceBtn())
@@ -334,8 +335,7 @@ export class UIScene extends Phaser.Scene {
       // TAP hint on first game — fades out after 2s
       if (shouldShowHint('mobile_stance_tap')) {
         const tapHint = this.add.text(width - 52, height - 50, 'TAP', {
-          fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
-          stroke: '#000000', strokeThickness: 2,
+          fontFamily: gameFont(), fontSize: '13px', color: '#aaaaaa',
         }).setOrigin(0.5).setDepth(22).setAlpha(0.6)
         this.time.delayedCall(1500, () => {
           this.tweens.add({ targets: tapHint, alpha: 0, duration: 800, onComplete: () => tapHint.destroy() })
@@ -352,11 +352,9 @@ export class UIScene extends Phaser.Scene {
       const pauseG = this.add.graphics().setDepth(22).setScrollFactor(0)
 
       this.add.text(btnX + btnSize / 2, btnY + btnSize / 2, '❚❚', {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize: '16px',
         color: '#aabbcc',
-        stroke: '#000000',
-        strokeThickness: 3,
       }).setOrigin(0.5).setDepth(23).setScrollFactor(0)
 
       // Draw button background
@@ -378,13 +376,12 @@ export class UIScene extends Phaser.Scene {
 
     // Branch mastery level-up popup (fixed HUD position, non-blocking)
     this.masteryPopup = this.add.text(0, 80, '', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '20px',
       color: '#ffdd00',
-      stroke: '#000000',
-      strokeThickness: 4,
       fontStyle: 'bold',
     }).setOrigin(0.5, 0).setDepth(20).setAlpha(0)
+    this.masteryPopup.setShadow(0, 1, '#000000', 2, true, true)
 
     // Listen for branch mastery level-ups emitted by the Player via scene events
     this.gameScene.events.on('branch-mastery-levelup', ({ branch, level }: { branch: string; level: number }) => {
@@ -431,6 +428,90 @@ export class UIScene extends Phaser.Scene {
       this.scale.off('resize', onScaleResize)
       MetaProgress.clearQuestCallbacks()
     })
+
+    // Desktop-only cheat/debug panel
+    if (!this.isMobile) this.setupCheatPanel()
+  }
+
+  // ── Cheat Panel (desktop only) ───────────────────────────────────────
+  private _cheatGodMode = false
+  private _cheatObjects: Phaser.GameObjects.GameObject[] = []
+
+  private setupCheatPanel() {
+    const gs = this.gameScene
+    if (!gs) return
+
+    let panelOpen = false
+    const objs = this._cheatObjects
+    const font = { fontFamily: gameFont(), fontSize: '11px', color: '#aaaaaa', backgroundColor: '#1a1a2e' }
+
+    // Toggle with backtick / tilde key (raw DOM event — Phaser may not map BACKQUOTE)
+    const togglePanel = (e: KeyboardEvent) => {
+      if (e.code === 'Backquote') {
+        panelOpen = !panelOpen
+        for (const o of objs) (o as any).setVisible(panelOpen)
+      }
+    }
+    window.addEventListener('keydown', togglePanel)
+    this.events.once('shutdown', () => window.removeEventListener('keydown', togglePanel))
+
+    const { height } = this.scale
+    const x = 8
+    let y = height - 18
+
+    const addBtn = (label: string, fn: () => void) => {
+      const btn = this.add.text(x, y, label, font)
+        .setDepth(9999).setVisible(false).setInteractive({ useHandCursor: true })
+        .setPadding(4, 2, 4, 2).setScrollFactor(0)
+      btn.on('pointerover', () => btn.setColor('#FFD700'))
+      btn.on('pointerout', () => btn.setColor('#aaaaaa'))
+      btn.on('pointerdown', fn)
+      objs.push(btn)
+      y -= 18
+      return btn
+    }
+
+    addBtn('[+1000 Gold]', () => {
+      for (let i = 0; i < 10; i++) gs.goldSystem?.spawnOrb(gs.localPlayer.x, gs.localPlayer.y, 100)
+    })
+
+    addBtn('[Level Up]', () => {
+      gs.localPlayer.addXP(gs.localPlayer.xpToNextLevel())
+    })
+
+    addBtn('[Spawn Boss]', () => {
+      (gs as any).spawnClawsBoss()
+    })
+
+    addBtn('[Kill All]', () => {
+      for (const e of gs.enemies.getChildren() as any[]) {
+        if (e.active && typeof e.die === 'function') e.die()
+      }
+    })
+
+    const godBtn = addBtn('[God Mode: OFF]', () => {
+      this._cheatGodMode = !this._cheatGodMode
+      godBtn.setText(`[God Mode: ${this._cheatGodMode ? 'ON' : 'OFF'}]`)
+      godBtn.setColor(this._cheatGodMode ? '#44ff44' : '#aaaaaa')
+    })
+
+    addBtn('[+10 Levels]', () => {
+      for (let i = 0; i < 10; i++) gs.localPlayer.addXP(gs.localPlayer.xpToNextLevel())
+    })
+
+    addBtn('[Full HP]', () => {
+      gs.localPlayer.hp = gs.localPlayer.maxHp
+    })
+
+    addBtn('[Speed ×2]', () => {
+      gs.localPlayer.speed *= 2
+    })
+
+    // Header
+    const hdr = this.add.text(x, y, '~ CHEATS ~', {
+      ...font, color: '#FFD700', fontSize: '12px',
+    }).setDepth(9999).setVisible(false).setScrollFactor(0)
+    objs.push(hdr)
   }
 
   private updatePositions() {
@@ -445,14 +526,22 @@ export class UIScene extends Phaser.Scene {
 
     // In portrait, kills/tier/gold panel moves below minimap
     const mmSize = portrait ? 90 : CONFIG.MINIMAP_SIZE
-    const killsY = portrait ? CONFIG.MINIMAP_MARGIN + 76 + mmSize + 8 : 0
-    this.killText.setPosition(width - 20, killsY + 22).setOrigin(1, 0)
-    this.tierText.setPosition(width - 20, killsY + 40).setOrigin(1, 0)
-    this.goldText.setPosition(width - 20, killsY + 56).setOrigin(1, 0)
-    this.goldIcon.setPosition(width - 20 - this.goldText.width - 10, killsY + 63)
-    this.timerText.setPosition(width / 2, 38).setOrigin(0.5, 0)
+    const killsY = portrait ? CONFIG.MINIMAP_MARGIN + 76 + mmSize + 8 : 24
+    const mobHud = this.isMobile
+    this.killText.setPosition(width - 20, killsY + 14).setOrigin(1, 0)
+    this.tierText.setPosition(width - 20, killsY + (mobHud ? 38 : 32)).setOrigin(1, 0)
+    this.goldText.setPosition(width - 20, killsY + (mobHud ? 60 : 48)).setOrigin(1, 0)
+    this.goldIcon.setPosition(width - 20 - this.goldText.width - 12, killsY + (mobHud ? 68 : 55))
+    this.timerText.setPosition(width / 2, this.isMobile ? 52 : 38).setOrigin(0.5, 0)
     this.announcement.setPosition(width / 2, 68)
-    if (this.stanceBtn) this.stanceBtn.setPosition(56, 72)
+    // Stance btn — anchor below HP/energy block (bottom-left)
+    if (this.stanceBtn) {
+      const sc = 1.25
+      const _hpH = Math.round(24 * sc), _ebH = Math.round(12 * sc)
+      const _totalH = _hpH + 3 + _ebH
+      const _stanceBtnY = height - _totalH - 12 - 20 // above HP block
+      this.stanceBtn.setPosition(8, _stanceBtnY)
+    }
     if (this.mobileStanceBtn) {
       const zoneH = height - 200
       this.mobileStanceBtn.setPosition(width * 0.75, 200 + zoneH / 2).setSize(width / 2, zoneH)
@@ -559,8 +648,7 @@ export class UIScene extends Phaser.Scene {
     if (isMob) {
       // ── Mobile: tap to move ──
       const title = this.add.text(cx, cy - 60, 'TAP TO MOVE', {
-        fontFamily: 'monospace', fontSize: '24px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 4,
+        fontFamily: gameFont(), fontSize: '24px', color: '#ffffff',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(title)
 
@@ -580,21 +668,18 @@ export class UIScene extends Phaser.Scene {
       objs.push(ripple)
 
       const sub = this.add.text(cx, cy + 70, 'Tap anywhere to move your hero', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '11px', color: '#aaaaaa',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(sub)
 
       const dismiss = this.add.text(cx, cy + 110, 'tap to start', {
-        fontFamily: 'monospace', fontSize: '10px', color: '#666666',
-        stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: '13px', color: '#666666',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(dismiss)
     } else {
       // ── Desktop: WASD keys ──
       const title = this.add.text(cx, cy - 80, 'CONTROLS', {
-        fontFamily: 'monospace', fontSize: '28px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 5,
+        fontFamily: gameFont(), fontSize: '28px', color: '#ffffff',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(title)
 
@@ -614,8 +699,7 @@ export class UIScene extends Phaser.Scene {
         keyG.fillRoundedRect(kx + 2, ky + 2, keySize - 4, keySize / 3, { tl: 4, tr: 4, bl: 0, br: 0 })
 
         const kt = this.add.text(kx + keySize / 2, ky + keySize / 2, label, {
-          fontFamily: 'monospace', fontSize: '16px', color: highlight ? '#aaccee' : '#889999',
-          stroke: '#000000', strokeThickness: 2,
+          fontFamily: gameFont(), fontSize: '16px', color: highlight ? '#aaccee' : '#889999',
         }).setOrigin(0.5).setDepth(dep + 2).setAlpha(0)
         objs.push(kt)
       }
@@ -633,28 +717,24 @@ export class UIScene extends Phaser.Scene {
       objs.push(keyG)
 
       const moveLabel = this.add.text(cx, keysStartY + (keySize + gap) * 2 + 12, 'Move', {
-        fontFamily: 'monospace', fontSize: '12px', color: '#aaaaaa',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '12px', color: '#aaaaaa',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(moveLabel)
 
       // Attack info
       const atkLabel = this.add.text(cx, keysStartY + (keySize + gap) * 2 + 34, 'Attack is automatic', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#888888',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '11px', color: '#888888',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(atkLabel)
 
       // Pause hint
       const pauseLabel = this.add.text(cx, keysStartY + (keySize + gap) * 2 + 56, 'SPACE — pause', {
-        fontFamily: 'monospace', fontSize: '10px', color: '#666666',
-        stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: '13px', color: '#666666',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(pauseLabel)
 
       const dismiss = this.add.text(cx, keysStartY + (keySize + gap) * 2 + 82, 'press any key to start', {
-        fontFamily: 'monospace', fontSize: '10px', color: '#555555',
-        stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: '13px', color: '#555555',
       }).setOrigin(0.5).setDepth(dep + 1).setAlpha(0)
       objs.push(dismiss)
     }
@@ -731,8 +811,7 @@ export class UIScene extends Phaser.Scene {
       const heroName = HERO_DISPLAY_NAMES[p.heroType] || p.heroType
       const accentHex = '#' + accentColor.toString(16).padStart(6, '0')
       const header = this.add.text(width / 2, py + (compact ? 18 : 24), `⏸  ${heroName.toUpperCase()}`, {
-        fontFamily: 'monospace', fontSize: compact ? '16px' : '22px', color: accentHex,
-        stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: compact ? '16px' : '22px', color: accentHex,
       }).setOrigin(0.5).setDepth(dep)
       objs.push(header)
 
@@ -747,8 +826,7 @@ export class UIScene extends Phaser.Scene {
       panelG.strokeRect(px + 8, barY, panelW - 16, barH)
       const infoStr = `${mins}:${secs.toString().padStart(2, '0')}   ·   LV ${p.level}   ·   ${p.kills} kills`
       objs.push(this.add.text(width / 2, barY + barH / 2, infoStr, {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '13px', color: '#aabbcc',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: compact ? '10px' : '13px', color: '#aabbcc',
       }).setOrigin(0.5).setDepth(dep))
 
       // ── Tab row ──
@@ -763,16 +841,14 @@ export class UIScene extends Phaser.Scene {
       const tabStatsG = this.add.graphics().setDepth(dep)
       objs.push(tabStatsG)
       const tabStatsLbl = this.add.text(tabStatsX + tabW / 2, tabY + tabH / 2, 'STATS', {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ffddcc',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: compact ? '10px' : '12px', color: '#ffddcc',
       }).setOrigin(0.5).setDepth(dep)
       objs.push(tabStatsLbl)
 
       const tabInvG = this.add.graphics().setDepth(dep)
       objs.push(tabInvG)
       const tabInvLbl = this.add.text(tabInvX + tabW / 2, tabY + tabH / 2, 'INVENTORY', {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#886666',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: compact ? '10px' : '12px', color: '#886666',
       }).setOrigin(0.5).setDepth(dep)
       objs.push(tabInvLbl)
 
@@ -818,8 +894,7 @@ export class UIScene extends Phaser.Scene {
       resumeG.fillStyle(0x226633, 0.8).fillRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8)
       resumeG.lineStyle(1, 0x44ff66, 0.4).strokeRoundedRect(midX - btnGap / 2 - btnW, btnY - btnH / 2, btnW, btnH, 8)
       const resumeBtn = this.add.text(midX - btnGap / 2 - btnW / 2, btnY, '▶  RESUME', {
-        fontFamily: 'monospace', fontSize: compact ? '11px' : '13px', color: '#66ff88',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: compact ? '11px' : '13px', color: '#66ff88',
       }).setOrigin(0.5).setDepth(dep)
       objs.push(resumeBtn)
       const resumeZone = this.add.zone(midX - btnGap / 2 - btnW / 2, btnY, btnW, btnH).setInteractive({ useHandCursor: true }).setDepth(dep)
@@ -834,8 +909,7 @@ export class UIScene extends Phaser.Scene {
       quitG.fillStyle(0x442222, 0.8).fillRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8)
       quitG.lineStyle(1, 0xff4444, 0.3).strokeRoundedRect(midX + btnGap / 2, btnY - btnH / 2, btnW, btnH, 8)
       const quitBtn = this.add.text(midX + btnGap / 2 + btnW / 2, btnY, '✕  QUIT', {
-        fontFamily: 'monospace', fontSize: compact ? '11px' : '13px', color: '#ff6666',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: compact ? '11px' : '13px', color: '#ff6666',
       }).setOrigin(0.5).setDepth(dep)
       objs.push(quitBtn)
       const quitZone = this.add.zone(midX + btnGap / 2 + btnW / 2, btnY, btnW, btnH).setInteractive({ useHandCursor: true }).setDepth(dep)
@@ -853,8 +927,7 @@ export class UIScene extends Phaser.Scene {
 
       // SPACE hint
       objs.push(this.add.text(width / 2, py + panelH + (compact ? 8 : 14), 'SPACE', {
-        fontFamily: 'monospace', fontSize: '9px', color: '#334455',
-        stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: '12px', color: '#334455',
       }).setOrigin(0.5).setDepth(dep))
 
       this.pauseTexts = objs as Phaser.GameObjects.Text[]
@@ -923,8 +996,7 @@ export class UIScene extends Phaser.Scene {
 
     const sectionTitle = (x: number, y: number, text: string) => {
       const t = this.add.text(x, y, text, {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#8899aa',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: compact ? '10px' : '12px', color: '#8899aa',
       }).setDepth(dep)
       objs.push(t)
       divG.lineStyle(1, 0x445566, 0.3)
@@ -934,10 +1006,10 @@ export class UIScene extends Phaser.Scene {
     const valColor = '#ccddee'
     const statRow = (x: number, yRef: { v: number }, label: string, val: string, valCol = valColor) => {
       objs.push(this.add.text(x, yRef.v, label, {
-        fontFamily: 'monospace', fontSize: sf, color: '#667788', stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: sf, color: '#667788',
       }).setDepth(dep))
       objs.push(this.add.text(x + (compact ? 72 : 100), yRef.v, val, {
-        fontFamily: 'monospace', fontSize: sf, color: valCol, stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: sf, color: valCol,
       }).setDepth(dep))
       yRef.v += sGap
     }
@@ -1026,15 +1098,14 @@ export class UIScene extends Phaser.Scene {
         const levelName = Player.MASTERY_NAMES[level] || ''
 
         objs.push(this.add.text(rightX, by, displayName, {
-          fontFamily: 'monospace', fontSize: compact ? '10px' : '11px',
+          fontFamily: gameFont(), fontSize: compact ? '10px' : '11px',
           color: '#' + color.toString(16).padStart(6, '0'),
-          stroke: '#000000', strokeThickness: 2,
         }).setDepth(dep + 1))
 
         if (levelName) {
           objs.push(this.add.text(rightX + (compact ? 55 : 65), by, levelName, {
-            fontFamily: 'monospace', fontSize: compact ? '9px' : '10px',
-            color: '#ffddaa', stroke: '#000000', strokeThickness: 1,
+            fontFamily: gameFont(), fontSize: compact ? '12px' : '10px',
+            color: '#ffddaa',
           }).setDepth(dep + 1))
         }
 
@@ -1086,17 +1157,16 @@ export class UIScene extends Phaser.Scene {
 
         const xpLabel = level >= 3 ? 'MAX' : `${Math.floor(xp)}/${nextThreshold}`
         objs.push(this.add.text(barX2 + barW + 6, diamondY, xpLabel, {
-          fontFamily: 'monospace', fontSize: compact ? '8px' : '9px',
+          fontFamily: gameFont(), fontSize: compact ? '11px' : '9px',
           color: level >= 3 ? '#ffdd44' : '#777777',
-          stroke: '#000000', strokeThickness: 1,
         }).setOrigin(0, 0.5).setDepth(dep + 1))
 
         // Perk summary — bonuses gained at current mastery level
         const perkText = getPerksSummary(branch, level)
         if (perkText) {
           objs.push(this.add.text(rightX, diamondY + (compact ? 10 : 12), perkText, {
-            fontFamily: 'monospace', fontSize: compact ? '8px' : '9px',
-            color: '#88ddaa', stroke: '#000000', strokeThickness: 1,
+            fontFamily: gameFont(), fontSize: compact ? '11px' : '9px',
+            color: '#88ddaa',
           }).setDepth(dep + 1))
         }
       })
@@ -1146,8 +1216,7 @@ export class UIScene extends Phaser.Scene {
 
     // Tooltip
     const tooltipText = this.add.text(0, 0, '', {
-      fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ffddcc',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: compact ? '10px' : '12px', color: '#ffddcc',
       backgroundColor: '#1a0505',
       padding: { x: 6, y: 4 },
     }).setDepth(dep + 4).setAlpha(0).setOrigin(0)
@@ -1188,8 +1257,7 @@ export class UIScene extends Phaser.Scene {
           objs.push(icon)
         } else {
           objs.push(this.add.text(sx + slotSize / 2, sy + slotSize / 2, skill.label.substring(0, 3).toUpperCase(), {
-            fontFamily: 'monospace', fontSize: compact ? '11px' : '14px', color: '#cc8866',
-            stroke: '#000000', strokeThickness: 2,
+            fontFamily: gameFont(), fontSize: compact ? '11px' : '14px', color: '#cc8866',
           }).setOrigin(0.5).setDepth(dep + 2))
         }
 
@@ -1224,8 +1292,7 @@ export class UIScene extends Phaser.Scene {
     let infoY = gridY
 
     const skillTitleStyle = {
-      fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#8899aa',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: compact ? '10px' : '12px', color: '#8899aa',
     }
     objs.push(this.add.text(infoX, infoY, '◆ SKILLS', skillTitleStyle).setDepth(dep + 1))
 
@@ -1261,8 +1328,7 @@ export class UIScene extends Phaser.Scene {
 
     if (pickedSkills.length === 0) {
       objs.push(this.add.text(infoX, infoY, 'No skills yet', {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#445566',
-        stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: compact ? '10px' : '12px', color: '#445566',
       }).setDepth(dep + 1))
     } else {
       const maxSkills = compact ? 8 : 12
@@ -1272,19 +1338,17 @@ export class UIScene extends Phaser.Scene {
         const s = pickedSkills[i]
         const lvlTag = s.level > 1 ? ` Lv${s.level}` : ''
         objs.push(this.add.text(infoX, infoY, s.label + lvlTag, {
-          fontFamily: 'monospace', fontSize: compact ? '10px' : '12px', color: '#ccddee',
-          stroke: '#000000', strokeThickness: 2,
+          fontFamily: gameFont(), fontSize: compact ? '10px' : '12px', color: '#ccddee',
         }).setDepth(dep + 1))
         objs.push(this.add.text(infoX, infoY + (compact ? 11 : 14), s.desc, {
-          fontFamily: 'monospace', fontSize: compact ? '7px' : '9px', color: '#556666',
-          stroke: '#000000', strokeThickness: 1,
+          fontFamily: gameFont(), fontSize: compact ? '11px' : '9px', color: '#556666',
           wordWrap: { width: maxW },
         }).setDepth(dep + 1))
         infoY += skillGap
       }
       if (pickedSkills.length > maxSkills) {
         objs.push(this.add.text(infoX, infoY, `+${pickedSkills.length - maxSkills} more...`, {
-          fontFamily: 'monospace', fontSize: '9px', color: '#445566', stroke: '#000000', strokeThickness: 1,
+          fontFamily: gameFont(), fontSize: '12px', color: '#445566',
         }).setDepth(dep + 1))
       }
     }
@@ -1379,9 +1443,9 @@ export class UIScene extends Phaser.Scene {
 
     // Title
     const t1 = this.add.text(cx, topY, title, {
-      fontFamily: 'monospace', fontSize: '32px', color: titleColor,
-      stroke: '#000000', strokeThickness: 6,
+      fontFamily: gameFont(), fontSize: '32px', color: titleColor,
     }).setOrigin(0.5).setDepth(31)
+    t1.setShadow(0, 1, '#000000', 2, true, true)
 
     // Stats panel
     const panelG = this.add.graphics().setDepth(31)
@@ -1393,8 +1457,7 @@ export class UIScene extends Phaser.Scene {
     panelG.strokeRoundedRect(px, py, pw, ph, 10)
 
     const infoStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: 'monospace', fontSize: '15px', color: '#cccccc',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '15px', color: '#cccccc',
     }
 
     const t2 = this.add.text(cx, py + 18, `Time: ${timeStr}`, infoStyle).setOrigin(0.5).setDepth(32)
@@ -1414,13 +1477,12 @@ export class UIScene extends Phaser.Scene {
     lbG.strokeRoundedRect(lbX, lbY, lbW, lbH, 8)
 
     const lbTitle = this.add.text(cx, lbY + 14, 'TOP KILLS', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#FFD700',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#FFD700',
     }).setOrigin(0.5).setDepth(32)
 
     const lbEntries: Phaser.GameObjects.Text[] = [lbTitle]
     const lbLoading = this.add.text(cx, lbY + lbH / 2 + 6, 'Loading...', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#666677',
+      fontFamily: gameFont(), fontSize: '12px', color: '#666677',
     }).setOrigin(0.5).setDepth(32)
     lbEntries.push(lbLoading)
 
@@ -1430,8 +1492,7 @@ export class UIScene extends Phaser.Scene {
     // Buttons
     const btnY = lbY + lbH + 20
     const btnStyle = {
-      fontFamily: 'monospace', fontSize: '18px', color: '#FFD700',
-      stroke: '#000000', strokeThickness: 4,
+      fontFamily: gameFont(), fontSize: '18px', color: '#FFD700',
       backgroundColor: '#2a2a4e', padding: { x: 20, y: 10 },
     }
 
@@ -1531,8 +1592,7 @@ export class UIScene extends Phaser.Scene {
       })
       // Hint label below FORGE button
       const hint = this.add.text(cx, btnY + 86 + 24, '★ Spend gold on upgrades!', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#FFD700',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '11px', color: '#FFD700',
       }).setOrigin(0.5).setDepth(32)
       this.endTexts.push(glow as any, hint)
     }
@@ -1580,7 +1640,7 @@ export class UIScene extends Phaser.Scene {
       const nameLabel = (entry.player_name || '???').slice(0, 8).padEnd(8)
       const txt = this.add.text(cx, lbY + 32 + i * 24,
         `${i + 1}. ${nameLabel} ${heroLabel} ${String(entry.kills).padStart(4)}k  ${t}  L${entry.level}`,
-        { fontFamily: 'monospace', fontSize: '11px', color, stroke: '#000000', strokeThickness: 1 }
+        { fontFamily: gameFont(), fontSize: '11px', color }
       ).setOrigin(0.5).setDepth(32)
       lbEntries.push(txt)
       // Track for cleanup so it's destroyed on Try Again / Choose Hero
@@ -1602,14 +1662,12 @@ export class UIScene extends Phaser.Scene {
     banner.strokeRoundedRect(width / 2 - 140, bannerY, 280, bannerH, 8)
 
     const title = this.add.text(width / 2, bannerY + 14, 'ACHIEVEMENT UNLOCKED!', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#FFD700',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '12px', color: '#FFD700',
     }).setOrigin(0.5).setDepth(51)
 
     const nameTexts = names.map((name, i) =>
       this.add.text(width / 2, bannerY + 34 + i * 22, `★ ${name}`, {
-        fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '13px', color: '#ffffff',
       }).setOrigin(0.5).setDepth(51)
     )
 
@@ -1689,7 +1747,7 @@ export class UIScene extends Phaser.Scene {
     const margin = CONFIG.MINIMAP_MARGIN
     const { width } = this.scale
     const mapX = width - size - margin - 4
-    const mapY = margin + 76
+    const mapY = margin + (this.isMobile ? 76 : 92)
 
     // Background with frame
     mm.fillStyle(0x0a0a1a, 0.75)
@@ -1753,10 +1811,11 @@ export class UIScene extends Phaser.Scene {
       const ex = toMmX(enemy.x)
       const ey = toMmY(enemy.y)
       if (ex < mapX || ex > mapX + size || ey < mapY || ey > mapY + size) continue
-      if (enemy instanceof FlyingEye) mm.fillStyle(0xff4444)
-      else if (enemy instanceof SandGolem) mm.fillStyle(0xff8800)
+      const e = enemy as any
+      if (e.isFlying) mm.fillStyle(0xff4444)
+      else if (e.isSandGolem) mm.fillStyle(0xff8800)
       else mm.fillStyle(0xcccccc)
-      const s = enemy instanceof SandGolem ? 3 : 1.5
+      const s = e.isSandGolem ? 3 : 1.5
       mm.fillRect(ex - s / 2, ey - s / 2, s, s)
     }
 
@@ -1767,8 +1826,7 @@ export class UIScene extends Phaser.Scene {
     mm.strokeCircle(mapX + half, mapY + half, 5)
 
     // Sifra NPC marker (tutorial quest 3) — shown only when active
-    const meta = MetaProgress.load()
-    if (!meta.tutorialComplete && gs.selectedHeroType === 'amun' && gs.sifraNpcX) {
+    if (!this._tutorialComplete && gs.selectedHeroType === 'amun' && gs.sifraNpcX) {
       // Track first appearance to start the pulse anchor time
       if (this._sifraMarkerSince === 0) this._sifraMarkerSince = this.time.now
       const sinceMs = this.time.now - this._sifraMarkerSince
@@ -1809,6 +1867,11 @@ export class UIScene extends Phaser.Scene {
     if (!this.gameScene?.localPlayer) return
     const p = this.gameScene.localPlayer
 
+    // God mode: keep HP full
+    if (this._cheatGodMode && p.hp > 0) {
+      p.hp = p.maxHp
+    }
+
     // Detect player death directly
     if (p.hp <= 0 && !this.endScreenShown) {
       this.endScreenShown = true
@@ -1832,9 +1895,9 @@ export class UIScene extends Phaser.Scene {
     {
       const hpRatio = p.hp / (p.maxHp || 1)
       const v = this.vignetteGfx
-      v.clear()
-      if (!this.isPaused && hpRatio <= 0.2 && hpRatio > 0) {
-        // Use actual visible world bounds (accounts for UIScene camera zoom 0.92)
+      const vignetteVisible = !this.isPaused && hpRatio <= 0.2 && hpRatio > 0
+      if (vignetteVisible) {
+        v.clear()
         const cam = this.cameras.main
         const z = cam.zoom || 1
         const vx = cam.scrollX + (cam.width / 2) - (cam.width / 2 / z)
@@ -1845,22 +1908,20 @@ export class UIScene extends Phaser.Scene {
         const edgeW = 75
         const strips = 10
         const sw = edgeW / strips
-        // Smooth gradient vignette — quadratic falloff from rim inward
         for (let i = 0; i < strips; i++) {
-          const t = i / strips                      // 0 at rim, approaches 1 inward
-          const a = intensity * (1 - t) * (1 - t)  // quadratic falloff
+          const t = i / strips
+          const a = intensity * (1 - t) * (1 - t)
           const pos = i * sw
           v.fillStyle(0xff0000, a)
-          // Left edge
           v.fillRect(vx + pos, vy, sw + 1, vh)
-          // Right edge
           v.fillRect(vx + vw - pos - sw, vy, sw + 1, vh)
-          // Top edge
           v.fillRect(vx, vy + pos, vw, sw + 1)
-          // Bottom edge
           v.fillRect(vx, vy + vh - pos - sw, vw, sw + 1)
         }
+      } else if (this._vignetteWasVisible) {
+        v.clear()
       }
+      this._vignetteWasVisible = vignetteVisible
     }
 
     // --- Quest time tracking (once per second) ---
@@ -1872,23 +1933,27 @@ export class UIScene extends Phaser.Scene {
       this._refreshQuestPanel()
     }
 
-    // --- Timer text + pulse animation (always update, cheap) ---
+    // --- Timer text + pulse animation ---
     const remaining = Math.max(0, CONFIG.RUN_DURATION - this.gameScene.gameTime)
-    const mins = Math.floor(remaining / 60000)
-    const secs = Math.floor((remaining % 60000) / 1000)
-    const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    const curTimeSec = Math.floor(remaining / 1000)
+    if (curTimeSec !== this._lastRemainingSec) {
+      this._lastRemainingSec = curTimeSec
+      const mins = Math.floor(remaining / 60000)
+      const secs = Math.floor((remaining % 60000) / 1000)
+      this.timerText.setText(`${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`)
+      if (remaining < 60000) {
+        this.timerText.setColor('#ff4444')
+      } else if (remaining < 120000) {
+        this.timerText.setColor('#ffaa44')
+      } else {
+        this.timerText.setColor('#ffffff')
+      }
+    }
     if (remaining < 60000) {
-      this.timerText.setColor('#ff4444')
-      const pulse = 0.85 + Math.sin(this.gameScene.gameTime / 200) * 0.15
-      this.timerText.setScale(pulse)
-    } else if (remaining < 120000) {
-      this.timerText.setColor('#ffaa44')
-      this.timerText.setScale(1)
+      this.timerText.setScale(0.85 + Math.sin(this.gameScene.gameTime / 200) * 0.15)
     } else {
-      this.timerText.setColor('#ffffff')
       this.timerText.setScale(1)
     }
-    this.timerText.setText(timeStr)
 
     // --- Dirty-flag check: gather current driving values ---
     const curHp        = p.hp
@@ -1898,7 +1963,6 @@ export class UIScene extends Phaser.Scene {
     const curLevel     = p.level
     const curKills     = p.kills
     const curGold      = p.goldThisRun
-    const curTimeSec   = Math.floor(remaining / 1000)
 
     // Hero-specific energy bars
     let curEnergy1 = 0, curEnergy2 = 0
@@ -1958,9 +2022,6 @@ export class UIScene extends Phaser.Scene {
     this._lastRemainingSec = curTimeSec
 
     // Kill milestone announcements
-    const KILL_MILESTONES: [number, string][] = [
-      [50, '50 KILLS'], [100, 'CENTURION'], [250, 'SLAUGHTER'], [500, 'MASSACRE'], [1000, 'GENOCIDE'],
-    ]
     for (const [threshold, label] of KILL_MILESTONES) {
       if (curKills >= threshold && !this._killMilestones.has(threshold)) {
         this._killMilestones.add(threshold)
@@ -1978,15 +2039,17 @@ export class UIScene extends Phaser.Scene {
     const heroColor = HERO_COLORS[p.heroType] ?? 0xaaaaaa
 
     // === LAYOUT CONSTANTS ===
-    // LVL circle (48px, like buff icons) at far left, then bars to its right
-    const lvlSize = 48
+    // LVL circle at far left, then bars to its right — anchored to bottom-left
+    const scale = 1.25
+    const lvlSize = Math.round(48 * scale)
     const lvlX = 4                             // circle left edge
     const lvlCX = lvlX + lvlSize / 2           // circle center X
     const barX = lvlX + lvlSize + 4            // bars start after circle
-    const ebW = 95, ebGap = 3
-    const barW = ebW * 2 + ebGap               // HP bar = combined energy width (193px)
-    const hpBarH = 24, ebH = 12
-    const hpBarY = 24                          // HP bar top (below XP bar)
+    const ebW = Math.round(95 * scale), ebGap = 3
+    const barW = ebW * 2 + ebGap               // HP bar = combined energy width
+    const hpBarH = Math.round(24 * scale), ebH = Math.round(12 * scale)
+    const totalH = hpBarH + 3 + ebH            // total height of bars block
+    const hpBarY = this.scale.height - totalH - 12  // anchor to bottom with 12px margin
     const ebY = hpBarY + hpBarH + 3            // energy bars top
     const lvlCY = hpBarY + (hpBarH + 3 + ebH) / 2  // vertically center with bars
 
@@ -2108,89 +2171,58 @@ export class UIScene extends Phaser.Scene {
         // XP label
         const xpLabel = level >= 3 ? 'MAX' : `${Math.floor(xp)}/${nextThreshold}`
         this._masteryLabel = this._masteryLabel ?? this.add.text(0, 0, '', {
-          fontFamily: 'monospace', fontSize: '8px', color: '#888888',
-          stroke: '#000000', strokeThickness: 1,
+          fontFamily: gameFont(), fontSize: '8px', color: '#888888',
         }).setDepth(5).setOrigin(0.5)
         this._masteryLabel.setText(xpLabel).setPosition(barX + barW / 2, ebY + ebH / 2)
         this._masteryLabel.setColor(level >= 3 ? '#ffdd44' : '#888888')
       }
     }
 
-    // === MASTERY DIAMONDS (on energy/mastery bars) ===
+    // === MASTERY STARS (row below energy/mastery bars) ===
     {
-      const dSize = 4
-      const diamondCY = ebY + ebH / 2
+      const starY = ebY + ebH + 8
+      const starSize = Math.round(6 * scale)
+
+      const drawStars = (branch: string, startX: number, color: number) => {
+        const level = p.getMasteryLevel(branch)
+        for (let i = 0; i < 3; i++) {
+          const cx = startX + i * (starSize * 3)
+          if (i < level) {
+            // Filled star
+            g.fillStyle(color, 1)
+            this._drawStar(g, cx, starY, starSize, true)
+          } else {
+            // Empty star outline
+            g.lineStyle(1.5, color, 0.4)
+            this._drawStar(g, cx, starY, starSize, false)
+          }
+        }
+      }
 
       if (hasEnergy) {
         const rightBarX = barX + ebW + ebGap
-        const diamondPairs: Record<string, [string, string]> = {
-          sifra: ['ice', 'lightning'], nazar: ['sword', 'venom'],
-          huntress: ['melee', 'spear'], khashin: ['wind', 'sand'],
-        }
-        let branches: [string, string] | null = diamondPairs[p.heroType] || null
+        const hb = HUD_HERO_BRANCHES[p.heroType]
+        let branches: [string, string] | null = hb && hb.length >= 2 ? [hb[0], hb[1]] : null
         if (p.heroType === 'amun' && p.hasQuakeStance) branches = ['ground', 'quake']
-
         if (branches) {
-          const drawBarDiamonds = (branch: string, bx: number, bw: number) => {
-            const level = p.getMasteryLevel(branch)
-            const color = BRANCH_COLOR[branch] ?? 0xaaaaaa
-            const spacing = bw / 4
-            for (let i = 0; i < 3; i++) {
-              const cx = bx + spacing * (i + 1)
-              const cy = diamondCY
-              if (i < level) {
-                g.fillStyle(0xffffff, 0.85)
-                g.fillTriangle(cx, cy - dSize, cx + dSize, cy, cx - dSize, cy)
-                g.fillTriangle(cx, cy + dSize, cx + dSize, cy, cx - dSize, cy)
-              } else {
-                g.lineStyle(1.5, color, 0.45)
-                g.beginPath()
-                g.moveTo(cx, cy - dSize)
-                g.lineTo(cx + dSize, cy)
-                g.lineTo(cx, cy + dSize)
-                g.lineTo(cx - dSize, cy)
-                g.closePath()
-                g.strokePath()
-              }
-            }
-          }
-          drawBarDiamonds(branches[0], barX, ebW)
-          drawBarDiamonds(branches[1], rightBarX, ebW)
+          drawStars(branches[0], barX + 8, BRANCH_COLOR[branches[0]] ?? 0xaaaaaa)
+          drawStars(branches[1], rightBarX + 8, BRANCH_COLOR[branches[1]] ?? 0xaaaaaa)
         }
       } else {
-        // Single mastery bar diamonds
         const branch = p.heroType === 'ignara' ? 'fireball' : p.heroType === 'muller' ? 'crystal' : 'combat'
-        const level = branch === 'combat' ? 0 : p.getMasteryLevel(branch)
-        const color = BRANCH_COLOR[branch] ?? 0xaaaaaa
-        const spacing = barW / 4
-        for (let i = 0; i < 3; i++) {
-          const cx = barX + spacing * (i + 1)
-          const cy = diamondCY
-          if (i < level) {
-            g.fillStyle(0xffffff, 0.85)
-            g.fillTriangle(cx, cy - dSize, cx + dSize, cy, cx - dSize, cy)
-            g.fillTriangle(cx, cy + dSize, cx + dSize, cy, cx - dSize, cy)
-          } else {
-            g.lineStyle(1.5, color, 0.45)
-            g.beginPath()
-            g.moveTo(cx, cy - dSize)
-            g.lineTo(cx + dSize, cy)
-            g.lineTo(cx, cy + dSize)
-            g.lineTo(cx - dSize, cy)
-            g.closePath()
-            g.strokePath()
-          }
+        if (branch !== 'combat') {
+          drawStars(branch, barX + 8, BRANCH_COLOR[branch] ?? 0xaaaaaa)
         }
       }
     }
 
     // === BIG BUFF ICONS (unified row below HP/energy) ===
     {
-      // In portrait, push buff row below the mobile pause button (y:72–116 → start at 130)
-      const buffStartY = _portrait ? Math.max(ebY + ebH + 24, 130) : ebY + ebH + 24
+      // Buff icons — top-left area (HP moved to bottom)
+      const buffStartY = _portrait ? 130 : 28
       const buffSize = 48
       const buffGap = 4
-      const buffX = barX
+      const buffX = 8
       let bi = 0
       const now = this.gameScene.time.now
 
@@ -2229,8 +2261,7 @@ export class UIScene extends Phaser.Scene {
         const lblIdx = bi * 2 + 1
         if (!this._bigBuffObjs[lblIdx]) {
           this._bigBuffObjs[lblIdx] = this.add.text(0, 0, '', {
-            fontFamily: 'monospace', fontSize: '24px', color: '#ffffff',
-            stroke: '#000000', strokeThickness: 4,
+            fontFamily: gameFont(), fontSize: '24px', color: '#ffffff',
           }).setDepth(3).setOrigin(0.5)
         }
         const lbl = this._bigBuffObjs[lblIdx] as Phaser.GameObjects.Text
@@ -2274,8 +2305,8 @@ export class UIScene extends Phaser.Scene {
     this.goldText.setText(`${p.goldThisRun}`)
     // Reposition coin icon to left of text — portrait shifts kills below minimap
     const _mmSz = _portrait ? 90 : CONFIG.MINIMAP_SIZE
-    const _killsOffY = _portrait ? CONFIG.MINIMAP_MARGIN + 76 + _mmSz + 8 : 0
-    this.goldIcon.setPosition(this.scale.width - 20 - this.goldText.width - 10, _killsOffY + 55)
+    const _killsOffY = _portrait ? CONFIG.MINIMAP_MARGIN + 76 + _mmSz + 8 : 24
+    this.goldIcon.setPosition(this.scale.width - 20 - this.goldText.width - 12, _killsOffY + (this.isMobile ? 68 : 55))
 
     const tier = this.gameScene._online
       ? (this.gameScene._networkAdapter?.serverWave || 1)
@@ -2285,15 +2316,33 @@ export class UIScene extends Phaser.Scene {
     this.tierText.setText(`TIER ${tier}  ${tierStars}`).setColor(tierColor)
 
     // Kills/tier/gold background panel
-    const killPanelW = 130, killPanelH = 56
+    const killPanelW = this.isMobile ? 160 : 130
+    const killPanelH = this.isMobile ? 76 : 56
     const killPanelX = this.scale.width - killPanelW - 10
-    const killPanelY = _killsOffY + 8
+    const killPanelY = _killsOffY + 6
     g.fillStyle(0x0a0a1a, 0.6)
     g.fillRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 4)
 
     // Minimap — throttle to every 3 frames
     this._mmFrame = ((this._mmFrame || 0) + 1) % 3
     if (this._mmFrame === 0) this.drawMinimap()
+  }
+
+  /** Draw a 5-point star (filled or outline) */
+  private _drawStar(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number, filled: boolean) {
+    const pts: number[] = []
+    for (let i = 0; i < 5; i++) {
+      const outerAngle = (i * 72 - 90) * Math.PI / 180
+      pts.push(cx + r * Math.cos(outerAngle), cy + r * Math.sin(outerAngle))
+      const innerAngle = ((i * 72) + 36 - 90) * Math.PI / 180
+      pts.push(cx + r * 0.4 * Math.cos(innerAngle), cy + r * 0.4 * Math.sin(innerAngle))
+    }
+    g.beginPath()
+    g.moveTo(pts[0], pts[1])
+    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1])
+    g.closePath()
+    if (filled) g.fillPath()
+    else g.strokePath()
   }
 
   private _mmFrame = 0
@@ -2380,8 +2429,7 @@ export class UIScene extends Phaser.Scene {
 
     const headerFontSize = this.isMobile ? '12px' : '9px'
     const header = this.add.text(padH, padV - 2, 'QUESTS', {
-      fontFamily: 'monospace', fontSize: headerFontSize, color: '#6688aa',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: headerFontSize, color: '#6688aa',
     }).setOrigin(0, 0)
     container.add(header)
 
@@ -2394,15 +2442,13 @@ export class UIScene extends Phaser.Scene {
       const questFontSize = this.isMobile ? '13px' : '10px'
       const titleColor = done ? '#558855' : '#cccccc'
       const titleTxt = this.add.text(padH, rowY, quest.title, {
-        fontFamily: 'monospace', fontSize: questFontSize, color: titleColor,
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: questFontSize, color: titleColor,
       }).setOrigin(0, 0)
       container.add(titleTxt)
       this._questTitleTexts.push(titleTxt)
 
       const progTxt = this.add.text(panelW - padH, rowY, this._questProgressStr(quest, progress, done), {
-        fontFamily: 'monospace', fontSize: questFontSize, color: done ? '#44aa44' : '#888888',
-        stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: questFontSize, color: done ? '#44aa44' : '#888888',
       }).setOrigin(1, 0)
       container.add(progTxt)
       this._questProgressTexts.push(progTxt)
@@ -2520,13 +2566,12 @@ export class UIScene extends Phaser.Scene {
     bg.strokeRoundedRect(cx - pw / 2 + 4, cy - ph / 2 + 4, pw - 8, ph - 8, 10)
 
     const titleTxt = this.add.text(cx, cy - 18, title, {
-      fontFamily: 'monospace', fontSize: '24px', color: '#aaeeff',
-      stroke: '#000000', strokeThickness: 4,
+      fontFamily: gameFont(), fontSize: '24px', color: '#aaeeff',
     }).setOrigin(0.5).setDepth(61)
+    titleTxt.setShadow(0, 1, '#000000', 2, true, true)
 
     const subTxt = this.add.text(cx, cy + 18, sub, {
-      fontFamily: 'monospace', fontSize: '12px', color: '#ffffff',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '12px', color: '#ffffff',
     }).setOrigin(0.5).setDepth(61)
 
     const objs: Phaser.GameObjects.GameObject[] = [bg, titleTxt, subTxt]
@@ -2578,13 +2623,11 @@ export class UIScene extends Phaser.Scene {
     bg.strokeRoundedRect(cx - tw / 2, toastY - th / 2, tw, th, 8)
 
     const t1 = this.add.text(cx, toastY - 9, line1, {
-      fontFamily: 'monospace', fontSize: '11px', color: '#4488ff',
-      stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '11px', color: '#4488ff',
     }).setOrigin(0.5).setDepth(41)
 
     const t2 = this.add.text(cx, toastY + 8, line2, {
-      fontFamily: 'monospace', fontSize: '14px', color: '#ffffff',
-      stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: '14px', color: '#ffffff',
     }).setOrigin(0.5).setDepth(41)
 
     // Slide up + fade out

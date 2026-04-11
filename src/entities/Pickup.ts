@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { Player } from './Player'
 
 export type PickupType = 'hp' | 'magnet' | 'heart' | 'bomb' | 'shield' | 'speed' | 'xpstar'
@@ -144,7 +145,7 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal)
       // Green floating text
       const txt = this.scene.add.text(this.x, this.y - 10, `+${heal}`, {
-        fontFamily: 'monospace', fontSize: '14px',
+        fontFamily: gameFont(), fontSize: '14px',
         color: '#44ff44', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(20)
       this.scene.tweens.add({
@@ -156,7 +157,7 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
       const heal = Math.ceil(this.player.maxHp * 0.10)
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal)
       const txt = this.scene.add.text(this.x, this.y - 10, `+${heal} ♥`, {
-        fontFamily: 'monospace', fontSize: '16px',
+        fontFamily: gameFont(), fontSize: '16px',
         color: '#ff3366', stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(20)
       this.scene.tweens.add({
@@ -189,7 +190,7 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
       this.scene.tweens.add({ targets: boom, scale: radius / 20, alpha: 0, duration: 400, onComplete: () => boom.destroy() })
       this.scene.cameras.main.shake(100, 0.005)
       const txt = this.scene.add.text(this.x, this.y - 10, 'BOOM!', {
-        fontFamily: 'monospace', fontSize: '16px', color: '#ff6600', stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: '16px', color: '#ff6600', stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(20)
       this.scene.tweens.add({ targets: txt, y: txt.y - 30, alpha: 0, duration: 800, onComplete: () => txt.destroy() })
     } else if (this.pickupType === 'shield') {
@@ -198,7 +199,7 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
       this.player.shieldMaxHp = 30
       this.player.shieldTimer = 10000 // 10 seconds
       const txt = this.scene.add.text(this.x, this.y - 10, 'SHIELD!', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#4488ff', stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '14px', color: '#4488ff', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(20)
       this.scene.tweens.add({ targets: txt, y: txt.y - 25, alpha: 0, duration: 600, onComplete: () => txt.destroy() })
     } else if (this.pickupType === 'speed') {
@@ -207,14 +208,14 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
       this.player.speedBuffUntil = this.scene.time.now + 8000
       this.player.speed = Math.ceil(this.player.speed * 1.3)
       const txt = this.scene.add.text(this.x, this.y - 10, 'SPEED!', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#ffdd44', stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '14px', color: '#ffdd44', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(20)
       this.scene.tweens.add({ targets: txt, y: txt.y - 25, alpha: 0, duration: 600, onComplete: () => txt.destroy() })
     } else if (this.pickupType === 'xpstar') {
       // 150% XP multiplier until next level
       this.player.xpMult *= 1.5
       const txt = this.scene.add.text(this.x, this.y - 10, 'XP x1.5!', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#ffd700', stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '14px', color: '#ffd700', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(20)
       this.scene.tweens.add({ targets: txt, y: txt.y - 25, alpha: 0, duration: 600, onComplete: () => txt.destroy() })
     }

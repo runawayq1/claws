@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { type HeroType } from '../entities/Player'
 import { addDiagonalBg } from '../utils/bgScroll'
 import { networkManager } from '../systems/NetworkManager'
+import { gameFont } from '../utils/device'
 
 interface HeroDef {
   type: HeroType
@@ -95,21 +96,18 @@ export class LobbyScene extends Phaser.Scene {
     const compact = height < 500
 
     // ── Title ──────────────────────────────────────────────────────────────────
-    this.add.text(width / 2, compact ? 18 : 28, 'QUICK PLAY', {
-      fontFamily: 'monospace',
+    const lobbyTitle = this.add.text(width / 2, compact ? 18 : 28, 'QUICK PLAY', {
+      fontFamily: gameFont(),
       fontSize: compact ? '22px' : '32px',
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: compact ? 4 : 6,
     }).setOrigin(0.5)
+    lobbyTitle.setShadow(0, 1, '#000000', 2, true, true)
 
     // ── Status text (player count, waiting) ────────────────────────────────────
     this.statusText = this.add.text(width / 2, compact ? 36 : 52, this.isOnline ? 'Connected — waiting for players...' : 'Offline mode', {
-      fontFamily: 'monospace',
-      fontSize: compact ? '8px' : '10px',
+      fontFamily: gameFont(),
+      fontSize: compact ? '11px' : '10px',
       color: '#666688',
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5)
 
     // ── Player Slots ───────────────────────────────────────────────────────────
@@ -298,11 +296,9 @@ export class LobbyScene extends Phaser.Scene {
       const badge = isLocal ? 'YOU' : slot.isHost ? 'HOST' : ''
       if (badge) {
         const badgeTxt = this.add.text(cx, badgeY, badge, {
-          fontFamily: 'monospace',
-          fontSize: compact ? '9px' : '11px',
+          fontFamily: gameFont(),
+          fontSize: compact ? '12px' : '11px',
           color: isLocal ? '#FFD700' : '#88aaff',
-          stroke: '#000000',
-          strokeThickness: 2,
         }).setOrigin(0.5, 0)
         container.add(badgeTxt)
       }
@@ -326,21 +322,17 @@ export class LobbyScene extends Phaser.Scene {
           const heroNameY = sy + slotH - (compact ? 26 : 34)
           const colorHex = `#${heroDef.color.toString(16).padStart(6, '0')}`
           const heroLabel = this.add.text(cx, heroNameY, heroDef.name, {
-            fontFamily: 'monospace',
-            fontSize: compact ? '8px' : '10px',
+            fontFamily: gameFont(),
+            fontSize: compact ? '11px' : '10px',
             color: colorHex,
-            stroke: '#000000',
-            strokeThickness: 2,
           }).setOrigin(0.5).setDepth(3)
           container.add(heroLabel)
         }
       } else {
         const q = this.add.text(cx, spriteY, '?', {
-          fontFamily: 'monospace',
+          fontFamily: gameFont(),
           fontSize: compact ? '20px' : '28px',
           color: '#444466',
-          stroke: '#000000',
-          strokeThickness: 3,
         }).setOrigin(0.5)
         container.add(q)
       }
@@ -348,29 +340,23 @@ export class LobbyScene extends Phaser.Scene {
       // Player name
       const nameY = sy + slotH - (compact ? 14 : 18)
       const nameTxt = this.add.text(cx, nameY, slot.playerName, {
-        fontFamily: 'monospace',
-        fontSize: compact ? '9px' : '11px',
+        fontFamily: gameFont(),
+        fontSize: compact ? '12px' : '11px',
         color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 2,
       }).setOrigin(0.5)
       container.add(nameTxt)
     } else {
       // Empty slot
       const midY = sy + slotH / 2
       const dots = this.add.text(cx, midY - (compact ? 6 : 8), '· · ·', {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize: compact ? '12px' : '16px',
         color: '#333355',
-        stroke: '#000000',
-        strokeThickness: 2,
       }).setOrigin(0.5)
       const waitTxt = this.add.text(cx, midY + (compact ? 8 : 12), 'Waiting...', {
-        fontFamily: 'monospace',
-        fontSize: compact ? '8px' : '10px',
+        fontFamily: gameFont(),
+        fontSize: compact ? '11px' : '10px',
         color: '#333355',
-        stroke: '#000000',
-        strokeThickness: 2,
       }).setOrigin(0.5)
       container.add([dots, waitTxt])
     }
@@ -401,11 +387,9 @@ export class LobbyScene extends Phaser.Scene {
 
     // Section label
     this.add.text(width / 2, topY, '── Choose Your Hero ──', {
-      fontFamily: 'monospace',
-      fontSize: compact ? '10px' : '13px',
+      fontFamily: gameFont(),
+      fontSize: compact ? '13px' : '13px',
       color: '#666688',
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5, 0)
 
     // Create idle animations
@@ -448,20 +432,16 @@ export class LobbyScene extends Phaser.Scene {
 
       // Name below circle
       this.add.text(cx, cy + R + (compact ? 6 : 8), hero.name, {
-        fontFamily: 'monospace',
-        fontSize: compact ? '8px' : '10px',
+        fontFamily: gameFont(),
+        fontSize: compact ? '11px' : '10px',
         color: colorHex,
-        stroke: '#000000',
-        strokeThickness: 2,
       }).setOrigin(0.5)
 
       // "Taken" overlay (hidden by default)
       const dimOverlay = this.add.text(cx, cy, 'TAKEN', {
-        fontFamily: 'monospace',
-        fontSize: compact ? '8px' : '10px',
+        fontFamily: gameFont(),
+        fontSize: compact ? '11px' : '10px',
         color: '#ff4444',
-        stroke: '#000000',
-        strokeThickness: 3,
         backgroundColor: '#00000088',
         padding: { x: 4, y: 2 },
       }).setOrigin(0.5).setDepth(10).setVisible(false)
@@ -574,11 +554,9 @@ export class LobbyScene extends Phaser.Scene {
     this._drawBtn(this.startBtn, leftX, centerY - btnH / 2, btnW, btnH, false)
 
     this.startBtnText = this.add.text(leftX + btnW / 2, centerY, 'START', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: compact ? '12px' : '16px',
       color: '#555555',
-      stroke: '#000000',
-      strokeThickness: 3,
     }).setOrigin(0.5).setDepth(1)
 
     const startZone = this.add.zone(leftX + btnW / 2, centerY, btnW, btnH).setInteractive({ useHandCursor: false })
@@ -619,11 +597,9 @@ export class LobbyScene extends Phaser.Scene {
     this._drawLeaveBtn(leaveBtn, rightX, centerY - btnH / 2, btnW, btnH, false)
 
     const leaveTxt = this.add.text(rightX + btnW / 2, centerY, 'LEAVE', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: compact ? '12px' : '16px',
       color: '#cc4444',
-      stroke: '#000000',
-      strokeThickness: 3,
     }).setOrigin(0.5).setDepth(1)
 
     const leaveZone = this.add.zone(rightX + btnW / 2, centerY, btnW, btnH).setInteractive({ useHandCursor: true })

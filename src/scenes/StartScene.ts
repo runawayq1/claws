@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { MetaProgress } from '../systems/MetaProgress'
 import { addDiagonalBg } from '../utils/bgScroll'
-import { isMobileDevice } from '../utils/device'
+import { isMobileDevice, gameFont } from '../utils/device'
 
 export class StartScene extends Phaser.Scene {
   private playerName = ''
@@ -33,20 +33,21 @@ export class StartScene extends Phaser.Scene {
     addDiagonalBg(this)
 
     // Title
-    this.add.text(width / 2, compact ? 18 : height * 0.08, 'CLAWS', {
-      fontFamily: 'monospace', fontSize: compact ? '28px' : '48px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: compact ? 4 : 6,
+    const titleTxt = this.add.text(width / 2, compact ? 18 : height * 0.08, 'CLAWS', {
+      fontFamily: gameFont(), fontSize: compact ? '28px' : '48px',
+      color: '#FFD700',
     }).setOrigin(0.5)
+    titleTxt.setShadow(0, 1, '#000000', 2, true, true)
 
     this.add.text(width / 2, compact ? 46 : height * 0.08 + 46, 'Survive the Swarm', {
-      fontFamily: 'monospace', fontSize: compact ? '10px' : '16px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '13px' : '16px',
+      color: '#888888',
     }).setOrigin(0.5)
 
     if (this.playerName) {
       this.add.text(16, compact ? 8 : 16, `Playing as: ${this.playerName}`, {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '13px',
-        color: '#FFD700', stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: compact ? '13px' : '13px',
+        color: '#FFD700',
       }).setOrigin(0, 0)
     }
 
@@ -173,8 +174,8 @@ export class StartScene extends Phaser.Scene {
 
     const labelY = frameY + fr * 0.85 + 8
     const bookLabel = this.add.text(frameX, labelY, 'Encyclopedia', {
-      fontFamily: 'monospace', fontSize: compact ? '8px' : '10px',
-      color: '#888888', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: compact ? '11px' : '10px',
+      color: '#888888',
     }).setOrigin(0.5).setDepth(10)
 
     const isMobile = isMobileDevice()
@@ -225,12 +226,12 @@ export class StartScene extends Phaser.Scene {
     // SOLO button
     const soloBg = makeModeBg(soloCX, btnCY, 0xffd700, 0.12)
     const soloTitle = this.add.text(soloCX, btnCY - (compact ? 8 : 12), 'SOLO', {
-      fontFamily: 'monospace', fontSize: compact ? '14px' : '20px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '14px' : '20px',
+      color: '#FFD700',
     }).setOrigin(0.5).setDepth(6)
     const soloSub = this.add.text(soloCX, btnCY + (compact ? 10 : 16), 'Classic mode', {
-      fontFamily: 'monospace', fontSize: compact ? '9px' : '11px',
-      color: '#aa9900', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: compact ? '12px' : '11px',
+      color: '#aa9900',
     }).setOrigin(0.5).setDepth(6)
 
     const soloZone = this.add.zone(soloCX, btnCY, btnW, btnH)
@@ -263,12 +264,12 @@ export class StartScene extends Phaser.Scene {
     // MULTIPLAYER button
     const multiBg = makeModeBg(multiCX, btnCY, 0x4488ff, 0.12)
     const multiTitle = this.add.text(multiCX, btnCY - (compact ? 8 : 12), 'MULTIPLAYER', {
-      fontFamily: 'monospace', fontSize: compact ? '10px' : '15px',
-      color: '#88aaff', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '13px' : '15px',
+      color: '#88aaff',
     }).setOrigin(0.5).setDepth(6)
     const multiSub = this.add.text(multiCX, btnCY + (compact ? 10 : 16), 'Online co-op', {
-      fontFamily: 'monospace', fontSize: compact ? '9px' : '11px',
-      color: '#4466aa', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: compact ? '12px' : '11px',
+      color: '#4466aa',
     }).setOrigin(0.5).setDepth(6)
 
     const multiZone = this.add.zone(multiCX, btnCY, btnW, btnH)
@@ -326,8 +327,8 @@ export class StartScene extends Phaser.Scene {
     const btnPadX = compact ? 10 : isPortrait ? 10 : 16
 
     const profileBtn = this.add.text(width / 2 - btnSpacing, btnY, 'PROFILE', {
-      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '11px' : '14px',
+      color: '#888888',
       backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
     profileBtn.on('pointerover', () => profileBtn.setColor('#FFD700'))
@@ -335,8 +336,8 @@ export class StartScene extends Phaser.Scene {
     profileBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('ProfileScene')) })
 
     const leaderboardBtn = this.add.text(width / 2, btnY, 'SCORES', {
-      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '11px' : '14px',
+      color: '#888888',
       backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
     leaderboardBtn.on('pointerover', () => leaderboardBtn.setColor('#FFD700'))
@@ -344,8 +345,8 @@ export class StartScene extends Phaser.Scene {
     leaderboardBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('LeaderboardScene')) })
 
     const forgeBtn = this.add.text(width / 2 + btnSpacing, btnY, 'FORGE', {
-      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '11px' : '14px',
+      color: '#FFD700',
       backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
     forgeBtn.on('pointerover', () => forgeBtn.setColor('#ffffff'))

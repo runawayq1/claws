@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { MetaProgress, META_UPGRADES, type MetaUpgradeDef, type MetaData } from '../systems/MetaProgress'
 import { getIconFrame } from '../systems/UpgradeSystem'
 import { type HeroType } from '../entities/Player'
@@ -22,7 +23,7 @@ interface RecruitDef {
   fw: number; fh: number; scale: number; frames: number
 }
 const RECRUITS: RecruitDef[] = [
-  { id: 'huntress', name: 'Lyra', role: 'Spear Thrower', cost: 300, color: 0x2ecc71,
+  { id: 'huntress', name: 'Lyra', role: 'Spear Thrower', cost: 1000, color: 0x2ecc71,
     asset: 'assets/lyra/Idle.png', fw: 150, fh: 150, scale: 1.0, frames: 8 },
 ]
 
@@ -70,18 +71,19 @@ export class ForgeScene extends Phaser.Scene {
     bg.fillRect(0, 0, width, height)
 
     const titleY = compact ? 28 : 36
-    this.add.text(width / 2, titleY, 'FORGE', {
-      fontFamily: 'monospace', fontSize: compact ? '32px' : '42px',
-      color: C.GOLD, stroke: '#000000', strokeThickness: 5,
+    const forgeTitleTxt = this.add.text(width / 2, titleY, 'FORGE', {
+      fontFamily: gameFont(), fontSize: compact ? '32px' : '42px',
+      color: C.GOLD,
     }).setOrigin(0.5)
+    forgeTitleTxt.setShadow(0, 1, '#000000', 2, true, true)
     this.add.text(width / 2, titleY + (compact ? 30 : 40), 'Permanent Upgrades', {
-      fontFamily: 'monospace', fontSize: compact ? '13px' : '16px', color: C.DESC,
+      fontFamily: gameFont(), fontSize: compact ? '13px' : '16px', color: C.DESC,
     }).setOrigin(0.5)
 
     const goldY = titleY + (compact ? 62 : 76)
     this.goldText = this.add.text(width / 2, goldY, `✦ ${this.meta.goldTotal}`, {
-      fontFamily: 'monospace', fontSize: compact ? '18px' : '22px',
-      color: C.GOLD, stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '18px' : '22px',
+      color: C.GOLD,
     }).setOrigin(0.5)
 
     const cardsTopY = goldY + (compact ? 30 : 40)
@@ -97,8 +99,8 @@ export class ForgeScene extends Phaser.Scene {
     }
 
     const back = this.add.text(20, 20, '< BACK', {
-      fontFamily: 'monospace', fontSize: compact ? '14px' : '16px',
-      color: C.MUTED, stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: compact ? '14px' : '16px',
+      color: C.MUTED,
     }).setInteractive({ useHandCursor: true })
     back.on('pointerover', () => back.setColor('#ffffff'))
     back.on('pointerout', () => back.setColor(C.MUTED))
@@ -106,6 +108,22 @@ export class ForgeScene extends Phaser.Scene {
 
     // ESC to go back
     this.input.keyboard!.on('keydown-ESC', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
+  }
+
+  /** Redraw both upgrade cards and recruit section with current gold values */
+  private redrawAll() {
+    const compact = this.scale.width < 700
+    const titleY = compact ? 28 : 36
+    const goldY = titleY + (compact ? 62 : 76)
+    const cardsTopY = goldY + (compact ? 30 : 40)
+    this.drawAllCards(cardsTopY, compact)
+    if (this.meta.tutorialComplete) {
+      const cardRows = compact ? Math.ceil(META_UPGRADES.length / 2) : 1
+      const cardH = compact ? 90 : 240
+      const gap = compact ? 10 : 14
+      const recruitTopY = cardsTopY + cardRows * (cardH + gap) + (compact ? 10 : 20)
+      this.drawRecruitSection(recruitTopY, compact)
+    }
   }
 
   private drawAllCards(topY: number, compact: boolean) {
@@ -174,13 +192,13 @@ export class ForgeScene extends Phaser.Scene {
       }
       const textX = x + pad + iconSize + 8
       const labelY = y + 10, descY = labelY + 18, pipY = descY + 18
-      objects.push(this.add.text(textX, labelY, def.label, { fontFamily: 'monospace', fontSize: '13px', color: C.LABEL, stroke: '#000000', strokeThickness: 1 }))
-      objects.push(this.add.text(textX, descY, def.desc, { fontFamily: 'monospace', fontSize: '11px', color: C.DESC }))
+      objects.push(this.add.text(textX, labelY, def.label, { fontFamily: gameFont(), fontSize: '13px', color: C.LABEL }))
+      objects.push(this.add.text(textX, descY, def.desc, { fontFamily: gameFont(), fontSize: '11px', color: C.DESC }))
       addPips(textX, pipY, 10, 4)
       const costX = x + w - pad, costY = y + h / 2 - 8
       objects.push(maxed
-        ? this.add.text(costX, costY, 'MAXED', { fontFamily: 'monospace', fontSize: '12px', color: C.GOLD, stroke: '#000000', strokeThickness: 2 }).setOrigin(1, 0.5)
-        : this.add.text(costX, costY, `✦ ${cost}`, { fontFamily: 'monospace', fontSize: '13px', color: canAfford ? C.GOLD : C.MUTED, stroke: '#000000', strokeThickness: 2 }).setOrigin(1, 0.5)
+        ? this.add.text(costX, costY, 'MAXED', { fontFamily: gameFont(), fontSize: '12px', color: C.GOLD }).setOrigin(1, 0.5)
+        : this.add.text(costX, costY, `✦ ${cost}`, { fontFamily: gameFont(), fontSize: '13px', color: canAfford ? C.GOLD : C.MUTED }).setOrigin(1, 0.5)
       )
     } else {
       // Desktop layout: large icon centered above label
@@ -194,14 +212,14 @@ export class ForgeScene extends Phaser.Scene {
       }
       const labelY = iconY + iconSize / 2 + 10
       const descY = labelY + 22, pipY = y + h - 68, costY = y + h - 42
-      objects.push(this.add.text(midX, labelY, def.label, { fontFamily: 'monospace', fontSize: '14px', color: C.LABEL, stroke: '#000000', strokeThickness: 1, wordWrap: { width: w - pad * 2 }, align: 'center' }).setOrigin(0.5, 0))
-      objects.push(this.add.text(midX, descY, def.desc, { fontFamily: 'monospace', fontSize: '11px', color: C.DESC, wordWrap: { width: w - pad * 2 }, align: 'center' }).setOrigin(0.5, 0))
+      objects.push(this.add.text(midX, labelY, def.label, { fontFamily: gameFont(), fontSize: '14px', color: C.LABEL, wordWrap: { width: w - pad * 2 }, align: 'center' }).setOrigin(0.5, 0))
+      objects.push(this.add.text(midX, descY, def.desc, { fontFamily: gameFont(), fontSize: '11px', color: C.DESC, wordWrap: { width: w - pad * 2 }, align: 'center' }).setOrigin(0.5, 0))
       const pipSize = 12, pipGap = 6
       const pipsW = def.maxTier * pipSize + (def.maxTier - 1) * pipGap
       addPips(midX - pipsW / 2, pipY, pipSize, pipGap)
       objects.push(maxed
-        ? this.add.text(midX, costY, 'MAXED', { fontFamily: 'monospace', fontSize: '14px', color: C.GOLD, stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5)
-        : this.add.text(midX, costY, `✦ ${cost}`, { fontFamily: 'monospace', fontSize: '14px', color: canAfford ? C.GOLD : C.MUTED, stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5)
+        ? this.add.text(midX, costY, 'MAXED', { fontFamily: gameFont(), fontSize: '14px', color: C.GOLD }).setOrigin(0.5)
+        : this.add.text(midX, costY, `✦ ${cost}`, { fontFamily: gameFont(), fontSize: '14px', color: canAfford ? C.GOLD : C.MUTED }).setOrigin(0.5)
       )
     }
 
@@ -211,7 +229,8 @@ export class ForgeScene extends Phaser.Scene {
     zone.on('pointerout', () => { this.renderCardBg(g, x, y, w, h, maxed ? C.BORDER_GOLD : C.BORDER) })
     zone.on('pointerdown', () => {
       if (maxed) return
-      if (!canAfford) {
+      // Live gold check — canAfford closure may be stale after other purchases
+      if (this.meta.goldTotal < cost) {
         const costObj = objects.find(o => o instanceof Phaser.GameObjects.Text && (o as Phaser.GameObjects.Text).text.includes(String(cost))) as Phaser.GameObjects.Text | undefined
         if (costObj) { costObj.setColor(C.RED); this.time.delayedCall(300, () => costObj.setColor(C.MUTED)) }
         return
@@ -220,10 +239,7 @@ export class ForgeScene extends Phaser.Scene {
       this.meta.metaUpgrades[def.id] = tier + 1
       MetaProgress.save(this.meta)
       this.goldText.setText(`✦ ${this.meta.goldTotal}`)
-      const isCompact = this.scale.width < 700
-      const titleY = isCompact ? 28 : 36
-      const goldY = titleY + (isCompact ? 62 : 76)
-      this.drawAllCards(goldY + (isCompact ? 30 : 40), isCompact)
+      this.redrawAll()
     })
 
     return objects
@@ -248,8 +264,8 @@ export class ForgeScene extends Phaser.Scene {
     // Section label
     const labelY = topY
     const label = this.add.text(width / 2, labelY, '— RECRUIT HEROES —', {
-      fontFamily: 'monospace', fontSize: compact ? '14px' : '16px',
-      color: C.GOLD, stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '14px' : '16px',
+      color: C.GOLD,
     }).setOrigin(0.5)
     this.recruitObjects.push(label)
 
@@ -296,14 +312,14 @@ export class ForgeScene extends Phaser.Scene {
       const textX = circX + circR + 14
       const nameColor = alreadyUnlocked ? '#666666' : `#${recruit.color.toString(16).padStart(6, '0')}`
       const nameT = this.add.text(textX, circY - (compact ? 14 : 18), recruit.name, {
-        fontFamily: 'monospace', fontSize: compact ? '14px' : '16px',
-        color: nameColor, stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: compact ? '14px' : '16px',
+        color: nameColor,
       })
       this.recruitObjects.push(nameT)
 
       const roleT = this.add.text(textX, circY + (compact ? 2 : 4), recruit.role, {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '12px',
-        color: alreadyUnlocked ? '#444444' : C.DESC, stroke: '#000000', strokeThickness: 1,
+        fontFamily: gameFont(), fontSize: compact ? '10px' : '12px',
+        color: alreadyUnlocked ? '#444444' : C.DESC,
       })
       this.recruitObjects.push(roleT)
 
@@ -311,18 +327,19 @@ export class ForgeScene extends Phaser.Scene {
       const costX = tileX + tileW - 16
       if (alreadyUnlocked) {
         const t = this.add.text(costX, circY, 'RECRUITED', {
-          fontFamily: 'monospace', fontSize: compact ? '12px' : '14px',
-          color: '#555555', stroke: '#000000', strokeThickness: 2,
+          fontFamily: gameFont(), fontSize: compact ? '12px' : '14px',
+          color: '#555555',
         }).setOrigin(1, 0.5)
         this.recruitObjects.push(t)
       } else {
         const costT = this.add.text(costX, circY, `✦ ${recruit.cost}`, {
-          fontFamily: 'monospace', fontSize: compact ? '14px' : '16px',
-          color: canAfford ? C.GOLD : C.MUTED, stroke: '#000000', strokeThickness: 2,
+          fontFamily: gameFont(), fontSize: compact ? '14px' : '16px',
+          color: canAfford ? C.GOLD : C.MUTED,
         }).setOrigin(1, 0.5)
         this.recruitObjects.push(costT)
 
         // Interactive zone
+        let purchasing = false
         const zone = this.add.zone(tileX, tileTopY, tileW, tileH).setOrigin(0)
           .setInteractive({ useHandCursor: canAfford })
         this.recruitObjects.push(zone)
@@ -333,20 +350,23 @@ export class ForgeScene extends Phaser.Scene {
           this.renderCardBg(g, tileX, tileTopY, tileW, tileH, canAfford ? GOLD_HEX : C.BORDER)
         })
         zone.on('pointerdown', () => {
+          if (purchasing) return
+          // Re-check: already unlocked (e.g. unlocked mid-session another way)
+          if (MetaProgress.isHeroUnlocked(recruit.id)) { this.redrawAll(); return }
           if (this.meta.goldTotal < recruit.cost) {
-            // Flash red on cost text
             costT.setColor(C.RED)
             this.time.delayedCall(300, () => costT.setColor(C.MUTED))
             return
           }
-          // Purchase!
+          purchasing = true
+          zone.disableInteractive()
           this.meta.goldTotal -= recruit.cost
-          MetaProgress.unlockHero(recruit.id)
-          // Re-save gold
+          if (!this.meta.unlockedHeroes.includes(recruit.id)) {
+            this.meta.unlockedHeroes.push(recruit.id)
+          }
           MetaProgress.save(this.meta)
           this.goldText.setText(`✦ ${this.meta.goldTotal}`)
-          // Redraw recruit section
-          this.drawRecruitSection(topY, compact)
+          this.redrawAll()
         })
       }
     }

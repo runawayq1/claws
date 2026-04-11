@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../../utils/device'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
 import type { GameSceneContext } from '../../types/scene-context'
@@ -69,7 +70,7 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
       // Assassinate VFX — red X on lone target
       if (isAssassinating) {
         const xMark = p.scene.add.text(e.x, e.y - 20, '✕', {
-          fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
+          fontFamily: gameFont(), fontSize: '18px', color: '#ff2222',
           stroke: '#000000', strokeThickness: 3,
         }).setOrigin(0.5).setDepth(12)
         p.scene.tweens.add({ targets: xMark, y: xMark.y - 20, alpha: 0, scale: 1.5, duration: 400, onComplete: () => xMark.destroy() })

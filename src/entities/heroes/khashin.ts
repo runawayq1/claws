@@ -186,11 +186,8 @@ export function attackWindSlash(p: Player, target: Phaser.Physics.Arcade.Sprite,
           if (p.hasAbrasion && (e as any)._isBlinded) dmg = Math.ceil(dmg * 1.2)
           ;(e as BaseEnemy).takeDamage(dmg, 'melee')
           // Gust Strike: knockback
-          if (p.hasGustStrike && e.body) {
-            const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y)
-            const eBody = e.body as Phaser.Physics.Arcade.Body
-            eBody.velocity.x += Math.cos(kb) * 150
-            eBody.velocity.y += Math.sin(kb) * 150
+          if (p.hasGustStrike) {
+            ;(e as BaseEnemy).applyKnockback(cx, cy, 150)
           }
           hitSet.add(e)
           // Hit VFX

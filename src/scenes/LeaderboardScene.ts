@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { supabase } from '../systems/SupabaseClient'
+import { gameFont } from '../utils/device'
 
 type TabKey = 'kills' | 'time' | 'wins'
 
@@ -58,22 +59,19 @@ export class LeaderboardScene extends Phaser.Scene {
     // Title
     const titleFontSize = compact ? '24px' : isPortrait ? '28px' : '36px'
     const titleY = compact ? 22 : 30
-    this.add.text(width / 2, titleY, 'LEADERBOARD', {
-      fontFamily: 'monospace',
+    const lbTitleTxt = this.add.text(width / 2, titleY, 'LEADERBOARD', {
+      fontFamily: gameFont(),
       fontSize: titleFontSize,
       color: C.GOLD,
-      stroke: '#000000',
-      strokeThickness: 5,
     }).setOrigin(0.5)
+    lbTitleTxt.setShadow(0, 1, '#000000', 2, true, true)
 
     // Back button
     const backFontSize = compact ? '12px' : '14px'
     const back = this.add.text(16, compact ? 12 : 16, '< BACK', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: backFontSize,
       color: C.MUTED,
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setInteractive({ useHandCursor: true })
     back.on('pointerover', () => back.setColor('#ffffff'))
     back.on('pointerout', () => back.setColor(C.MUTED))
@@ -115,11 +113,9 @@ export class LeaderboardScene extends Phaser.Scene {
       this.renderTabBg(tabBg, tx, y, tabW, tabH, t.key === this.activeTab)
 
       const tabTxt = this.add.text(tx + tabW / 2, y + tabH / 2, t.label, {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize,
         color: t.key === this.activeTab ? C.GOLD : C.MUTED,
-        stroke: '#000000',
-        strokeThickness: 2,
       }).setOrigin(0.5)
 
       const zone = this.add.zone(tx, y, tabW, tabH).setOrigin(0).setInteractive({ useHandCursor: true })
@@ -213,11 +209,9 @@ export class LeaderboardScene extends Phaser.Scene {
   private showMessage(y: number, msg: string, color: string, compact: boolean) {
     const { width, height } = this.scale
     const t = this.add.text(width / 2, (y + height) / 2, msg, {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: compact ? '14px' : '18px',
       color,
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5)
     this.contentGroup.push(t)
   }
@@ -261,7 +255,7 @@ export class LeaderboardScene extends Phaser.Scene {
 
     // Header
     const hdrY = tableY + 8
-    const hdrStyle = { fontFamily: 'monospace', fontSize: hdrFontSize, color: C.DIM } as Phaser.Types.GameObjects.Text.TextStyle
+    const hdrStyle = { fontFamily: gameFont(), fontSize: hdrFontSize, color: C.DIM } as Phaser.Types.GameObjects.Text.TextStyle
 
     const hRank = this.add.text(col.rank, hdrY, '#', hdrStyle)
     const hName = this.add.text(col.name, hdrY, 'PLAYER', hdrStyle)
@@ -278,7 +272,7 @@ export class LeaderboardScene extends Phaser.Scene {
     divG.lineBetween(panelX + pad, hdrY + 14, panelX + panelW - pad, hdrY + 14)
     this.contentGroup.push(divG)
 
-    const rowStyle = { fontFamily: 'monospace', fontSize, color: C.LABEL, stroke: '#000000', strokeThickness: 1 } as Phaser.Types.GameObjects.Text.TextStyle
+    const rowStyle = { fontFamily: gameFont(), fontSize, color: C.LABEL } as Phaser.Types.GameObjects.Text.TextStyle
 
     const maxRows = Math.floor((panelH - 36) / rowH)
 

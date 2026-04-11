@@ -3,7 +3,7 @@ import { type HeroType } from '../entities/Player'
 import { unlockHero } from './EncyclopediaScene'
 import { MetaProgress } from '../systems/MetaProgress'
 import { addDiagonalBg } from '../utils/bgScroll'
-import { isMobileDevice } from '../utils/device'
+import { isMobileDevice, gameFont } from '../utils/device'
 
 interface HeroDef {
   type: HeroType
@@ -87,26 +87,27 @@ export class HeroSelectScene extends Phaser.Scene {
     addDiagonalBg(this)
 
     // Title
-    this.add.text(width / 2, compact ? 18 : height * 0.08, 'CLAWS', {
-      fontFamily: 'monospace', fontSize: compact ? '28px' : '48px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: compact ? 4 : 6,
+    const heroSelectTitle = this.add.text(width / 2, compact ? 18 : height * 0.08, 'CLAWS', {
+      fontFamily: gameFont(), fontSize: compact ? '28px' : '48px',
+      color: '#FFD700',
     }).setOrigin(0.5)
+    heroSelectTitle.setShadow(0, 1, '#000000', 2, true, true)
 
     this.add.text(width / 2, compact ? 46 : height * 0.08 + 46, 'Survive the Swarm', {
-      fontFamily: 'monospace', fontSize: compact ? '10px' : '16px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '13px' : '16px',
+      color: '#888888',
     }).setOrigin(0.5)
 
     if (this.playerName) {
       this.add.text(16, compact ? 8 : 16, `Playing as: ${this.playerName}`, {
-        fontFamily: 'monospace', fontSize: compact ? '10px' : '13px',
-        color: '#FFD700', stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: compact ? '13px' : '13px',
+        color: '#FFD700',
       }).setOrigin(0, 0)
     }
 
     this.add.text(width / 2, compact ? 64 : height * 0.24, 'Choose your Hero', {
-      fontFamily: 'monospace', fontSize: compact ? '13px' : '18px',
-      color: '#ffffff', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '13px' : '18px',
+      color: '#ffffff',
     }).setOrigin(0.5)
 
     // Layout heroes
@@ -205,14 +206,14 @@ export class HeroSelectScene extends Phaser.Scene {
 
       // Hero name below circle
       const nameText = this.add.text(cx, cy + circleRadius + (compact ? 8 : 14), isLocked ? '???' : hero.name, {
-        fontFamily: 'monospace', fontSize: isPortrait ? '10px' : (compact ? '11px' : '14px'),
-        color: isLocked ? '#555555' : colorHex, stroke: '#000000', strokeThickness: 3,
+        fontFamily: gameFont(), fontSize: isPortrait ? '10px' : (compact ? '11px' : '14px'),
+        color: isLocked ? '#555555' : colorHex,
       }).setOrigin(0.5).setDepth(2)
 
       // Role below name
       this.add.text(cx, cy + circleRadius + (compact ? 22 : 32), isLocked ? '???' : hero.role, {
-        fontFamily: 'monospace', fontSize: isPortrait ? '9px' : (compact ? '8px' : '10px'),
-        color: isLocked ? '#444444' : '#888888', stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: isPortrait ? '12px' : (compact ? '11px' : '10px'),
+        color: isLocked ? '#444444' : '#888888',
       }).setOrigin(0.5).setDepth(2)
 
       // Interactive zone over the circle
@@ -230,8 +231,8 @@ export class HeroSelectScene extends Phaser.Scene {
           const hint = HERO_UNLOCK_HINTS[hero.type] || 'Play more runs to unlock'
           const hintW = isPortrait ? circleRadius * 2 + 80 : circleRadius * 2 + 40
           const hintTxt = this.add.text(cx, cy + circleRadius + (compact ? 52 : 68), hint, {
-            fontFamily: 'monospace', fontSize: isPortrait ? '8px' : (compact ? '9px' : '11px'),
-            color: '#aaaaaa', stroke: '#000000', strokeThickness: 2,
+            fontFamily: gameFont(), fontSize: isPortrait ? '11px' : (compact ? '12px' : '11px'),
+            color: '#aaaaaa',
             wordWrap: { width: hintW },
           }).setOrigin(0.5).setDepth(5)
           this.activeLockedHint = hintTxt
@@ -314,8 +315,8 @@ export class HeroSelectScene extends Phaser.Scene {
     // BACK button (bottom-left area)
     const backY = compact ? height - 14 : height * 0.92
     const backBtn = this.add.text(compact ? 48 : 60, backY, 'BACK', {
-      fontFamily: 'monospace', fontSize: compact ? '11px' : '14px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: compact ? '11px' : '14px',
+      color: '#888888',
       backgroundColor: '#1a1a2e', padding: { x: compact ? 10 : 16, y: compact ? 4 : 8 },
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
     backBtn.on('pointerover', () => backBtn.setColor('#ffffff'))

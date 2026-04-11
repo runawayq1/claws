@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { HERO_BRANCHES, GENERIC_POOL, getIconFrame } from '../systems/UpgradeSystem'
+import { gameFont } from '../utils/device'
 
 // ============================================================
 // localStorage helpers
@@ -360,7 +361,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Left page title
     const heroesTitle = this.add.text(leftPageX + pageW / 2, bookY + 22, 'HEROES', {
-      fontFamily: 'monospace', fontSize: '14px',
+      fontFamily: gameFont(), fontSize: '14px',
       color: '#2a1810', stroke: '#c8a97a', strokeThickness: 1,
     }).setOrigin(0.5)
     this.bookContent.add(heroesTitle)
@@ -416,7 +417,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Back button — top-left corner, consistent with ProfileScene / ForgeScene style
     const backBtn = this.add.text(20, 20, '< BACK', {
-      fontFamily: 'monospace', fontSize: '16px',
+      fontFamily: gameFont(), fontSize: '16px',
       color: '#888888', stroke: '#000000', strokeThickness: 2,
     }).setInteractive({ useHandCursor: true }).setDepth(10)
     backBtn.on('pointerover', () => backBtn.setColor('#ffffff'))
@@ -425,7 +426,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Close button — plays closing animation then goes to StartScene
     const closeBtn = this.add.text(bookX + bookW - 6, bookY - 2, 'X', {
-      fontFamily: 'monospace', fontSize: '16px',
+      fontFamily: gameFont(), fontSize: '16px',
       color: '#d4b483', stroke: '#000000', strokeThickness: 3,
       backgroundColor: '#2a1810', padding: { x: 8, y: 4 },
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).setDepth(10)
@@ -552,14 +553,14 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Hero name — always visible
       const nameText = this.add.text(px + 18, rowY + rowH / 2 - 8, hero.name, {
-        fontFamily: 'monospace', fontSize: '12px',
+        fontFamily: gameFont(), fontSize: '12px',
         color: isSelected ? '#ffffff' : colorHex,
       }).setOrigin(0, 0.5)
       this.leftContainer.add(nameText)
 
       // Role
       this.leftContainer.add(this.add.text(px + 18, rowY + rowH / 2 + 8, hero.role, {
-        fontFamily: 'monospace', fontSize: '11px', color: '#665544',
+        fontFamily: gameFont(), fontSize: '11px', color: '#665544',
       }).setOrigin(0, 0.5))
 
       // "Played" indicator — use a sell slot with golden tint
@@ -571,11 +572,11 @@ export class EncyclopediaScene extends Phaser.Scene {
             .setOrigin(0.5)
           this.leftContainer.add(badge)
           this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
-            fontFamily: 'monospace', fontSize: '10px', color: '#2a1810',
+            fontFamily: gameFont(), fontSize: '10px', color: '#2a1810',
           }).setOrigin(0.5))
         } else {
           this.leftContainer.add(this.add.text(px + pw - 16, rowY + rowH / 2, '✓', {
-            fontFamily: 'monospace', fontSize: '10px', color: '#44aa44',
+            fontFamily: gameFont(), fontSize: '10px', color: '#44aa44',
           }).setOrigin(0.5))
         }
       }
@@ -612,11 +613,11 @@ export class EncyclopediaScene extends Phaser.Scene {
     const discoveredSkills = this.encData.upgrades.filter(id => allUpgradeIds.has(id)).length
     this.leftContainer.add(this.add.text(px + pw / 2, py + ph - 22,
       `Discovered: ${discoveredSkills}/${totalSkills}`, {
-        fontFamily: 'monospace', fontSize: '9px', color: '#665544',
+        fontFamily: gameFont(), fontSize: '9px', color: '#665544',
       }).setOrigin(0.5))
     this.leftContainer.add(this.add.text(px + pw / 2, py + ph - 10,
       'Tap a hero to read about them', {
-        fontFamily: 'monospace', fontSize: '10px', color: '#998866',
+        fontFamily: gameFont(), fontSize: '10px', color: '#998866',
       }).setOrigin(0.5))
   }
 
@@ -639,7 +640,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       }
       this.rightContainer.add(this.add.text(px + pw / 2, py + ph / 2 - 30,
         'Select a hero\nto read about them', {
-          fontFamily: 'monospace', fontSize: '12px', color: '#998866', align: 'center',
+          fontFamily: gameFont(), fontSize: '12px', color: '#998866', align: 'center',
         }).setOrigin(0.5))
       return
     }
@@ -680,7 +681,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Label text (visual only — interaction on the zone below)
       const btn = this.add.text(btnX, navY, label, {
-        fontFamily: 'monospace', fontSize: '9px',
+        fontFamily: gameFont(), fontSize: '9px',
         color: isActive ? heroColorHex : '#998866',
         stroke: '#c8a97a', strokeThickness: 0.5,
       }).setOrigin(0.5)
@@ -755,10 +756,10 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Hero name + role
     this.rightContainer.add(this.add.text(px + 12, py + 18, hero.name, {
-      fontFamily: 'monospace', fontSize: '16px', color: colorHex,
+      fontFamily: gameFont(), fontSize: '16px', color: colorHex,
     }).setOrigin(0, 0))
     this.rightContainer.add(this.add.text(px + 12, py + 38, hero.role, {
-      fontFamily: 'monospace', fontSize: '12px', color: '#665544',
+      fontFamily: gameFont(), fontSize: '12px', color: '#665544',
     }).setOrigin(0, 0))
 
     // Decorative line below header — shifted below circle bottom (circleCY + r = py + 104)
@@ -772,7 +773,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const { width: _lw, height: _lh } = this.scale
     const loreFontSize = _lh > _lw ? '11px' : '9px'
     const loreText = this.add.text(px + 15, py + 114, hero.lore, {
-      fontFamily: 'monospace', fontSize: loreFontSize, color: '#2a1810',
+      fontFamily: gameFont(), fontSize: loreFontSize, color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
     })
     this.rightContainer.add(loreText)
@@ -785,10 +786,10 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.add(lineG2)
 
     this.rightContainer.add(this.add.text(px + 15, playstyleY + 6, 'PLAYSTYLE', {
-      fontFamily: 'monospace', fontSize: '12px', color: colorHex,
+      fontFamily: gameFont(), fontSize: '12px', color: colorHex,
     }))
     const playstyleText = this.add.text(px + 15, playstyleY + 22, hero.playstyle, {
-      fontFamily: 'monospace', fontSize: loreFontSize, color: '#2a1810',
+      fontFamily: gameFont(), fontSize: loreFontSize, color: '#2a1810',
       wordWrap: { width: textW }, lineSpacing: 4,
     })
     this.rightContainer.add(playstyleText)
@@ -802,7 +803,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rightContainer.add(lineG3)
 
     this.rightContainer.add(this.add.text(px + 15, branchStartY + 6, 'SPECIALIZATION', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#2a1810',
+      fontFamily: gameFont(), fontSize: '10px', color: '#2a1810',
     }))
 
     const cardsTopY = branchStartY + 22
@@ -844,7 +845,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
       // Branch name at top
       cont.add(this.add.text(0, ly + cardH * 0.09, branch.name, {
-        fontFamily: 'monospace', fontSize: '10px',
+        fontFamily: gameFont(), fontSize: '10px',
         color: branchColorHex,
         stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5))
@@ -867,7 +868,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       // Theme text below icon
       if (branch.theme) {
         cont.add(this.add.text(0, iconY + iconSize / 2 + 10, branch.theme, {
-          fontFamily: 'monospace', fontSize: '9px',
+          fontFamily: gameFont(), fontSize: '9px',
           color: '#cccccc', stroke: '#000000', strokeThickness: 1,
           wordWrap: { width: cardW - 8 }, align: 'center', lineSpacing: 2,
         }).setOrigin(0.5, 0))
@@ -937,7 +938,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         this.rightContainer.add(iconImg)
       }
       this.rightContainer.add(this.add.text(tabX + 22, tabY + tabH / 2 + (isActive ? 0 : 1), branch.name, {
-        fontFamily: 'monospace', fontSize: isActive ? '11px' : '10px',
+        fontFamily: gameFont(), fontSize: isActive ? '11px' : '10px',
         color: isActive ? branchColorHex : '#665544',
       }).setOrigin(0, 0.5))
 
@@ -959,7 +960,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     // Branch name centered below tabs
     const branchColorHex = '#' + activeBranch.color.toString(16).padStart(6, '0')
     const headerLabel = this.add.text(px + pw / 2, tabY + tabH + 12, activeBranch.name.toUpperCase(), {
-      fontFamily: 'monospace', fontSize: '12px',
+      fontFamily: gameFont(), fontSize: '12px',
       color: branchColorHex,
     }).setOrigin(0.5)
     this.rightContainer.add(headerLabel)
@@ -1019,13 +1020,13 @@ export class EncyclopediaScene extends Phaser.Scene {
       } else if (!unlocked) {
         // Grey locked slot with '?' text
         this.rightContainer.add(this.add.text(cellCX, cellCY - 2, '?', {
-          fontFamily: 'monospace', fontSize: '16px', color: '#665544',
+          fontFamily: gameFont(), fontSize: '16px', color: '#665544',
         }).setOrigin(0.5).setAlpha(0.6))
       }
 
       // Skill index number below icon (1-based) as tiny label
       this.rightContainer.add(this.add.text(cellCX, gridStartY + cellDisplayH - 4, `${ui + 1}`, {
-        fontFamily: 'monospace', fontSize: '9px',
+        fontFamily: gameFont(), fontSize: '9px',
         color: unlocked ? branchColorHex : '#554433',
       }).setOrigin(0.5, 1).setAlpha(0.75))
 
@@ -1096,21 +1097,21 @@ export class EncyclopediaScene extends Phaser.Scene {
         this.rightContainer.add(bigIcon)
       } else if (!unlocked) {
         this.rightContainer.add(this.add.text(iconCX, iconCY, '?', {
-          fontFamily: 'monospace', fontSize: '28px', color: '#665544',
+          fontFamily: gameFont(), fontSize: '28px', color: '#665544',
         }).setOrigin(0.5).setAlpha(0.6))
       }
 
       // ── Skill name centered below icon ──
       const nameY = iconCY + iconSize / 2 + 10
       this.rightContainer.add(this.add.text(iconCX, nameY, skill.label, {
-        fontFamily: 'monospace', fontSize: '13px',
+        fontFamily: gameFont(), fontSize: '13px',
         color: unlocked ? branchColorHex : '#887766',
         stroke: '#c8a97a', strokeThickness: 2,
       }).setOrigin(0.5, 0))
 
       // Branch tag
       this.rightContainer.add(this.add.text(iconCX, nameY + 14, activeBranch.name, {
-        fontFamily: 'monospace', fontSize: '10px', color: '#998866',
+        fontFamily: gameFont(), fontSize: '10px', color: '#998866',
       }).setOrigin(0.5, 0))
 
       // Divider
@@ -1123,13 +1124,13 @@ export class EncyclopediaScene extends Phaser.Scene {
       // Description text
       if (unlocked) {
         this.rightContainer.add(this.add.text(cardX + cardW / 2, cardDivY + 8, skill.desc, {
-          fontFamily: 'monospace', fontSize: '11px', color: '#2a1810',
+          fontFamily: gameFont(), fontSize: '11px', color: '#2a1810',
           wordWrap: { width: cardW - 24 }, lineSpacing: 3,
           align: 'center',
         }).setOrigin(0.5, 0))
       } else {
         this.rightContainer.add(this.add.text(cardX + cardW / 2, cardDivY + 8, 'Undiscovered ability.\nDefeat enemies to reveal this skill.', {
-          fontFamily: 'monospace', fontSize: '11px', color: '#998866',
+          fontFamily: gameFont(), fontSize: '11px', color: '#998866',
           fontStyle: 'italic', wordWrap: { width: cardW - 24 }, lineSpacing: 3,
           align: 'center',
         }).setOrigin(0.5, 0))
@@ -1138,14 +1139,14 @@ export class EncyclopediaScene extends Phaser.Scene {
       // Skill number badge (bottom-right of card)
       this.rightContainer.add(this.add.text(cardX + cardW - 8, cardStartY + cardH - 6,
         `${this.selectedSkillIdx + 1} / ${numSkills}`, {
-          fontFamily: 'monospace', fontSize: '10px', color: branchColorHex,
+          fontFamily: gameFont(), fontSize: '10px', color: branchColorHex,
         }).setOrigin(1, 1).setAlpha(0.6))
 
     } else {
       // No skill selected — prompt
       this.rightContainer.add(this.add.text(px + pw / 2, cardStartY + 16,
         'Tap a skill slot to view details', {
-          fontFamily: 'monospace', fontSize: '9px', color: '#998866',
+          fontFamily: gameFont(), fontSize: '9px', color: '#998866',
           fontStyle: 'italic',
         }).setOrigin(0.5, 0))
     }
@@ -1159,7 +1160,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Page title
     const titleText = this.add.text(px + pw / 2, py + 22, 'Generic Upgrades', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#2a1810',
+      fontFamily: gameFont(), fontSize: '11px', color: '#2a1810',
     }).setOrigin(0.5)
     this.rightContainer.add(titleText)
 
@@ -1198,12 +1199,12 @@ export class EncyclopediaScene extends Phaser.Scene {
         }
 
         this.rightContainer.add(this.add.text(px + 38, rowY + 3, upgrade.label, {
-          fontFamily: 'monospace', fontSize: '13px', color: '#2a1810',
+          fontFamily: gameFont(), fontSize: '13px', color: '#2a1810',
         }))
 
         const descStr = Array.isArray(upgrade.desc) ? upgrade.desc[0] : upgrade.desc
         this.rightContainer.add(this.add.text(px + 38, rowY + 20, descStr, {
-          fontFamily: 'monospace', fontSize: '11px', color: '#665544',
+          fontFamily: gameFont(), fontSize: '11px', color: '#665544',
           wordWrap: { width: pw - 52 },
         }))
       } else {
@@ -1218,7 +1219,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         }
 
         this.rightContainer.add(this.add.text(px + 38, rowY + rowH / 2, '— Undiscovered —', {
-          fontFamily: 'monospace', fontSize: '13px', color: '#998866',
+          fontFamily: gameFont(), fontSize: '13px', color: '#998866',
         }).setOrigin(0, 0.5))
       }
 

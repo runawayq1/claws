@@ -8,16 +8,16 @@
 
 | ID | Name | Level 1 | Level 2 | Level 3 |
 |----|------|---------|---------|---------|
-| g1 | Sharp Edge | +20% dmg to all attacks | +10% dmg (total +32%) | +10% dmg (total +45%) |
-| g2 | Swift Feet | +15% move speed permanently | +10% more speed | +10% more speed |
-| g3 | Eagle Eye | +20% attack range permanently | +15% more range | +15% more range |
-| g4 | Quick Hands | -20% attack cooldown (min 200ms) | -10% more cooldown | -10% more cooldown |
-| g5 | Vitality | +25% max HP, heal for the bonus | +20% more max HP | +20% more max HP |
-| g6 | Regeneration | +2 HP/s passive regen | +2 HP/s more regen | +3 HP/s more regen |
-| g7 | Cleave | AoE: attacks splash in 6m radius | Splash radius +3m | Splash radius +4m |
-| g8 | Wisdom | +25% XP from all sources | +15% more XP | +15% more XP |
-| g9 | Multistrike | +1 strike: attack hits one more time | +1 more strike | +1 more strike |
-| g10 | Iron Skin | +25% armor (reduces dmg taken) | +15% more armor | +15% more armor |
+| g1 | Sharp Edge | +12% dmg to all attacks | +6% dmg (total ~19%) | +6% dmg (total ~26%) |
+| g2 | Swift Feet | +9% move speed permanently | +6% more speed | +6% more speed |
+| g3 | Eagle Eye | +12% attack range permanently | +9% more range | +9% more range |
+| g4 | Quick Hands | +12% attack speed (min 200ms) | +6% attack speed | +6% attack speed |
+| g5 | Vitality | +15% max HP, heal for the bonus | +12% more max HP | +12% more max HP |
+| g6 | Regeneration | +1 HP/s passive regen | +1 HP/s more regen | +2 HP/s more regen |
+| g7 | Cleave | AoE: attacks splash in 4m radius | Splash radius +2m | Splash radius +2.5m |
+| g8 | Wisdom | +15% XP from all sources | +9% more XP | +9% more XP |
+| g9 | Multistrike | +1 target for ranged, +1 strike for melee | +5% dmg to all attacks | +1 more target/strike |
+| g10 | Iron Skin | +10% armor (reduces dmg taken) | +10% more armor | +10% more armor |
 
 ---
 
@@ -42,9 +42,9 @@
 
 | ID | Name | Level 1 | Level 2 | Level 3 |
 |----|------|---------|---------|---------|
-| io1 | Heat Shield | +15% armor (dmg reduction) | +10% more armor | +10% armor + Ember Veil aura (reflect 10% dmg) |
-| io2 | Pyromaniac | On kill: +2 HP, +1 HP/s regen | On kill: +3 HP instead, +1 HP/s regen | On kill: +4 HP, +2 HP/s more regen |
-| io3 | Molten Skin | When hit: AoE 30% dmg in 5m, +10% armor | AoE range +3m, +10% more armor | AoE range +3m + grants Phoenix Heart revive |
+| io1 | Heat Shield | +7% armor (dmg reduction) | +5% more armor | +5% armor + Ember Veil aura (reflect 10% dmg) |
+| io2 | Pyromaniac | On kill: +1 HP, +0.5 HP/s regen | On kill: +2 HP instead, +0.5 HP/s regen | On kill: +2 HP, +1 HP/s more regen |
+| io3 | Molten Skin | When hit: AoE 30% dmg in 5m, +5% armor | AoE range +3m, +5% more armor | AoE range +3m + grants Phoenix Heart revive |
 | io5 ★ | **Phoenix Heart** | Revive once at 50% HP, +30 max HP | +30 more max HP, heal on revive to 70% | +40 max HP, revive spawns fire burst |
 
 ### Branch: Havoc (`#FFAA00`)
@@ -122,7 +122,7 @@
 
 | ID | Name | Level 1 | Level 2 | Level 3 |
 |----|------|---------|---------|---------|
-| sf1 | Deep Freeze | Shards slow enemies +30%, +10% dmg | +10% dmg, frozen enemies shatter for +20% bonus dmg | +10% dmg, shatter AoE in 3m radius |
+| sf1 | Deep Freeze | +30% enemy slow, +10% dmg | +10% dmg, frozen enemies shatter for +20% bonus dmg | +10% dmg, shatter AoE in 3m radius |
 | sc2 | Ice Armor | Absorb shield (30+15% maxHP), regens after 3s | Shield strength +10% maxHP, regen timer -1s | +15% maxHP shield + Blizzard Aura activates when shield is up |
 | sf2 | Blizzard Aura | Aura: slow nearby enemies 40% in 6m | Slow increases to 55%, radius +2m | Slow 55% + Frost Nova every 4th shot (8 shards ring) |
 | sf5 ★ | **Eternal Winter** | Frost field: 20% dmg/s + 60% slow in 6m, +15% dmg | Field radius +3m, dmg rate +10%/s | +20% dmg, field also freezes enemies for 0.5s/tick |
@@ -150,10 +150,10 @@
 
 | ID | Name | Level 1 | Level 2 | Level 3 |
 |----|------|---------|---------|---------|
-| aw1 | Thorns | When hit: reflect 50% dmg to enemies in 6m, +5% armor | Reflect radius +2m, +5% armor | +5% armor + Wrath AoE burst on hit |
-| aw2 | Wrath | When hit: AoE burst 60% dmg in 7m, +10% dmg | +10% dmg, AoE radius +2m | +10% dmg + Living Fortress: aura scales with HP% |
-| aw3 | Consecration | Aura: pulse 40% dmg in 7m every 1.5s, +25 splash, +3 dmg | +4 dmg, pulse rate increases to 1.2s | +5 dmg, splash +20 + gains +30 max HP |
-| aw5 ★ | **Divine Judgment** | Auto-execute enemies below 15% HP in range, +15% dmg | +10% dmg, execute range doubled | +15% dmg, execute threshold rises to 20% HP |
+| aw1 | Thorns | 4 orbiting swords slash nearby foes | +2 swords, +5% sword dmg | +2 swords, +10% sword dmg |
+| aw2 | Wrath | When hit: AoE burst 60% dmg in 10m, +5% dmg | +10% dmg, AoE radius +2m | +10% dmg + Living Fortress: aura scales with HP% |
+| aw3 | Consecration | Aura: pulse 40% dmg in 12m every 1.5s, +25 splash, +3 dmg | +4 dmg, pulse rate increases to 1.2s | +5 dmg, splash +20 + gains +30 max HP |
+| aw5 ★ | **Divine Judgment** | Auto-execute enemies below 15% HP in 12m range, +10% dmg | +5% dmg, execute range doubled | +15% dmg, execute threshold rises to 20% HP |
 
 ### Branch: Bastion (`#4488FF`)
 *"The golem was built to endure. You'll see why."*
@@ -161,10 +161,10 @@
 
 | ID | Name | Level 1 | Level 2 | Level 3 |
 |----|------|---------|---------|---------|
-| ab1 | Fortify | +15% armor, activates defense aura visual | +10% more armor | +10% armor, Iron Will: cap incoming hit at 10% maxHP |
-| ab2 | Aura of Might | Aura: 3 DPS to all enemies in 6m, +3 dmg | +3 dmg, aura radius +2m, 4 DPS | +4 dmg, aura DPS doubles + low HP regen ×3 below 40% |
+| ab1 | Fortify | +15% armor, activate defense aura | +15% more armor, stronger aura | +10% armor + Iron Will: cap incoming hit at 10% maxHP |
+| ab2 | Aura of Might | Orbiting shield, +3 dmg | +3 dmg, +1 shields | +4 dmg, +2 shields + low HP regen ×3 |
 | ab3 | Iron Will | Any single hit capped at 10% max HP, +10% armor | +10% more armor, regen +2 HP/s | +10% armor, +2 HP/s + Undying revive at full HP |
-| ab5 ★ | **Undying** | Revive once at full HP + 10m shockwave, +30 max HP | +30 max HP, revive shockwave is 15m | +40 max HP, revive triggers a 2s invuln window |
+| ab5 ★ | **Undying** | 1 rebirth at full HP + shockwave, +30 max HP | +30 max HP, shockwave 15m | +40 max HP, 2 rebirths |
 
 ### Branch: Quake (`#FFCC44`)
 *"The Amunat wastes remember every earthquake. Make more."*

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { CONFIG } from '../config/GameConfig'
 import * as ignara from './heroes/ignara'
 import * as sifra from './heroes/sifra'
@@ -12,6 +13,8 @@ import { MetaProgress } from '../systems/MetaProgress'
 import { type IInputController, KeyboardInputController } from '../systems/InputController'
 
 export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller'
+
+const ZERO_DIR = { dx: 0, dy: 0 } as const
 
 interface HeroDef {
   hp: number; speed: number; damage: number; range: number; cooldown: number
@@ -867,7 +870,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
         // Floating damage number — large, bold, shakes up
         const dmgText = this.scene.add.text(this.x + Phaser.Math.Between(-10, 10), this.y - 30, `-${Math.ceil(reduced)}`, {
-          fontFamily: 'monospace', fontSize: '22px', color: '#ff2222',
+          fontFamily: gameFont(), fontSize: '22px', color: '#ff2222',
           stroke: '#000000', strokeThickness: 4,
         }).setDepth(20).setOrigin(0.5)
         this.scene.tweens.add({
@@ -1003,8 +1006,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           if (!e.active) continue
           if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= 120) {
             (e as any).takeDamage(this.damage, 'shockwave');
-            const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y);
-            (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * 400, Math.sin(kb) * 400)
+            (e as any).applyKnockback?.(cx, cy, 400)
           }
         }
       }
@@ -1393,35 +1395,49 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     nazar.attackPoison(this, target, enemies)
   }
 
+  private _buffParticlePool: Phaser.GameObjects.Arc[] = []
+  private _buffColors: number[] = []
+
   private spawnBuffParticles() {
-    // Only show buff auras if the hero has been upgraded (level > 1)
     if (this.level <= 1) return
 
-    const buffColors: number[] = []
+    // Reuse array to avoid per-call allocation
+    const bc = this._buffColors
+    bc.length = 0
+    if (this.armor > 0) bc.push(0x8888ff)
+    if (this.hpRegen > 0) bc.push(0x44ff44)
+    if (this.splashRadius > 0) bc.push(0xff8844)
+    if (this.strikeCount > 1) bc.push(0xffffff)
+    if (this.xpMult > 1) bc.push(0xffd700)
+    if (bc.length === 0) return
 
-    // Determine which buff categories are active based on stat changes
-    if (this.armor > 0) buffColors.push(0x8888ff) // blue — armor/defense
-    if (this.hpRegen > 0) buffColors.push(0x44ff44) // green — regen
-    if (this.splashRadius > 0) buffColors.push(0xff8844) // orange — splash/AoE
-    if (this.strikeCount > 1) buffColors.push(0xffffff) // white — multistrike
-    if (this.xpMult > 1) buffColors.push(0xffd700) // gold — wisdom
+    // Ensure pool exists (3 particles covers 400ms interval × 500-800ms lifetime)
+    if (this._buffParticlePool.length === 0) {
+      for (let i = 0; i < 3; i++) {
+        this._buffParticlePool.push(
+          this.scene.add.circle(0, 0, 2, 0xffffff, 0.6).setDepth(7).setVisible(false)
+        )
+      }
+    }
 
-    if (buffColors.length === 0) return
+    // Find a free particle from pool
+    const particle = this._buffParticlePool.find(p => !p.visible)
+    if (!particle) return
 
-    // Pick a random active buff color and spawn a small particle
-    const color = buffColors[Math.floor(Math.random() * buffColors.length)]
+    const color = bc[Math.floor(Math.random() * bc.length)]
     const angle = Math.random() * Math.PI * 2
     const dist = Phaser.Math.Between(10, 22)
     const px = this.x + Math.cos(angle) * dist
     const py = this.y + Math.sin(angle) * dist
 
-    const particle = this.scene.add.circle(px, py, Phaser.Math.Between(1, 3), color, 0.6).setDepth(7)
+    particle.setPosition(px, py).setRadius(Phaser.Math.Between(1, 3))
+    particle.setFillStyle(color, 0.6).setAlpha(1).setScale(1).setVisible(true)
     this.scene.tweens.add({
       targets: particle,
       y: py - Phaser.Math.Between(15, 30),
       alpha: 0, scale: 0.2,
       duration: Phaser.Math.Between(500, 800),
-      onComplete: () => particle.destroy(),
+      onComplete: () => particle.setVisible(false),
     })
   }
 
@@ -1485,16 +1501,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Update input controller before reading direction
     if (this.inputController) this.inputController.update()
 
-    // Handle stance toggle via inputController (replaces direct Q key binding)
+    // Handle stance toggle via inputController
     if (this.inputController?.getStanceToggle()) {
-      const stanceHandlers: Record<string, () => void> = {
-        sifra: () => this.toggleStance(),
-        nazar: () => this.toggleNazarStance(),
-        huntress: () => this.toggleHuntressStance(),
-        khashin: () => this.toggleKhashinStance(),
-        amun: () => this.toggleAmunStance(),
+      switch (this.heroType) {
+        case 'sifra': this.toggleStance(); break
+        case 'nazar': this.toggleNazarStance(); break
+        case 'huntress': this.toggleHuntressStance(); break
+        case 'khashin': this.toggleKhashinStance(); break
+        case 'amun': this.toggleAmunStance(); break
       }
-      stanceHandlers[this.heroType]?.()
     }
 
     // During melee attack: allow movement at 50% speed (no full freeze)
@@ -1502,7 +1517,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let moving = false
 
     // Get direction from inputController (keyboard + joystick)
-    const dir = this.inputController?.getDirection() ?? { dx: 0, dy: 0 }
+    const dir = this.inputController?.getDirection() ?? ZERO_DIR
 
     // Resolve touch target from inputController (KeyboardInputController exposes it)
     const kbic = this.inputController as KeyboardInputController | null

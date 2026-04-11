@@ -93,10 +93,8 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
           (e as BaseEnemy).takeDamage(effectiveDmg, 'fire')
 
           // Base fireball knockback (Backdraft upgrades to 300)
-          const kb = Phaser.Math.Angle.Between(tx, ty, e.x, e.y)
-          const body = e.body as Phaser.Physics.Arcade.Body
           const kbForce = p.hasBackdraft ? 300 : 120
-          if (body) body.setVelocity(Math.cos(kb) * kbForce, Math.sin(kb) * kbForce)
+          ;(e as BaseEnemy).applyKnockback(tx, ty, kbForce)
 
           // Wildfire: kill triggers mini-explosion on nearby enemies
           if (p.hasWildfire) {
