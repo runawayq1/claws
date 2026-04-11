@@ -275,10 +275,10 @@ export class GameRoom extends Room<GameRoomState> {
     this.checkPlayerAttacks(dt)
     this.spawnEnemies()
 
-    // HP regen from mu_regen upgrade stacks
+    // HP regen from g6 "Regeneration" upgrade stacks
     this.state.players.forEach(p => {
       if (p.isDead || p.isDowned) return
-      const stacks = p.upgrades['mu_regen'] ?? 0
+      const stacks = p.upgrades.get('g6') ?? 0
       if (stacks > 0) p.hp = Math.min(p.maxHp, p.hp + stacks * 2 * (CFG.TICK_MS / 1000))
     })
 
@@ -417,9 +417,8 @@ export class GameRoom extends Room<GameRoomState> {
         const def = ENEMY_DEFS[e.type] ?? ENEMY_DEFS['orc0']
         const dmg = def.damage * CFG.dmgMultiplier(this.state.playerCount) * (dt / 1000)
 
-        // Damage mitigation from armor upgrades
-        // cr1 = Stone Skin: each stack reduces incoming damage by 5%, max 60%
-        const armorStacks = p.upgrades['mu_armor'] ?? p.upgrades['cr1'] ?? 0
+        // Damage mitigation from g10 "Iron Skin" upgrade stacks (5% per stack, max 60%)
+        const armorStacks = p.upgrades.get('g10') ?? 0
         const damageReduction = Math.min(0.6, armorStacks * 0.05)
         const reducedDmg = dmg * (1 - damageReduction)
         p.hp -= reducedDmg
@@ -476,22 +475,28 @@ export class GameRoom extends Room<GameRoomState> {
 
       if (heroDef.attackPattern === 'aoe') {
         const radius = heroDef.splashRadius ?? 80
-        this.state.enemies.forEach((e, key) => {
+        const aoeKeys = this.spatialGrid.query(primaryTarget.x, primaryTarget.y, radius)
+        for (const key of aoeKeys) {
+          const e = this.state.enemies.get(key)
+          if (!e) continue
           const dx = primaryTarget.x - e.x
           const dy = primaryTarget.y - e.y
           if (dx * dx + dy * dy <= radius * radius) {
             e.hp -= effectiveDamage
             if (e.hp <= 0) killed.push([e, key])
           }
-        })
+        }
       } else if (heroDef.attackPattern === 'cone') {
         const halfAngle = ((heroDef.coneAngle ?? 90) / 2) * (Math.PI / 180)
         const aimAngle = Math.atan2(primaryTarget.y - p.y, primaryTarget.x - p.x)
-        this.state.enemies.forEach((e, key) => {
+        const coneKeys = this.spatialGrid.query(p.x, p.y, effectiveRange * 1.2)
+        for (const key of coneKeys) {
+          const e = this.state.enemies.get(key)
+          if (!e) continue
           const dx = e.x - p.x
           const dy = e.y - p.y
           const dist2 = dx * dx + dy * dy
-          if (dist2 > effectiveRange * effectiveRange * 1.5) return
+          if (dist2 > effectiveRange * effectiveRange * 1.5) continue
           const angle = Math.atan2(dy, dx)
           let diff = Math.abs(angle - aimAngle)
           if (diff > Math.PI) diff = Math.PI * 2 - diff
@@ -499,25 +504,26 @@ export class GameRoom extends Room<GameRoomState> {
             e.hp -= effectiveDamage
             if (e.hp <= 0) killed.push([e, key])
           }
-        })
+        }
       } else if (heroDef.attackPattern === 'line') {
-        // Line from player through primary target, width ~30px
         const aimAngle = Math.atan2(primaryTarget.y - p.y, primaryTarget.x - p.x)
         const lineWidth = 30
-        this.state.enemies.forEach((e, key) => {
+        const lineKeys = this.spatialGrid.query(p.x, p.y, effectiveRange * 1.2)
+        for (const key of lineKeys) {
+          const e = this.state.enemies.get(key)
+          if (!e) continue
           const dx = e.x - p.x
           const dy = e.y - p.y
           const dist2 = dx * dx + dy * dy
-          if (dist2 > effectiveRange * effectiveRange * 1.5) return
-          // Project onto aim direction, check perpendicular distance
+          if (dist2 > effectiveRange * effectiveRange * 1.5) continue
           const along = dx * Math.cos(aimAngle) + dy * Math.sin(aimAngle)
-          if (along < 0) return
+          if (along < 0) continue
           const perp = Math.abs(-dx * Math.sin(aimAngle) + dy * Math.cos(aimAngle))
           if (perp <= lineWidth) {
             e.hp -= effectiveDamage
             if (e.hp <= 0) killed.push([e, key])
           }
-        })
+        }
       } else {
         // single
         primaryTarget.hp -= effectiveDamage
@@ -579,14 +585,21 @@ export class GameRoom extends Room<GameRoomState> {
   }
 
   private applyUpgrade(p: PlayerState, upgradeId: string) {
-    // Track upgrades
-    p.upgrades[upgradeId] = (p.upgrades[upgradeId] ?? 0) + 1
+    // Track upgrade stacks in schema MapSchema
+    p.upgrades.set(upgradeId, (p.upgrades.get(upgradeId) ?? 0) + 1)
 
-    // Apply stat upgrades (simplified — client has full upgrade definitions)
-    if (upgradeId.startsWith('mu_hp')) { p.maxHp += 20; p.hp = Math.min(p.hp + 20, p.maxHp) }
-    else if (upgradeId.startsWith('mu_spd')) p.speed += 15
-    else if (upgradeId.startsWith('mu_dmg')) p.damage += 8
-    else if (upgradeId.startsWith('mu_regen')) { /* hp regen handled per tick */ }
+    // Apply server-side stat bumps for generic upgrades
+    // (hero ability flags are applied client-side via UpgradeTracker.pickById)
+    if (upgradeId === 'g1')      { p.damage = Math.ceil(p.damage * 1.12) }         // Sharp Edge
+    else if (upgradeId === 'g2') { p.maxHp += 25; p.hp = Math.min(p.hp + 25, p.maxHp) } // Vitality
+    else if (upgradeId === 'g3') { p.speed += 12 }                                  // Swift Boots
+    else if (upgradeId === 'g4') { p.damage = Math.ceil(p.damage * 1.1) }           // Precision
+    else if (upgradeId === 'g5') { p.maxHp += 30; p.hp = Math.min(p.hp + 30, p.maxHp) } // Iron Will
+    else if (upgradeId === 'g6') { /* regen handled per tick via upgrades.get('g6') */ }
+    else if (upgradeId === 'g7') { p.speed += 8 }                                   // Light Feet
+    else if (upgradeId === 'g8') { p.damage = Math.ceil(p.damage * 1.08) }          // Battle Scars
+    else if (upgradeId === 'g9') { p.maxHp += 20; p.hp = Math.min(p.hp + 20, p.maxHp) } // Endurance
+    else if (upgradeId === 'g10') { /* armor reduction handled in collision */ }     // Iron Skin
 
     this.broadcast('upgrade-applied', { playerId: p.id, upgradeId })
   }

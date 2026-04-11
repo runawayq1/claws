@@ -39,6 +39,9 @@ export class GameScene extends Phaser.Scene {
   xpSystem!: XPSystem
   goldSystem!: GoldSystem
   upgradeTracker!: UpgradeTracker
+  // Online level-up queue — prevents dropped UI when two players level up simultaneously
+  private _pendingLevelUps: Array<{ player: Player; choices: any[]; isBranch: boolean }> = []
+  private _levelUpActive = false
   pickups!: Phaser.GameObjects.Group
   chests!: Phaser.GameObjects.Group
   gameTime = 0
@@ -475,19 +478,15 @@ export class GameScene extends Phaser.Scene {
 
     this.events.on('player-levelup', (levelingPlayer?: Player) => {
       if (this._online) {
-        // Online: show upgrade picker without pausing the game
         const lvlPlayer = levelingPlayer ?? this.localPlayer
-        // Generate choices using local tracker (same as solo — client owns tracker state)
-        const choices = this.upgradeTracker.getChoices(this.selectedHero as any)
+        const isBranch = this.upgradeTracker.isBranchSelection
+        const choices = isBranch
+          ? this.upgradeTracker.getBranchChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
+          : this.upgradeTracker.getChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
         if (choices.length === 0) return
-        // Launch LevelUpScene without pausing (scene.launch runs in parallel)
-        this.scene.launch('LevelUpScene', {
-          player: lvlPlayer,
-          tracker: this.upgradeTracker,
-          callerSceneKey: this.scene.key,
-          onlineMode: true,   // flag so LevelUpScene knows to send to server
-        })
-        // No scene.pause() — game continues running
+        // Queue level-ups — Phaser silently drops scene.launch if scene already active
+        this._pendingLevelUps.push({ player: lvlPlayer, choices, isBranch })
+        this._tryShowNextLevelUp()
         return
       }
       // Use the player that leveled up; fall back to localPlayer for backward compat
@@ -574,6 +573,11 @@ export class GameScene extends Phaser.Scene {
       this.events.on('network-attack-vfx', (data: { playerId: string; x: number; y: number; damage: number }) => {
         const flash = this.add.circle(data.x, data.y, 10, 0xffffff, 0.7).setDepth(10)
         this.tweens.add({ targets: flash, alpha: 0, scaleX: 2.5, scaleY: 2.5, duration: 180, onComplete: () => flash.destroy() })
+      })
+      // When LevelUpScene closes in online mode, show next queued level-up
+      this.events.on('levelup-closed', () => {
+        this._levelUpActive = false
+        this._tryShowNextLevelUp()
       })
       // Signal server that this client is loaded and ready
       networkManager.sendReady()
@@ -1727,6 +1731,19 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+
+  private _tryShowNextLevelUp() {
+    if (this._levelUpActive || this._pendingLevelUps.length === 0) return
+    const next = this._pendingLevelUps.shift()!
+    this._levelUpActive = true
+    this.scene.launch('LevelUpScene', {
+      player: next.player,
+      tracker: this.upgradeTracker,
+      callerSceneKey: this.scene.key,
+      onlineMode: true,
+      isBranchSelection: next.isBranch,
+    })
+  }
 
   applyHitStop(duration = 15) {
     if (this._hitStopActive) return

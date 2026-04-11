@@ -917,6 +917,8 @@ export class LevelUpScene extends Phaser.Scene {
         this.showStanceTutorial()
       } else if (this._onlineMode) {
         // Game was never paused — just close this overlay scene
+        const callerScene = this.scene.get(this.callerSceneKey)
+        callerScene?.events.emit('levelup-closed')
         this.scene.setVisible(false)
         this.time.delayedCall(0, () => this.scene.stop())
       } else {

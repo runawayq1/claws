@@ -23,8 +23,8 @@ export class PlayerState extends Schema {
   inputDx: number = 0
   inputDy: number = 0
   inputStance: boolean = false
-  // Upgrades chosen (server-side tracking)
-  upgrades: Record<string, number> = {}
+  // Upgrades chosen — MapSchema so they sync to clients and survive reconnect
+  @type({ map: 'number' }) upgrades = new MapSchema<number>()
 }
 
 export class EnemyState extends Schema {

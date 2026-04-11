@@ -409,7 +409,7 @@ export class NetworkGameAdapter {
         if (body) body.reset(this.serverTargetX, this.serverTargetY)
       } else if (dist > 2) {
         // Smooth interpolation toward server pos
-        const t = Math.min(1, delta / 80) // ~12 frames to converge
+        const t = 1 - Math.exp(-delta / 80) // exponential, frame-rate independent
         this.localPlayer.x += dx * t
         this.localPlayer.y += dy * t
       }
