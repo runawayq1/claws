@@ -275,7 +275,7 @@ export class GameScene extends Phaser.Scene {
       this.physics.world.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
       this.rocks = this.physics.add.staticGroup()
       this.terrainRT = this.add.renderTexture(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT).setOrigin(0).setDepth(0)
-      this.terrainRT.fill(0x4a7c3f)
+      this.terrainRT.fill(0x305426)
       this.localPlayer = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
       this.players = [this.localPlayer]
       this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
@@ -957,9 +957,9 @@ export class GameScene extends Phaser.Scene {
         const grassFrame = GRASS_FRAMES[Math.floor(rand * GRASS_FRAMES.length)]
         tmpTile.setFrame(grassFrame).setPosition(px, py)
 
-        if (zone === 3) tmpTile.setTint(0xccddcc)
-        else if (zone === 4) tmpTile.setTint(0xbbccbb)
-        else tmpTile.clearTint()
+        if (zone === 3) tmpTile.setTint(0x8f9f8f)
+        else if (zone === 4) tmpTile.setTint(0x7e8f7e)
+        else tmpTile.setTint(0xb1c1b1)
 
         this.terrainRT.draw(tmpTile)
       }
@@ -1664,11 +1664,14 @@ export class GameScene extends Phaser.Scene {
     const enemies = this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
     for (const enemy of enemies) {
       if (!enemy.active) continue
-      ;(enemy as unknown as BaseEnemy).update(time, dt)
+      // Online enemies are plain sprites (no BaseEnemy.update) — adapter handles them
+      if (!this._online) {
+        ;(enemy as unknown as BaseEnemy).update(time, dt)
 
-      const e = enemy as any
-      if (e.hpDirty) {
-        this._hpBarsDirty = true
+        const e = enemy as any
+        if (e.hpDirty) {
+          this._hpBarsDirty = true
+        }
       }
     }
 

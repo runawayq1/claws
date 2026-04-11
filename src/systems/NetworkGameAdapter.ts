@@ -106,24 +106,28 @@ export class NetworkGameAdapter {
         if (enemy) {
           const isMiniBoss = enemy.type.includes('boss') || (enemy.maxHp > 100)
           const isLarge = isMiniBoss || enemy.type === 'sandgolem' || enemy.type === 'orc3'
-          // XP scales with enemy type (approximate match to solo values)
           const xpMap: Record<string, number> = { orc0: 5, orc1: 8, orc2: 8, orc3: 12, flyingeye: 12, sandgolem: 25 }
           const xpValue = xpMap[enemy.type] ?? 8
           const goldValue = isMiniBoss ? Phaser.Math.Between(5, 10) : (Math.random() < 0.35 ? Phaser.Math.Between(1, 3) : 0)
 
           this.scene.events.emit('enemy-died', data.x, data.y, xpValue, goldValue, isMiniBoss, isLarge)
 
-          // Play death animation if available, then destroy
-          const deathAnim = `${enemy.type === 'orc0' ? 'orc1' : enemy.type}_death`
-          if (this.scene.anims.exists(deathAnim)) {
-            enemy.sprite.play(deathAnim)
-            enemy.sprite.once('animationcomplete', () => enemy.sprite.destroy())
-          } else {
-            // Fade out fallback
-            this.scene.tweens.add({ targets: enemy.sprite, alpha: 0, duration: 200, onComplete: () => enemy.sprite.destroy() })
-          }
+          // Remove from map FIRST — prevents onRemove from double-destroying
           this.enemySprites.remove(enemy.sprite)
           this.remoteEnemies.delete(key)
+
+          // Play death animation if available, then destroy
+          const deathAnim = `${enemy.type === 'orc0' ? 'orc1' : enemy.type}_death`
+          if (enemy.sprite.active && this.scene.anims.exists(deathAnim)) {
+            enemy.sprite.play(deathAnim)
+            enemy.sprite.once('animationcomplete', () => {
+              if (enemy.sprite.active) enemy.sprite.destroy()
+            })
+          } else if (enemy.sprite.active) {
+            this.scene.tweens.add({ targets: enemy.sprite, alpha: 0, duration: 200, onComplete: () => {
+              if (enemy.sprite.active) enemy.sprite.destroy()
+            }})
+          }
         }
       },
 
@@ -260,6 +264,16 @@ export class NetworkGameAdapter {
       sprite.play(walkAnim)
     }
 
+    // Stub methods so hero attack code (takeDamage, die, etc.) won't crash
+    // Actual damage is handled server-side — these are cosmetic-only sprites
+    const s = sprite as any
+    s.takeDamage = () => {}
+    s.die = () => {}
+    s.hp = enemyState.hp
+    s.maxHp = enemyState.maxHp
+    s.hpDirty = false
+    s.isMiniBoss = !!enemyState.isMiniBoss
+
     this.enemySprites.add(sprite)
 
     this.remoteEnemies.set(key, {
@@ -336,6 +350,10 @@ export class NetworkGameAdapter {
           remote.targetY = e.y
           remote.hp = e.hp
           remote.maxHp = e.maxHp
+          // Keep sprite stubs in sync for hero code that reads enemy.hp
+          const s = remote.sprite as any
+          s.hp = e.hp
+          s.maxHp = e.maxHp
         }
       })
     }

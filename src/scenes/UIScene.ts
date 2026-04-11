@@ -1502,12 +1502,13 @@ export class UIScene extends Phaser.Scene {
     this.endTexts = [t1, t2, t3, t4, t4b, t5, t6, t7, panelG as any, lbG as any, ...lbEntries]
 
     if (showForgeHint) {
-      // Glow ring behind the button
+      // Glow ring behind the button — sized to match the actual button
       const glow = this.add.graphics().setDepth(31)
+      const gw = t7.width + 8, gh = t7.height + 8
       const drawGlow = (alpha: number) => {
         glow.clear()
         glow.lineStyle(2, 0xffd700, alpha)
-        glow.strokeRoundedRect(cx - 70, btnY + 86 - 18, 140, 36, 8)
+        glow.strokeRoundedRect(cx - gw / 2, btnY + 86 - gh / 2, gw, gh, 8)
       }
       drawGlow(0.6)
       this.tweens.add({
@@ -1528,8 +1529,8 @@ export class UIScene extends Phaser.Scene {
         repeat: -1,
         ease: 'Sine.easeInOut',
       })
-      // Hint label above button
-      const hint = this.add.text(cx, btnY + 86 - 26, '★ Spend gold on permanent upgrades!', {
+      // Hint label below FORGE button
+      const hint = this.add.text(cx, btnY + 86 + 24, '★ Spend gold on upgrades!', {
         fontFamily: 'monospace', fontSize: '11px', color: '#FFD700',
         stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(32)

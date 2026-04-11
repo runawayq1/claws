@@ -41,9 +41,9 @@ function addHighlightedDesc(
 }
 
 // Compact 5-card layout
-const CARD_W = 170
-const CARD_H = 255
-const GAP = 12
+const CARD_W = 210
+const CARD_H = 310
+const GAP = 14
 const STRIP_H = 14
 const ICON_SIZE = 96
 const DOT_RADIUS = 4
@@ -51,8 +51,8 @@ const DOT_COUNT = 3   // max skill level
 const DOT_SPACING = 14
 
 // Branch selection mode — bigger, bolder cards
-const BRANCH_CARD_W = 289
-const BRANCH_CARD_H = 408
+const BRANCH_CARD_W = 320
+const BRANCH_CARD_H = 450
 const BRANCH_GAP = 24
 const BRANCH_ICON_SIZE = 109
 
@@ -273,11 +273,9 @@ export class LevelUpScene extends Phaser.Scene {
         })
       }
 
-      // Confetti burst — desktop full version, mobile lightweight radial
+      // Confetti burst — desktop only
       if (!isMob) {
         this.spawnConfetti(width, height)
-      } else {
-        this.spawnMobileConfetti(width, height)
       }
     }
 
@@ -292,6 +290,7 @@ export class LevelUpScene extends Phaser.Scene {
 
   // ── Branch selection card — large, dramatic ────────────────────────────
   private createBranchCard(x: number, targetY: number, upgrade: Upgrade, index: number, cardScale = 1) {
+    const _mob = isMobileUserAgent()
     const borderColor = upgrade.branchColor || 0xffd700
     const branchHex = '#' + borderColor.toString(16).padStart(6, '0')
     const cw = BRANCH_CARD_W
@@ -319,7 +318,7 @@ export class LevelUpScene extends Phaser.Scene {
     // Branch name — big and bold at top
     const branchLabel = this.add.text(0, ly + 22, upgrade.branch || '', {
       fontFamily: 'monospace',
-      fontSize: '20px',
+      fontSize: _mob ? '22px' : '20px',
       color: branchHex,
       stroke: '#000000',
       strokeThickness: 3,
@@ -336,7 +335,7 @@ export class LevelUpScene extends Phaser.Scene {
     // First skill name
     const nameLabel = this.add.text(0, iconY + BRANCH_ICON_SIZE / 2 + 16, upgrade.label, {
       fontFamily: 'monospace',
-      fontSize: '18px',
+      fontSize: _mob ? '18px' : '15px',
       color: '#FFD700',
       stroke: '#000000',
       strokeThickness: 2,
@@ -349,7 +348,7 @@ export class LevelUpScene extends Phaser.Scene {
       const descY = iconY + BRANCH_ICON_SIZE / 2 + 44
       const brDescStyle: Phaser.Types.GameObjects.Text.TextStyle = {
         fontFamily: 'monospace',
-        fontSize: '14px',
+        fontSize: _mob ? '14px' : '12px',
         color: '#cccccc',
         stroke: '#000000',
         strokeThickness: 1,
@@ -366,7 +365,7 @@ export class LevelUpScene extends Phaser.Scene {
     const btnY = ly + ch - 24
     const selectText = this.add.text(0, btnY, '[ SELECT ]', {
       fontFamily: 'monospace',
-      fontSize: '14px',
+      fontSize: _mob ? '16px' : '14px',
       color: '#ffd700',
       stroke: '#000000',
       strokeThickness: 2,
@@ -495,6 +494,7 @@ export class LevelUpScene extends Phaser.Scene {
   }
 
   private createCard(x: number, targetY: number, upgrade: Upgrade, index: number, cardScale = 1) {
+    const _mob = isMobileUserAgent()
     const isPersonal = !!upgrade.branch
     const borderColor = isPersonal ? (upgrade.branchColor || 0xffd700) : 0x888899
 
@@ -531,7 +531,7 @@ export class LevelUpScene extends Phaser.Scene {
     if (isPersonal) {
       const heroLabel = this.add.text(0, ly + topOffset, isUltimate ? '★ ULTIMATE' : '★ HERO SKILL', {
         fontFamily: 'monospace',
-        fontSize: '9px',
+        fontSize: _mob ? '11px' : '9px',
         color: isUltimate ? '#ffcc44' : '#ffd700',
         stroke: '#000000',
         strokeThickness: 2,
@@ -539,10 +539,10 @@ export class LevelUpScene extends Phaser.Scene {
       container.add(heroLabel)
     }
 
-    if (isPersonal && upgrade.branch) {
-      // Skill level dots (3 max)
+    // Skill level dots (3 max) — shown for both branch and generic skills
+    {
       const dotsStartX = -(((DOT_COUNT - 1) * DOT_SPACING) / 2)
-      const dotsY = ly + topOffset + 14
+      const dotsY = ly + topOffset + (isPersonal ? 14 : 4)
       const dotG = this.add.graphics()
       for (let d = 0; d < DOT_COUNT; d++) {
         const filled = d < currentLevel
@@ -567,7 +567,7 @@ export class LevelUpScene extends Phaser.Scene {
     }
 
     // ── LVL UP badge (for cards that are leveling up, not newly learned) ─
-    if (isLevelUp && isPersonal) {
+    if (isLevelUp) {
       const badgeY = ly + topOffset + 28
       const badgeG = this.add.graphics()
       badgeG.fillStyle(0xffcc00, 0.9)
@@ -576,7 +576,7 @@ export class LevelUpScene extends Phaser.Scene {
 
       const lvlUpText = this.add.text(0, badgeY + 7, `LVL ${nextLevel}`, {
         fontFamily: 'monospace',
-        fontSize: '8px',
+        fontSize: _mob ? '10px' : '8px',
         color: '#000000',
       }).setOrigin(0.5)
       container.add(lvlUpText)
@@ -600,7 +600,7 @@ export class LevelUpScene extends Phaser.Scene {
     const nameY = iconOffsetY + ICON_SIZE / 2 + 8
     const nameLabel = this.add.text(0, nameY, upgrade.label, {
       fontFamily: 'monospace',
-      fontSize: '20px',
+      fontSize: _mob ? '18px' : '14px',
       color: nameColor,
       stroke: '#000000',
       strokeThickness: 2,
@@ -613,11 +613,11 @@ export class LevelUpScene extends Phaser.Scene {
     const descAvail = descMaxY - descStartY
     const descStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace',
-      fontSize: '14px',
+      fontSize: _mob ? '13px' : '10px',
       color: isPersonal ? '#cccccc' : '#999999',
       stroke: '#000000',
       strokeThickness: 1,
-      wordWrap: { width: CARD_W - 16 },
+      wordWrap: { width: CARD_W - 20 },
       align: 'center',
       lineSpacing: 2,
     }
@@ -635,7 +635,7 @@ export class LevelUpScene extends Phaser.Scene {
     const btnColor = isPersonal ? '#ffd700' : '#88ff88'
     const selectText = this.add.text(0, btnY, btnLabel, {
       fontFamily: 'monospace',
-      fontSize: '14px',
+      fontSize: _mob ? '14px' : '10px',
       color: btnColor,
       stroke: '#000000',
       strokeThickness: 2,
@@ -814,37 +814,6 @@ export class LevelUpScene extends Phaser.Scene {
   }
 
   // ── Looping mobile confetti ────────────────────────────────────────────
-  private spawnMobileConfetti(w: number, h: number) {
-    const burst = () => {
-      const colors = [0xffd700, 0xff4444, 0x44ff44, 0x4488ff, 0xff88ff, 0xffaa22]
-      const cx = w / 2
-      const cy = h / 2
-      for (let i = 0; i < 10; i++) {
-        const color = colors[Math.floor(Math.random() * colors.length)]
-        const radius = 4 + Math.random() * 4
-        const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.4
-        const dist = 180 + Math.random() * 40
-        const piece = this.add.graphics().setDepth(30)
-        piece.fillStyle(color, 0.9)
-        piece.fillCircle(0, 0, radius)
-        piece.setPosition(cx, cy)
-        this.tweens.add({
-          targets: piece,
-          x: cx + Math.cos(angle) * dist,
-          y: cy + Math.sin(angle) * dist,
-          alpha: 0,
-          scaleX: 0.3, scaleY: 0.3,
-          duration: 400,
-          ease: 'Quad.easeOut',
-          delay: i * 20,
-          onComplete: () => piece.destroy(),
-        })
-      }
-    }
-    burst()
-    this.confettiTimer = this.time.addEvent({ delay: 1000, callback: burst, loop: true })
-  }
-
   // ── Shared pick handler ─────────────────────────────────────────────────
   /**
    * Common logic executed when the player picks any upgrade card (normal or branch).

@@ -14,7 +14,7 @@ export interface Upgrade {
 }
 
 // ============================================================
-// GENERIC POOL (G1–G10) — available to all heroes, one-shot
+// GENERIC POOL (G1–G10) — available to all heroes, 3 levels each
 // ============================================================
 export const GENERIC_POOL: Upgrade[] = [
   { id: 'g1',  label: 'Sharp Edge',   desc: ['+12% dmg to all attacks', '+6% dmg (total ~19%)', '+6% dmg (total ~26%)'],              icon: 'g1_sharp_edge',   apply: (p, lvl) => { const m = [1.12, 1.06, 1.06][lvl - 1]; p.damage = Math.ceil(p.damage * m) } },
@@ -976,6 +976,7 @@ export const HERO_BRANCHES: Record<string, BranchDef[]> = {
 // ============================================================
 
 const MAX_SKILL_LEVEL = 3
+const MAX_TOTAL_SKILLS = 8
 
 /** Track which upgrades have been picked and to what level */
 export class UpgradeTracker {
@@ -1051,7 +1052,18 @@ export class UpgradeTracker {
    */
   getChoices(heroType: HeroType, _stance?: string): Upgrade[] {
     // ── Generic portion ──────────────────────────────────────────────────
-    const availGenerics = GENERIC_POOL.filter(u => !this.pickedGeneric.has(u.id))
+    // Count distinct skills the player has learned (branch + generic)
+    const totalDistinctSkills = this.pickedGeneric.size +
+      Object.keys(this.skillLevels).filter(id => !this.pickedGeneric.has(id) && this.skillLevels[id] > 0).length
+    const atSkillCap = totalDistinctSkills >= MAX_TOTAL_SKILLS
+
+    // Generics not yet maxed: already-picked can level up; new ones only if under skill cap
+    const availGenerics = GENERIC_POOL.filter(u => {
+      const lvl = this.skillLevels[u.id] || 0
+      if (lvl >= MAX_SKILL_LEVEL) return false          // maxed out
+      if (this.pickedGeneric.has(u.id)) return true      // already picked — can level up
+      return !atSkillCap                                  // new skill — only if under cap
+    })
     const shuffledGen = [...availGenerics].sort(() => Math.random() - 0.5)
 
     // ── Branch portion ───────────────────────────────────────────────────
@@ -1129,8 +1141,8 @@ export class UpgradeTracker {
       this.skillLevels[upgrade.id] = Math.min(cur + 1, MAX_SKILL_LEVEL)
     } else {
       this.pickedGeneric.add(upgrade.id)
-      // Generics are one-shot but still track a level for display
-      this.skillLevels[upgrade.id] = 1
+      const cur = this.skillLevels[upgrade.id] || 0
+      this.skillLevels[upgrade.id] = Math.min(cur + 1, MAX_SKILL_LEVEL)
     }
   }
 }
