@@ -88,28 +88,28 @@ const IGNARA_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'io1', label: 'Heat Shield', icon: 'io1_heat_shield',
-        desc: ['+15% armor (dmg reduction)', '+10% more armor', '+10% armor + Ember Veil aura (reflect 10% dmg)'],
+        desc: ['+7% armor (dmg reduction)', '+5% more armor', '+5% armor + Ember Veil aura (reflect 10% dmg)'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.15) }
-          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.1) }
-          else { p.armor = Math.min(0.7, p.armor + 0.1); p.hasMoltenSkin = true }
+          if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.07) }
+          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.05) }
+          else { p.armor = Math.min(0.7, p.armor + 0.05); p.hasMoltenSkin = true }
         },
       },
       {
         id: 'io2', label: 'Pyromaniac', icon: 'io2_pyromaniac',
-        desc: ['On kill: +2 HP, +1 HP/s regen', 'On kill: +3 HP instead, +1 HP/s regen', 'On kill: +4 HP, +2 HP/s more regen'],
+        desc: ['On kill: +1 HP, +0.5 HP/s regen', 'On kill: +2 HP instead, +0.5 HP/s regen', 'On kill: +2 HP, +1 HP/s more regen'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasPyromaniac = true; p.hpRegen += 1 }
-          else if (lvl === 2) { p.hpRegen += 1 }
-          else { p.hpRegen += 2 }
+          if (lvl === 1) { p.hasPyromaniac = true; p.hpRegen += 0.5 }
+          else if (lvl === 2) { p.hpRegen += 0.5 }
+          else { p.hpRegen += 1 }
         },
       },
       {
         id: 'io3', label: 'Molten Skin', icon: 'io3_molten_skin',
-        desc: ['When hit: AoE 30% dmg in 5m, +10% armor', 'AoE range +3m, +10% more armor', 'AoE range +3m + grants Phoenix Heart revive'],
+        desc: ['When hit: AoE 30% dmg in 5m, +5% armor', 'AoE range +3m, +5% more armor', 'AoE range +3m + grants Phoenix Heart revive'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasMoltenSkin = true; p.armor = Math.min(0.7, p.armor + 0.1) }
-          else if (lvl === 2) { p.splashRadius += 30; p.armor = Math.min(0.7, p.armor + 0.1) }
+          if (lvl === 1) { p.hasMoltenSkin = true; p.armor = Math.min(0.7, p.armor + 0.05) }
+          else if (lvl === 2) { p.splashRadius += 30; p.armor = Math.min(0.7, p.armor + 0.05) }
           else { p.splashRadius += 30; p.hasPhoenixHeart = true }
         },
       },
@@ -305,7 +305,7 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'sf1', label: 'Deep Freeze', icon: 'sf1_deep_freeze',
-        desc: ['Shards slow enemies +30%, +10% dmg', '+10% dmg, frozen enemies shatter for +20% bonus dmg', '+10% dmg, shatter AoE in 3m radius'],
+        desc: ['+30% enemy slow, +10% dmg', '+10% dmg, frozen enemies shatter for +20% bonus dmg', '+10% dmg, shatter AoE in 3m radius'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasDeepFreeze = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -485,7 +485,7 @@ const AMUN_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'ab1', label: 'Fortify', icon: 'ab1_fortify',
-        desc: ['+15% armor, activates defense aura', '+15% more armor', '+10% armor, Iron Will: cap incoming hit at 10% maxHP'],
+        desc: ['+15% armor\nreduce dmg taken and activate defense aura', '+15% more armor\nstacks with previous, stronger aura', '+10% armor\nIron Will: cap incoming hit at 10% maxHP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.15); p.defenseAuraActive = true }
           else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.1) }
@@ -1122,6 +1122,23 @@ export class UpgradeTracker {
       ;[result[i], result[j]] = [result[j], result[i]]
     }
     return result
+  }
+
+  /**
+   * Find upgrade by ID and apply it (for online mode — server sends chosen ID).
+   * Searches both GENERIC_POOL and hero branch upgrades.
+   */
+  pickById(upgradeId: string, heroType: HeroType): void {
+    // Check generic pool
+    const generic = GENERIC_POOL.find(u => u.id === upgradeId)
+    if (generic) { this.pick(generic); return }
+    // Check hero branches
+    const branches = HERO_BRANCHES[heroType] ?? []
+    for (const branch of branches) {
+      for (const skill of branch.upgrades) {
+        if (skill.id === upgradeId) { this.pick(skill); return }
+      }
+    }
   }
 
   /** Get the current level for a skill */

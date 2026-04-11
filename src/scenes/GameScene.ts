@@ -13,7 +13,7 @@ import { Chest } from '../entities/Chest'
 import { ChunkManager } from '../systems/ChunkManager'
 import { MetaProgress } from '../systems/MetaProgress'
 import { KeyboardInputController } from '../systems/InputController'
-import { isMobileDevice, isMobileUserAgent, isPortrait } from '../utils/device'
+import { isMobileDevice, isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
 import { NetworkGameAdapter } from '../systems/NetworkGameAdapter'
 import { networkManager } from '../systems/NetworkManager'
 
@@ -309,10 +309,10 @@ export class GameScene extends Phaser.Scene {
 
       // Nameplates for both players
       const np1 = this.add.text(0, 0, this.selectedHero.toUpperCase(), {
-        fontSize: '11px', color: '#ffffff', stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '11px', color: '#ffffff',
       }).setOrigin(0.5).setDepth(15)
       const np2 = this.add.text(0, 0, this._p2Hero.toUpperCase(), {
-        fontSize: '11px', color: '#aaffaa', stroke: '#000000', strokeThickness: 2,
+        fontFamily: gameFont(), fontSize: '11px', color: '#aaffaa',
       }).setOrigin(0.5).setDepth(15)
       this._nameplates = [np1, np2]
     } else {
@@ -474,8 +474,22 @@ export class GameScene extends Phaser.Scene {
     this.upgradeTracker = new UpgradeTracker()
 
     this.events.on('player-levelup', (levelingPlayer?: Player) => {
-      // Online: server handles upgrades — never pause GameScene
-      if (this._online) return
+      if (this._online) {
+        // Online: show upgrade picker without pausing the game
+        const lvlPlayer = levelingPlayer ?? this.localPlayer
+        // Generate choices using local tracker (same as solo — client owns tracker state)
+        const choices = this.upgradeTracker.getChoices(this.selectedHero as any)
+        if (choices.length === 0) return
+        // Launch LevelUpScene without pausing (scene.launch runs in parallel)
+        this.scene.launch('LevelUpScene', {
+          player: lvlPlayer,
+          tracker: this.upgradeTracker,
+          callerSceneKey: this.scene.key,
+          onlineMode: true,   // flag so LevelUpScene knows to send to server
+        })
+        // No scene.pause() — game continues running
+        return
+      }
       // Use the player that leveled up; fall back to localPlayer for backward compat
       const lvlPlayer = levelingPlayer ?? this.localPlayer
       // Kill nearby enemies so player can safely choose upgrades
@@ -489,15 +503,20 @@ export class GameScene extends Phaser.Scene {
           (enemy as any).die()
         }
       }
-      // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter
+      // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter.
+      // Defer destroys to next frame so the spike doesn't overlap LevelUpScene launch.
+      const toDestroy: Phaser.GameObjects.GameObject[] = []
       for (const orb of this.xpSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (orb.active && Math.random() < 0.5) orb.destroy()
+        if (orb.active && Math.random() < 0.5) toDestroy.push(orb)
       }
       for (const orb of this.goldSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (orb.active && Math.random() < 0.5) orb.destroy()
+        if (orb.active && Math.random() < 0.5) toDestroy.push(orb)
       }
       for (const p of this.pickups.getChildren() as Phaser.GameObjects.GameObject[]) {
-        if (p.active && Math.random() < 0.5) p.destroy()
+        if (p.active && Math.random() < 0.5) toDestroy.push(p)
+      }
+      if (toDestroy.length) {
+        this.time.delayedCall(0, () => { for (const o of toDestroy) if (o.active) o.destroy() })
       }
       const isBranch = this.upgradeTracker.isBranchSelection
       const choices = isBranch
@@ -547,6 +566,15 @@ export class GameScene extends Phaser.Scene {
       // Listen for network game events
       this.events.on('network-game-over', () => { this.gameOver = true })
       this.events.on('network-game-won', () => { this.gameOver = true })
+      // Apply server-confirmed upgrade to local tracker (sets ability flags / stats)
+      this.events.on('network-upgrade-applied', (upgradeId: string) => {
+        this.upgradeTracker.pickById(upgradeId, this.selectedHero as any)
+      })
+      // Small impact flash at remote attack hit position
+      this.events.on('network-attack-vfx', (data: { playerId: string; x: number; y: number; damage: number }) => {
+        const flash = this.add.circle(data.x, data.y, 10, 0xffffff, 0.7).setDepth(10)
+        this.tweens.add({ targets: flash, alpha: 0, scaleX: 2.5, scaleY: 2.5, duration: 180, onComplete: () => flash.destroy() })
+      })
       // Signal server that this client is loaded and ready
       networkManager.sendReady()
     }
@@ -633,8 +661,7 @@ export class GameScene extends Phaser.Scene {
 
     // "?" label above NPC
     this._sifraLabel = this.add.text(nx, ny - 60, '?', {
-      fontFamily: 'monospace', fontSize: '20px', color: '#FFD700',
-      stroke: '#000000', strokeThickness: 4,
+      fontFamily: gameFont(), fontSize: '20px', color: '#FFD700',
     }).setOrigin(0.5).setDepth(5)
 
     // ── Aura: 200% × Sifra base range (160) = 320px ──

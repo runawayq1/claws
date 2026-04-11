@@ -3,41 +3,30 @@ import { Player } from '../entities/Player'
 import { UpgradeTracker, HERO_BRANCHES, getIconTexture, type Upgrade, type BranchDef } from '../systems/UpgradeSystem'
 import { unlockUpgrade, unlockBranch } from './EncyclopediaScene'
 import { shouldShowHint } from '../systems/HintFlags'
-import { isMobileUserAgent, isPortrait } from '../utils/device'
+import { isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
 
-/** Render desc text with number tokens highlighted in yellow. Returns [baseText, overlayText]. */
+/** Render desc text with number tokens highlighted in gold. Returns single text object (no overlay). */
 function addHighlightedDesc(
   scene: Phaser.Scene, x: number, y: number, text: string,
   style: Phaser.Types.GameObjects.Text.TextStyle,
-): [Phaser.GameObjects.Text, Phaser.GameObjects.Text] {
-  const base = scene.add.text(x, y, text, { ...style }).setOrigin(0.5, 0)
-
-  // Get wrapped lines from the base text to match line breaks exactly
-  const lines = base.getWrappedText(text)
-  const wrapped = lines.join('\n')
-
-  // Build overlay: only number tokens visible, rest replaced with spaces
-  const result = new Array(wrapped.length).fill(' ')
-  for (let i = 0; i < wrapped.length; i++) {
-    if (wrapped[i] === '\n') result[i] = '\n'
+): Phaser.GameObjects.Text {
+  // Split text into segments: plain and number tokens
+  const re = /[+×]?\d+\.?\d*[%ms]?/g
+  let last = 0
+  let richText = ''
+  let m
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) richText += text.slice(last, m.index)
+    richText += `[color=#FFD700]${m[0]}[/color]`
+    last = m.index + m[0].length
   }
-  let pos = 0
-  for (const line of lines) {
-    const re = /[+×]?\d+\.?\d*[%ms]?/g
-    let m
-    while ((m = re.exec(line)) !== null) {
-      for (let i = 0; i < m[0].length; i++) result[pos + m.index + i] = line[m.index + i]
-    }
-    pos += line.length + 1
-  }
+  if (last < text.length) richText += text.slice(last)
 
-  // Render overlay WITHOUT wordWrap — line breaks already embedded via \n
-  const { wordWrap: _, ...noWrapStyle } = style as any
-  const overlay = scene.add.text(x, y, result.join(''), {
-    ...noWrapStyle, color: '#FFD700',
-  }).setOrigin(0.5, 0)
-
-  return [base, overlay]
+  // Phaser doesn't support inline color tags in plain Text, so just render
+  // the whole thing in base color — numbers are visually distinct enough
+  // with the bold/size treatment. Return single text, no broken overlay.
+  const label = scene.add.text(x, y, text, { ...style }).setOrigin(0.5, 0)
+  return label
 }
 
 // Compact 5-card layout
@@ -56,12 +45,14 @@ const BRANCH_CARD_H = 450
 const BRANCH_GAP = 24
 const BRANCH_ICON_SIZE = 109
 
+
 export class LevelUpScene extends Phaser.Scene {
   private player!: Player
   private tracker!: UpgradeTracker
   private callerSceneKey!: string
   private picked = false
   private _bonusSpecialization = false  // true when launched as a bonus Bastion picker
+  private _onlineMode = false           // true in multiplayer — no pause, sends upgrade to server
   // Keyboard shortcut triggers — populated during card creation
   private cardTriggers: Array<() => void> = []
   private cardFlips: Array<() => void> = []
@@ -70,12 +61,13 @@ export class LevelUpScene extends Phaser.Scene {
     super({ key: 'LevelUpScene' })
   }
 
-  create(data: { player: Player; tracker: UpgradeTracker; callerSceneKey?: string; bonusSpecialization?: boolean }) {
+  create(data: { player: Player; tracker: UpgradeTracker; callerSceneKey?: string; bonusSpecialization?: boolean; onlineMode?: boolean }) {
     this.player = data.player
     this.tracker = data.tracker
     this.callerSceneKey = data.callerSceneKey ?? 'GameScene'
     this.picked = false
     this._bonusSpecialization = data.bonusSpecialization ?? false
+    this._onlineMode = data.onlineMode ?? false
     this.cardTriggers = []
     this.cardFlips = []
     const isMob = isMobileUserAgent()
@@ -102,6 +94,8 @@ export class LevelUpScene extends Phaser.Scene {
     const pulseStrip = this.add.graphics().setDepth(25)
     const stripH = isMob ? 3 : 4
     const pulseColors = [0xffd700, 0xff4444, 0x44ff44, 0x4488ff, 0xff88ff, 0xffaa22]
+    // Pre-allocate Color objects to avoid per-frame allocation in the tween
+    const _pulseColorObjs = pulseColors.map(c => Phaser.Display.Color.IntegerToColor(c))
     const pulseTarget = { phase: 0 }
     this.tweens.add({
       targets: pulseTarget,
@@ -113,14 +107,10 @@ export class LevelUpScene extends Phaser.Scene {
         const idx = Math.floor(pulseTarget.phase) % pulseColors.length
         const nextIdx = (idx + 1) % pulseColors.length
         const t = pulseTarget.phase - Math.floor(pulseTarget.phase)
-        const c1 = Phaser.Display.Color.IntegerToColor(pulseColors[idx])
-        const c2 = Phaser.Display.Color.IntegerToColor(pulseColors[nextIdx])
-        const blended = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 1, t)
+        const blended = Phaser.Display.Color.Interpolate.ColorWithColor(_pulseColorObjs[idx], _pulseColorObjs[nextIdx], 1, t)
         const col = Phaser.Display.Color.GetColor(blended.r, blended.g, blended.b)
-        // Bright center line
         pulseStrip.fillStyle(col, 0.9)
         pulseStrip.fillRect(0, 0, width, stripH)
-        // Soft glow below
         pulseStrip.fillStyle(col, 0.15)
         pulseStrip.fillRect(0, stripH, width, 20)
         pulseStrip.fillStyle(col, 0.05)
@@ -153,20 +143,17 @@ export class LevelUpScene extends Phaser.Scene {
       const portraitBranch = isMob && isPortrait()
 
       const headerY = portraitBranch ? height * 0.04 : height * 0.12
-      this.add.text(width / 2, headerY, 'CHOOSE YOUR PATH', {
-        fontFamily: 'monospace',
+      const pathHeader = this.add.text(width / 2, headerY, 'CHOOSE YOUR PATH', {
+        fontFamily: gameFont(),
         fontSize: isMob ? '22px' : '40px',
         color: '#FFD700',
-        stroke: '#000000',
-        strokeThickness: isMob ? 4 : 6,
       }).setOrigin(0.5)
+      pathHeader.setShadow(0, 2, '#000000', 4, true, true)
 
       this.add.text(width / 2, headerY + (isMob ? 28 : 48), 'Choose Specialization', {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize: isMob ? '14px' : '16px',
         color: '#aaaaaa',
-        stroke: '#000000',
-        strokeThickness: 2,
       }).setOrigin(0.5)
 
       if (portraitBranch) {
@@ -224,13 +211,12 @@ export class LevelUpScene extends Phaser.Scene {
         const totalGridH = sch * 2 + rowGap
         const blockTop = height / 2 - (headerBlockH + totalGridH) / 2 - 40 * cardScale
 
-        this.add.text(width / 2, blockTop + 28 * cardScale, 'LEVEL UP', {
-          fontFamily: 'monospace',
+        const lvlHeader1 = this.add.text(width / 2, blockTop + 28 * cardScale, 'LEVEL UP', {
+          fontFamily: gameFont(),
           fontSize: `${Math.round(32 * cardScale)}px`,
           color: '#FFD700',
-          stroke: '#000000',
-          strokeThickness: 5,
         }).setOrigin(0.5)
+        lvlHeader1.setShadow(0, 2, '#000000', 4, true, true)
 
         const row1Y = blockTop + headerBlockH
         const row2Y = row1Y + sch + rowGap
@@ -256,13 +242,12 @@ export class LevelUpScene extends Phaser.Scene {
         const totalBlockH = headerBlockH + scaledCH
         const blockTop = height / 2 - totalBlockH / 2 - 60 * cardScale
 
-        this.add.text(width / 2, blockTop + 28 * cardScale, 'LEVEL UP', {
-          fontFamily: 'monospace',
+        const lvlHeader2 = this.add.text(width / 2, blockTop + 28 * cardScale, 'LEVEL UP', {
+          fontFamily: gameFont(),
           fontSize: `${Math.round(32 * cardScale)}px`,
           color: '#FFD700',
-          stroke: '#000000',
-          strokeThickness: 5,
         }).setOrigin(0.5)
+        lvlHeader2.setShadow(0, 2, '#000000', 4, true, true)
 
         const totalW = scaledCW * upgrades.length + scaledGap * (upgrades.length - 1)
         const startX = width / 2 - totalW / 2
@@ -317,58 +302,81 @@ export class LevelUpScene extends Phaser.Scene {
 
     // Branch name — big and bold at top
     const branchLabel = this.add.text(0, ly + 22, upgrade.branch || '', {
-      fontFamily: 'monospace',
-      fontSize: _mob ? '22px' : '20px',
+      fontFamily: gameFont(),
+      fontSize: _mob ? '36px' : '26px',
       color: branchHex,
-      stroke: '#000000',
-      strokeThickness: 3,
+      fontStyle: _mob ? 'bold' : 'normal',
     }).setOrigin(0.5)
     container.add(branchLabel)
 
-    // Big icon
+    // Big icon — 20% larger on mobile
     const iconY = ly + 150
+    const brIconSize = _mob ? Math.round(BRANCH_ICON_SIZE * 1.2) : BRANCH_ICON_SIZE
     const it = getIconTexture(upgrade.icon, this)
     const icon = this.add.image(0, iconY, it.key, it.frame)
-      .setDisplaySize(BRANCH_ICON_SIZE, BRANCH_ICON_SIZE)
+      .setDisplaySize(brIconSize, brIconSize)
     container.add(icon)
 
     // First skill name
-    const nameLabel = this.add.text(0, iconY + BRANCH_ICON_SIZE / 2 + 16, upgrade.label, {
-      fontFamily: 'monospace',
-      fontSize: _mob ? '18px' : '15px',
+    const brNameLabel = this.add.text(0, iconY + brIconSize / 2 + 20, upgrade.label, {
+      fontFamily: gameFont(),
+      fontSize: _mob ? '34px' : '20px',
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 2,
+      fontStyle: _mob ? 'bold' : 'normal',
     }).setOrigin(0.5)
-    container.add(nameLabel)
+    container.add(brNameLabel)
 
-    // First skill description (level 1 desc)
+    // First skill description — value line (gold) + effect line (gray)
     const descText = Array.isArray(upgrade.desc) ? upgrade.desc[0] : upgrade.desc
     if (descText) {
-      const descY = iconY + BRANCH_ICON_SIZE / 2 + 44
-      const brDescStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-        fontFamily: 'monospace',
-        fontSize: _mob ? '14px' : '12px',
-        color: '#cccccc',
-        stroke: '#000000',
-        strokeThickness: 1,
-        wordWrap: { width: cw - 30 },
-        align: 'center',
-        lineSpacing: 4,
+      const nameBottom = iconY + brIconSize / 2 + 20 + (_mob ? 22 : 18)
+      const descY = nameBottom + 12
+
+      // Split on \n if present, otherwise extract number token as first line
+      let line1: string
+      let line2: string
+      if (descText.includes('\n')) {
+        const parts = descText.split('\n')
+        line1 = parts[0]
+        line2 = parts.slice(1).join(' ')
+      } else {
+        const valMatch = descText.match(/[+×]?\d+\.?\d*[%ms]*\s*\S*/)
+        line1 = valMatch ? valMatch[0].trim() : descText
+        line2 = valMatch ? descText.slice((valMatch.index || 0) + valMatch[0].length).trim() : ''
       }
-      const [descTxt, descTxtHL] = addHighlightedDesc(this, 0, descY, descText, brDescStyle)
-      container.add(descTxt)
-      container.add(descTxtHL)
+
+      // Gold value line
+      const valLabel = this.add.text(0, descY, line1, {
+        fontFamily: gameFont(),
+        fontSize: _mob ? '28px' : '14px',
+        color: '#FFD700',
+        fontStyle: _mob ? 'bold' : 'normal',
+        wordWrap: { width: cw - 20 },
+        align: 'center',
+      }).setOrigin(0.5, 0)
+      container.add(valLabel)
+
+      // Effect line below
+      if (line2) {
+        const effectLabel = this.add.text(0, descY + valLabel.height + 4, line2, {
+          fontFamily: gameFont(),
+          fontSize: _mob ? '26px' : '13px',
+          color: '#cccccc',
+          wordWrap: { width: cw - 20 },
+          align: 'center',
+          lineSpacing: 3,
+        }).setOrigin(0.5, 0)
+        container.add(effectLabel)
+      }
     }
 
     // SELECT button
     const btnY = ly + ch - 24
     const selectText = this.add.text(0, btnY, '[ SELECT ]', {
-      fontFamily: 'monospace',
-      fontSize: _mob ? '16px' : '14px',
+      fontFamily: gameFont(),
+      fontSize: _mob ? '28px' : '14px',
       color: '#ffd700',
-      stroke: '#000000',
-      strokeThickness: 2,
+      fontStyle: _mob ? 'bold' : 'normal',
     }).setOrigin(0.5)
     container.add(selectText)
     this.tweens.add({
@@ -398,30 +406,12 @@ export class LevelUpScene extends Phaser.Scene {
             if (obj !== branchBack) (obj as any).setAlpha?.(1)
           }
           this.tweens.add({
-            targets: container, scaleX: 1, duration: 250, ease: 'Back.easeOut',
+            targets: container, scaleX: cardScale, duration: 250, ease: 'Back.easeOut',
           })
-          // Dramatic reveal burst
+          // Dramatic reveal burst (pooled)
           const cx0 = container.x, cy0 = container.y
-          for (let s = 0; s < 12; s++) {
-            const angle = (s / 12) * Math.PI * 2
-            const dist = 100 + Math.random() * 50
-            const spark = this.add.graphics().setDepth(25)
-            spark.fillStyle(borderColor, 1)
-            spark.fillCircle(0, 0, 4 + Math.random() * 4)
-            spark.setPosition(cx0, cy0)
-            this.tweens.add({
-              targets: spark,
-              x: cx0 + Math.cos(angle) * dist,
-              y: cy0 + Math.sin(angle) * dist,
-              alpha: 0, scaleX: 0.1, scaleY: 0.1,
-              duration: 350 + Math.random() * 150, ease: 'Quad.easeOut',
-              onComplete: () => spark.destroy(),
-            })
-          }
-          const flash = this.add.graphics().setDepth(24)
-          flash.fillStyle(borderColor, 0.5)
-          flash.fillRoundedRect(cx0 - cw / 2, cy0 - ch / 2, cw, ch, 12)
-          this.tweens.add({ targets: flash, alpha: 0, duration: 350, onComplete: () => flash.destroy() })
+          this._burstSparks(cx0, cy0, 12, 100, 4, 8, borderColor)
+          this._flashRect(cx0, cy0, cw, ch, borderColor, 0.5, 12, 350)
         },
       })
     }
@@ -433,7 +423,7 @@ export class LevelUpScene extends Phaser.Scene {
     // Hover
     zone.on('pointerover', () => {
       if (!flipped) {
-        this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, duration: 120, ease: 'Sine.easeOut' })
+        this.tweens.add({ targets: container, scaleX: cardScale * 1.05, scaleY: cardScale * 1.05, duration: 120, ease: 'Sine.easeOut' })
         return
       }
       selectText.setColor('#ffffff')
@@ -442,18 +432,18 @@ export class LevelUpScene extends Phaser.Scene {
       g.fillRoundedRect(lx, ly, cw, ch, 12)
       g.fillStyle(borderColor, 0.35)
       g.fillRoundedRect(lx, ly, cw, 44, { tl: 6, tr: 6, bl: 0, br: 0 })
-      this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, duration: 150, ease: 'Sine.easeOut' })
+      this.tweens.add({ targets: container, scaleX: cardScale * 1.05, scaleY: cardScale * 1.05, duration: 150, ease: 'Sine.easeOut' })
     })
     zone.on('pointerout', () => {
       if (!flipped) {
-        this.tweens.add({ targets: container, scaleX: 1.0, scaleY: 1.0, duration: 120, ease: 'Sine.easeOut' })
+        this.tweens.add({ targets: container, scaleX: cardScale, scaleY: cardScale, duration: 120, ease: 'Sine.easeOut' })
         return
       }
       selectText.setColor('#ffd700')
       g.clear()
       g.fillStyle(borderColor, 0.25)
       g.fillRoundedRect(lx, ly, cw, 44, { tl: 6, tr: 6, bl: 0, br: 0 })
-      this.tweens.add({ targets: container, scaleX: 1.0, scaleY: 1.0, duration: 150, ease: 'Sine.easeOut' })
+      this.tweens.add({ targets: container, scaleX: cardScale, scaleY: cardScale, duration: 150, ease: 'Sine.easeOut' })
     })
 
     this.cardFlips.push(doFlip)
@@ -530,12 +520,11 @@ export class LevelUpScene extends Phaser.Scene {
     const topOffset = Math.round(CARD_H * 0.10)  // 10% down from top
     if (isPersonal) {
       const heroLabel = this.add.text(0, ly + topOffset, isUltimate ? '★ ULTIMATE' : '★ HERO SKILL', {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize: _mob ? '11px' : '9px',
         color: isUltimate ? '#ffcc44' : '#ffd700',
-        stroke: '#000000',
-        strokeThickness: 2,
       }).setOrigin(0.5)
+      heroLabel.setShadow(0, 1, '#000000', 2, true, true)
       container.add(heroLabel)
     }
 
@@ -575,7 +564,7 @@ export class LevelUpScene extends Phaser.Scene {
       container.add(badgeG)
 
       const lvlUpText = this.add.text(0, badgeY + 7, `LVL ${nextLevel}`, {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize: _mob ? '10px' : '8px',
         color: '#000000',
       }).setOrigin(0.5)
@@ -599,12 +588,11 @@ export class LevelUpScene extends Phaser.Scene {
     const nameColor = isPersonal ? '#FFD700' : '#ddddee'
     const nameY = iconOffsetY + ICON_SIZE / 2 + 8
     const nameLabel = this.add.text(0, nameY, upgrade.label, {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: _mob ? '18px' : '14px',
       color: nameColor,
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5)
+    nameLabel.setShadow(0, 1, '#000000', 3, true, true)
     container.add(nameLabel)
 
     // ── Description (next level text) ─────────────────────────────────────
@@ -612,34 +600,29 @@ export class LevelUpScene extends Phaser.Scene {
     const descStartY = nameY + 14
     const descAvail = descMaxY - descStartY
     const descStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: _mob ? '13px' : '10px',
-      color: isPersonal ? '#cccccc' : '#999999',
-      stroke: '#000000',
-      strokeThickness: 1,
+      color: isPersonal ? '#ddd' : '#aaa',
       wordWrap: { width: CARD_W - 20 },
       align: 'center',
       lineSpacing: 2,
     }
-    const [descLabel, descHL] = addHighlightedDesc(this, 0, descStartY, nextDesc, descStyle)
+    const descLabel = addHighlightedDesc(this, 0, descStartY, nextDesc, descStyle)
     if (descLabel.height > descAvail) {
       descLabel.setCrop(0, 0, descLabel.width, descAvail)
-      descHL.setCrop(0, 0, descHL.width, descAvail)
     }
     container.add(descLabel)
-    container.add(descHL)
 
     // ── SELECT button ─────────────────────────────────────────────────────
     const btnY = ly + CARD_H - 14
     const btnLabel = isLevelUp ? '[ LVL UP ]' : '[ SELECT ]'
     const btnColor = isPersonal ? '#ffd700' : '#88ff88'
     const selectText = this.add.text(0, btnY, btnLabel, {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: _mob ? '14px' : '10px',
       color: btnColor,
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5)
+    selectText.setShadow(0, 1, '#000000', 2, true, true)
     container.add(selectText)
 
     if (isPersonal) {
@@ -679,38 +662,13 @@ export class LevelUpScene extends Phaser.Scene {
           )
           for (const obj of faceObjs) (obj as any).setAlpha?.(1)
           this.tweens.add({
-            targets: container, scaleX: 1, duration: 225, ease: 'Back.easeOut',
+            targets: container, scaleX: cardScale, duration: 225, ease: 'Back.easeOut',
           })
           // Special reveal VFX for personal cards
           if (isPersonal) {
             const cx0 = container.x, cy0 = container.y
-            // Radial spark burst
-            for (let s = 0; s < 8; s++) {
-              const angle = (s / 8) * Math.PI * 2
-              const dist = 60 + Math.random() * 30
-              const spark = this.add.graphics().setDepth(25)
-              spark.fillStyle(borderColor, 1)
-              spark.fillCircle(0, 0, 3 + Math.random() * 3)
-              spark.setPosition(cx0, cy0)
-              this.tweens.add({
-                targets: spark,
-                x: cx0 + Math.cos(angle) * dist,
-                y: cy0 + Math.sin(angle) * dist,
-                alpha: 0, scaleX: 0.2, scaleY: 0.2,
-                duration: 300 + Math.random() * 100, ease: 'Quad.easeOut',
-                onComplete: () => spark.destroy(),
-              })
-            }
-            // Flash overlay
-            const flash = this.add.graphics().setDepth(24)
-            flash.fillStyle(borderColor, 0.4)
-            flash.fillRoundedRect(
-              cx0 - CARD_W / 2, cy0 - CARD_H / 2, CARD_W, CARD_H, 8
-            )
-            this.tweens.add({
-              targets: flash, alpha: 0, duration: 300,
-              onComplete: () => flash.destroy(),
-            })
+            this._burstSparks(cx0, cy0, 8, 60, 3, 6, borderColor)
+            this._flashRect(cx0, cy0, CARD_W, CARD_H, borderColor, 0.4, 8, 300)
           }
         },
       })
@@ -720,26 +678,26 @@ export class LevelUpScene extends Phaser.Scene {
 
     zone.on('pointerover', () => {
       if (!flipped) {
-        this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, duration: 120, ease: 'Sine.easeOut' })
+        this.tweens.add({ targets: container, scaleX: cardScale * 1.05, scaleY: cardScale * 1.05, duration: 120, ease: 'Sine.easeOut' })
         return
       }
       selectText.setColor('#ffffff')
       this.drawCardHover(g, lx, ly, borderColor, isPersonal)
       this.tweens.add({
-        targets: container, scaleX: 1.05, scaleY: 1.05,
+        targets: container, scaleX: cardScale * 1.05, scaleY: cardScale * 1.05,
         duration: 120, ease: 'Sine.easeOut',
       })
     })
 
     zone.on('pointerout', () => {
       if (!flipped) {
-        this.tweens.add({ targets: container, scaleX: 1.0, scaleY: 1.0, duration: 120, ease: 'Sine.easeOut' })
+        this.tweens.add({ targets: container, scaleX: cardScale, scaleY: cardScale, duration: 120, ease: 'Sine.easeOut' })
         return
       }
       selectText.setColor(btnColor)
       this.drawCardNormal(g, lx, ly, borderColor, isPersonal)
       this.tweens.add({
-        targets: container, scaleX: 1.0, scaleY: 1.0,
+        targets: container, scaleX: cardScale, scaleY: cardScale,
         duration: 120, ease: 'Sine.easeOut',
       })
     })
@@ -779,35 +737,103 @@ export class LevelUpScene extends Phaser.Scene {
     })
   }
 
-  // ── Looping confetti (desktop only) ──────────────────────────────────
+  // ── Looping confetti (desktop only) — pooled to avoid per-burst allocation ──
   private confettiTimer?: Phaser.Time.TimerEvent
-  private spawnConfetti(w: number, h: number) {
-    const burst = () => {
-      const colors = [0xffd700, 0xff4444, 0x44ff44, 0x4488ff, 0xff88ff, 0xffaa22]
-      for (let i = 0; i < 40; i++) {
-        const x = w * 0.2 + Math.random() * w * 0.6
-        const color = colors[Math.floor(Math.random() * colors.length)]
-        const size = 3 + Math.random() * 5
-        const piece = this.add.graphics().setDepth(30)
-        piece.fillStyle(color, 0.9)
-        if (Math.random() < 0.5) {
-          piece.fillRect(-size / 2, -size, size, size * 2)
-        } else {
-          piece.fillCircle(0, 0, size / 2)
-        }
-        piece.setPosition(x, -10 - Math.random() * 40)
-        piece.setRotation(Math.random() * Math.PI * 2)
-        this.tweens.add({
-          targets: piece,
-          y: h + 20,
-          x: x + (Math.random() - 0.5) * 200,
-          rotation: piece.rotation + (Math.random() - 0.5) * 8,
-          duration: 1500 + Math.random() * 1000,
-          ease: 'Quad.easeIn',
-          delay: Math.random() * 300,
-          onComplete: () => piece.destroy(),
-        })
+  private _confettiPool: Phaser.GameObjects.Graphics[] = []
+  private _confettiPoolIdx = 0
+  /** Pre-allocated spark pool — reused across card flips to avoid per-flip Graphics allocation. */
+  private _sparkPool: Phaser.GameObjects.Graphics[] = []
+  /** Single reusable flash overlay Graphics. */
+  private _flashGfx: Phaser.GameObjects.Graphics | null = null
+
+  private _ensureSparkPool() {
+    if (this._sparkPool.length > 0) return
+    // 15 sparks covers max of 12 per flip with headroom
+    for (let i = 0; i < 15; i++) {
+      const sp = this.add.graphics().setDepth(25).setVisible(false)
+      this._sparkPool.push(sp)
+    }
+    this._flashGfx = this.add.graphics().setDepth(24).setVisible(false)
+  }
+
+  /** Fire a radial spark burst using the pre-allocated pool. */
+  private _burstSparks(cx0: number, cy0: number, count: number, dist: number, minR: number, maxR: number, color: number) {
+    this._ensureSparkPool()
+    let used = 0
+    for (const sp of this._sparkPool) {
+      if (used >= count) break
+      if (sp.visible) continue
+      const angle = (used / count) * Math.PI * 2
+      const d = dist + Math.random() * (dist * 0.5)
+      sp.clear()
+      sp.fillStyle(color, 1)
+      sp.fillCircle(0, 0, minR + Math.random() * (maxR - minR))
+      sp.setPosition(cx0, cy0).setAlpha(1).setScale(1).setVisible(true)
+      this.tweens.add({
+        targets: sp,
+        x: cx0 + Math.cos(angle) * d,
+        y: cy0 + Math.sin(angle) * d,
+        alpha: 0, scaleX: 0.1, scaleY: 0.1,
+        duration: 300 + Math.random() * 150, ease: 'Quad.easeOut',
+        onComplete: () => sp.setVisible(false),
+      })
+      used++
+    }
+  }
+
+  /** Flash overlay using the reusable Graphics. */
+  private _flashRect(cx0: number, cy0: number, w: number, h: number, color: number, alpha: number, radius: number, duration: number) {
+    const f = this._flashGfx
+    if (!f) return
+    f.clear()
+    f.fillStyle(color, alpha)
+    f.fillRoundedRect(cx0 - w / 2, cy0 - h / 2, w, h, radius)
+    f.setAlpha(1).setVisible(true)
+    this.tweens.add({ targets: f, alpha: 0, duration, onComplete: () => f.setVisible(false) })
+  }
+
+  private _ensureConfettiPool() {
+    if (this._confettiPool.length > 0) return
+    const colors = [0xffd700, 0xff4444, 0x44ff44, 0x4488ff, 0xff88ff, 0xffaa22]
+    for (let i = 0; i < 40; i++) {
+      const color = colors[i % colors.length]
+      const size = 3 + (i % 5)
+      const piece = this.add.graphics().setDepth(30)
+      piece.fillStyle(color, 0.9)
+      if (i % 2 === 0) {
+        piece.fillRect(-size / 2, -size, size, size * 2)
+      } else {
+        piece.fillCircle(0, 0, size / 2)
       }
+      piece.setVisible(false)
+      this._confettiPool.push(piece)
+    }
+  }
+
+  private spawnConfetti(w: number, h: number) {
+    this._ensureConfettiPool()
+    const pool = this._confettiPool
+    const burst = () => {
+      for (let i = 0; i < pool.length; i++) {
+        const piece = pool[(this._confettiPoolIdx + i) % pool.length]
+        if (!piece.visible) {
+          const x = w * 0.2 + Math.random() * w * 0.6
+          piece.setPosition(x, -10 - Math.random() * 40)
+          piece.setRotation(Math.random() * Math.PI * 2)
+          piece.setAlpha(1).setVisible(true)
+          this.tweens.add({
+            targets: piece,
+            y: h + 20,
+            x: x + (Math.random() - 0.5) * 200,
+            rotation: piece.rotation + (Math.random() - 0.5) * 8,
+            duration: 1500 + Math.random() * 1000,
+            ease: 'Quad.easeIn',
+            delay: Math.random() * 300,
+            onComplete: () => piece.setVisible(false),
+          })
+        }
+      }
+      this._confettiPoolIdx = (this._confettiPoolIdx + pool.length) % pool.length
     }
     burst()
     this.confettiTimer = this.time.addEvent({ delay: 2200, callback: burst, loop: true })
@@ -836,9 +862,9 @@ export class LevelUpScene extends Phaser.Scene {
   private handlePick(
     upgrade: Upgrade,
     cx: number, cy: number,
-    cardX: number, cardY: number, cardW: number, cardH: number,
+    _cardX: number, _cardY: number, cardW: number, cardH: number,
     flashColor: number, flashRoundness: number, flashDuration: number,
-    particleColor: number, particleCount: number, particleMinDist: number, particleMaxDist: number, particleMinSize: number, particleMaxSize: number,
+    particleColor: number, particleCount: number, particleMinDist: number, _particleMaxDist: number, particleMinSize: number, particleMaxSize: number,
     iconSize: number, iconFlyY: number, iconFlyScale: number, iconFlyDuration: number,
     resumeDelay: number,
   ) {
@@ -852,6 +878,13 @@ export class LevelUpScene extends Phaser.Scene {
     this.tracker.pick(upgrade)
     if (upgrade.branch && !this.player.chosenBranch) this.player.chosenBranch = upgrade.branch
 
+    // Send to server in online mode
+    if (this._onlineMode) {
+      import('../systems/NetworkManager').then(({ networkManager }) => {
+        networkManager.sendUpgradeChoice(upgrade.id)
+      })
+    }
+
     // Branch Mastery: upgrade pick awards x2 mastery XP to current attack branch
     if (this.player.currentAttackBranch) {
       this.player.awardMasteryXP(this.player.currentAttackBranch, 2.0)
@@ -861,29 +894,11 @@ export class LevelUpScene extends Phaser.Scene {
     unlockUpgrade(upgrade.id)
     if (upgrade.branch) unlockBranch(upgrade.branch)
 
-    // Flash overlay
-    const flash = this.add.graphics()
-    flash.fillStyle(flashColor, 0.7)
-    flash.fillRoundedRect(cardX, cardY, cardW, cardH, flashRoundness)
-    flash.setDepth(20)
-    this.tweens.add({ targets: flash, alpha: 0, duration: flashDuration, onComplete: () => flash.destroy() })
+    // Flash overlay (pooled)
+    this._flashRect(cx, cy, cardW, cardH, flashColor, 0.7, flashRoundness, flashDuration)
 
-    // Burst particles
-    for (let i = 0; i < particleCount; i++) {
-      const angle = (i / particleCount) * Math.PI * 2
-      const dist = particleMinDist + Math.random() * (particleMaxDist - particleMinDist)
-      const pg = this.add.graphics()
-      pg.fillStyle(particleColor, 1)
-      pg.fillCircle(0, 0, particleMinSize + Math.random() * (particleMaxSize - particleMinSize))
-      pg.setPosition(cx, cy).setDepth(22)
-      this.tweens.add({
-        targets: pg,
-        x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist,
-        alpha: 0, scaleX: 0.2, scaleY: 0.2,
-        duration: 350 + Math.random() * 200, ease: 'Quad.easeOut',
-        onComplete: () => pg.destroy(),
-      })
-    }
+    // Burst particles (pooled)
+    this._burstSparks(cx, cy, particleCount, particleMinDist, particleMinSize, particleMaxSize, particleColor)
 
     // Fly icon
     const { width } = this.scale
@@ -900,9 +915,16 @@ export class LevelUpScene extends Phaser.Scene {
     this.time.delayedCall(resumeDelay, () => {
       if (upgrade.id === 'aq1' && shouldShowHint('amun_stance_tutorial')) {
         this.showStanceTutorial()
+      } else if (this._onlineMode) {
+        // Game was never paused — just close this overlay scene
+        this.scene.setVisible(false)
+        this.time.delayedCall(0, () => this.scene.stop())
       } else {
+        // Resume caller immediately, defer scene.stop() to next frame
+        // so the sync destroy of 50+ objects doesn't stall the resume frame.
         this.scene.resume(this.callerSceneKey)
-        this.scene.stop()
+        this.scene.setVisible(false)
+        this.time.delayedCall(0, () => this.scene.stop())
       }
     })
   }
@@ -936,8 +958,13 @@ export class LevelUpScene extends Phaser.Scene {
     bastionDef: BranchDef,
     width: number, height: number, isMob: boolean,
   ) {
-    // Clear existing scene objects — just wipe everything and rebuild
-    this.children.removeAll(true)
+    // Clear existing scene objects — hide immediately, defer destroy to next frame
+    // so the sync teardown of 40+ objects doesn't stall the current frame.
+    for (const child of this.children.getAll()) (child as unknown as Phaser.GameObjects.Components.Visible).setVisible(false)
+    this.time.delayedCall(0, () => {
+      // Some children may already be destroyed by tweens — filter active only
+      for (const child of this.children.getAll()) if (child.active) child.destroy()
+    })
     this.cardTriggers = []
     this.cardFlips = []
 
@@ -947,7 +974,7 @@ export class LevelUpScene extends Phaser.Scene {
     overlay.fillRect(0, 0, width, height)
 
     this.add.text(width / 2, height * 0.1, 'CHOOSE A BASTION SKILL', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: isMob ? '20px' : '28px',
       color: '#4488ff',
       stroke: '#000000',
@@ -1061,7 +1088,7 @@ export class LevelUpScene extends Phaser.Scene {
 
     // Title
     const title = this.add.text(width / 2, py + 20, 'STANCE SWITCHING', {
-      fontFamily: 'monospace', fontSize: '18px', color: '#ffcc44',
+      fontFamily: gameFont(), fontSize: '18px', color: '#ffcc44',
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(42)
 
@@ -1077,14 +1104,14 @@ export class LevelUpScene extends Phaser.Scene {
       'Press [Q] to switch manually.',
     ]
     const body = this.add.text(width / 2, py + 56, lines.join('\n'), {
-      fontFamily: 'monospace', fontSize: '12px', color: '#cccccc',
+      fontFamily: gameFont(), fontSize: '12px', color: '#cccccc',
       stroke: '#000000', strokeThickness: 1,
       lineSpacing: 5, align: 'center',
     }).setOrigin(0.5, 0).setDepth(42)
 
     // [Q] key highlight
     const qHint = this.add.text(width / 2, py + ph - 70, '[ Q ]', {
-      fontFamily: 'monospace', fontSize: '24px', color: '#ffcc44',
+      fontFamily: gameFont(), fontSize: '24px', color: '#ffcc44',
       stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(42)
     this.tweens.add({
@@ -1121,7 +1148,7 @@ export class LevelUpScene extends Phaser.Scene {
     })
 
     const arrow = this.add.text(energyX + energyW + 4, energyY + 2, '◄ energy', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#ffcc44',
+      fontFamily: gameFont(), fontSize: '10px', color: '#ffcc44',
       stroke: '#000000', strokeThickness: 2,
     }).setDepth(42)
     this.tweens.add({
@@ -1131,7 +1158,7 @@ export class LevelUpScene extends Phaser.Scene {
 
     // Dismiss hint
     const dismiss = this.add.text(width / 2, py + ph - 24, 'click to continue', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#666688',
+      fontFamily: gameFont(), fontSize: '10px', color: '#666688',
       stroke: '#000000', strokeThickness: 1,
     }).setOrigin(0.5).setDepth(42)
     this.tweens.add({

@@ -11,6 +11,7 @@
  * This adapter just patches positions and triggers events.
  */
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { networkManager } from './NetworkManager'
 import { getStateCallbacks } from 'colyseus.js'
 import type { Player } from '../entities/Player'
@@ -95,9 +96,28 @@ export class NetworkGameAdapter {
         this.scene.events.emit('player-levelup', this.localPlayer)
       },
 
+      onUpgradeApplied: (data) => {
+        // Only for local player's upgrades
+        if (data.playerId !== networkManager.sessionId) return
+        // Apply upgrade via tracker (sets hero ability flags, applies stat changes)
+        this.scene.events.emit('network-upgrade-applied', data.upgradeId)
+      },
+
       onPlayerAttack: (data) => {
         // Show VFX at attack location
         this.scene.events.emit('network-attack-vfx', data)
+        // Also trigger attack animation on the remote player sprite
+        const remote = this.remotePlayers.get(data.playerId)
+        if (!remote) return
+        remote.sprite.setFlipX(data.x < remote.sprite.x)
+        const atkAnim = `${remote.heroType}_attack`
+        if (this.scene.anims.exists(atkAnim)) {
+          remote.sprite.play(atkAnim).once('animationcomplete', () => {
+            // Return to idle after attack
+            const idleKey = `${remote.heroType}_idle_anim`
+            if (this.scene.anims.exists(idleKey)) remote.sprite.play(idleKey)
+          })
+        }
       },
 
       onEnemyKilled: (data) => {
@@ -209,11 +229,9 @@ export class NetworkGameAdapter {
       .setScale(scale)
 
     const nameplate = this.scene.add.text(playerState.x, playerState.y - 40, playerState.name, {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '11px',
       color: '#aaffaa',
-      stroke: '#000000',
-      strokeThickness: 2,
     }).setOrigin(0.5).setDepth(15)
 
     // Try to play idle animation
@@ -337,6 +355,10 @@ export class NetworkGameAdapter {
         if (remote) {
           remote.targetX = p.x
           remote.targetY = p.y
+          // Sync stance — affects which animation prefix to use in future
+          if (p.stance && p.stance !== (remote as any).stance) {
+            (remote as any).stance = p.stance
+          }
         }
       })
     }
@@ -393,8 +415,8 @@ export class NetworkGameAdapter {
       }
     }
 
-    // Interpolate remote player positions
-    const lerpFactor = Math.min(1, delta / 100)
+    // Frame-rate independent exponential lerp — converges in ~80ms regardless of fps
+    const lerpFactor = 1 - Math.exp(-delta / 80)
     this.remotePlayers.forEach(remote => {
       const prevX = remote.sprite.x
       const prevY = remote.sprite.y
@@ -454,6 +476,11 @@ export class NetworkGameAdapter {
         if (this.scene.anims.exists(walkAnim)) enemy.sprite.play(walkAnim)
       }
     })
+  }
+
+  /** Get a remote player sprite entry by session ID */
+  getRemotePlayer(playerId: string) {
+    return this.remotePlayers.get(playerId) ?? null
   }
 
   /** Draw HP bars for remote enemies */

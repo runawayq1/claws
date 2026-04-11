@@ -3,6 +3,7 @@ import { GameRoomState, PlayerState, EnemyState } from '../schema/GameState'
 import { HERO_DEFS } from '../logic/HeroDefs'
 import { ENEMY_DEFS, pickWeightedType } from '../logic/EnemyDefs'
 import { SERVER_CONFIG as CFG } from '../logic/GameConfig'
+import { SpatialGrid } from '../logic/SpatialGrid'
 
 interface JoinOptions {
   playerName: string
@@ -32,6 +33,7 @@ export class GameRoom extends Room<GameRoomState> {
   private enemyRetargetTimers = new Map<number, number>() // enemyId → ms until retarget
   private pendingLevelUps = new Map<string, string[]>() // playerId → offered upgrade IDs
   private readyPlayers = new Set<string>() // clients that finished loading
+  private spatialGrid = new SpatialGrid(120)
 
   onCreate() {
     console.log(`[GameRoom] Room created: ${this.roomId}`)
@@ -157,6 +159,10 @@ export class GameRoom extends Room<GameRoomState> {
       p.maxHp = def.hp
       p.speed = def.speed
       p.damage = def.damage
+      // Set initial stance to first defined stance
+      if (def.stances && def.stances.length > 0) {
+        p.stance = def.stances[0]
+      }
     }
 
     p.xpToNext = CFG.XP_BASE
@@ -260,9 +266,21 @@ export class GameRoom extends Room<GameRoomState> {
 
     this.updatePlayers(dt)
     this.updateEnemies(dt)
+
+    // Rebuild spatial grid after enemy positions updated
+    this.spatialGrid.clear()
+    this.state.enemies.forEach((e, key) => this.spatialGrid.insert(key, e.x, e.y))
+
     this.checkPlayerEnemyCollisions(dt)
     this.checkPlayerAttacks(dt)
     this.spawnEnemies()
+
+    // HP regen from mu_regen upgrade stacks
+    this.state.players.forEach(p => {
+      if (p.isDead || p.isDowned) return
+      const stacks = p.upgrades['mu_regen'] ?? 0
+      if (stacks > 0) p.hp = Math.min(p.maxHp, p.hp + stacks * 2 * (CFG.TICK_MS / 1000))
+    })
 
     // Check game over — all players dead
     let allDead = true
@@ -309,6 +327,18 @@ export class GameRoom extends Room<GameRoomState> {
 
     this.state.players.forEach((p) => {
       if (p.isDead || p.isDowned) return
+
+      // Stance toggle
+      if (p.inputStance) {
+        p.inputStance = false
+        const heroDef = HERO_DEFS[p.heroType]
+        const stances = heroDef?.stances
+        if (stances && stances.length > 1) {
+          const idx = stances.indexOf(p.stance)
+          p.stance = stances[(idx + 1) % stances.length] ?? stances[0]
+        }
+      }
+
       if (p.inputDx === 0 && p.inputDy === 0) return
 
       const newX = p.x + p.inputDx * p.speed * (dt / 1000)
@@ -373,22 +403,32 @@ export class GameRoom extends Room<GameRoomState> {
     this.state.players.forEach(p => {
       if (p.isDead || p.isDowned) return
 
-      this.state.enemies.forEach(e => {
+      const nearbyKeys = this.spatialGrid.query(p.x, p.y, 80)
+      for (const key of nearbyKeys) {
+        const e = this.state.enemies.get(key)
+        if (!e) continue
+
         const dx = p.x - e.x
         const dy = p.y - e.y
         const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist > 40) return // collision radius
+        if (dist > 40) continue // collision radius
 
         // Damage per second → per tick
         const def = ENEMY_DEFS[e.type] ?? ENEMY_DEFS['orc0']
         const dmg = def.damage * CFG.dmgMultiplier(this.state.playerCount) * (dt / 1000)
-        p.hp -= dmg
+
+        // Damage mitigation from armor upgrades
+        // cr1 = Stone Skin: each stack reduces incoming damage by 5%, max 60%
+        const armorStacks = p.upgrades['mu_armor'] ?? p.upgrades['cr1'] ?? 0
+        const damageReduction = Math.min(0.6, armorStacks * 0.05)
+        const reducedDmg = dmg * (1 - damageReduction)
+        p.hp -= reducedDmg
 
         if (p.hp <= 0) {
           p.hp = 0
           this.playerDowned(p)
         }
-      })
+      }
     })
   }
 
@@ -400,47 +440,91 @@ export class GameRoom extends Room<GameRoomState> {
 
       let timer = this.playerAttackTimers.get(p.id) ?? 0
       timer -= dt
-      if (timer > 0) {
-        this.playerAttackTimers.set(p.id, timer)
-        return
-      }
+      if (timer > 0) { this.playerAttackTimers.set(p.id, timer); return }
 
       const heroDef = HERO_DEFS[p.heroType]
       if (!heroDef) return
 
-      // Find nearest enemy in range
-      let nearestKey: string | null = null
-      let nearestDist = heroDef.range * heroDef.range
+      // Apply stance multipliers
+      const isAltStance = heroDef.stances && heroDef.stances.length > 1 && p.stance !== heroDef.stances[0]
+      const damageMult = (isAltStance && heroDef.altStanceDamageMult) ? heroDef.altStanceDamageMult : 1
+      const rangeMult = (isAltStance && heroDef.altStanceRangeMult) ? heroDef.altStanceRangeMult : 1
+      const effectiveRange = heroDef.range * rangeMult
+      const effectiveDamage = p.damage * damageMult
 
-      this.state.enemies.forEach((e, key) => {
+      // Find nearest enemy in range — use spatial grid for efficiency
+      let nearestKey: string | null = null
+      let nearestDist = effectiveRange * effectiveRange
+      const candidateKeys = this.spatialGrid.query(p.x, p.y, effectiveRange)
+      for (const key of candidateKeys) {
+        const e = this.state.enemies.get(key)
+        if (!e) continue
         const dx = p.x - e.x
         const dy = p.y - e.y
         const dist = dx * dx + dy * dy
-        if (dist < nearestDist) {
-          nearestDist = dist
-          nearestKey = key
-        }
-      })
-
-      if (nearestKey) {
-        const e = this.state.enemies.get(nearestKey)!
-        e.hp -= p.damage
-
-        // Reset cooldown
-        this.playerAttackTimers.set(p.id, heroDef.cooldown)
-
-        // Broadcast attack VFX event
-        this.broadcast('player-attack', {
-          playerId: p.id,
-          targetId: e.id,
-          damage: p.damage,
-          x: e.x, y: e.y,
-        })
-
-        if (e.hp <= 0) {
-          this.enemyKilled(e, p, nearestKey)
-        }
+        if (dist < nearestDist) { nearestDist = dist; nearestKey = key }
       }
+
+      if (!nearestKey) return
+
+      const primaryTarget = this.state.enemies.get(nearestKey)!
+      this.playerAttackTimers.set(p.id, heroDef.cooldown)
+      this.broadcast('player-attack', { playerId: p.id, targetId: primaryTarget.id, damage: effectiveDamage, x: primaryTarget.x, y: primaryTarget.y })
+
+      // Apply damage based on attack pattern
+      const killed: [EnemyState, string][] = []
+
+      if (heroDef.attackPattern === 'aoe') {
+        const radius = heroDef.splashRadius ?? 80
+        this.state.enemies.forEach((e, key) => {
+          const dx = primaryTarget.x - e.x
+          const dy = primaryTarget.y - e.y
+          if (dx * dx + dy * dy <= radius * radius) {
+            e.hp -= effectiveDamage
+            if (e.hp <= 0) killed.push([e, key])
+          }
+        })
+      } else if (heroDef.attackPattern === 'cone') {
+        const halfAngle = ((heroDef.coneAngle ?? 90) / 2) * (Math.PI / 180)
+        const aimAngle = Math.atan2(primaryTarget.y - p.y, primaryTarget.x - p.x)
+        this.state.enemies.forEach((e, key) => {
+          const dx = e.x - p.x
+          const dy = e.y - p.y
+          const dist2 = dx * dx + dy * dy
+          if (dist2 > effectiveRange * effectiveRange * 1.5) return
+          const angle = Math.atan2(dy, dx)
+          let diff = Math.abs(angle - aimAngle)
+          if (diff > Math.PI) diff = Math.PI * 2 - diff
+          if (diff <= halfAngle) {
+            e.hp -= effectiveDamage
+            if (e.hp <= 0) killed.push([e, key])
+          }
+        })
+      } else if (heroDef.attackPattern === 'line') {
+        // Line from player through primary target, width ~30px
+        const aimAngle = Math.atan2(primaryTarget.y - p.y, primaryTarget.x - p.x)
+        const lineWidth = 30
+        this.state.enemies.forEach((e, key) => {
+          const dx = e.x - p.x
+          const dy = e.y - p.y
+          const dist2 = dx * dx + dy * dy
+          if (dist2 > effectiveRange * effectiveRange * 1.5) return
+          // Project onto aim direction, check perpendicular distance
+          const along = dx * Math.cos(aimAngle) + dy * Math.sin(aimAngle)
+          if (along < 0) return
+          const perp = Math.abs(-dx * Math.sin(aimAngle) + dy * Math.cos(aimAngle))
+          if (perp <= lineWidth) {
+            e.hp -= effectiveDamage
+            if (e.hp <= 0) killed.push([e, key])
+          }
+        })
+      } else {
+        // single
+        primaryTarget.hp -= effectiveDamage
+        if (primaryTarget.hp <= 0) killed.push([primaryTarget, nearestKey])
+      }
+
+      for (const [e, key] of killed) this.enemyKilled(e, p, key)
     })
   }
 
@@ -450,11 +534,14 @@ export class GameRoom extends Room<GameRoomState> {
     const def = ENEMY_DEFS[e.type] ?? ENEMY_DEFS['orc0']
     const wave = this.state.wave
     const xp = def.xpBase + Math.floor(wave / def.xpPerWaves)
-    const xpScaled = xp * CFG.xpMultiplier(this.state.playerCount)
+    const xpPerPlayer = Math.floor(xp * CFG.xpMultiplier(this.state.playerCount))
 
-    // XP to killer
-    killer.xp += xpScaled
-    this.checkLevelUp(killer)
+    // XP to all alive players
+    this.state.players.forEach(p => {
+      if (p.isDead || p.isDowned) return
+      p.xp += xpPerPlayer
+      this.checkLevelUp(p)
+    })
 
     // Gold to shared pool
     if (Math.random() < CFG.GOLD_MOB_CHANCE) {
