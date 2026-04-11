@@ -5,6 +5,7 @@ import { Orc2 } from '../entities/Orc2'
 import { Orc1 } from '../entities/Orc1'
 import { Orc3 } from '../entities/Orc3'
 import type { BaseEnemy } from '../entities/BaseEnemy'
+import { ClawsBoss } from '../entities/ClawsBoss'
 import { WaveManager } from '../systems/WaveManager'
 import { XPSystem, GoldSystem } from '../systems/XPSystem'
 import { UpgradeTracker } from '../systems/UpgradeSystem'
@@ -47,6 +48,7 @@ export class GameScene extends Phaser.Scene {
   gameTime = 0
   private enemyHpBars!: Phaser.GameObjects.Graphics
   private gameOver = false
+  bossDefeated = false
   private graves: Phaser.GameObjects.Image[] = []
   private _magnetFrame = 0
   private _hpBarsDirty = false
@@ -565,10 +567,8 @@ export class GameScene extends Phaser.Scene {
       // Listen for network game events
       this.events.on('network-game-over', () => { this.gameOver = true })
       this.events.on('network-game-won', () => { this.gameOver = true })
-      // Apply server-confirmed upgrade to local tracker (sets ability flags / stats)
-      this.events.on('network-upgrade-applied', (upgradeId: string) => {
-        this.upgradeTracker.pickById(upgradeId, this.selectedHero as any)
-      })
+      // Server echo only — client already applied optimistically in LevelUpScene
+      this.events.on('network-upgrade-applied', (_upgradeId: string) => { /* no-op */ })
       // Small impact flash at remote attack hit position
       this.events.on('network-attack-vfx', (data: { playerId: string; x: number; y: number; damage: number }) => {
         const flash = this.add.circle(data.x, data.y, 10, 0xffffff, 0.7).setDepth(10)
@@ -1546,93 +1546,29 @@ export class GameScene extends Phaser.Scene {
       if (enemy.active) enemy.destroy()
     }
 
-    // Create boss animations from demon slime spritesheet
-    if (!this.anims.exists('boss_walk')) {
-      // Mini spritesheet: idle(0-5), walk(6-17), cleave(18-32), hit(33-37), death(38-59)
-      this.anims.create({ key: 'boss_idle', frames: this.anims.generateFrameNumbers('boss_demon', { start: 0, end: 5 }), frameRate: 8, repeat: -1 })
-      this.anims.create({ key: 'boss_walk', frames: this.anims.generateFrameNumbers('boss_demon', { start: 6, end: 17 }), frameRate: 10, repeat: -1 })
-      this.anims.create({ key: 'boss_cleave', frames: this.anims.generateFrameNumbers('boss_demon', { start: 18, end: 32 }), frameRate: 12, repeat: 0 })
-      this.anims.create({ key: 'boss_hit', frames: this.anims.generateFrameNumbers('boss_demon', { start: 33, end: 37 }), frameRate: 8, repeat: 0 })
-      this.anims.create({ key: 'boss_death', frames: this.anims.generateFrameNumbers('boss_demon', { start: 38, end: 59 }), frameRate: 10, repeat: 0 })
-    }
-    if (!this.anims.exists('boss_spawn')) {
-      // Reverse death animation — frames 59 down to 38 — for materializing effect
-      const spawnFrames: Phaser.Types.Animations.AnimationFrame[] = []
-      for (let f = 59; f >= 38; f--) {
-        spawnFrames.push({ key: 'boss_demon', frame: f })
+    const bx = this.player.x - 400
+    const by = this.player.y
+
+    const boss = new ClawsBoss(this, bx, by, this.player)
+    this.enemies.add(boss)
+
+    // Listen for minion spawns (Phase 2 transition)
+    this.events.once('boss-spawn-minions', (count: number) => {
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count
+        const r = 220
+        const mx = Phaser.Math.Clamp(boss.x + Math.cos(angle) * r, 100, 2900)
+        const my = Phaser.Math.Clamp(boss.y + Math.sin(angle) * r, 100, 2900)
+        if (this.waveManager) {
+          this.waveManager.spawnMobAt('orc1', mx, my)
+        }
       }
-      this.anims.create({ key: 'boss_spawn', frames: spawnFrames, frameRate: 10, repeat: 0 })
-    }
-
-    // Spawn boss to the LEFT of the player
-    const bx = this.player.x - 400  // no clamp
-    const by = this.player.y         // no clamp
-
-    const boss = this.physics.add.sprite(bx, by, 'boss_demon')
-    boss.setScale(3)
-    boss.setDepth(15)
-    boss.setBodySize(60, 50)
-    boss.setOffset(114, 70)
-    boss.setAlpha(0)
-    ;(boss as any).hp = 9999
-    ;(boss as any).maxHp = 9999
-    ;(boss as any).bossSpawning = true
-
-    // Shadow under boss
-    const shadow = this.add.ellipse(boss.x, boss.y, 80, 24, 0x000000, 0.35).setDepth(14)
-
-    // Spawn animation: reverse death (materializing effect) with alpha fade-in
-    boss.play('boss_spawn')
-    this.tweens.add({ targets: boss, alpha: 1, duration: 600, ease: 'Linear' })
-    boss.once('animationcomplete', () => {
-      if (!boss.active) return
-      ;(boss as any).bossSpawning = false
-      boss.play('boss_idle')
-      // Brief idle pause before entering walk loop
-      this.time.delayedCall(400, () => {
-        if (boss.active) boss.play('boss_walk')
-      })
     })
 
-    // Boss cleave attack cooldown
-    let cleaveCooldown = 0
-
-    // Boss moves toward player, cleave attacks, kills on contact
-    const bossTimer = this.time.addEvent({
-      delay: 50,
-      loop: true,
-      callback: () => {
-        if (!boss.active || this.gameOver) {
-          bossTimer.destroy()
-          return
-        }
-        // Wait for spawn animation to complete before acting
-        if ((boss as any).bossSpawning) return
-        this.physics.moveTo(boss, this.player.x, this.player.y, 100)
-        boss.setFlipX(this.player.x < boss.x)
-        shadow.setPosition(boss.x, (boss.body as Phaser.Physics.Arcade.Body).bottom)
-
-        const dist = Phaser.Math.Distance.Between(boss.x, boss.y, this.player.x, this.player.y)
-
-        // Contact = instant kill (check first, skip cleave if triggering)
-        if (dist < 50) {
-          this.player.takeDamage(99999)
-          return
-        }
-
-        // Cleave attack when close
-        cleaveCooldown -= 50
-        if (dist < 130 && cleaveCooldown <= 0) {
-          cleaveCooldown = 3000
-          boss.play('boss_cleave')
-          boss.once('animationcomplete', () => {
-            if (boss.active) boss.play('boss_walk')
-          })
-          // Cleave damage — 30% maxHP
-          this.player.takeDamage(Math.ceil(this.player.maxHp * 0.3))
-          this.cameras.main.shake(200, 0.01)
-        }
-      },
+    // Victory — set gameOver after delay so death VFX can play
+    this.events.once('boss-defeated', () => {
+      this.bossDefeated = true
+      this.time.delayedCall(3000, () => { this.gameOver = true })
     })
   }
 
@@ -1711,6 +1647,7 @@ export class GameScene extends Phaser.Scene {
       for (const enemy of enemies) {
         if (!enemy.active) continue
         const e = enemy as any
+        if (e.isBoss) continue  // Boss HP bar is rendered by UIScene
         if (e.hp === undefined || e.maxHp === undefined || e.hp >= e.maxHp) continue
         const barWidth = e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 24
         const barHeight = e.maxHp > 100 ? 5 : 3

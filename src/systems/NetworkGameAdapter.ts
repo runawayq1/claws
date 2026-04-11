@@ -114,7 +114,7 @@ export class NetworkGameAdapter {
         if (this.scene.anims.exists(atkAnim)) {
           remote.sprite.play(atkAnim).once('animationcomplete', () => {
             // Return to idle after attack
-            const idleKey = `${remote.heroType}_idle_anim`
+            const idleKey = `${remote.heroType}_idle`
             if (this.scene.anims.exists(idleKey)) remote.sprite.play(idleKey)
           })
         }
@@ -235,7 +235,7 @@ export class NetworkGameAdapter {
     }).setOrigin(0.5).setDepth(15)
 
     // Try to play idle animation
-    const animKey = `${playerState.heroType}_idle_anim`
+    const animKey = `${playerState.heroType}_idle`
     if (this.scene.anims.exists(animKey)) {
       sprite.play(animKey)
     }
@@ -433,7 +433,7 @@ export class NetworkGameAdapter {
       const dy = remote.sprite.y - prevY
       const moving = dx * dx + dy * dy > 0.5
       const runKey = `${remote.heroType}_run`
-      const idleKey = `${remote.heroType}_idle_anim`
+      const idleKey = `${remote.heroType}_idle`
       if (moving && remote.sprite.anims.currentAnim?.key !== runKey && this.scene.anims.exists(runKey)) {
         remote.sprite.play(runKey)
       } else if (!moving && remote.sprite.anims.currentAnim?.key === runKey && this.scene.anims.exists(idleKey)) {

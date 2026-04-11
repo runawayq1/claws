@@ -279,7 +279,7 @@ export class GameRoom extends Room<GameRoomState> {
     this.state.players.forEach(p => {
       if (p.isDead || p.isDowned) return
       const stacks = p.upgrades.get('g6') ?? 0
-      if (stacks > 0) p.hp = Math.min(p.maxHp, p.hp + stacks * 2 * (CFG.TICK_MS / 1000))
+      if (stacks > 0) p.hp = Math.min(p.maxHp, p.hp + stacks * 1 * (CFG.TICK_MS / 1000))
     })
 
     // Check game over — all players dead
@@ -590,16 +590,21 @@ export class GameRoom extends Room<GameRoomState> {
 
     // Apply server-side stat bumps for generic upgrades
     // (hero ability flags are applied client-side via UpgradeTracker.pickById)
-    if (upgradeId === 'g1')      { p.damage = Math.ceil(p.damage * 1.12) }         // Sharp Edge
-    else if (upgradeId === 'g2') { p.maxHp += 25; p.hp = Math.min(p.hp + 25, p.maxHp) } // Vitality
-    else if (upgradeId === 'g3') { p.speed += 12 }                                  // Swift Boots
-    else if (upgradeId === 'g4') { p.damage = Math.ceil(p.damage * 1.1) }           // Precision
-    else if (upgradeId === 'g5') { p.maxHp += 30; p.hp = Math.min(p.hp + 30, p.maxHp) } // Iron Will
+    if (upgradeId === 'g1')      { p.damage = Math.ceil(p.damage * 1.12) }          // Sharp Edge: +12% dmg
+    else if (upgradeId === 'g2') { p.speed = Math.ceil(p.speed * 1.09) }            // Swift Feet: +9% speed
+    else if (upgradeId === 'g3') { /* Eagle Eye: range is client-side */ }           // Eagle Eye
+    else if (upgradeId === 'g4') { /* Quick Hands: cooldown is client-side */ }      // Quick Hands
+    else if (upgradeId === 'g5') {                                                   // Vitality: +15/12/12% maxHp
+      const stacks5 = p.upgrades.get('g5') ?? 1
+      const pct = [0.15, 0.12, 0.12][Math.min(stacks5 - 1, 2)]
+      const bonus = Math.ceil(p.maxHp * pct)
+      p.maxHp += bonus; p.hp = Math.min(p.hp + bonus, p.maxHp)
+    }
     else if (upgradeId === 'g6') { /* regen handled per tick via upgrades.get('g6') */ }
-    else if (upgradeId === 'g7') { p.speed += 8 }                                   // Light Feet
-    else if (upgradeId === 'g8') { p.damage = Math.ceil(p.damage * 1.08) }          // Battle Scars
-    else if (upgradeId === 'g9') { p.maxHp += 20; p.hp = Math.min(p.hp + 20, p.maxHp) } // Endurance
-    else if (upgradeId === 'g10') { /* armor reduction handled in collision */ }     // Iron Skin
+    else if (upgradeId === 'g7') { /* Cleave: splashRadius is client-side */ }       // Cleave
+    else if (upgradeId === 'g8') { /* Wisdom: xpMult is client-side */ }             // Wisdom
+    else if (upgradeId === 'g9') { /* Multistrike: strikeCount is client-side */ }   // Multistrike
+    else if (upgradeId === 'g10') { /* Iron Skin: armor handled in collision */ }    // Iron Skin
 
     this.broadcast('upgrade-applied', { playerId: p.id, upgradeId })
   }

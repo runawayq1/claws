@@ -61,7 +61,7 @@ export class LevelUpScene extends Phaser.Scene {
     super({ key: 'LevelUpScene' })
   }
 
-  create(data: { player: Player; tracker: UpgradeTracker; callerSceneKey?: string; bonusSpecialization?: boolean; onlineMode?: boolean }) {
+  create(data: { player: Player; tracker: UpgradeTracker; callerSceneKey?: string; bonusSpecialization?: boolean; onlineMode?: boolean; isBranchSelection?: boolean }) {
     this.player = data.player
     this.tracker = data.tracker
     this.callerSceneKey = data.callerSceneKey ?? 'GameScene'
@@ -83,7 +83,8 @@ export class LevelUpScene extends Phaser.Scene {
     // Use effective dimensions so layout centers correctly under zoom
     const width = this.scale.width / mobZoom
     const height = this.scale.height / mobZoom
-    const isBranch = this.tracker.isBranchSelection
+    // In online mode, isBranch is passed explicitly (tracker state may have changed from queue delay)
+    const isBranch = data.isBranchSelection !== undefined ? data.isBranchSelection : this.tracker.isBranchSelection
 
     // Dark overlay
     const overlay = this.add.graphics()
