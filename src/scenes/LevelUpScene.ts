@@ -61,7 +61,7 @@ export class LevelUpScene extends Phaser.Scene {
     super({ key: 'LevelUpScene' })
   }
 
-  create(data: { player: Player; tracker: UpgradeTracker; callerSceneKey?: string; bonusSpecialization?: boolean; onlineMode?: boolean; isBranchSelection?: boolean }) {
+  create(data: { player: Player; tracker: UpgradeTracker; callerSceneKey?: string; bonusSpecialization?: boolean; onlineMode?: boolean; isBranchSelection?: boolean; choices?: Upgrade[] }) {
     this.player = data.player
     this.tracker = data.tracker
     this.callerSceneKey = data.callerSceneKey ?? 'GameScene'
@@ -133,9 +133,22 @@ export class LevelUpScene extends Phaser.Scene {
       return
     }
 
-    const upgrades = isBranch
+    // In online mode, use pre-validated choices from queue (tracker state may have changed)
+    const upgrades = data.choices ?? (isBranch
       ? this.tracker.getBranchChoices(this.player.heroType, this.player.getActiveStance())
-      : this.tracker.getChoices(this.player.heroType, this.player.getActiveStance())
+      : this.tracker.getChoices(this.player.heroType, this.player.getActiveStance()))
+
+    // Guard: if all upgrades taken, close immediately (prevents frozen overlay)
+    if (upgrades.length === 0) {
+      if (this._onlineMode) {
+        const callerScene = this.scene.get(this.callerSceneKey)
+        callerScene?.events.emit('levelup-closed')
+      } else {
+        this.scene.resume(this.callerSceneKey)
+      }
+      this.time.delayedCall(0, () => this.scene.stop())
+      return
+    }
 
     // Compute scale factor so cards fit within screen width (with 20px margin each side)
     const availW = width - 40

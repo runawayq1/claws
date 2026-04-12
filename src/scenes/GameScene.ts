@@ -17,6 +17,7 @@ import { KeyboardInputController } from '../systems/InputController'
 import { isMobileDevice, isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
 import { NetworkGameAdapter } from '../systems/NetworkGameAdapter'
 import { networkManager } from '../systems/NetworkManager'
+import { Cat } from '../entities/Cat'
 
 const ROCK_KEYS = [
   'rock1_1', 'rock1_2', 'rock2_1', 'rock2_2', 'rock3_1', 'rock3_2',
@@ -126,6 +127,16 @@ export class GameScene extends Phaser.Scene {
 
     // VFX
     ss('vfx_flame', 'assets/vfx/flamethrower_sheet.png', 64, 24)
+    ss('vfx_thunder_splash', 'assets/vfx/thunder_splash.png', 48, 48)
+    ss('vfx_thunder_strike', 'assets/vfx/thunder_strike.png', 64, 64)
+    ss('vfx_air_burst', 'assets/vfx/air_burst.png', 48, 48)
+    ss('vfx_air_explosion', 'assets/vfx/air_explosion.png', 32, 32)
+    ss('vfx_fire_breath', 'assets/vfx/fire_breath.png', 64, 48)
+    ss('vfx_fire_breath_hit', 'assets/vfx/fire_breath_hit.png', 48, 48)
+    ss('vfx_firebolt', 'assets/vfx/firebolt.png', 48, 48)
+
+    // Decorative cat companion
+    ss('cat', 'assets/cat/cat.png', 32, 32)
 
     // Skill icons (128x128)
     ss('skill_icons', 'assets/icons/skill_icons_sheet.png', 128, 128)
@@ -257,11 +268,40 @@ export class GameScene extends Phaser.Scene {
       this.anims.create({ key: 'flame_loop', frames: this.anims.generateFrameNumbers('vfx_flame', { start: 0, end: 3 }), frameRate: 12, repeat: -1 })
       this.anims.create({ key: 'flame_burst', frames: this.anims.generateFrameNumbers('vfx_flame', { start: 4, end: 4 }), frameRate: 8, repeat: 0 })
     }
+    if (!this.anims.exists('thunder_splash')) {
+      this.anims.create({ key: 'thunder_splash', frames: this.anims.generateFrameNumbers('vfx_thunder_splash', { start: 0, end: 13 }), frameRate: 24, repeat: 0 })
+      this.anims.create({ key: 'thunder_strike', frames: this.anims.generateFrameNumbers('vfx_thunder_strike', { start: 0, end: 12 }), frameRate: 24, repeat: 0 })
+      this.anims.create({ key: 'air_burst', frames: this.anims.generateFrameNumbers('vfx_air_burst', { start: 0, end: 8 }), frameRate: 20, repeat: 0 })
+      this.anims.create({ key: 'air_explosion', frames: this.anims.generateFrameNumbers('vfx_air_explosion', { start: 0, end: 11 }), frameRate: 22, repeat: 0 })
+      this.anims.create({ key: 'fire_breath', frames: this.anims.generateFrameNumbers('vfx_fire_breath', { start: 0, end: 17 }), frameRate: 16, repeat: -1 })
+      this.anims.create({ key: 'fire_breath_once', frames: this.anims.generateFrameNumbers('vfx_fire_breath', { start: 0, end: 17 }), frameRate: 18, repeat: 0 })
+      this.anims.create({ key: 'fire_breath_proj', frames: this.anims.generateFrameNumbers('vfx_fire_breath', { start: 0, end: 5 }), frameRate: 14, repeat: -1 })
+      this.anims.create({ key: 'fire_breath_hit', frames: this.anims.generateFrameNumbers('vfx_fire_breath_hit', { start: 0, end: 4 }), frameRate: 16, repeat: 0 })
+      this.anims.create({ key: 'firebolt_fly', frames: this.anims.generateFrameNumbers('vfx_firebolt', { start: 0, end: 3 }), frameRate: 12, repeat: -1 })
+      this.anims.create({ key: 'firebolt_explode', frames: this.anims.generateFrameNumbers('vfx_firebolt', { start: 4, end: 10 }), frameRate: 18, repeat: 0 })
+    }
 
     Orc1.createAnimations(this)
     Orc2.createAnimations(this)
     Orc3.createAnimations(this)
     Player.createAnimations(this)
+
+    // Pre-warm all VFX sprite animations — prevents first-frame GPU upload stutter.
+    // Each sprite plays one frame, is then destroyed. Cost: ~1ms at startup.
+    const vfxWarmup: Array<[string, string]> = [
+      ['vfx_air_burst',     'air_burst'],
+      ['vfx_air_explosion', 'air_explosion'],
+      ['vfx_firebolt',      'firebolt_fly'],
+      ['vfx_firebolt',      'firebolt_explode'],
+      ['vfx_thunder_splash','thunder_splash'],
+      ['vfx_thunder_strike','thunder_strike'],
+    ]
+    for (const [tex, anim] of vfxWarmup) {
+      if (!this.textures.exists(tex) || !this.anims.exists(anim)) continue
+      const w = this.add.sprite(-9999, -9999, tex).setVisible(false).setActive(false)
+      w.play(anim)
+      this.time.delayedCall(0, () => w.destroy())
+    }
 
     if (this.useInfiniteMap()) {
       // Infinite map path
@@ -336,6 +376,10 @@ export class GameScene extends Phaser.Scene {
 
     // Zone marker centered on hero spawn
     this.add.image(this.player.x, this.player.y, 'zone_marker').setOrigin(0.5).setScale(0.252).setDepth(1).setAlpha(0.85)
+
+    // Caesar — decorative cat companion
+    Cat.registerAnims(this)
+    this._caesar = new Cat(this, this.player.x + 60, this.player.y + 40, this.player)
 
     // ── Dark reveal effect: two shadow halves part to reveal the map ──
     this.playMapReveal()
@@ -420,8 +464,32 @@ export class GameScene extends Phaser.Scene {
       // (Stone Skin stacks now trigger on damage taken, not kills — see Player.takeDamage)
 
       // Ignara kill-triggered mechanics
-      if (this.player.heroType === 'ignara' && this.player.hasPyromaniac) {
+      if (this.player.heroType === 'ignara' && this.player.hasPyromaniac
+          && this.player.chosenBranch !== 'Wildfire') {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + 2)
+      }
+      // Powder Keg counter
+      if (this.player.hasPowderKeg) {
+        this.player.powderKegCounter++
+        if (this.player.powderKegCounter >= this.player.powderKegThreshold) {
+          this.player.powderKegCounter = 0
+          this.player.powderKegReady = true
+        }
+      }
+      // Infernal Cadence: trigger on kill when off cooldown
+      if (this.player.hasInfernalCadence && this.time.now > this.player.infernalCadenceEndTime) {
+        this.player.infernalCadenceEndTime = this.time.now + this.player.infernalCadenceDuration
+      }
+      if (this.player.hasEmberVolley) {
+        const maxStacks = Math.round(this.player.emberVolleyCap / 0.02)
+        if (this.player.emberVolleyStacks < maxStacks) {
+          this.player.emberVolleyStacks++
+          this.player.attackCooldown = Math.max(200, Math.ceil(this.player.attackCooldown * 0.98))
+          if (this.player.emberVolleyDmg) this.player.damage = Math.ceil(this.player.damage * 1.01)
+        }
+      }
+      if (this.player.hasFlashpoint) {
+        this.player.flashpointRemaining = Math.min(this.player.flashpointCharges, this.player.flashpointRemaining + 1)
       }
 
       // Heart drop with progressive thresholds: 100, 300, 500, then every 500
@@ -609,6 +677,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
   }
+
+  // ── Decorative cat companion ──────────────────────────────────────────────
+  private _caesar: Cat | null = null
 
   // ── Sifra NPC state ───────────────────────────────────────────────────────
   private _sifraNpc: Phaser.GameObjects.GameObject | null = null
@@ -1581,6 +1652,8 @@ export class GameScene extends Phaser.Scene {
 
     this._frameKills = 0
 
+    this._caesar?.update(dt)
+
     this.chunkManager?.update(this.localPlayer.x, this.localPlayer.y)
 
     // Online mode: network adapter handles remote players, enemies, input sending
@@ -1679,6 +1752,7 @@ export class GameScene extends Phaser.Scene {
       callerSceneKey: this.scene.key,
       onlineMode: true,
       isBranchSelection: next.isBranch,
+      choices: next.choices,
     })
   }
 
