@@ -14,7 +14,7 @@ import Phaser from 'phaser'
 import { gameFont } from '../utils/device'
 import { networkManager } from './NetworkManager'
 import { getStateCallbacks } from 'colyseus.js'
-import type { Player } from '../entities/Player'
+import { Player } from '../entities/Player'
 
 // Scale per hero to match Player sprite proportions
 const HERO_REMOTE_SCALE: Record<string, number> = {
@@ -110,10 +110,10 @@ export class NetworkGameAdapter {
         const remote = this.remotePlayers.get(data.playerId)
         if (!remote) return
         remote.sprite.setFlipX(data.x < remote.sprite.x)
-        const atkAnim = `${remote.heroType}_attack`
+        // Pick stance-appropriate attack anim
+        const atkAnim = this._getStanceAttackAnim(remote.heroType, (remote as any).stance)
         if (this.scene.anims.exists(atkAnim)) {
           remote.sprite.play(atkAnim).once('animationcomplete', () => {
-            // Return to idle after attack
             const idleKey = `${remote.heroType}_idle`
             if (this.scene.anims.exists(idleKey)) remote.sprite.play(idleKey)
           })
@@ -221,9 +221,35 @@ export class NetworkGameAdapter {
   }
 
   private addRemotePlayer(id: string, playerState: any) {
-    // Create a lightweight sprite for the remote player
-    const texKey = `${playerState.heroType}_idle`
-    const scale = HERO_REMOTE_SCALE[playerState.heroType] ?? 1
+    const heroType = playerState.heroType
+    const texKey = `${heroType}_idle`
+
+    // If hero textures aren't loaded yet, dynamically load them first
+    if (!this.scene.textures.exists(texKey)) {
+      const gs = this.scene as any
+      if (typeof gs.loadHeroAssets === 'function') {
+        const ss = (key: string, path: string, fw: number, fh: number) => {
+          if (!this.scene.textures.exists(key)) {
+            this.scene.load.spritesheet(key, path, { frameWidth: fw, frameHeight: fh })
+          }
+        }
+        gs.loadHeroAssets(heroType, ss)
+        this.scene.load.once('complete', () => {
+          Player.createAnimations(this.scene)
+          this._createRemoteSprite(id, playerState)
+        })
+        this.scene.load.start()
+        return
+      }
+    }
+
+    this._createRemoteSprite(id, playerState)
+  }
+
+  private _createRemoteSprite(id: string, playerState: any) {
+    const heroType = playerState.heroType
+    const texKey = `${heroType}_idle`
+    const scale = HERO_REMOTE_SCALE[heroType] ?? 1
     const sprite = this.scene.physics.add.sprite(playerState.x, playerState.y, texKey, 0)
       .setDepth(5)
       .setScale(scale)
@@ -235,7 +261,7 @@ export class NetworkGameAdapter {
     }).setOrigin(0.5).setDepth(15)
 
     // Try to play idle animation
-    const animKey = `${playerState.heroType}_idle`
+    const animKey = `${heroType}_idle`
     if (this.scene.anims.exists(animKey)) {
       sprite.play(animKey)
     }
@@ -245,9 +271,30 @@ export class NetworkGameAdapter {
       nameplate,
       targetX: playerState.x,
       targetY: playerState.y,
-      heroType: playerState.heroType,
+      heroType,
       playerId: id,
     })
+  }
+
+  /** Pick the correct attack anim key based on hero stance */
+  private _getStanceAttackAnim(heroType: string, stance?: string): string {
+    // Alt-stance attack anims (non-default stance → alt anim key)
+    const ALT_ATTACK: Record<string, string> = {
+      khashin: 'khashin_air_attack',    // sirocco stance
+      sifra: 'sifra_attack2',            // lightning stance
+      nazar: 'nazar_attack2',             // venom stance
+      huntress: 'huntress_attack2',       // melee stance
+      muller: 'muller_ground_slam',       // eruption stance
+    }
+    // Default stances (first stance name per hero)
+    const DEFAULT_STANCE: Record<string, string> = {
+      ignara: 'fire', sifra: 'ice', amun: 'melee', nazar: 'sword',
+      huntress: 'ranged', khashin: 'sirocco', muller: 'shield',
+    }
+    if (stance && stance !== 'default' && stance !== DEFAULT_STANCE[heroType] && ALT_ATTACK[heroType]) {
+      return ALT_ATTACK[heroType]
+    }
+    return `${heroType}_attack`
   }
 
   private removeRemotePlayer(id: string) {
