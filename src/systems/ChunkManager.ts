@@ -39,18 +39,22 @@ export class ChunkManager {
   private tmpTile: Phaser.GameObjects.Image | null = null
   private recycleQueue: { chunk: Chunk; col: number; row: number }[] = []
 
+  private online: boolean
+
   constructor(
     scene: Phaser.Scene,
     rocksGroup: Phaser.Physics.Arcade.StaticGroup,
     getZone: (x: number, y: number) => number,
     player: Player,
     chestsGroup: Phaser.GameObjects.Group,
+    online = false,
   ) {
     this.scene = scene
     this.rocksGroup = rocksGroup
     this.getZone = getZone
     this.player = player
     this.chestsGroup = chestsGroup
+    this.online = online
   }
 
   create(playerX: number, playerY: number): void {
@@ -292,8 +296,9 @@ export class ChunkManager {
     }
 
     // Chests — ~50% chance per chunk, rare in zone 2+
+    // Skipped in online mode — chests are client-side only, causing desync
     const chestRoll = this.seededRng(chunk.col, chunk.row, 200)
-    if (chestRoll < 0.5) {
+    if (!this.online && chestRoll < 0.5) {
       const chestIdx = rockCount + treeCount + tuftCount
       const pos = tryPlace(chestIdx, 30, MIN_CHEST_DIST)
       if (pos) {

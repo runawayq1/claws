@@ -72,7 +72,7 @@ interface RemoteEnemySprite {
 export class NetworkGameAdapter {
   private scene: Phaser.Scene
   private localPlayer: Player
-  private remotePlayers = new Map<string, RemotePlayerSprite>()
+  public remotePlayers = new Map<string, RemotePlayerSprite>()
   private remoteEnemies = new Map<string, RemoteEnemySprite>()
   private inputSendTimer = 0
   private readonly INPUT_SEND_INTERVAL = 50 // 20Hz
@@ -162,6 +162,11 @@ export class NetworkGameAdapter {
           if (remote) {
             remote.sprite.setAlpha(0.4)
             remote.nameplate.setText(remote.nameplate.text + ' [DOWNED]')
+            // Play death animation if available
+            const deathAnim = `${remote.heroType}_death`
+            if (this.scene.anims.exists(deathAnim)) {
+              remote.sprite.play(deathAnim)
+            }
           }
         }
       },
@@ -178,10 +183,12 @@ export class NetworkGameAdapter {
       },
 
       onGameOver: (data) => {
+        if (data.sharedGold !== undefined) this.serverSharedGold = data.sharedGold
         this.scene.events.emit('network-game-over', data)
       },
 
       onGameWon: (data) => {
+        if (data.sharedGold !== undefined) this.serverSharedGold = data.sharedGold
         this.scene.events.emit('network-game-won', data)
       },
 
@@ -363,6 +370,8 @@ export class NetworkGameAdapter {
 
   /** Server wave number — exposed for UIScene tier display */
   public serverWave = 1
+  /** Shared gold earned across all players this run — from server game-over/game-won payload */
+  public serverSharedGold = 0
 
   private syncState(state: any) {
     if (!state) return
@@ -402,6 +411,9 @@ export class NetworkGameAdapter {
         if (remote) {
           remote.targetX = p.x
           remote.targetY = p.y
+          // Sync HP for HP bar rendering
+          ;(remote as any).hp = p.hp
+          ;(remote as any).maxHp = p.maxHp
           // Sync stance — affects which animation prefix to use in future
           if (p.stance && p.stance !== (remote as any).stance) {
             (remote as any).stance = p.stance
@@ -528,6 +540,27 @@ export class NetworkGameAdapter {
   /** Get a remote player sprite entry by session ID */
   getRemotePlayer(playerId: string) {
     return this.remotePlayers.get(playerId) ?? null
+  }
+
+  /** Draw HP bars for remote players */
+  drawRemotePlayerHpBars(g: Phaser.GameObjects.Graphics) {
+    this.remotePlayers.forEach(remote => {
+      if (!remote.sprite.active) return
+      const hp = (remote as any).hp ?? 0
+      const maxHp = (remote as any).maxHp ?? 1
+      if (maxHp <= 0 || hp >= maxHp) return  // Don't draw if full HP
+      const barW = 36, barH = 4
+      const x = remote.sprite.x - barW / 2
+      const y = remote.sprite.y - 28
+      const ratio = Math.max(0, hp / maxHp)
+      // Background
+      g.fillStyle(0x000000, 0.5)
+      g.fillRect(x - 1, y - 1, barW + 2, barH + 2)
+      // HP fill (green → yellow → red)
+      const color = ratio > 0.5 ? 0x44ff44 : ratio > 0.25 ? 0xffcc00 : 0xff4444
+      g.fillStyle(color, 0.8)
+      g.fillRect(x, y, barW * ratio, barH)
+    })
   }
 
   /** Draw HP bars for remote enemies */

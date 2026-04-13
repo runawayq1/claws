@@ -311,7 +311,7 @@ export class GameScene extends Phaser.Scene {
       this.players = [this.localPlayer]
       // NO camera.setBounds — infinite scroll
       this.chests = this.add.group()
-      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.localPlayer, this.chests)
+      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.localPlayer, this.chests, this._online)
       this.chunkManager.create(0, 0)
       this.generateGraveTextures()
       this.events.emit('terrain-ready')
@@ -493,10 +493,11 @@ export class GameScene extends Phaser.Scene {
       }
 
       // Heart drop with progressive thresholds: 100, 300, 500, then every 500
+      // Disabled in online mode — pickups are client-side only, causing desync
       const kills = this.player.kills
       const heartThresholds = [100, 300, 500]
       const isThreshold = heartThresholds.includes(kills) || (kills > 500 && kills % 500 === 0)
-      if (isThreshold) {
+      if (!this._online && isThreshold) {
         const heart = new Pickup(this, x, y, 'heart', this.player)
         this.pickups.add(heart)
       }
@@ -633,8 +634,14 @@ export class GameScene extends Phaser.Scene {
       // so ALL hero abilities (AoE, passives, splash) auto-target network enemies
       this.enemies = this._networkAdapter.enemySprites
       // Listen for network game events
-      this.events.on('network-game-over', () => { this.gameOver = true })
-      this.events.on('network-game-won', () => { this.gameOver = true })
+      this.events.on('network-game-over', () => {
+        this.gameOver = true
+        this.scene.get('UIScene')?.events.emit('show-end-screen', { won: false })
+      })
+      this.events.on('network-game-won', () => {
+        this.gameOver = true
+        this.scene.get('UIScene')?.events.emit('show-end-screen', { won: true })
+      })
       // Server echo only — client already applied optimistically in LevelUpScene
       this.events.on('network-upgrade-applied', (_upgradeId: string) => { /* no-op */ })
       // Small impact flash at remote attack hit position
@@ -1611,7 +1618,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private spawnClawsBoss() {
+  spawnClawsBoss(cheat = false) {
     // Kill all remaining mobs
     for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (enemy.active) enemy.destroy()
@@ -1637,9 +1644,12 @@ export class GameScene extends Phaser.Scene {
     })
 
     // Victory — set gameOver after delay so death VFX can play
+    // In cheat mode, skip game over so the run continues
     this.events.once('boss-defeated', () => {
       this.bossDefeated = true
-      this.time.delayedCall(3000, () => { this.gameOver = true })
+      if (!cheat) {
+        this.time.delayedCall(3000, () => { this.gameOver = true })
+      }
     })
   }
 
@@ -1734,9 +1744,10 @@ export class GameScene extends Phaser.Scene {
         this.enemyHpBars.fillRect(barX, barY, barWidth * hpRatio, barHeight)
         if (e.hpDirty !== undefined) e.hpDirty = false
       }
-      // Online mode: draw HP bars for network enemies
+      // Online mode: draw HP bars for network enemies and remote players
       if (this._networkAdapter) {
         this._networkAdapter.drawEnemyHpBars(this.enemyHpBars)
+        this._networkAdapter.drawRemotePlayerHpBars(this.enemyHpBars)
       }
     }
   }

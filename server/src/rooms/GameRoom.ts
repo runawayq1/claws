@@ -201,7 +201,7 @@ export class GameRoom extends Room<GameRoomState> {
 
       // If all players left, dispose room gracefully
       if (this.state.players.size === 0) {
-        if (this.state.status === 'playing') {
+        if (this.state.status === 'playing' || this.state.status === 'boss') {
           this.endGame()
         }
         // Room auto-disposes when empty — no need to call this.disconnect()
@@ -291,19 +291,25 @@ export class GameRoom extends Room<GameRoomState> {
       this.endGame()
     }
 
-    // Boss at 10 min
+    // Boss at 10 min — broadcast warning and give players 60s to survive, then win
     if (this.state.elapsedMs >= CFG.RUN_DURATION && this.state.status === 'playing') {
       this.broadcast('claws-incoming', {})
-      // For now, end game as win after boss event
-      this.state.status = 'ended'
-      if (this.tickInterval) {
-        clearInterval(this.tickInterval)
-        this.tickInterval = null
-      }
-      this.broadcast('game-won', {
-        elapsedMs: this.state.elapsedMs,
-        sharedGold: this.state.sharedGold,
-      })
+      // Mark that boss has been triggered so this block doesn't fire again each tick
+      this.state.status = 'boss'
+      // Give players 60 more seconds to survive, then declare win
+      this.clock.setTimeout(() => {
+        if (this.state.status === 'boss') {
+          this.state.status = 'ended'
+          if (this.tickInterval) {
+            clearInterval(this.tickInterval)
+            this.tickInterval = null
+          }
+          this.broadcast('game-won', {
+            elapsedMs: this.state.elapsedMs,
+            sharedGold: this.state.sharedGold,
+          })
+        }
+      }, 60000)
     }
   }
 

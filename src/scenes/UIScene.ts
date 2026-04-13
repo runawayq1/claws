@@ -80,6 +80,9 @@ export class UIScene extends Phaser.Scene {
   private _lastLevel = -1
   private _lastEnergy1 = -1  // hero energy bar 1 (ice/sword/melee/wind)
   private _lastEnergy2 = -1  // hero energy bar 2 (lightning/venom/spear/sand)
+  private _lastFlashpointRemaining = -1
+  private _lastPhoenixHeart = false
+  private _lastFirestormOrbCount = -1
   private _bigBuffObjs: (Phaser.GameObjects.Image | Phaser.GameObjects.Text)[] = []
   private _lastKills = -1
   private _lastGold = -1
@@ -115,6 +118,15 @@ export class UIScene extends Phaser.Scene {
   private _sifraMarkerSince = 0  // ms timestamp when Sifra marker first appeared on minimap
   private _tutorialComplete = false  // cached from MetaProgress — avoids JSON.parse in drawMinimap
   private _vignetteWasVisible = false
+
+  // ── Boss HP bar ────────────────────────────────────────────────
+  private _bossBarGfx: Phaser.GameObjects.Graphics | null = null
+  private _bossBarBg: Phaser.GameObjects.Graphics | null = null
+  private _bossNameText: Phaser.GameObjects.Text | null = null
+  private _bossPhaseText: Phaser.GameObjects.Text | null = null
+  private _bossHp = 0
+  private _bossMaxHp = 0
+  private _bossBarVisible = false
 
   constructor() {
     super({ key: 'UIScene' })
@@ -343,8 +355,8 @@ export class UIScene extends Phaser.Scene {
       }
     }
 
-    // Mobile pause button (top-left, below the HUD bars)
-    if (this.isMobile) {
+    // Mobile pause button (top-left, below the HUD bars) — hidden in online mode
+    if (this.isMobile && !(this.gameScene as any)._online) {
       const btnSize = 44
       const btnX = 6
       const btnY = 72
@@ -417,6 +429,33 @@ export class UIScene extends Phaser.Scene {
     const onScaleResize = () => this.updatePositions()
     this.scale.on('resize', onScaleResize)
 
+    // ── Boss HP bar events ────────────────────────────────────────
+    this.gameScene.events.on('boss-spawned', () => {
+      this._showBossBar()
+    })
+    this.gameScene.events.on('boss-hp', (hp: number, maxHp: number) => {
+      this._bossHp = hp
+      this._bossMaxHp = maxHp
+      this._drawBossBar()
+    })
+    this.gameScene.events.on('boss-phase', (phase: number) => {
+      this._onBossPhase(phase)
+    })
+    this.gameScene.events.on('boss-defeated', () => {
+      this._hideBossBar()
+      if (!this.endScreenShown) {
+        this.endScreenShown = true
+        this.time.delayedCall(2500, () => this.showEndScreen())
+      }
+    })
+    // Online multiplayer: server signals game end
+    this.gameScene.events.on('show-end-screen', (data: { won: boolean }) => {
+      if (!this.endScreenShown) {
+        this.endScreenShown = true
+        this.time.delayedCall(600, () => this.showEndScreen(data.won))
+      }
+    })
+
     // Clean up all external event listeners on shutdown to prevent memory leaks
     this.events.once('shutdown', () => {
       this.gameScene?.events?.off('stance-changed')
@@ -425,6 +464,11 @@ export class UIScene extends Phaser.Scene {
       this.gameScene?.events?.off('khashin-stance-changed')
       this.gameScene?.events?.off('amun-stance-changed')
       this.gameScene?.events?.off('branch-mastery-levelup')
+      this.gameScene?.events?.off('boss-spawned')
+      this.gameScene?.events?.off('boss-hp')
+      this.gameScene?.events?.off('boss-phase')
+      this.gameScene?.events?.off('boss-defeated')
+      this.gameScene?.events?.off('show-end-screen')
       this.scale.off('resize', onScaleResize)
       MetaProgress.clearQuestCallbacks()
     })
@@ -480,7 +524,7 @@ export class UIScene extends Phaser.Scene {
     })
 
     addBtn('[Spawn Boss]', () => {
-      (gs as any).spawnClawsBoss()
+      gs.spawnClawsBoss(true)
     })
 
     addBtn('[Kill All]', () => {
@@ -496,7 +540,19 @@ export class UIScene extends Phaser.Scene {
     })
 
     addBtn('[+10 Levels]', () => {
-      for (let i = 0; i < 10; i++) gs.localPlayer.addXP(gs.localPlayer.xpToNextLevel())
+      let remaining = 9
+      gs.localPlayer.addXP(gs.localPlayer.xpToNextLevel())
+      const tryNext = () => {
+        if (remaining <= 0) return
+        if (this.scene.isActive('LevelUpScene')) {
+          this.time.delayedCall(300, tryNext)
+          return
+        }
+        remaining--
+        gs.localPlayer.addXP(gs.localPlayer.xpToNextLevel())
+        this.time.delayedCall(400, tryNext)
+      }
+      this.time.delayedCall(400, tryNext)
     })
 
     addBtn('[Full HP]', () => {
@@ -761,6 +817,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   private togglePause() {
+    if ((this.gameScene as any)._online) return  // No pausing in online mode
     if (this.endScreenShown) return
 
     this.isPaused = !this.isPaused
@@ -1367,7 +1424,7 @@ export class UIScene extends Phaser.Scene {
   // The end-screen leaderboard is sourced from Supabase (global, shared) — no
   // localStorage path. See _populateEndLeaderboard() below.
 
-  private showEndScreen() {
+  private showEndScreen(networkWon?: boolean) {
     const { width, height } = this.scale
     const gs = this.gameScene
 
@@ -1381,9 +1438,18 @@ export class UIScene extends Phaser.Scene {
     const secs = Math.floor((survived % 60000) / 1000)
     const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 
-    const wasClaws = survived >= CONFIG.RUN_DURATION
-    const title = wasClaws ? 'CRUSHED BY CLAWS' : 'GAME OVER'
-    const titleColor = wasClaws ? '#ff6600' : '#ff4444'
+    let title: string
+    let titleColor: string
+    if (networkWon !== undefined) {
+      // Online mode: server determined outcome
+      title = networkWon ? 'VICTORY!' : 'GAME OVER'
+      titleColor = networkWon ? '#ffdd00' : '#ff4444'
+    } else {
+      const bossDefeated = (gs as any).bossDefeated === true
+      const wasClaws = !bossDefeated && survived >= CONFIG.RUN_DURATION
+      title = bossDefeated ? 'CLAWS DEFEATED!' : (wasClaws ? 'CRUSHED BY CLAWS' : 'GAME OVER')
+      titleColor = bossDefeated ? '#ffdd00' : (wasClaws ? '#ff6600' : '#ff4444')
+    }
 
     // Meta-progression: save session + check achievements
     const session: SessionRecord = {
@@ -1393,11 +1459,11 @@ export class UIScene extends Phaser.Scene {
       level: gs.player.level,
       timeMs: survived,
       wave: gs._online ? (gs._networkAdapter?.serverWave || 1) : (gs.waveManager?.currentWave || 1),
-      won: survived >= CONFIG.RUN_DURATION,
+      won: networkWon !== undefined ? networkWon : survived >= CONFIG.RUN_DURATION,
       tookDamage: this._tookDamageThisRun,
       date: new Date().toISOString(),
       upgrades: [...gs.upgradeTracker.pickedGeneric, ...Object.keys(gs.upgradeTracker.skillLevels).filter(id => !gs.upgradeTracker.pickedGeneric.has(id))],
-      goldEarned: gs.player.goldThisRun,
+      goldEarned: gs._online ? (gs._networkAdapter?.serverSharedGold ?? gs.player.goldThisRun) : gs.player.goldThisRun,
     }
     MetaProgress.recordSession(session)
 
@@ -1437,9 +1503,9 @@ export class UIScene extends Phaser.Scene {
       this.showAchievementNotification(newAchievements)
     }
 
-    // Layout — left side: stats + buttons, right side: leaderboard
+    // Layout
     const cx = width / 2
-    const topY = height * 0.12
+    const topY = height * 0.09
 
     // Title
     const t1 = this.add.text(cx, topY, title, {
@@ -1447,30 +1513,100 @@ export class UIScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(31)
     t1.setShadow(0, 1, '#000000', 2, true, true)
 
-    // Stats panel
+    // Hero + wave sub-label
+    const heroName = (HERO_DISPLAY_NAMES[gs.player.heroType] ?? gs.player.heroType).toUpperCase()
+    const wave = gs._online ? (gs._networkAdapter?.serverWave || 1) : (gs.waveManager?.currentWave || 1)
+    const subLabel = this.add.text(cx, topY + 36, `${heroName}  ·  WAVE ${wave}`, {
+      fontFamily: gameFont(), fontSize: '13px', color: '#8899aa',
+    }).setOrigin(0.5).setDepth(32)
+
+    // Stats panel — 2-column grid
+    const pw = 300, py = topY + 60
+    const px = cx - pw / 2
+    const col1 = px + 20, col2 = cx + 12
+    const rowH = 24
+    const goldDisplay = gs._online
+      ? `${gs._networkAdapter?.serverSharedGold ?? 0} ✦`
+      : `${gs.player.goldThisRun} ✦`
+    const panelRows: Array<[string, string, string, string, string, string]> = [
+      // [leftLabel, leftVal, leftColor, rightLabel, rightVal, rightColor]
+      ['TIME',         timeStr,                               '#aabbcc',
+       'KILLS',        String(gs.player.kills),               '#ff8888'],
+      ['LEVEL',        String(gs.player.level),               '#66bbff',
+       'GOLD',         goldDisplay,                           '#FFD700'],
+      ['MINIBOSSES',   String(gs.player.miniBossKills),       '#ffaa44',
+       'DMG TAKEN',    Math.round(gs.player.damageTakenThisRun).toLocaleString(), '#ee7777'],
+    ]
+    const ph = panelRows.length * rowH + 24
     const panelG = this.add.graphics().setDepth(31)
-    const pw = 260, ph = 114
-    const px = cx - pw / 2, py = topY + 44
     panelG.fillStyle(0x1a1a2e, 0.9)
     panelG.fillRoundedRect(px, py, pw, ph, 10)
-    panelG.lineStyle(2, 0x444466)
+    panelG.lineStyle(1, 0x444466)
     panelG.strokeRoundedRect(px, py, pw, ph, 10)
 
-    const infoStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+    const labelStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: gameFont(), fontSize: '10px', color: '#556677',
+    }
+    const valStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: gameFont(), fontSize: '15px', color: '#cccccc',
     }
 
-    const t2 = this.add.text(cx, py + 18, `Time: ${timeStr}`, infoStyle).setOrigin(0.5).setDepth(32)
-    const t3 = this.add.text(cx, py + 42, `Kills: ${gs.player.kills}`, { ...infoStyle, color: '#ff8888' }).setOrigin(0.5).setDepth(32)
-    const t4 = this.add.text(cx, py + 66, `Level: ${gs.player.level}`, { ...infoStyle, color: '#66bbff' }).setOrigin(0.5).setDepth(32)
-    const t4b = this.add.text(cx, py + 90, `Gold: ${gs.player.goldThisRun} ✦`, { ...infoStyle, color: '#FFD700' }).setOrigin(0.5).setDepth(32)
+    const statTexts: Phaser.GameObjects.Text[] = []
+    panelRows.forEach(([ll, lv, lc, rl, rv, rc], i) => {
+      const ry = py + 12 + i * rowH
+      statTexts.push(
+        this.add.text(col1, ry, ll, labelStyle).setOrigin(0, 0).setDepth(32),
+        this.add.text(col1, ry + 11, lv, { ...valStyle, color: lc }).setOrigin(0, 0).setDepth(32),
+        this.add.text(col2, ry, rl, labelStyle).setOrigin(0, 0).setDepth(32),
+        this.add.text(col2, ry + 11, rv, { ...valStyle, color: rc }).setOrigin(0, 0).setDepth(32),
+      )
+    })
+
+    // Hero skills section — top skills by level
+    const skillsY = py + ph + 12
+    const tracker = gs.upgradeTracker
+    const heroType = gs.player.heroType
+    const personalIds = Object.keys(tracker.skillLevels).filter(id => !tracker.pickedGeneric.has(id))
+    const heroSkills: { label: string; level: number }[] = []
+    for (const id of personalIds) {
+      const branches = HERO_BRANCHES[heroType] || []
+      for (const b of branches) {
+        const skill = b.upgrades.find((u: { id: string; label: string }) => u.id === id)
+        if (skill) { heroSkills.push({ label: skill.label, level: tracker.skillLevels[id] ?? 1 }); break }
+      }
+    }
+    heroSkills.sort((a, b) => b.level - a.level)
+    const topSkills = heroSkills.slice(0, 4)
+
+    const skillTexts: Phaser.GameObjects.Text[] = []
+    let skillSectionH = 0
+    if (topSkills.length > 0) {
+      const skillHeader = this.add.text(cx, skillsY + 2, 'TOP SKILLS', {
+        fontFamily: gameFont(), fontSize: '10px', color: '#556677',
+      }).setOrigin(0.5, 0).setDepth(32)
+      skillTexts.push(skillHeader)
+
+      const dots = ['○○○', '●○○', '●●○', '●●●']
+      topSkills.forEach((sk, i) => {
+        const sy = skillsY + 17 + i * 20
+        skillTexts.push(
+          this.add.text(col1, sy, sk.label, {
+            fontFamily: gameFont(), fontSize: '13px', color: '#ccddee',
+          }).setOrigin(0, 0.5).setDepth(32),
+          this.add.text(cx + pw / 2 - 20, sy, dots[Math.min(sk.level, 3)], {
+            fontFamily: gameFont(), fontSize: '11px', color: sk.level >= 3 ? '#ffcc44' : '#88aacc',
+          }).setOrigin(1, 0.5).setDepth(32),
+        )
+      })
+      skillSectionH = 17 + topSkills.length * 20 + 8
+    }
 
     // Leaderboard panel — global top 5 by kills, fetched from Supabase. Sized
     // for 5 rows up front so the layout doesn't jump when data arrives.
     const lbRows = 5
     const lbG = this.add.graphics().setDepth(31)
     const lbW = Math.min(300, width - 60), lbH = 36 + lbRows * 24
-    const lbX = cx - lbW / 2, lbY = py + ph + 18
+    const lbX = cx - lbW / 2, lbY = skillsY + skillSectionH + 8
     lbG.fillStyle(0x12122a, 0.9)
     lbG.fillRoundedRect(lbX, lbY, lbW, lbH, 8)
     lbG.lineStyle(1, 0x333355)
@@ -1560,7 +1696,7 @@ export class UIScene extends Phaser.Scene {
       sm.start('ForgeScene')
     })
 
-    this.endTexts = [t1, t2, t3, t4, t4b, t5, t6, t7, panelG as any, lbG as any, ...lbEntries]
+    this.endTexts = [t1, subLabel, t5, t6, t7, panelG as any, lbG as any, ...statTexts, ...skillTexts, ...lbEntries]
 
     if (showForgeHint) {
       // Glow ring behind the button — sized to match the actual button
@@ -1819,6 +1955,18 @@ export class UIScene extends Phaser.Scene {
       mm.fillRect(ex - s / 2, ey - s / 2, s, s)
     }
 
+    // Remote teammates as green dots
+    if (gs._networkAdapter) {
+      gs._networkAdapter.remotePlayers?.forEach((remote: any) => {
+        if (!remote.sprite?.active) return
+        const rx = toMmX(remote.sprite.x)
+        const ry = toMmY(remote.sprite.y)
+        if (rx < mapX || rx > mapX + size || ry < mapY || ry > mapY + size) return
+        mm.fillStyle(0x44ff44, 1)
+        mm.fillCircle(rx, ry, 2.5)
+      })
+    }
+
     // Player — always at center
     mm.fillStyle(0x00ff66)
     mm.fillCircle(mapX + half, mapY + half, 3)
@@ -1991,6 +2139,9 @@ export class UIScene extends Phaser.Scene {
       curKills     !== this._lastKills   ||
       curGold      !== this._lastGold    ||
       curTimeSec   !== this._lastRemainingSec ||
+      p.flashpointRemaining !== this._lastFlashpointRemaining ||
+      p.hasPhoenixHeart     !== this._lastPhoenixHeart        ||
+      p.firestormOrbCount   !== this._lastFirestormOrbCount   ||
       this.time.now < this._critFlashUntil ||
       hpCritNow
 
@@ -2010,16 +2161,19 @@ export class UIScene extends Phaser.Scene {
     if (tookDamage) this._tookDamageThisRun = true
 
     // Update cached values
-    this._lastHp           = curHp
-    this._lastMaxHp        = curMaxHp
-    this._lastXp           = curXp
-    this._lastXpMax        = curXpMax
-    this._lastLevel        = curLevel
-    this._lastEnergy1      = curEnergy1
-    this._lastEnergy2      = curEnergy2
-    this._lastKills        = curKills
-    this._lastGold         = curGold
-    this._lastRemainingSec = curTimeSec
+    this._lastHp                    = curHp
+    this._lastMaxHp                 = curMaxHp
+    this._lastXp                    = curXp
+    this._lastXpMax                 = curXpMax
+    this._lastLevel                 = curLevel
+    this._lastEnergy1               = curEnergy1
+    this._lastEnergy2               = curEnergy2
+    this._lastKills                 = curKills
+    this._lastGold                  = curGold
+    this._lastRemainingSec          = curTimeSec
+    this._lastFlashpointRemaining   = p.flashpointRemaining
+    this._lastPhoenixHeart          = p.hasPhoenixHeart
+    this._lastFirestormOrbCount     = p.firestormOrbCount
 
     // Kill milestone announcements
     for (const [threshold, label] of KILL_MILESTONES) {
@@ -2288,6 +2442,18 @@ export class UIScene extends Phaser.Scene {
       // --- Undying rebirth stacks (Amun) ---
       if (p.rebirthStacks > 0)
         drawBigBuff(63, 0xfff200, `${p.rebirthStacks}`)
+
+      // --- Firestorm orbs (Ignara Inferno) ---
+      if (p.firestormOrbCount > 0)
+        drawBigBuff(14, 0xff6600, `${p.firestormOrbCount}`)
+
+      // --- Phoenix Heart (Ignara) — shows while revive is available ---
+      if (p.hasPhoenixHeart)
+        drawBigBuff(19, 0xff4400, '✦')
+
+      // --- Flashpoint charges (Ignara Rapid Fire) ---
+      if (p.hasFlashpoint)
+        drawBigBuff(20, 0xff8800, p.flashpointRemaining > 0 ? `${p.flashpointRemaining}` : undefined, p.flashpointRemaining > 0 ? 0.9 : 0.30)
 
     }
 
@@ -2597,16 +2763,24 @@ export class UIScene extends Phaser.Scene {
   /** Pause gameplay and show a bonus specialization picker for Bastion. */
   private _launchBastionBonusPicker(): void {
     // Delay slightly so the toast shows first
-    this.time.delayedCall(600, () => {
+    const tryLaunch = () => {
       if (this.endScreenShown) return
-      this.scene.pause(this.gameScene.scene.key)
+      // Wait if LevelUpScene is already open (normal level-up in progress)
+      if (this.scene.isActive('LevelUpScene')) {
+        this.time.delayedCall(500, tryLaunch)
+        return
+      }
+      if (!this.scene.isPaused(this.gameScene.scene.key)) {
+        this.scene.pause(this.gameScene.scene.key)
+      }
       this.scene.launch('LevelUpScene', {
         player: this.gameScene.localPlayer,
         tracker: this.gameScene.upgradeTracker,
         callerSceneKey: this.gameScene.scene.key,
         bonusSpecialization: true,
       })
-    })
+    }
+    this.time.delayedCall(1500, tryLaunch)
   }
 
   /** Brief non-blocking toast (bottom-center) for quest/unlock events. */
@@ -2636,6 +2810,106 @@ export class UIScene extends Phaser.Scene {
       targets: objs, y: '-=18', alpha: 0,
       duration: 700, delay: 1800, ease: 'Quad.easeIn',
       onComplete: () => { bg.destroy(); t1.destroy(); t2.destroy() },
+    })
+  }
+
+  // ── Boss HP bar ────────────────────────────────────────────────
+
+  private _showBossBar() {
+    const { width } = this.cameras.main
+    // Mirror XP bar geometry: same x-padding, sit directly below it
+    const xpPad = 40
+    const xpTopY = 4
+    const xpTopH = 15
+    const bw = width - xpPad * 2      // same width as XP bar
+    const bh = xpTopH * 2             // 2× XP bar height = 30px
+    const bx = xpPad
+    const by = xpTopY + xpTopH + 3    // 3px gap below XP bar
+
+    // Background panel
+    this._bossBarBg = this.add.graphics().setDepth(30).setScrollFactor(0)
+    this._bossBarBg.fillStyle(0x000000, 0.55)
+    this._bossBarBg.fillRoundedRect(bx - 2, by - 1, bw + 4, bh + 2, 4)
+    this._bossBarBg.setAlpha(0)
+
+    // HP fill graphics
+    this._bossBarGfx = this.add.graphics().setDepth(31).setScrollFactor(0)
+
+    // Name label — small, inside the bar, right-aligned
+    this._bossNameText = this.add.text(bx + bw - 6, by + bh / 2, 'CLAWS', {
+      fontFamily: gameFont(), fontSize: '12px', color: '#ff6666',
+      shadow: { offsetX: 0, offsetY: 1, color: '#000', blur: 3, fill: true },
+    }).setOrigin(1, 0.5).setDepth(32).setScrollFactor(0).setAlpha(0)
+
+    // Phase text — centered, appears below the bar temporarily
+    this._bossPhaseText = this.add.text(bx + bw / 2, by + bh + 4, '', {
+      fontFamily: gameFont(), fontSize: '11px', color: '#ffcccc',
+      shadow: { offsetX: 0, offsetY: 1, color: '#000', blur: 2, fill: true },
+    }).setOrigin(0.5, 0).setDepth(32).setScrollFactor(0).setAlpha(0)
+
+    // Tween in
+    this.tweens.add({ targets: [this._bossBarBg, this._bossNameText], alpha: 1, duration: 600, ease: 'Sine.easeOut' })
+    this._bossBarVisible = true
+    this._drawBossBar()
+  }
+
+  private _drawBossBar() {
+    if (!this._bossBarGfx || !this._bossBarVisible) return
+    if (this._bossMaxHp === 0) return
+    const { width } = this.cameras.main
+    const xpPad = 40
+    const xpTopY = 4
+    const xpTopH = 15
+    const bw = width - xpPad * 2
+    const bh = xpTopH * 2
+    const bx = xpPad
+    const by = xpTopY + xpTopH + 3
+    const pct = Math.max(0, this._bossHp / this._bossMaxHp)
+    const fillColor = pct > 0.6 ? 0x44dd44 : pct > 0.3 ? 0xffaa00 : 0xff2222
+
+    this._bossBarGfx.clear()
+    // Dark background strip
+    this._bossBarGfx.fillStyle(0x111111, 0.9)
+    this._bossBarGfx.fillRoundedRect(bx, by, bw, bh, 3)
+    // HP fill
+    if (pct > 0) {
+      this._bossBarGfx.fillStyle(fillColor, 1)
+      this._bossBarGfx.fillRoundedRect(bx, by, bw * pct, bh, 3)
+      // Shimmer line
+      this._bossBarGfx.fillStyle(0xffffff, 0.15)
+      this._bossBarGfx.fillRect(bx + 2, by + 2, bw * pct - 4, 3)
+    }
+    // Border
+    this._bossBarGfx.lineStyle(1, 0xffffff, 0.25)
+    this._bossBarGfx.strokeRoundedRect(bx, by, bw, bh, 3)
+  }
+
+  private _onBossPhase(phase: number) {
+    if (!this._bossNameText || !this._bossPhaseText) return
+    const labels: Record<number, string> = { 2: '— FRENZY —', 3: '— DESPERATION —' }
+    const label = labels[phase] ?? ''
+    this._bossPhaseText.setText(label).setAlpha(1)
+    // Flash phase text then fade
+    this.tweens.add({ targets: this._bossPhaseText, alpha: 0, duration: 2000, delay: 1500 })
+    // Shake the bar briefly
+    if (this._bossBarGfx) {
+      this.tweens.add({
+        targets: this._bossBarGfx, x: 3, duration: 60, yoyo: true, repeat: 4,
+        onComplete: () => { if (this._bossBarGfx) this._bossBarGfx.x = 0 },
+      })
+    }
+  }
+
+  private _hideBossBar() {
+    this._bossBarVisible = false
+    const targets = [this._bossBarGfx, this._bossBarBg, this._bossNameText, this._bossPhaseText].filter(Boolean)
+    this.tweens.add({
+      targets, alpha: 0, duration: 1500, onComplete: () => {
+        this._bossBarGfx?.destroy(); this._bossBarGfx = null
+        this._bossBarBg?.destroy(); this._bossBarBg = null
+        this._bossNameText?.destroy(); this._bossNameText = null
+        this._bossPhaseText?.destroy(); this._bossPhaseText = null
+      },
     })
   }
 }
