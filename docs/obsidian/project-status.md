@@ -1,6 +1,6 @@
-# Project Status — v0.3.3
+# Project Status — v0.4.3
 
-> Last updated: 2026-04-06
+> Last updated: 2026-04-11
 
 ## What is CLAWS
 
@@ -53,44 +53,56 @@ Each hero has 3 upgrade branches × 5 skills + 10 shared generic upgrades.
 
 All scale HP/speed/damage per wave tier (30s per tier).
 
-## Scenes (8 registered)
+## Scenes (11 registered)
 
 | Scene | Purpose |
 |-------|---------|
 | StartScene | Hero select, map toggle, encyclopedia/profile buttons, boss preview |
+| HeroSelectScene | Online hero select (multiplayer lobby flow) |
+| LobbyScene | Online lobby — create/join room, ready-up |
 | GameScene | Grasslands gameplay |
 | UndeadMapScene | Undead map gameplay |
 | UIScene | HUD overlay (HP, kills, timer, minimap, pause) |
 | LevelUpScene | Upgrade card selection + branch specialization |
 | EncyclopediaScene | Pixel-art book with hero lore, skill reference |
 | ProfileScene | Lifetime stats + 25 achievements |
+| LeaderboardScene | Online leaderboard (Supabase) |
+| NameInputScene | Player name entry for leaderboard |
 | TestScene | Debug hitbox sandbox |
 
 ## Key Systems
 
 | System | File | Role |
 |--------|------|------|
-| WaveManager | `systems/WaveManager.ts` | Spawn ticks, zone mob selection, boss trigger |
-| XPSystem | `systems/XPSystem.ts` | Orb spawning, magnet pull, collection |
+| WaveManager | `systems/WaveManager.ts` | Spawn ticks, zone mob selection, boss trigger; O(1) alive count |
+| XPSystem | `systems/XPSystem.ts` | Orb spawning, magnet pull, collection; 5s sweep expiry |
 | UpgradeSystem | `systems/UpgradeSystem.ts` | All upgrade pools, branch defs, icon mapping, level-up tracker |
 | MetaProgress | `systems/MetaProgress.ts` | localStorage persistence, 25 achievements |
 | Pathfinding | `systems/Pathfinding.ts` | Obstacle avoidance for ground mobs |
-| BaseEnemy | `entities/BaseEnemy.ts` | Abstract enemy base: combat, KB, VFX, movement |
+| BaseEnemy | `entities/BaseEnemy.ts` | Abstract enemy base: combat, KB (timestamp), VFX, movement throttle |
+| NetworkGameAdapter | `systems/NetworkGameAdapter.ts` | Colyseus multiplayer bridge: server-authoritative movement, enemy sync |
 
 ## Architecture
 
 - Heroes extracted into `src/entities/heroes/` (one file per hero)
-- Enemies extend `BaseEnemy` abstract class
+- Fallback textures in `src/entities/heroes/fallbackTextures.ts` (not in Player.ts)
+- Enemies extend `BaseEnemy` abstract class (KB via timestamp, tint guard, throttled moveTo)
 - Terrain uses RenderTexture baking (1 draw call vs thousands)
 - Progressive map generation in deferred packs for instant first frame
 - Only selected hero's assets loaded (lazy loading in preload)
 - Icon spritesheet: 1280×1280, 10×10 grid of 128×128 (100 frames total)
+- `src/utils/device.ts` — UA detection, `gameFont()` system font
+- `src/utils/textStyles.ts` — centralized text style presets (no strokes, system font everywhere)
+- LevelUpScene uses Graphics pools (40 confetti + 15 sparks + 1 flash) — zero per-frame allocs
+- Scene exit pattern: `setVisible(false)` → `delayedCall(0, stop)` to avoid sync destroy spike
 
 ## Recent Milestones
 
+- **v0.4.3** — Perf pass (20+ micro-freeze fixes), architect review (18 fixes), font/UI cleanup (system font, textStyles.ts), multiplayer stability fixes
+- **v0.4.2** — Multiplayer: server-authoritative movement, hero abilities online, enemy death anims, wave HUD, gold sync
+- **v0.4.1** — Online mode groundwork: LobbyScene, HeroSelectScene, NetworkGameAdapter, Colyseus integration
 - **v0.4.0** — Orc enemies, boss spawn anim, blood VFX, heart progression, fixes
 - **v0.3.3** — Fix game freeze after branch selection on Undead Map
-- **v0.3.2** — Restore boss demon animations on hero select screen
 - **v0.3.1** — Hero extraction, Amun icons, encyclopedia unlock, new enemies
 - **v0.2.0** — Undead map, encyclopedia polish, bug fixes
 
@@ -105,7 +117,6 @@ All scale HP/speed/damage per wave tier (30s per tier).
 | 5 | Evil Wizard assets unused | Info | Returned to assets/ for future hero, no code references |
 | 6 | SandGolem uses mushroom sprite | Low | Visually a mushroom, named SandGolem in code |
 | 7 | debug: true in Phaser config | Low | `main.ts` — should disable for production |
-| 8 | Supabase uses placeholder credentials | Low | SessionLogger is a silent no-op |
 
 ## Ideas / Roadmap
 
@@ -121,7 +132,7 @@ All scale HP/speed/damage per wave tier (30s per tier).
 | 8 | 3rd map — dungeon/cave theme | Content | Medium |
 | 9 | Sound effects + music | Polish | Medium |
 | 10 | Mobile touch controls | Platform | Low |
-| 11 | Leaderboard (Supabase integration) | Social | Low |
+| 11 | Leaderboard (Supabase) | Social | ✅ Done — real credentials in .env.local, sessions table live |
 | 12 | Progressive encyclopedia unlock toggle (flag exists, default: all unlocked) | UX | Low |
 | 13 | Minimap enemy dots / boss indicator | UX | Low |
 | 14 | Chest/loot system expansion | Gameplay | Low |

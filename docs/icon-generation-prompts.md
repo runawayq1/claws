@@ -53,7 +53,7 @@ All generic icons use a **stone-gray pixel border frame** — light gray #999999
 ## Ignara Skills
 
 Ignara is a fire mage — consecration, divine fire, wrath. Each branch has 3 regular skills + 1 ultimate.
-Ignara skills use **branch-colored frames** — Inferno (fire-red #CC3300), Fortress (ember-orange #CC6600), Havoc (crimson #FF4400).
+Ignara skills use **branch-colored frames** — Inferno (fire-red #CC3300), Wildfire (dark-crimson #CC2200), Pyre (crimson #FF4400).
 
 ### Inferno Branch
 
@@ -70,35 +70,44 @@ Ignara skills use **branch-colored frames** — Inferno (fire-red #CC3300), Fort
 Unlocks when Wide Burn, Inferno Reach, and White Fire are all at level 2+.
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a central fireball flanked by two smaller satellite fire orbs orbiting it, swirling flame arcs connecting all three. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
 
-### Fortress Branch
+### Wildfire Branch
 
-#### Heat Shield (io1)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a round shield forged from volcanic red metal with heat shimmer waves radiating off its surface, faint orange glow at the rim. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
+Wildfire is a relentless burn escalation path — stacking ignitions, cooldown reduction, and explosive kill charges.
+Wildfire skills use **dark-crimson frames** with small ember-dot studs.
 
-#### Pyromaniac (io2)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a smoldering skull wreathed in dark red flames with a small green HP orb rising from its crown, crimson fire with a single vivid emerald spark. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
+#### Sustained Burn (bh1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-crimson pixel border frame with small ember-dot studs in corners, dark-crimson #CC2200 outer edge, darker #881100 inner bevel. Inside the frame on a solid black background: a five-stack burn meter — five glowing ember dots arranged vertically beside a silhouette wreathed in licking orange flames, each dot brightening hotter than the last. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-crimson frame.
 
-#### Molten Skin (io3)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a humanoid silhouette with cracked skin revealing molten lava beneath, a reactive AoE burst ring expanding outward, red-orange with dark obsidian outer surface. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
+#### Powder Keg (bh2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-crimson pixel border frame with small ember-dot studs in corners, dark-crimson #CC2200 outer edge, darker #881100 inner bevel. Inside the frame on a solid black background: a wooden keg wrapped in burning rope with a lit fuse, glowing orange fuse trailing sparks, dark wood and iron bands with a bright amber blast glow at the lid crack. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-crimson frame.
 
-#### Phoenix Heart (io5) — ULTIMATE
-Unlocks when Heat Shield, Pyromaniac, and Molten Skin are all at level 2+.
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ember-orange pixel border frame with small shield-shaped studs in corners, ember-orange #CC6600 outer edge, darker #884400 inner bevel. Inside the frame on a solid black background: a radiant phoenix rising from flames with a glowing heart at its chest, red-orange wings spread wide with a warm gold revival aura at the core. Bold silhouette, high contrast, limited palette 5-6 colors, slight gold inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ember-orange frame.
+#### Ember Volley (bh3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-crimson pixel border frame with small ember-dot studs in corners, dark-crimson #CC2200 outer edge, darker #881100 inner bevel. Inside the frame on a solid black background: a rapid stream of small ember shots firing in fast succession with a kill-counter ticking above, orange-red embers leaving trailing sparks and a visible attack-speed acceleration arc. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-crimson frame.
 
-### Havoc Branch
+#### Flashpoint (bh4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-crimson pixel border frame with small ember-dot studs in corners, dark-crimson #CC2200 outer edge, darker #881100 inner bevel. Inside the frame on a solid black background: a single instant-fire bolt igniting at the moment of a kill — a skull silhouette with a flame detonation flash beside it and a pair of instant-shot streaks radiating outward from a zero-delay burst point. Bold silhouette, high contrast, limited palette 5-6 colors, slight white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-crimson frame.
 
-#### Backdraft (ih1)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a fireball with a massive concussive shockwave ring blasting backward, amber-orange fire with fierce concentric blast-wave rings. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+#### Infernal Cadence (bh5) — ULTIMATE
+Unlocks when Sustained Burn, Powder Keg, Ember Volley, and Flashpoint are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark-crimson pixel border frame with small ember-dot studs in corners, dark-crimson #CC2200 outer edge, darker #881100 inner bevel. Inside the frame on a solid black background: a metronome-shaped fire dial spinning at triple speed with flame arcs radiating off the sweeping arm, deep red and blazing orange with a clock-face background suggesting relentless accelerating tempo. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark-crimson frame.
 
-#### Eruption (ih2)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a volcanic eruption bursting upward from the ground with columns of fire and lava, amber-orange with dark ash clouds rising alongside. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+### Pyre Branch
 
-#### Lava Trail (ih3)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: glowing lava footprints trailing behind a striding figure, molten ground pools dripping orange-red in each print. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+Pyre is a close-range bruiser path — heavy shots, survivability, and a burning aura that kills everything nearby.
+Pyre skills use **crimson frames** with small spike-shaped studs.
 
-#### Meltdown (ih5) — ULTIMATE
-Unlocks when Backdraft, Eruption, and Lava Trail are all at level 2+.
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a crumbling warrior glowing molten from within, deep cracks blazing orange-red while the outer shell crumbles in dark amber. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+#### Slug Round (ih1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: an oversized heavy shot projectile — thick and dense, trailing a tight concussive wake, dark iron-grey with a brief blast ring at the nose and a piercing trail line punching through an enemy silhouette. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+
+#### Thick Skin (ih2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a scarred warrior torso with heat-tempered iron-plate skin, layered protective bands with an orange-red forge glow in the cracks between plates and a faint green regeneration spark rising from the chest. Bold silhouette, high contrast, limited palette 5-6 colors, slight red inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+
+#### Immolation (ih3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a warrior silhouette surrounded by a close circular burn aura, orange-red flames clinging to their outline with a clear radius ring marking the kill zone and enemy silhouettes igniting at the edge. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+
+#### Scorched Bastion (ih5) — ULTIMATE
+Unlocks when Slug Round, Thick Skin, and Immolation are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a fortress tower forged from dark scorched stone with a blazing burn aura ring pulsing outward at its base, orange-red fire rimming the battlements and a lifesteal ember spark looping inward. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
 
 ---
 
@@ -157,7 +166,7 @@ Unlocks when Vanish, Phantom Trail, and Smoke Bomb are all at level 2+.
 ## Sifra Skills
 
 Sifra is an ice/frost mage with an alternate lightning path. Each branch has 3 regular skills + 1 ultimate.
-Sifra skills use **branch-colored frames** — Lightning (electric-purple #7744CC), Frost (frost-blue #3388CC), Shatter (ice-blue #4499BB), Crystal (ice-white #AAEEFF).
+Sifra skills use **branch-colored frames** — Lightning (electric-purple #7744CC), Frost (frost-blue #3388CC), Shatter (ice-blue #4499BB).
 
 ### Lightning Branch
 
@@ -180,16 +189,16 @@ Unlocks when Spark Initiate, Arc Reach, and Overcharge are all at level 2+.
 #### Deep Freeze (sf1)
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: an enemy encased in a solid block of ice with frost shards radiating outward, sky blue and white with thick crystalline ice walls. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
 
+#### Ice Armor (sc2)
+Lvl 3 activates Blizzard Aura while shield is up.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a figure encased in glowing crystal ice armor plates, icy white with crystalline plate segments and a blue shield glow. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
+
 #### Blizzard Aura (sf2)
 Lvl 3 unlocks Frost Nova every 4th shot.
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a swirling blizzard aura ring surrounding a caster, sky blue with white snowflakes and a gentle spiral wind extending outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
 
-#### Ice Armor (sf3 / sc2)
-Lvl 3 unlocks Blizzard Aura when shield is up.
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a figure encased in glowing crystal ice armor plates, icy white with crystalline plate segments and a blue shield glow. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
-
 #### Eternal Winter (sf5) — ULTIMATE
-Unlocks when Deep Freeze, Blizzard Aura, and Ice Armor are all at level 2+.
+Unlocks when Deep Freeze, Ice Armor, and Blizzard Aura are all at level 2+.
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate frost-blue pixel border frame with small snowflake studs in corners, frost-blue #3388CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: an ever-expanding frost field consuming the ground with a perpetual blizzard above it, sky blue with a spreading white snowstorm field. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the frost-blue frame.
 
 ### Shatter Branch
@@ -207,20 +216,6 @@ Lvl 2 adds pierce, Lvl 3 unlocks Mirror Ice (+2 pierce).
 #### Avalanche (ss5) — ULTIMATE
 Unlocks when Permafrost, Shatter, and Ice Spear are all at level 2+.
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-blue pixel border frame with small crystal-shard studs in corners, ice-blue #4499BB outer edge, darker #226688 inner bevel. Inside the frame on a solid black background: three clustered ice shard bundles crashing forward like an avalanche, pale blue and white with overlapping shard clusters rolling forward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-blue frame.
-
-### Crystal Branch (ice-white: #AAEEFF)
-
-#### Wide Shard (sc1 / glacial_pierce)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a crystal shard with expanded AoE glow ring, wider splash radius upgrade, icy white-blue with blast radius ring expanding outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
-
-#### Mirror Ice (sc3)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a shard piercing through multiple enemies in sequence, pierce chain through targets, icy white with refracted pierce lines through translucent crystal. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
-
-#### Cryo Shield (sc4)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a retaliatory ice shield firing shards outward when struck, reactive cryo burst on damage received, icy white with defensive burst shards radiating outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
-
-#### Diamond Dust (sc5) — ULTIMATE
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate ice-white pixel border frame with small diamond-shard studs in corners, ice-white #AAEEFF outer edge, darker #7799BB inner bevel. Inside the frame on a solid black background: a sparkling cloud of diamond-fine ice particles with multiple pierce trails, ultra-sharp crystalline dust damage, brilliant white and pale blue with prismatic diamond sparkle. Bold silhouette, high contrast, limited palette 5-6 colors, slight ice-white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the ice-white frame.
 
 ---
 
@@ -291,9 +286,6 @@ Khashin skills use **branch-colored frames** — Gale (sky-blue #4488CC), Dune (
 
 #### Dust Devil (kw3)
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sky-blue pixel border frame with small wind-spiral studs in corners, sky-blue #4488CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a small drifting sand tornado wandering across the ground, sky blue mixed with tan sand spinning in a compact vortex column. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sky-blue frame.
-
-#### Cyclone Surge (kw4)
-> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sky-blue pixel border frame with small wind-spiral studs in corners, sky-blue #4488CC outer edge, darker #225588 inner bevel. Inside the frame on a solid black background: a larger more ferocious cyclone tower spinning faster and taller, empowered dust devil upgrade, sky blue with intensified wind spiral and sand particles surging upward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sky-blue frame.
 
 #### Eye of the Storm (kw5) — ULTIMATE
 Unlocks when Razor Wind, Gust Strike, and Dust Devil are all at level 2+.

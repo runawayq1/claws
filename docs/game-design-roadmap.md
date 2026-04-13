@@ -1,6 +1,6 @@
 # CLAWS — Дизайн-документ та Дорожня карта розвитку
 
-> Версія: v0.4.2 | Дата: 2026-04-09 | Основа: Phaser 3 + Vite + TypeScript
+> Версія: v0.4.3 | Дата: 2026-04-11 | Основа: Phaser 3 + Vite + TypeScript
 
 ---
 
@@ -15,7 +15,7 @@
 Цикл має хорошу основу і вже тягне через кілька рівнів мотивації. Але деякі шари ще в розробці.
 
 **Шар 1 — Run Loop (внутрішньозабіговий) — ✅ реалізовано:**
-Вибір гілки на першому левел-апі, 3 рівні скілів (mastery), stance-toggle (Q) для п'яти героїв. Мінібоси кожні 30 секунд (SandGolem) тримають тиск. Фінальний бос CLAWS на 10-й хвилині. Скрині з лутом і вибором апгрейду після вбивства мінібоса.
+Вибір гілки на першому левел-апі, 3 рівні скілів (mastery), stance-toggle (Q) для п'яти героїв. Мінібоси кожні 30 секунд (SandGolem) тримають тиск. Фінальний бос CLAWS на 10-й хвилині. Скрині з лутом і вибором апгрейду після вбивства мінібоса. Онлайн ко-оп (Colyseus): 2 гравці, сервер-авторитетний рух, синхронізація ворогів і здоровʼя.
 
 **Шар 2 — Meta-progression (між забігами) — ✅ частково реалізовано:**
 - ✅ **Gold economy** — золото падає з ворогів і босів, зберігається між сесіями (MetaProgress.ts)
@@ -25,7 +25,7 @@
 - ✅ **Achievements** — 25 досягнень (kills, survival, hero, progression, wave, secret)
 - ❌ **Lore Fragments** — не реалізовано (тільки у дизайні)
 - ❌ **Cursed Relics** — не реалізовано
-- ❌ **Hero unlock через умови** — всі 7 героїв доступні одразу
+- ✅ **Hero unlock через умови** — Ignara (3 runs), Nazar (1 win), Khashin (8хв як Sifra), Lyra (1000g у Forge), Sifra (tutorial)
 
 **Шар 3 — Mastery (довгострокова ціль) — ❌ не реалізовано:**
 - ❌ **Tome of Trials** — "Випробування" для кожного героя
@@ -47,10 +47,9 @@
 
 ### Чого ще не вистачає у поточному циклі
 
-1. **Екран результатів із вагою** — по завершенні або смерті — тільки базовий end-screen без деталей
+1. **Екран результатів із вагою** — в роботі (Run Summary Screen)
 2. **Run Events** — несподівані події кожні 2–3 хв (Темна Хмара, Чужинець тощо) — не реалізовано
 3. **Skill challenge / Tome of Trials** — немає місії-стимулу грати конкретним героєм
-4. **Hero unlock** — всі доступні одразу, умовне відкриття поки не реалізоване
 
 ---
 
@@ -98,7 +97,7 @@
 
 ## 3. Що зроблено і що ще треба (Feature Roadmap)
 
-### Реалізовано станом на v0.4.2
+### Реалізовано станом на v0.4.3
 
 #### Герої та механіки
 - ✅ **7 героїв** — Ігнара, Сіфра, Амун, Назар, Ліра (Huntress), Кашін, Гіві (Мюллер)
@@ -138,6 +137,15 @@
 - ✅ **Chest system** — скрині дропають після мінібоса, дають вибір апгрейду
 - ✅ **SessionLogger / SupabaseClient** — логування сесій (опційно)
 - ✅ **Pathfinding** — A* для навігації ворогів навколо перешкод
+- ✅ **Online Co-op** — LobbyScene + HeroSelectScene, Colyseus server, server-authoritative movement, enemy/health sync
+
+#### Performance (v0.4.3)
+- ✅ **Zero per-frame allocations у LevelUpScene** — пул 40 confetti + 15 sparks + 1 flash Graphics
+- ✅ **Deferred scene stop** — `setVisible(false)` → `delayedCall(0, stop)`, без freeze при виході
+- ✅ **BaseEnemy: timestamp knockback** — без per-hit таймерів; throttled moveTo (кожні 3 кадри)
+- ✅ **WaveManager O(1) alive count** — `_aliveCount` замість `countActive()`
+- ✅ **XPSystem 5s sweep** — один таймер на клас замість per-orb delayedCall
+- ✅ **Font/UI cleanup** — system font скрізь, `textStyles.ts`, без stroke (тільки shadow)
 
 ### Заплановано, не реалізовано
 
@@ -152,7 +160,7 @@
 #### Мета та прогресія
 - ❌ **Cursed Relics** — пре-забіговий бафф/дебафф за ціну обмеження
 - ❌ **Ascension System** — підвищена складність після N забігів одним героєм
-- ❌ **Hero unlock через умови** — зараз всі 7 доступні одразу
+- ✅ **Hero unlock через умови** — реалізовано через `checkPostRunUnlocks` в MetaProgress
 - ❌ **Скіни героїв** — косметика за Trials
 
 #### Вороги та боси
@@ -228,7 +236,7 @@ GLORY = (kills × 10) + (хвилини × 50) + (рівень × 30)
 
 ## 6. Контент-план
 
-### Пріоритетна матриця (станом на v0.4.2)
+### Пріоритетна матриця (станом на v0.4.3)
 
 | Фіча | Пріоритет | Scope | Статус |
 |---|---|---|---|
@@ -244,7 +252,7 @@ GLORY = (kills × 10) + (хвилини × 50) + (рівень × 30)
 | Blitz / Cursed / Gauntlet Modes | LOW | Середній | ❌ |
 | GLORY scoring | LOW | Малий | ❌ |
 | Нова карта (Undead Map) | LOW | Великий | 🚧 (UndeadMapScene.ts) |
-| Co-op | FUTURE | Величезний | ❌ |
+| Co-op polish (spectate, reconnect, 3-4 players) | LOW | Середній | 🚧 (базова версія готова) |
 
 ### Вже зроблено (закрите)
 
@@ -265,6 +273,10 @@ GLORY = (kills × 10) + (хвилини × 50) + (рівень × 30)
 | HintFlags система | v0.4 |
 | Infinite procedural map (зони 0–4) | v0.3 |
 | RenderTexture terrain baking | v0.3 |
+| Online Co-op (Colyseus, server-auth movement) | v0.4.1–v0.4.2 |
+| LeaderboardScene + NameInputScene | v0.4.2 |
+| Perf pass: pools, deferred stop, throttling | v0.4.3 |
+| Font/UI cleanup: system font, textStyles.ts | v0.4.3 |
 
 ### Наступна хвиля — Wave 5 (v0.5.x)
 

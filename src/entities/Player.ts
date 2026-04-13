@@ -49,7 +49,7 @@ const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
 }
 
 const HERO_DEFS: Record<HeroType, HeroDef> = {
-  ignara:  { hp: 80,  speed: 140, damage: 30, range: 180, cooldown: 700, color: 0xe84118, attackType: 'fireball' },
+  ignara:  { hp: 80,  speed: 140, damage: 30, range: 200, cooldown: 700, color: 0xe84118, attackType: 'fireball' },
   // khet removed from playable roster
   // khet:    { hp: 55,  speed: 220, damage: 35, range: 48,  cooldown: 600,  color: 0x4a0072, attackType: 'dash' },
   sifra:   { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
@@ -87,9 +87,41 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasBackdraft = false
   hasWildfire = false
   hasFirestorm = false
+  firestormOrbCount = 0
   hasPyromaniac = false
   hasMoltenSkin = false
+  hasEmberVolley = false
+  emberVolleyCap = 0.2
+  emberVolleyDmg = false
+  emberVolleyStacks = 0
   lavaTrailTimer = 0
+  hasFlashpoint = false
+  flashpointCharges = 1
+  flashpointBurst = false
+  flashpointRemaining = 0
+
+  // Buckshot branch
+  hasSlugRound = false
+  slugPierce = 0
+  hasImmolation = false
+  immolationRadius = 50
+  immolationDmgPct = 0.15
+  hasScorchedBastion = false
+  scorchedBastionLifesteal = 0
+
+  // Bullet Heaven branch
+  hasSustainedBurn = false
+  burnMaxStacks = 5
+  burnStackedDmgBonus = false
+  hasPowderKeg = false
+  powderKegThreshold = 10
+  powderKegCounter = 0
+  powderKegReady = false
+  powderKegShrapnel = false
+  hasInfernalCadence = false
+  infernalCadenceEndTime = 0
+  infernalCadenceDuration = 6000
+  burnTickTimer = 0
 
   // Nazar upgrade mechanic flags
   hasChainDash = false
@@ -138,6 +170,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   kills = 0
   miniBossKills = 0
   goldThisRun = 0
+  damageTakenThisRun = 0
   shieldHp = 0
   shieldMaxHp = 0
   shieldTimer = 0
@@ -795,6 +828,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.hp -= reduced
+    this.damageTakenThisRun += reduced
 
     // Stone Skin: accumulate damage, gain stack every 10 HP lost
     if (this.hasStoneSkin && reduced > 0 && this.stoneSkinStacks < 5) {
@@ -1135,10 +1169,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.isAttacking) return
     let cd = this.attackCooldown
-    if (time - this.lastAttackTime < cd) return
+    if (this.hasInfernalCadence && time < this.infernalCadenceEndTime) cd = Math.max(100, Math.floor(cd / 3))
+    const usingFlashpoint = this.flashpointRemaining > 0
+    if (!usingFlashpoint && time - this.lastAttackTime < cd) return
 
     // Nazar venom / Huntress spear stance gets extended range
     let searchRange = this.range
+    if (this.heroType === 'ignara' && this.splashRadius > 0) searchRange = Math.max(60, this.range - this.splashRadius * 0.6)
     if (this.heroType === 'nazar' && this.nazarStance === 'venom') searchRange += 100
     if (this.heroType === 'huntress' && this.huntressStance === 'melee') searchRange = 80
     if (this.heroType === 'khashin' && this.khashinStance === 'haboob') searchRange = 90
@@ -1157,12 +1194,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (!closest) return
 
     this.lastAttackTime = time
+    if (usingFlashpoint) {
+      this.flashpointRemaining--
+    }
+    const flashBurstActive = usingFlashpoint && this.flashpointBurst
+    if (flashBurstActive) this.damage = Math.ceil(this.damage * 1.1)
     const melee = (this.heroType === 'nazar' && this.nazarStance === 'sword')
       || (this.heroType === 'amun' && (this.amunStance === 'melee' || !this.hasQuakeStance))
       || (this.heroType === 'huntress' && this.huntressStance === 'melee')
     this.isAttacking = melee
     this.setFlipX(closest.x < this.x)
-    if (this.hasSprite && this.heroType !== 'huntress' && this.heroType !== 'khashin' && this.heroType !== 'muller' && !(this.heroType === 'amun' && this.hasQuakeStance)) {
+    if (this.hasSprite && this.heroType !== 'huntress' && this.heroType !== 'khashin' && this.heroType !== 'muller' && this.heroType !== 'ignara' && !(this.heroType === 'amun' && this.hasQuakeStance)) {
       const branchAnim = this.getBranchAttackAnim()
       if (branchAnim && this.scene.anims.exists(branchAnim)) {
         this.currentAnim = branchAnim; this.play(branchAnim)
@@ -1222,6 +1264,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.currentAttackBranch = 'fireball'
         this.awardMasteryXP('fireball', 1.0)
         this.attackFireball(target, enemies)
+        if (flashBurstActive) this.damage = Math.ceil(this.damage / 1.1)
         break
       case 'spear':
         if (this.huntressStance === 'melee') {
@@ -1555,6 +1598,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Hero-specific movement-based passives
     if (this.hasLavaTrail && moving) ignara.updateLavaTrail(this, delta)
+    if (this.hasFirestorm) { ignara.initFirestormOrbit(this); ignara.updateFirestormOrbit(this, delta) }
+    if (this.hasImmolation) ignara.updateImmolation(this, delta)
+    if (this.hasSustainedBurn) ignara.updateBurnTicks(this, delta)
+
     if (this.hasPhantomTrail && moving) nazar.updatePhantomTrail(this, delta, moving)
 
     // Hero-specific passive mechanics (per-hero)
@@ -1609,17 +1656,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     muller.attackCrystalEruption(this, enemies)
   }
 
-  /** Small impact burst when spear hits an enemy */
+  /** Impact burst when spear hits an enemy */
   spearHitVfx(x: number, y: number, tint: number) {
-    for (let i = 0; i < 4; i++) {
-      const a = Math.random() * Math.PI * 2
-      const d = Phaser.Math.Between(6, 14)
-      const p = this.scene.add.circle(x, y, Phaser.Math.Between(1, 3), tint, 0.7).setDepth(10)
-      this.scene.tweens.add({
-        targets: p,
+    const scene = this.scene
+
+    // Flash ring
+    const ring = scene.add.circle(x, y, 4, tint, 0.85).setDepth(10).setBlendMode(Phaser.BlendModes.ADD)
+    scene.tweens.add({ targets: ring, displayWidth: 32, displayHeight: 32, alpha: 0, duration: 160, ease: 'Quad.easeOut', onComplete: () => ring.destroy() })
+
+    // Bright core flash
+    const flash = scene.add.circle(x, y, 3, 0xffffff, 0.9).setDepth(11).setBlendMode(Phaser.BlendModes.ADD)
+    scene.tweens.add({ targets: flash, displayWidth: 14, displayHeight: 14, alpha: 0, duration: 100, onComplete: () => flash.destroy() })
+
+    // 6 sparks
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.random() * 0.5
+      const d = Phaser.Math.Between(10, 22)
+      const spark = scene.add.circle(x, y, Phaser.Math.Between(1, 3), tint, 0.85)
+        .setDepth(10).setBlendMode(Phaser.BlendModes.ADD)
+      scene.tweens.add({
+        targets: spark,
         x: x + Math.cos(a) * d, y: y + Math.sin(a) * d,
-        alpha: 0, scale: 0, duration: 200,
-        onComplete: () => p.destroy(),
+        alpha: 0, scaleX: 0.2, scaleY: 0.2, duration: 220,
+        ease: 'Quad.easeOut', onComplete: () => spark.destroy(),
       })
     }
   }

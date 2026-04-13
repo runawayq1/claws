@@ -75,93 +75,102 @@ const IGNARA_BRANCHES: BranchDef[] = [
         id: 'if5', label: 'Firestorm', icon: 'if5_firestorm', isUltimate: true,
         desc: ['2 mini-fireballs: 50% dmg in 3.5m AoE, +15% dmg', '+1 more mini-fireball, +10% dmg', 'Mini-fireballs also drop Scorched Earth on impact'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasFirestorm = true; p.damage = Math.ceil(p.damage * 1.15) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.hasFirestorm = true; p.firestormOrbCount = 2; p.damage = Math.ceil(p.damage * 1.15) }
+          else if (lvl === 2) { p.firestormOrbCount = 3; p.damage = Math.ceil(p.damage * 1.1) }
           else { p.hasScorchedEarth = true }
         },
       },
     ],
   },
   {
-    name: 'Fortress', color: 0xff4444,
-    theme: 'Stand in the fire. Let the Swarm come to you.',
+    name: 'Wildfire', color: 0xff3300,
+    theme: 'Relentless. Burning. It never stops.',
     upgrades: [
       {
-        id: 'io1', label: 'Heat Shield', icon: 'io1_heat_shield',
-        desc: ['+7% armor (dmg reduction)', '+5% more armor', '+5% armor + Ember Veil aura (reflect 10% dmg)'],
+        id: 'bh1', label: 'Sustained Burn', icon: 'io1_heat_shield',
+        desc: ['Hits apply Burn (4%/tick, max 5)\n-10% CD', 'Max stacks → 7\n-10% CD', 'Fully stacked: +20% dmg taken\n-10% CD'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.07) }
-          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.05) }
-          else { p.armor = Math.min(0.7, p.armor + 0.05); p.hasMoltenSkin = true }
+          if (lvl === 1) { p.hasSustainedBurn = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
+          else if (lvl === 2) { p.burnMaxStacks = 7; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
+          else { p.burnStackedDmgBonus = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
         },
       },
       {
-        id: 'io2', label: 'Pyromaniac', icon: 'io2_pyromaniac',
-        desc: ['On kill: +1 HP, +0.5 HP/s regen', 'On kill: +2 HP instead, +0.5 HP/s regen', 'On kill: +2 HP, +1 HP/s more regen'],
+        id: 'bh2', label: 'Powder Keg', icon: 'ih2_eruption',
+        desc: ['Every 10 kills: next shot ×2 blast', 'Every 8 kills: ×2.5 blast', 'Every 6 kills: ×3 blast + 2 shrapnel'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasPyromaniac = true; p.hpRegen += 0.5 }
-          else if (lvl === 2) { p.hpRegen += 0.5 }
-          else { p.hpRegen += 1 }
+          if (lvl === 1) { p.hasPowderKeg = true; p.powderKegThreshold = 10 }
+          else if (lvl === 2) { p.powderKegThreshold = 8 }
+          else { p.powderKegThreshold = 6; p.powderKegShrapnel = true }
         },
       },
       {
-        id: 'io3', label: 'Molten Skin', icon: 'io3_molten_skin',
-        desc: ['When hit: AoE 30% dmg in 5m, +5% armor', 'AoE range +3m, +5% more armor', 'AoE range +3m + grants Phoenix Heart revive'],
+        id: 'bh3', label: 'Ember Volley', icon: 'io3_molten_skin',
+        desc: ['-12% CD. On kill: -2% CD (max 20%)', '-12% CD. Cap → 30%', '-12% CD, +10% dmg. Burns nearby also reduce CD'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasMoltenSkin = true; p.armor = Math.min(0.7, p.armor + 0.05) }
-          else if (lvl === 2) { p.splashRadius += 30; p.armor = Math.min(0.7, p.armor + 0.05) }
-          else { p.splashRadius += 30; p.hasPhoenixHeart = true }
+          if (lvl === 1) { p.hasEmberVolley = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)) }
+          else if (lvl === 2) { p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)); p.emberVolleyCap = 0.3 }
+          else { p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)); p.damage = Math.ceil(p.damage * 1.1); p.emberVolleyDmg = true }
         },
       },
       {
-        id: 'io5', label: 'Phoenix Heart', icon: 'io5_phoenix_heart', isUltimate: true,
-        desc: ['Revive once at 50% HP, +30 max HP', '+30 more max HP, heal on revive to 70%', '+40 max HP, revive spawns fire burst'],
+        id: 'bh4', label: 'Flashpoint', icon: 'ih1_backdraft',
+        desc: ['On kill: next shot instant', 'On kill: 2 instant shots', '2 instant shots + 10% dmg burst'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasPhoenixHeart = true; p.maxHp += 30; p.hp += 30 }
-          else if (lvl === 2) { p.maxHp += 30; p.hp += 30 }
-          else { p.maxHp += 40; p.hp += 40 }
+          if (lvl === 1) { p.hasFlashpoint = true; p.flashpointCharges = 1 }
+          else if (lvl === 2) { p.flashpointCharges = 2 }
+          else { p.flashpointBurst = true }
+        },
+      },
+      {
+        id: 'bh5', label: 'Infernal Cadence', icon: 'if5_firestorm', isUltimate: true,
+        desc: ['6s ×3 speed. Burns apply ×2. +15% dmg', '8s duration. Full-stack kills explode', '10s. Explosion radius ×1.5, +10% dmg'],
+        apply: (p, lvl) => {
+          if (lvl === 1) { p.hasInfernalCadence = true; p.infernalCadenceDuration = 6000; p.damage = Math.ceil(p.damage * 1.15) }
+          else if (lvl === 2) { p.infernalCadenceDuration = 8000 }
+          else { p.infernalCadenceDuration = 10000; p.damage = Math.ceil(p.damage * 1.1) }
         },
       },
     ],
   },
   {
-    name: 'Havoc', color: 0xffaa00,
-    theme: 'Chaos is a weapon. Learn to throw it.',
+    name: 'Pyre', color: 0xff8800,
+    theme: 'Get close. Hit hard. Walk away burning.',
     upgrades: [
       {
-        id: 'ih1', label: 'Backdraft', icon: 'ih1_backdraft',
-        desc: ['Fireball knockback 12→30m, +10% dmg', '+10% more dmg, knockback pulls enemies back in', '+10% dmg + adds Meltdown berserker threshold'],
+        id: 'ih1', label: 'Slug Round', icon: 'ih1_backdraft',
+        desc: ['Heavy shot\n×1.6 proj, 20px blast, +15% dmg', 'Bigger punch\n+15% dmg, blast → 30px', 'Piercing slug\n+15% dmg, pierces 1 enemy'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasBackdraft = true; p.damage = Math.ceil(p.damage * 1.1) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
-          else { p.damage = Math.ceil(p.damage * 1.1); p.hasMeltdown = true }
+          if (lvl === 1) { p.hasSlugRound = true; p.damage = Math.ceil(p.damage * 1.15) }
+          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
+          else { p.damage = Math.ceil(p.damage * 1.15); p.slugPierce = 1 }
         },
       },
       {
-        id: 'ih2', label: 'Eruption', icon: 'ih2_eruption',
-        desc: ['Explosion radius +4m', 'Radius +3m more, +5% dmg', 'Radius +3m more, +10% dmg'],
+        id: 'ih2', label: 'Thick Skin', icon: 'ih2_eruption',
+        desc: ['Stand your ground\n+5% armor, +0.3 regen', 'Tempered\n+5% armor, +0.3 regen', 'Furnace heart\n+0.5 regen, +15 HP'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.splashRadius += 40 }
-          else if (lvl === 2) { p.splashRadius += 30; p.damage = Math.ceil(p.damage * 1.05) }
-          else { p.splashRadius += 30; p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.05); p.hpRegen += 0.3 }
+          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.05); p.hpRegen += 0.3 }
+          else { p.hpRegen += 0.5; p.maxHp += 15; p.hp += 15 }
         },
       },
       {
-        id: 'ih3', label: 'Lava Trail', icon: 'ih3_lava_trail',
-        desc: ['Moving: drop fire pools, 20% dmg/tick, +10 speed', '+10 more speed, longer pool duration', '+10 speed + gains Wildfire on-kill chain explosion'],
+        id: 'ih3', label: 'Immolation', icon: 'ih3_lava_trail',
+        desc: ['Burn aura 70px, 12% dmg/s', 'Aura grows\n85px, 16% dmg/s', 'Consecrated pyre\n20% dmg/s. Kills drop Scorched Earth'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasLavaTrail = true; p.speed += 10 }
-          else if (lvl === 2) { p.speed += 10 }
-          else { p.speed += 10; p.hasWildfire = true }
+          if (lvl === 1) { p.hasImmolation = true; p.immolationRadius = 70; p.immolationDmgPct = 0.12 }
+          else if (lvl === 2) { p.immolationRadius = 85; p.immolationDmgPct = 0.16 }
+          else { p.immolationDmgPct = 0.25; p.hasScorchedEarth = true }
         },
       },
       {
-        id: 'ih5', label: 'Meltdown', icon: 'ih5_meltdown', isUltimate: true,
-        desc: ['Below 40% HP: ×1.5 dmg; +15% base dmg', 'Threshold rises to 50% HP, +10% dmg', 'Also below threshold: +20 speed and armor +10%'],
+        id: 'ih5', label: 'Scorched Bastion', icon: 'ih5_meltdown', isUltimate: true,
+        desc: ['+15 HP. Aura radius → 100px', '+10 HP. Aura dmg ×1.3', '+10 HP. Aura lifesteal 2%'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasMeltdown = true; p.damage = Math.ceil(p.damage * 1.15) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
-          else { p.speed += 20; p.armor = Math.min(0.7, p.armor + 0.1) }
+          if (lvl === 1) { p.hasScorchedBastion = true; p.maxHp += 15; p.hp += 15; p.immolationRadius = 100 }
+          else if (lvl === 2) { p.maxHp += 10; p.hp += 10; p.immolationDmgPct *= 1.3 }
+          else { p.maxHp += 10; p.hp += 10; p.scorchedBastionLifesteal = 0.02 }
         },
       },
     ],

@@ -40,6 +40,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public markTimer: number = 0
   public isRooted: boolean = false
   public rootTimer: number = 0
+  public burnStacks: number = 0
+  public burnExpiry: number = 0
   public player: PlayerLike
   public players: PlayerLike[] = []
   public hpDirty: boolean = true

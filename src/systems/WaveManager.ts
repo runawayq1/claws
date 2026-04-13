@@ -172,4 +172,20 @@ export class WaveManager {
     this.totalKills++
     this._aliveCount = Math.max(0, this._aliveCount - 1)
   }
+
+  /** Spawn a single mob of the given type at explicit world coordinates. */
+  spawnMobAt(type: string, x: number, y: number): void {
+    const tier = this.currentWave
+    let mob: BaseEnemy
+    switch (type) {
+      case 'orc1':
+        mob = new Orc1(this.scene, x, y, this.player, tier)
+        break
+      default:
+        mob = new Orc1(this.scene, x, y, this.player, tier)
+    }
+    mob.players = this.players
+    this.enemies.add(mob)
+    this._aliveCount++
+  }
 }

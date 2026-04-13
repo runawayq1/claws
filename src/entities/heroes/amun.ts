@@ -375,25 +375,8 @@ export function updateAmunPassives(p: Player, delta: number) {
       }
     }
 
-    // Glow trail particles (procedural, behind sprites)
-    if (!p.passiveAuraGfx) {
-      p.passiveAuraGfx = p.scene.add.graphics().setDepth(9)
-    }
-    p.passiveAuraGfx.clear()
-    for (let i = 0; i < shieldCount; i++) {
-      const angle = (t * rotSpeed) + i * (Math.PI * 2 / shieldCount)
-      const glow = 0.85 + Math.sin(t / 300 + i) * 0.15
-      // Trail dots
-      const trailCx = p.cx
-      const trailCy = (p.y + p.cy) / 2
-      for (let d = 1; d <= 3; d++) {
-        const ta = angle - d * 0.2
-        const tx = trailCx + Math.cos(ta) * orbitRadius
-        const ty = trailCy + Math.sin(ta) * orbitRadius
-        p.passiveAuraGfx.fillStyle(0x88bbff, glow / d)
-        p.passiveAuraGfx.fillCircle(tx, ty, 4 - d * 0.6)
-      }
-    }
+    // Clean up old glow trail graphics if they exist
+    if (p.passiveAuraGfx) { p.passiveAuraGfx.clear() }
 
     // Swept-arc damage detection (same logic as Thorns swords, smaller dmg).
     // Tick-snapshot missed enemies because shields move tangentially between

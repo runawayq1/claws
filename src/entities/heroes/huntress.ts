@@ -103,44 +103,59 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
     const eX = p.cx + Math.cos(sa) * maxDist
     const eY = p.cy + Math.sin(sa) * maxDist
 
-    const spear = p.scene.add.rectangle(p.cx, p.cy, spearLen, spearW, spearTint).setDepth(9)
-    spear.rotation = sa
-    const tip = p.scene.add.triangle(p.cx, p.cy, 0, -3, 8, 0, 0, 3, 0xeeeeee).setDepth(10)
-    tip.rotation = sa
+    const tint = isNetThrow ? 0x44ff88 : spearTint
 
-    const trailTimer = p.scene.time.addEvent({
-      delay: 30, loop: true,
-      callback: () => {
-        if (!spear.scene || spearDead) return
-        const tp = p.scene.add.rectangle(
-          spear.x + Phaser.Math.Between(-2, 2),
-          spear.y + Phaser.Math.Between(-2, 2),
-          8, 1.5, isNetThrow ? 0x44cc44 : spearTint, 0.4
-        ).setDepth(8).setRotation(sa)
-        p.scene.tweens.add({
-          targets: tp, alpha: 0, scale: 0, duration: 200,
-          onComplete: () => tp.destroy(),
-        })
-      },
-    })
+    // === Javelin: 3 layered lines (glow → body → bright core) ===
+    const glow = p.scene.add.rectangle(p.cx, p.cy, spearLen + 10, spearW + 4, tint, 0.22)
+      .setDepth(8).setRotation(sa).setBlendMode(Phaser.BlendModes.ADD)
+    const body = p.scene.add.rectangle(p.cx, p.cy, spearLen, spearW, tint)
+      .setDepth(9).setRotation(sa)
+    const core = p.scene.add.rectangle(p.cx, p.cy, spearLen - 4, 1.5, 0xffffff, 0.9)
+      .setDepth(10).setRotation(sa).setBlendMode(Phaser.BlendModes.ADD)
+    // Tip flash
+    const tipFlash = p.scene.add.circle(
+      p.cx + Math.cos(sa) * (spearLen / 2),
+      p.cy + Math.sin(sa) * (spearLen / 2),
+      3, 0xffffff, 0.9,
+    ).setDepth(10).setBlendMode(Phaser.BlendModes.ADD)
+
+    // Motion-blur smear: a fading rectangle stretched behind the javelin
+    const smearLen = spearLen * 1.8
+    const smear = p.scene.add.rectangle(
+      p.cx - Math.cos(sa) * smearLen * 0.4,
+      p.cy - Math.sin(sa) * smearLen * 0.4,
+      smearLen, 2, tint, 0.18,
+    ).setDepth(7).setRotation(sa).setBlendMode(Phaser.BlendModes.ADD)
 
     const killSpear = () => {
+      if (spearDead) return
       spearDead = true
-      trailTimer.destroy()
-      if (spear.scene) spear.destroy()
-      if (tip.scene) tip.destroy()
+      if (glow.scene)    glow.destroy()
+      if (body.scene)    body.destroy()
+      if (core.scene)    core.destroy()
+      if (tipFlash.scene) tipFlash.destroy()
+      if (smear.scene)   smear.destroy()
     }
 
     p.scene.tweens.add({
-      targets: [spear, tip], x: eX, y: eY, duration: flyTime,
+      targets: [glow, body, core], x: eX, y: eY, duration: flyTime,
       onUpdate: () => {
         if (spearDead) return
+        // Keep tip and smear synced
+        tipFlash.setPosition(
+          body.x + Math.cos(sa) * (spearLen / 2),
+          body.y + Math.sin(sa) * (spearLen / 2),
+        )
+        smear.setPosition(
+          body.x - Math.cos(sa) * smearLen * 0.4,
+          body.y - Math.sin(sa) * smearLen * 0.4,
+        )
         const children = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
         for (const e of children) {
           if (!e.active || hitSet.has(e)) continue
           // AABB pre-filter
-          if (Math.abs(e.x - spear.x) > hitRadius || Math.abs(e.y - spear.y) > hitRadius) continue
-          if (Phaser.Math.Distance.Between(spear.x, spear.y, e.x, e.y) <= hitRadius) {
+          if (Math.abs(e.x - body.x) > hitRadius || Math.abs(e.y - body.y) > hitRadius) continue
+          if (Phaser.Math.Distance.Between(body.x, body.y, e.x, e.y) <= hitRadius) {
             let dmg = (isExtra ? p.damage * 0.6 : p.damage) * p.getMasteryDamageMult('spear')
             // Critical Strike
             const isCrit = p.hasCriticalStrike && Math.random() < 0.2
@@ -151,7 +166,7 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
             hitSet.add(e)
             // Heavy Spear: knockback on spear hit
             if (p.hasHeavySpear) {
-              ;(e as BaseEnemy).applyKnockback(spear.x, spear.y, 180)
+              ;(e as BaseEnemy).applyKnockback(body.x, body.y, 180)
             }
             // Mark enemy
             if (p.hasMarkedTarget) {
@@ -193,7 +208,7 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
       onComplete: () => {
         // Splinter Shot: if spear reached end, spawn splinter shards
         if (p.hasSplinterShot && !spearDead && hitSet.size === 0) {
-          const sx = spear.x, sy = spear.y
+          const sx = body.x, sy = body.y
           for (let i = 0; i < 3; i++) {
             const shardAngle = sa + (i - 1) * 0.5
             const shard = p.scene.add.rectangle(sx, sy, 10, 2, 0x7bed9f, 0.8).setDepth(8).setRotation(shardAngle)
