@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
+import { gameFont } from '../../utils/device'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
+import type { GameSceneContext } from '../../types/scene-context'
 
 export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
   // Shadow Step: blink 30px toward nearest enemy before slashing
@@ -45,8 +47,10 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
   // Count enemies in range for Assassinate
   const enemiesInRange = (enemies.getChildren() as Phaser.Physics.Arcade.Sprite[])
     .filter(e => e.active && Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= hitRadius).length
-  const isAssassinating = p.hasAssassinate && enemiesInRange === 1
-  const meleeDmg = (isAssassinating ? p.damage * 2 : p.damage) * p.getMasteryDamageMult('sword')
+  const isAssassinating = p.hasAssassinate && enemiesInRange <= 2
+  // ×2 when truly alone (1 enemy), ×1.5 when a few nearby (2 enemies), ×1 otherwise
+  const assassinateMult = enemiesInRange === 1 ? 2 : 1.5
+  const meleeDmg = (isAssassinating ? p.damage * assassinateMult : p.damage) * p.getMasteryDamageMult('sword')
 
   // Damage all enemies in range
   for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
@@ -68,7 +72,7 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
       // Assassinate VFX — red X on lone target
       if (isAssassinating) {
         const xMark = p.scene.add.text(e.x, e.y - 20, '✕', {
-          fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
+          fontFamily: gameFont(), fontSize: '18px', color: '#ff2222',
           stroke: '#000000', strokeThickness: 3,
         }).setOrigin(0.5).setDepth(12)
         p.scene.tweens.add({ targets: xMark, y: xMark.y - 20, alpha: 0, scale: 1.5, duration: 400, onComplete: () => xMark.destroy() })
@@ -152,9 +156,10 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
 
   p.scene.time.delayedCall(150, () => {
     p.isAttacking = false
-    // Vanish — brief invulnerability after melee
-    if (p.hasVanish) {
+    // Vanish — brief invulnerability after melee (1.5s internal CD)
+    if (p.hasVanish && p.scene.time.now >= p.vanishCooldownUntil) {
       p.vanishUntil = p.scene.time.now + 400
+      p.vanishCooldownUntil = p.scene.time.now + 1500
       p.setAlpha(0.5)
       p.scene.time.delayedCall(400, () => { if (p.active) p.setAlpha(1) })
     }
@@ -285,8 +290,9 @@ export function attackDash(p: Player, target: Phaser.Physics.Arcade.Sprite, enem
                 targets: p, x: ox, y: oy, duration: 80,
                 onComplete: () => {
                   p.isAttacking = false
-                  if (p.hasVanish) {
+                  if (p.hasVanish && p.scene.time.now >= p.vanishCooldownUntil) {
                     p.vanishUntil = p.scene.time.now + 600
+                    p.vanishCooldownUntil = p.scene.time.now + 1500
                     p.setAlpha(0.5)
                     p.scene.time.delayedCall(600, () => { if (p.active) p.setAlpha(1) })
                   }
@@ -303,8 +309,9 @@ export function attackDash(p: Player, target: Phaser.Physics.Arcade.Sprite, enem
         targets: p, x: ox, y: oy, duration: 80,
         onComplete: () => {
           p.isAttacking = false
-          if (p.hasVanish) {
+          if (p.hasVanish && p.scene.time.now >= p.vanishCooldownUntil) {
             p.vanishUntil = p.scene.time.now + 600
+            p.vanishCooldownUntil = p.scene.time.now + 1500
             p.setAlpha(0.5)
             p.scene.time.delayedCall(600, () => { if (p.active) p.setAlpha(1) })
           }
@@ -643,9 +650,8 @@ export function updatePhantomTrail(p: Player, delta: number, moving: boolean) {
     if (p.phantomTrailTimer >= 500) {
       p.phantomTrailTimer = 0
       // Enforce max 6 trails
-      if (!(p as any)._phantomTrails) (p as any)._phantomTrails = [] as Phaser.GameObjects.Arc[]
-      const activeTrails = ((p as any)._phantomTrails as Phaser.GameObjects.Arc[]).filter(t => t.active)
-      ;(p as any)._phantomTrails = activeTrails
+      const activeTrails = p._phantomTrails.filter(t => t.active)
+      p._phantomTrails = activeTrails
       if (activeTrails.length >= 6) return
 
       const tx = p.x, ty = p.y
@@ -659,7 +665,7 @@ export function updatePhantomTrail(p: Player, delta: number, moving: boolean) {
         delay: 250, repeat: 7, callback: () => {
           ticks++
           const now = p.scene.time.now
-          const scene = p.scene as any
+          const scene = p.scene as GameSceneContext
           if (scene.enemies) {
             for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e.active) continue

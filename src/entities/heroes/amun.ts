@@ -2,6 +2,32 @@ import Phaser from 'phaser'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
 
+/** Apply a stun to an enemy: freeze speed + show spinning star VFX */
+function applyStun(p: Player, e: BaseEnemy, duration: number) {
+  const origSpeed = e.baseSpeed || e.speed
+  e.speed = 0
+  const starGfx = p.scene.add.graphics().setDepth(12)
+  const stunEvt = p.scene.time.addEvent({
+    delay: 16, loop: true,
+    callback: () => {
+      if (!e.active) { starGfx.destroy(); stunEvt.destroy(); return }
+      starGfx.clear()
+      const st = p.scene.time.now
+      const sr = 6
+      for (let s = 0; s < 3; s++) {
+        const sa = (st / 200) + s * Math.PI * 2 / 3
+        starGfx.fillStyle(0xffff66, 0.8)
+        starGfx.fillCircle(e.x + Math.cos(sa) * sr, e.y - 20 + Math.sin(sa) * sr * 0.5, 2)
+      }
+    },
+  })
+  p.scene.time.delayedCall(duration, () => {
+    if (e.active) e.speed = origSpeed
+    starGfx.destroy()
+    stunEvt.destroy()
+  })
+}
+
 // Titan's Pulse boulder explosion (local helper)
 function boulderExplode(
   p: Player,
@@ -40,7 +66,7 @@ function boulderExplode(
     })
   }
   // Screen shake
-  p.scene.cameras.main.shake(80, 0.005)
+  if (p.isLocalPlayer) p.scene.cameras.main.shake(80, 0.005)
 }
 
 // AMUN — Shockwave ring
@@ -190,8 +216,11 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
         onUpdate: () => {
           const radius = useRing ? ring.scale * 24 : ring.scale * 10
           const band = 25 + p.splashRadius * 0.3
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          const children = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+          for (const e of children) {
             if (!e.active || hitSet.has(e)) continue
+            // AABB pre-filter — skip if clearly beyond ring's outer radius
+            if (Math.abs(e.x - cx) > radius || Math.abs(e.y - cy) > radius) continue
             const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
             if (dist <= radius && dist >= radius - band) {
               (e as BaseEnemy).takeDamage(p.damage * p.getMasteryDamageMult('quake'), 'shockwave')
@@ -203,33 +232,7 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
 
               // Earthquake: stun enemies for 0.8s
               if (p.hasEarthquake && (e as BaseEnemy).speed !== undefined) {
-                const origSpeed = (e as BaseEnemy).baseSpeed || (e as BaseEnemy).speed
-                ;(e as BaseEnemy).speed = 0
-                // VFX: stun indicator — spinning star above enemy
-                const starGfx = p.scene.add.graphics().setDepth(12)
-                const stunEvt = p.scene.time.addEvent({
-                  delay: 16, loop: true,
-                  callback: () => {
-                    if (!e.active) { starGfx.destroy(); stunEvt.destroy(); return }
-                    starGfx.clear()
-                    const st = p.scene.time.now
-                    const sr = 6
-                    for (let s = 0; s < 3; s++) {
-                      const sa = (st / 200) + s * Math.PI * 2 / 3
-                      starGfx.fillStyle(0xffff66, 0.8)
-                      starGfx.fillCircle(
-                        e.x + Math.cos(sa) * sr,
-                        e.y - 20 + Math.sin(sa) * sr * 0.5,
-                        2
-                      )
-                    }
-                  },
-                })
-                p.scene.time.delayedCall(800, () => {
-                  if (e.active) (e as BaseEnemy).speed = origSpeed
-                  starGfx.destroy()
-                  stunEvt.destroy()
-                })
+                applyStun(p, e as BaseEnemy, 800)
               }
 
               if (useSpark) {
@@ -266,14 +269,20 @@ export function attackShockwave(p: Player, enemies: Phaser.Physics.Arcade.Group)
         onUpdate: () => {
           const radius = useRing ? ring2.scale * 24 : ring2.scale * 10
           const band = 25 + p.splashRadius * 0.3
-          for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          const children2 = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+          for (const e of children2) {
             if (!e.active || hitSet2.has(e)) continue
+            // AABB pre-filter — skip if clearly beyond ring's outer radius
+            if (Math.abs(e.x - cx) > radius || Math.abs(e.y - cy) > radius) continue
             const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
             if (dist <= radius && dist >= radius - band) {
               (e as BaseEnemy).takeDamage(p.damage * 0.6 * p.getMasteryDamageMult('quake'), 'shockwave')
               hitSet2.add(e)
               const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y);
               (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * kbForce * 0.6, Math.sin(kb) * kbForce * 0.6)
+              if ((e as BaseEnemy).speed !== undefined) {
+                applyStun(p, e as BaseEnemy, p.hasEarthquake ? 800 : 500)
+              }
             }
           }
         },
@@ -290,56 +299,169 @@ export function updateAmunPassives(p: Player, delta: number) {
       p.defenseAuraGfx = p.scene.add.graphics().setDepth(4)
     }
     p.defenseAuraGfx.clear()
-    const auraRadius = 45 + p.armor * 40  // grows with armor
-    const pulse = 0.15 + Math.sin(p.scene.time.now / 600) * 0.05
+    const auraRadius = (45 + p.armor * 40) * 1.8  // grows with armor, +20%
+    const pulse = 0.55 + Math.sin(p.scene.time.now / 600) * 0.15
+    const auraCx = p.cx
+    const auraCy = (p.y + p.cy) / 2  // halfway between feet and center
+    const t = p.scene.time.now
     // Outer glow ring
-    p.defenseAuraGfx.lineStyle(3, 0x4488ff, pulse + 0.1)
-    p.defenseAuraGfx.strokeCircle(p.x, p.y, auraRadius)
+    p.defenseAuraGfx.lineStyle(4, 0x4488ff, Math.min(1, pulse + 0.25))
+    p.defenseAuraGfx.strokeCircle(auraCx, auraCy, auraRadius)
     // Inner fill
-    p.defenseAuraGfx.fillStyle(0x2266cc, pulse * 0.5)
-    p.defenseAuraGfx.fillCircle(p.x, p.y, auraRadius)
+    p.defenseAuraGfx.fillStyle(0x2266cc, pulse * 0.45)
+    p.defenseAuraGfx.fillCircle(auraCx, auraCy, auraRadius)
     // Bright inner ring
-    p.defenseAuraGfx.lineStyle(1, 0x88bbff, pulse + 0.15)
-    p.defenseAuraGfx.strokeCircle(p.x, p.y, auraRadius * 0.6)
-  }
+    p.defenseAuraGfx.lineStyle(2, 0x88bbff, Math.min(1, pulse + 0.3))
+    p.defenseAuraGfx.strokeCircle(auraCx, auraCy, auraRadius * 0.6)
 
-  // Amun passive aura (3 dmg/s in 60px — requires Aura of Might skill)
-  if (p.heroType === 'amun' && p.hasPassiveAura) {
-    const hpScale = p.hasLivingFortress ? (0.5 + (p.hp / p.maxHp) * 1.5) : 1
-    const auraDps = 3 * hpScale
-    const auraR = 60
-    const scene = p.scene as any
-    if (scene.enemies) {
-      for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!e.active) continue
-        if (Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= auraR) {
-          (e as BaseEnemy).takeDamage(auraDps * (delta / 1000), 'shockwave')
-        }
+    // Pulsing wave rings expanding from center outward (2 staggered)
+    for (let w = 0; w < 2; w++) {
+      const waveCycle = ((t + w * 900) % 1800) / 1800  // 0→1 over 1.8s, staggered
+      const waveR = waveCycle * auraRadius
+      const waveAlpha = (1 - waveCycle) * 0.55
+      if (waveAlpha > 0.01) {
+        p.defenseAuraGfx.lineStyle(2, 0x66aaff, waveAlpha)
+        p.defenseAuraGfx.strokeCircle(auraCx, auraCy, waveR)
       }
     }
 
-    // Persistent passive aura visual — golden ring centered on player
-    if (!p.passiveAuraGfx) {
-      p.passiveAuraGfx = p.scene.add.graphics().setDepth(3)
+    // Rotating rune arcs (3 segments spinning slowly)
+    const runeRot = (t / 2500) % (Math.PI * 2)
+    p.defenseAuraGfx.lineStyle(2, 0x99ccff, Math.min(1, pulse + 0.2))
+    for (let i = 0; i < 3; i++) {
+      const a = runeRot + i * (Math.PI * 2 / 3)
+      p.defenseAuraGfx.beginPath()
+      p.defenseAuraGfx.arc(auraCx, auraCy, auraRadius * 0.4, a, a + 0.5)
+      p.defenseAuraGfx.strokePath()
     }
-    p.passiveAuraGfx.clear()
+  }
+
+  // Amun passive aura — orbiting shield projectiles (requires Aura of Might skill)
+  if (p.heroType === 'amun' && p.hasPassiveAura) {
+    const hpScale = p.hasLivingFortress ? (0.5 + (p.hp / p.maxHp) * 1.5) : 1
+    const shieldHitRadius = 44
+    const orbitRadius = (45 + p.armor * 40) * 1.8  // matches defense aura radius
+    const shieldCount = p.passiveAuraLevel >= 3 ? 3 : p.passiveAuraLevel >= 2 ? 2 : 1
+    // Negative = orbit counter-clockwise (opposite to Thorns swords at +0.0035)
+    const rotSpeed = -0.0045
     const t = p.scene.time.now
-    const pulse = 0.10 + Math.sin(t / 500) * 0.04
-    const breathe = auraR + Math.sin(t / 800) * 3
-    // Outer ring
-    p.passiveAuraGfx.lineStyle(2, 0xfff200, pulse + 0.12)
-    p.passiveAuraGfx.strokeCircle(p.cx, p.cy, breathe)
-    // Inner fill
-    p.passiveAuraGfx.fillStyle(0xffcc00, pulse * 0.3)
-    p.passiveAuraGfx.fillCircle(p.cx, p.cy, breathe)
-    // Rotating accent segments (4 small arcs)
-    const rot = (t / 1200) % (Math.PI * 2)
-    p.passiveAuraGfx.lineStyle(1.5, 0xffe066, pulse + 0.08)
-    for (let i = 0; i < 4; i++) {
-      const a = rot + i * Math.PI / 2
-      p.passiveAuraGfx.beginPath()
-      p.passiveAuraGfx.arc(p.cx, p.cy, breathe - 4, a, a + 0.4)
-      p.passiveAuraGfx.strokePath()
+
+    // Ensure correct number of shield sprites (always blue)
+    const hasShieldTex = p.scene.textures.exists('shield_blue')
+
+    if (hasShieldTex) {
+      // Create/remove sprites to match shieldCount
+      while (p.orbitShields.length < shieldCount) {
+        const s = p.scene.add.image(0, 0, 'shield_blue').setDepth(10).setScale(3.6)
+        p.orbitShields.push(s)
+      }
+      while (p.orbitShields.length > shieldCount) {
+        const s = p.orbitShields.pop()
+        if (s) s.destroy()
+      }
+
+      // Position sprites in orbit — center matches defense aura center
+      const orbitCx = p.cx
+      const orbitCy = (p.y + p.cy) / 2
+      const bob = Math.sin(t / 400) * 2
+      for (let i = 0; i < shieldCount; i++) {
+        const angle = (t * rotSpeed) + i * (Math.PI * 2 / shieldCount)
+        const sx = orbitCx + Math.cos(angle) * orbitRadius
+        const sy = orbitCy + Math.sin(angle) * orbitRadius + bob
+        const shield = p.orbitShields[i]
+        shield.setPosition(sx, sy)
+        // Slight alpha pulse
+        shield.setAlpha(0.85 + Math.sin(t / 300 + i) * 0.15)
+      }
+    }
+
+    // Arrow blocking: destroy any active arrow within BLOCK_DIST of any shield
+    const BLOCK_DIST = 30
+    const blockCx = p.cx
+    const blockCy = (p.y + p.cy) / 2
+    const scene2 = p.scene as any
+    const arrows = scene2.children?.list?.filter((c: any) => c._isArrow && c.active) ?? []
+    for (const arrow of arrows) {
+      for (let i = 0; i < p.orbitShields.length; i++) {
+        const shield = p.orbitShields[i]
+        const sx = shield.x
+        const sy = shield.y
+        const d = Phaser.Math.Distance.Between(arrow.x, arrow.y, sx, sy)
+        if (d <= BLOCK_DIST) {
+          // Spark VFX at block point
+          const spark = p.scene.add.circle(arrow.x, arrow.y, 7, 0x88ccff, 0.95)
+            .setDepth(11).setBlendMode(Phaser.BlendModes.ADD)
+          p.scene.tweens.add({
+            targets: spark, scale: 2.5, alpha: 0, duration: 220,
+            onComplete: () => spark.destroy(),
+          })
+          // Extra shard burst (3 tiny streaks)
+          for (let k = 0; k < 3; k++) {
+            const sa = Math.random() * Math.PI * 2
+            const shard = p.scene.add.rectangle(
+              arrow.x, arrow.y, 8, 2, 0xaaddff, 0.8
+            ).setDepth(11).setRotation(sa).setBlendMode(Phaser.BlendModes.ADD)
+            p.scene.tweens.add({
+              targets: shard,
+              x: arrow.x + Math.cos(sa) * 18,
+              y: arrow.y + Math.sin(sa) * 18,
+              alpha: 0, scale: 0.3, duration: 200,
+              onComplete: () => shard.destroy(),
+            })
+          }
+          arrow.destroy()
+          break  // no need to check other shields for this arrow
+        }
+      }
+    }
+    void blockCx; void blockCy  // suppress unused-var warnings
+
+    // Clean up old glow trail graphics if they exist
+    if (p.passiveAuraGfx) { p.passiveAuraGfx.clear() }
+
+    // Swept-arc damage detection (same logic as Thorns swords, smaller dmg).
+    // Tick-snapshot missed enemies because shields move tangentially between
+    // ticks — instead check if an enemy falls within the angular arc swept
+    // since the last tick, at any radial distance in the shield's extent.
+    const SHIELD_TICK_MS = 50
+    const shieldHalfLen = shieldHitRadius
+    p.shieldTickTimer += delta
+    if (p.shieldTickTimer >= SHIELD_TICK_MS) {
+      const dtMs = p.shieldTickTimer
+      p.shieldTickTimer = 0
+      const dmgCx = p.cx
+      const dmgCy = (p.y + p.cy) / 2
+      const scene = p.scene as any
+      if (scene.enemies) {
+        const sectorAngle = (Math.PI * 2) / shieldCount
+        // rotSpeed is negative (counter-clockwise); normalize sweep magnitude
+        // and shift lastBase in the correct direction for phi calculation.
+        let sweep = Math.abs(rotSpeed) * dtMs
+        if (sweep > sectorAngle) sweep = sectorAngle
+        // Dmg per pass calibrated to ~0.3x of sword lvl1 damage (shields are
+        // a passive aura, not the main offensive skill).
+        const dmgPerPass = p.damage * 0.15 * hpScale
+        const rMin = orbitRadius - shieldHalfLen
+        const rMax = orbitRadius + shieldHalfLen
+        // Shields rotate counter-clockwise (rotSpeed is negative). Each shield
+        // sits at angle `curBase + i*sectorAngle` and during this tick swept
+        // forward in its travel direction, covering the arc
+        // [curBase + i*sec, curBase + i*sec + sweep] (mod 2π). An enemy at
+        // angle θ was swept past if (θ - curBase) mod sectorAngle is in [0, sweep].
+        const curBase = t * rotSpeed
+        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e.active) continue
+          const dx = e.x - dmgCx
+          const dy = e.y - dmgCy
+          const distSq = dx * dx + dy * dy
+          if (distSq < rMin * rMin || distSq > rMax * rMax) continue
+          const theta = Math.atan2(dy, dx)
+          const phi = ((theta - curBase) % sectorAngle + sectorAngle) % sectorAngle
+          if (phi <= sweep) {
+            (e as BaseEnemy).takeDamage(dmgPerPass, 'shockwave')
+          }
+        }
+      }
     }
   }
 
@@ -359,6 +481,117 @@ export function updateAmunPassives(p: Player, delta: number) {
         targets: spark, y: spark.y - 18, alpha: 0, scale: 0.3,
         duration: 500, onComplete: () => spark.destroy(),
       })
+    }
+  }
+
+  // Amun Thorns: orbiting swords (4 / 6 / 8 — lvl3 spins faster)
+  if (p.hasThorns) {
+    const swordCount = p.thornsLevel >= 3 ? 8 : p.thornsLevel >= 2 ? 6 : 4
+    const rotSpeed = 0.0035
+    const orbitRadius = 160
+    // Radial blade extent for swept-arc damage detection.
+    // Sword.png ~73px diagonal at scale 0.1; radial half-length 36px covers blade.
+    const swordHalfLen = 36
+    const t = p.scene.time.now
+    const baseRot = Math.PI / 4  // sword.png points up-right at 45° → +π/4 rotates tip to horizontal
+
+    const hasSwordTex = p.scene.textures.exists('sword')
+    const isMax = p.thornsLevel >= 3
+    if (hasSwordTex) {
+      while (p.orbitSwords.length < swordCount) {
+        const s = p.scene.add.image(0, 0, 'sword').setDepth(10).setScale(0.1)
+        p.orbitSwords.push(s)
+      }
+      while (p.orbitSwords.length > swordCount) {
+        const s = p.orbitSwords.pop()
+        if (s) s.destroy()
+      }
+
+      const orbitCx = p.cx
+      const orbitCy = (p.y + p.cy) / 2
+      for (let i = 0; i < swordCount; i++) {
+        const angle = (t * rotSpeed) + i * (Math.PI * 2 / swordCount)
+        const sx = orbitCx + Math.cos(angle) * orbitRadius
+        const sy = orbitCy + Math.sin(angle) * orbitRadius
+        const sword = p.orbitSwords[i]
+        sword.setPosition(sx, sy)
+        sword.setRotation(angle + baseRot)  // blade points outward
+        if (isMax) sword.setTint(0xff8844)
+        else sword.clearTint()
+      }
+    }
+
+    // Lvl 3 VFX: fiery trail behind each sword + pulsing glow
+    if (isMax) {
+      if (!p.thornsTrailGfx) p.thornsTrailGfx = p.scene.add.graphics().setDepth(9)
+      const trailG = p.thornsTrailGfx
+      trailG.clear()
+      const trailCx = p.cx
+      const trailCy = (p.y + p.cy) / 2
+      const pulse = 0.6 + Math.sin(t / 120) * 0.2
+      for (let i = 0; i < swordCount; i++) {
+        const angle = (t * rotSpeed) + i * (Math.PI * 2 / swordCount)
+        // 5 fading trail dots behind the sword along the orbit arc
+        for (let d = 1; d <= 5; d++) {
+          const ta = angle - d * 0.10
+          const tx = trailCx + Math.cos(ta) * orbitRadius
+          const ty = trailCy + Math.sin(ta) * orbitRadius
+          const a = (1 - d / 5) * 0.55 * pulse
+          trailG.fillStyle(d <= 2 ? 0xffcc44 : 0xff5522, a)
+          trailG.fillCircle(tx, ty, 4 - d * 0.5)
+        }
+        // Outer glow under the sword head
+        const sx = trailCx + Math.cos(angle) * orbitRadius
+        const sy = trailCy + Math.sin(angle) * orbitRadius
+        trailG.fillStyle(0xff8844, 0.25 * pulse)
+        trailG.fillCircle(sx, sy, 8)
+      }
+    } else if (p.thornsTrailGfx) {
+      p.thornsTrailGfx.destroy()
+      p.thornsTrailGfx = null
+    }
+
+    // Damage: swept-arc detection. Tick-snapshot OBB at 200ms missed enemies
+    // because swords move up to ~112-224px tangentially between ticks while the
+    // hitbox was only ~20px wide. Now we check if an enemy falls inside the
+    // angular arc a sword has swept since the last tick, for any radial distance
+    // within the blade's radial extent.
+    const SWORD_TICK_MS = 50
+    p.thornsTickTimer += delta
+    if (p.thornsTickTimer >= SWORD_TICK_MS) {
+      const dtMs = p.thornsTickTimer
+      p.thornsTickTimer = 0
+      const dmgCx = p.cx
+      const dmgCy = (p.y + p.cy) / 2
+      const scene = p.scene as any
+      if (scene.enemies) {
+        const sectorAngle = (Math.PI * 2) / swordCount
+        // Angular sweep since last tick (shared across all swords — same rotSpeed).
+        // Cap at sectorAngle: once sweep reaches one sector, every radial enemy is
+        // hit once per tick (adjacent sword covers the remainder).
+        let sweep = rotSpeed * dtMs
+        if (sweep > sectorAngle) sweep = sectorAngle
+        const curBase = t * rotSpeed
+        const lastBase = curBase - sweep
+        const rMin = orbitRadius - swordHalfLen
+        const rMax = orbitRadius + swordHalfLen
+        // Damage per sword pass. Calibrated so lvl1 ~0.9 dmg/sec dwelling,
+        // scaling to ~4.5x at lvl3 thanks to more swords + faster rotation.
+        const dmgPerPass = p.damage * (0.4 + p.thornsDmgBonus)
+        for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e.active) continue
+          const dx = e.x - dmgCx
+          const dy = e.y - dmgCy
+          const distSq = dx * dx + dy * dy
+          if (distSq < rMin * rMin || distSq > rMax * rMax) continue
+          const theta = Math.atan2(dy, dx)
+          // phi = how far the enemy sits "behind" the nearest sword in rotation direction
+          const phi = ((theta - lastBase) % sectorAngle + sectorAngle) % sectorAngle
+          if (phi <= sweep) {
+            (e as BaseEnemy).takeDamage(dmgPerPass, 'melee')
+          }
+        }
+      }
     }
   }
 
@@ -417,15 +650,15 @@ export function updateAmunPassives(p: Player, delta: number) {
     }
     p.dmgAuraGfx.clear()
     const dt = p.scene.time.now
-    const dPulse = 0.12 + Math.sin(dt / 400) * 0.06
+    const dPulse = 0.55 + Math.sin(dt / 400) * 0.15
     const dBreathe = dmgR + Math.sin(dt / 600) * 4
-    p.dmgAuraGfx.lineStyle(2, 0xff8800, dPulse + 0.1)
+    p.dmgAuraGfx.lineStyle(4, 0xff8800, Math.min(1, dPulse + 0.3))
     p.dmgAuraGfx.strokeCircle(p.cx, p.cy, dBreathe)
-    p.dmgAuraGfx.fillStyle(0xff6600, dPulse * 0.2)
+    p.dmgAuraGfx.fillStyle(0xff6600, dPulse * 0.5)
     p.dmgAuraGfx.fillCircle(p.cx, p.cy, dBreathe)
     // Flame-like segments rotating
     const dRot = (dt / 900) % (Math.PI * 2)
-    p.dmgAuraGfx.lineStyle(2, 0xffaa33, dPulse + 0.15)
+    p.dmgAuraGfx.lineStyle(3, 0xffaa33, Math.min(1, dPulse + 0.35))
     for (let i = 0; i < 6; i++) {
       const a = dRot + i * Math.PI / 3
       p.dmgAuraGfx.beginPath()
@@ -483,7 +716,7 @@ export function attackMelee(
 ) {
   const cx = p.x, cy = p.y
   const meleeRange = Math.max(65, p.range)
-  const dmg = p.damage * 1.3 * p.getMasteryDamageMult('ground') // melee hits harder per swing
+  const dmg = p.damage * 1.1 * p.getMasteryDamageMult('ground') // melee hits slightly harder per swing
   const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
 
   // Hit all enemies in melee cone
@@ -491,7 +724,7 @@ export function attackMelee(
     if (!e.active || hitSet.has(e)) continue
     const dist = Phaser.Math.Distance.Between(cx, cy, e.x, e.y)
     if (dist < meleeRange) {
-      (e as BaseEnemy).takeDamage(dmg, 'melee')
+      for (let s = 0; s < p.strikeCount; s++) (e as BaseEnemy).takeDamage(dmg, 'melee')
       hitSet.add(e)
       const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y)
       const kbForce = p.hasColossus ? 350 : 150
@@ -501,10 +734,7 @@ export function attackMelee(
 
       // Earthquake stun applies in melee too
       if (p.hasEarthquake) {
-        ;(e as BaseEnemy).speed = 0
-        p.scene.time.delayedCall(800, () => {
-          if (e.active) (e as BaseEnemy).speed = (e as BaseEnemy).baseSpeed || (e as BaseEnemy).speed
-        })
+        applyStun(p, e as BaseEnemy, 800)
       }
     }
   }
@@ -532,7 +762,7 @@ export function attackMelee(
     })
   }
 
-  p.scene.cameras.main.shake(50, 0.003)
+  if (p.isLocalPlayer) p.scene.cameras.main.shake(50, 0.003)
   p.scene.time.delayedCall(120, () => { (p as any).isAttacking = false })
 }
 

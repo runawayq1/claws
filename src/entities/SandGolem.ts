@@ -7,6 +7,7 @@ import BaseEnemy from './BaseEnemy'
  * Uses orc1 spritesheet scaled up. Slow but high HP and AoE slam.
  */
 export class SandGolem extends BaseEnemy {
+  public isSandGolem = true
   private lastSlamTime = 0
   private slamCooldown = 5000
   private slamRadius = 80

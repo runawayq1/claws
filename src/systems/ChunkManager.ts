@@ -1,4 +1,6 @@
 import { CONFIG } from '../config/GameConfig'
+import { Chest, type ChestRarity } from '../entities/Chest'
+import type { Player } from '../entities/Player'
 
 const GRASS_FRAMES = [4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 23, 28, 29, 30, 31]
 const STONE_FRAMES = [0, 1, 2, 3, 4, 5, 6, 7]
@@ -13,6 +15,7 @@ const ZONE_TINTS: Record<number, number> = {
 
 const MIN_ROCK_DIST = 120
 const MIN_DECO_DIST = 110
+const MIN_CHEST_DIST = 200
 const CHUNK_MARGIN = 80
 
 interface Chunk {
@@ -21,26 +24,37 @@ interface Chunk {
   rt: Phaser.GameObjects.RenderTexture
   rocks: Phaser.Physics.Arcade.Sprite[]
   decos: Phaser.GameObjects.Image[]
+  chests: Chest[]
 }
 
 export class ChunkManager {
   private scene: Phaser.Scene
   private rocksGroup: Phaser.Physics.Arcade.StaticGroup
   private getZone: (x: number, y: number) => number
+  private player: Player
+  private chestsGroup: Phaser.GameObjects.Group
   private chunks: Chunk[] = []
   private centerCol = 0
   private centerRow = 0
   private tmpTile: Phaser.GameObjects.Image | null = null
   private recycleQueue: { chunk: Chunk; col: number; row: number }[] = []
 
+  private online: boolean
+
   constructor(
     scene: Phaser.Scene,
     rocksGroup: Phaser.Physics.Arcade.StaticGroup,
-    getZone: (x: number, y: number) => number
+    getZone: (x: number, y: number) => number,
+    player: Player,
+    chestsGroup: Phaser.GameObjects.Group,
+    online = false,
   ) {
     this.scene = scene
     this.rocksGroup = rocksGroup
     this.getZone = getZone
+    this.player = player
+    this.chestsGroup = chestsGroup
+    this.online = online
   }
 
   create(playerX: number, playerY: number): void {
@@ -56,7 +70,7 @@ export class ChunkManager {
         const worldY = row * CONFIG.CHUNK_SIZE
         const rt = this.scene.add.renderTexture(worldX, worldY, CONFIG.CHUNK_SIZE, CONFIG.CHUNK_SIZE)
         rt.setOrigin(0, 0).setDepth(0)
-        const chunk: Chunk = { col, row, rt, rocks: [], decos: [] }
+        const chunk: Chunk = { col, row, rt, rocks: [], decos: [], chests: [] }
         this.chunks[slot] = chunk
         this.buildChunk(chunk)
       }
@@ -110,6 +124,11 @@ export class ChunkManager {
       deco.destroy()
     }
     chunk.decos = []
+
+    for (const chest of chunk.chests) {
+      this.chestsGroup.remove(chest, true, true)
+    }
+    chunk.chests = []
 
     chunk.col = newCol
     chunk.row = newRow
@@ -275,6 +294,22 @@ export class ChunkManager {
       if (decoTint !== undefined) img.setTint(decoTint)
       chunk.decos.push(img)
     }
+
+    // Chests — ~50% chance per chunk, rare in zone 2+
+    // Skipped in online mode — chests are client-side only, causing desync
+    const chestRoll = this.seededRng(chunk.col, chunk.row, 200)
+    if (!this.online && chestRoll < 0.5) {
+      const chestIdx = rockCount + treeCount + tuftCount
+      const pos = tryPlace(chestIdx, 30, MIN_CHEST_DIST)
+      if (pos) {
+        const rarity: ChestRarity = chunkZone >= 2 && this.seededRng(chunk.col, chunk.row, 201) < 0.25
+          ? 'rare' : 'common'
+        const chest = new Chest(this.scene, pos.x, pos.y, rarity, this.player)
+        this.chestsGroup.add(chest)
+        chunk.chests.push(chest)
+        placed.push({ ...pos, minDist: MIN_CHEST_DIST })
+      }
+    }
   }
 
   private seededRng(col: number, row: number, salt: number): number {
@@ -298,6 +333,9 @@ export class ChunkManager {
       }
       for (const deco of chunk.decos) {
         deco.destroy()
+      }
+      for (const chest of chunk.chests) {
+        this.chestsGroup.remove(chest, true, true)
       }
       chunk.rt.destroy()
     }

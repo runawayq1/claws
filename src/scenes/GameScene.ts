@@ -1,47 +1,97 @@
 import Phaser from 'phaser'
 import { CONFIG } from '../config/GameConfig'
 import { Player, type HeroType } from '../entities/Player'
-import { Orc2 } from '../entities/Skeleton'
-import { Orc1 } from '../entities/Zergling'
-import { FlyingEye } from '../entities/Scorpion'
-import { SandGolem } from '../entities/SandGolem'
-import { Orc3 } from '../entities/Skeleton2'
+import * as nightborneHero from '../entities/heroes/nightborne'
+import * as vaelHero from '../entities/heroes/vael'
+import { Orc2 } from '../entities/Orc2'
+import { Orc1 } from '../entities/Orc1'
+import { Orc3 } from '../entities/Orc3'
+import { Archer } from '../entities/Archer'
+import type { BaseEnemy } from '../entities/BaseEnemy'
+import { EyeBoss } from '../entities/EyeBoss'
 import { WaveManager } from '../systems/WaveManager'
 import { XPSystem, GoldSystem } from '../systems/XPSystem'
 import { UpgradeTracker } from '../systems/UpgradeSystem'
 import { Pickup } from '../entities/Pickup'
 import { Chest } from '../entities/Chest'
 import { ChunkManager } from '../systems/ChunkManager'
+import { MetaProgress } from '../systems/MetaProgress'
+import { KeyboardInputController } from '../systems/InputController'
+import { isMobileDevice, isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
+import { NetworkGameAdapter } from '../systems/NetworkGameAdapter'
+import { networkManager } from '../systems/NetworkManager'
+import { Cat } from '../entities/Cat'
 
 const ROCK_KEYS = [
   'rock1_1', 'rock1_2', 'rock2_1', 'rock2_2', 'rock3_1', 'rock3_2',
 ]
 
+interface ClawSegment {
+  y: number
+  len: number
+  w: number
+  curve: number
+}
+
 export class GameScene extends Phaser.Scene {
-  player!: Player
+  localPlayer!: Player
+  players: Player[] = []
+  /** @deprecated Use localPlayer. Kept for backward compat during migration. */
+  get player(): Player { return this.localPlayer }
   enemies!: Phaser.Physics.Arcade.Group
   rocks!: Phaser.Physics.Arcade.StaticGroup
   waveManager!: WaveManager
   xpSystem!: XPSystem
   goldSystem!: GoldSystem
   upgradeTracker!: UpgradeTracker
+  // Online level-up queue — prevents dropped UI when two players level up simultaneously
+  private _pendingLevelUps: Array<{ player: Player; choices: any[]; isBranch: boolean }> = []
+  private _levelUpActive = false
   pickups!: Phaser.GameObjects.Group
   chests!: Phaser.GameObjects.Group
   gameTime = 0
   private enemyHpBars!: Phaser.GameObjects.Graphics
   private gameOver = false
+  bossDefeated = false
+  private _bossActive = false
   private graves: Phaser.GameObjects.Image[] = []
   private _magnetFrame = 0
-  private selectedHero: HeroType = 'ignara'
+  private _hpBarsDirty = false
+  private _hpBarFrame = 0
+  protected selectedHero: HeroType = 'ignara'
+  /** Read-only public alias for UIScene / minimap use. */
+  get selectedHeroType(): HeroType { return this.selectedHero }
   protected terrainRT!: Phaser.GameObjects.RenderTexture
   private chunkManager?: ChunkManager
+  private _hitStopActive = false
+  _frameKills = 0
+  _cheatSpeedUp = false
+  _pendingBonusPicker = false
+  /** Active intro reveal objects — tracked so shutdown() can clean them up if scene ends mid-animation */
+  private _revealObjects: Phaser.GameObjects.GameObject[] = []
+  private _localCoop = false
+  private _p2Hero: HeroType = 'sifra'
+  private _cameraTarget: Phaser.GameObjects.Rectangle | null = null
+  private _nameplates: Phaser.GameObjects.Text[] = []
+  _online = false
+  _networkAdapter: NetworkGameAdapter | null = null
+  private _playerSlots: Array<{ id: string; name: string; heroType: string; isHost: boolean }> = []
+  private _seed = 0
 
   constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
     super(config ?? { key: 'GameScene' })
   }
 
-  init(data?: { hero?: HeroType; playerName?: string }) {
+  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean; online?: boolean; seed?: number; playerSlots?: Array<{ id: string; name: string; heroType: string; isHost: boolean }> }) {
     this.selectedHero = data?.hero || 'ignara'
+    this._online = data?.online ?? false
+    this._seed = data?.seed ?? 0
+    this._playerSlots = data?.playerSlots ?? []
+    this._localCoop = data?.localCoop ?? (!this._online && new URL(location.href).searchParams.has('coop'))
+    if (this._localCoop) {
+      const HERO_LIST: HeroType[] = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
+      this._p2Hero = (HERO_LIST.find(h => h !== this.selectedHero) || 'sifra') as HeroType
+    }
   }
 
   preload() {
@@ -78,11 +128,26 @@ export class GameScene extends Phaser.Scene {
     ss('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   64, 64)
     ss('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  64, 64)
 
+    // Archer mob (64x64)
+    ss('archer_idle_run', 'assets/archer/idle_run.png', 64, 64)
+    ss('archer_attack',   'assets/archer/attack.png',   64, 64)
+    ss('archer_death',    'assets/archer/death.png',    64, 64)
+
     // Boss demon (288x160)
     ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
 
     // VFX
     ss('vfx_flame', 'assets/vfx/flamethrower_sheet.png', 64, 24)
+    ss('vfx_thunder_splash', 'assets/vfx/thunder_splash.png', 48, 48)
+    ss('vfx_thunder_strike', 'assets/vfx/thunder_strike.png', 64, 64)
+    ss('vfx_air_burst', 'assets/vfx/air_burst.png', 48, 48)
+    ss('vfx_air_explosion', 'assets/vfx/air_explosion.png', 32, 32)
+    ss('vfx_fire_breath', 'assets/vfx/fire_breath.png', 64, 48)
+    ss('vfx_fire_breath_hit', 'assets/vfx/fire_breath_hit.png', 48, 48)
+    ss('vfx_firebolt', 'assets/vfx/firebolt.png', 48, 48)
+
+    // Decorative cat companion
+    ss('cat', 'assets/cat/cat.png', 32, 32)
 
     // Skill icons (128x128)
     ss('skill_icons', 'assets/icons/skill_icons_sheet.png', 128, 128)
@@ -107,9 +172,12 @@ export class GameScene extends Phaser.Scene {
     // Terrain
     ss('terrain_grass', 'assets/terrain/TX Tileset Grass.png', 32, 32)
     ss('terrain_stone', 'assets/terrain/TX Tileset Stone Ground.png', 32, 32)
+    img('shield_blue', 'assets/vfx/shield_blue.png')
+    img('sword', 'assets/vfx/sword.png')
     img('deco_tree1', 'assets/terrain/tree1.png')
     img('deco_tree2', 'assets/terrain/tree2.png')
     img('deco_tree3', 'assets/terrain/tree3.png')
+    img('zone_marker', 'assets/terrain/zone.png')
 
     // Props
     img('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
@@ -117,6 +185,11 @@ export class GameScene extends Phaser.Scene {
 
     // Hero-specific assets
     this.loadHeroAssets(this.selectedHero, ss)
+
+    // Local coop: also load assets for player 2's hero
+    if (this._localCoop) {
+      this.loadHeroAssets(this._p2Hero, ss)
+    }
   }
 
   private loadHeroAssets(hero: string, ss: (key: string, path: string, fw: number, fh: number) => void) {
@@ -152,6 +225,15 @@ export class GameScene extends Phaser.Scene {
         ss('amun_attack3', 'assets/amun/Attack3.png',   160, 111)
         ss('amun_hurt',    'assets/amun/Take Hit.png',  160, 111)
         ss('amun_death',   'assets/amun/Death.png',     160, 111)
+        // Tutorial NPC: load Sifra idle so the quest 3 NPC uses her real sprite
+        ss('sifra_idle',   'assets/sifra/Idle.png',     231, 190)
+        break
+      case 'vael':
+        // Single combined sheet: 17 cols × 7 rows, 160×128 px per frame
+        ss('vael_sheet', 'assets/vael/sheet.png', 160, 128)
+        // Bone Thrall minion sprites (56×48, 20 frames)
+        ss('thrall_walk', 'assets/thrall/walk.png', 56, 48)
+        ss('thrall_attack', 'assets/thrall/attack.png', 56, 48)
         break
       case 'huntress':
         ss('huntress_idle',    'assets/lyra/Idle.png',     150, 150)
@@ -186,6 +268,13 @@ export class GameScene extends Phaser.Scene {
         ss('crystal_blue_0',     'assets/givi/crystal_blue_0.png',  54, 51)
         ss('crystal_blue_1',     'assets/givi/crystal_blue_1.png',  43, 27)
         break
+      case 'nightborne':
+        ss('nightborne_idle',   'assets/nightborne/idle.png',   240, 240)
+        ss('nightborne_run',    'assets/nightborne/run.png',    240, 240)
+        ss('nightborne_attack', 'assets/nightborne/attack.png', 240, 240)
+        ss('nightborne_hurt',   'assets/nightborne/hurt.png',   240, 240)
+        ss('nightborne_death',  'assets/nightborne/death.png',  240, 240)
+        break
     }
   }
 
@@ -193,6 +282,8 @@ export class GameScene extends Phaser.Scene {
     this.gameOver = false
     this.gameTime = 0
     if (data?.hero) this.selectedHero = data.hero
+    // Initialise quest tracking for this run
+    MetaProgress.initRun(this.selectedHero)
 
     // ── Pack 1: Immediate — what the player sees first frame ──
     this.generateVfxTextures()
@@ -202,20 +293,51 @@ export class GameScene extends Phaser.Scene {
       this.anims.create({ key: 'flame_loop', frames: this.anims.generateFrameNumbers('vfx_flame', { start: 0, end: 3 }), frameRate: 12, repeat: -1 })
       this.anims.create({ key: 'flame_burst', frames: this.anims.generateFrameNumbers('vfx_flame', { start: 4, end: 4 }), frameRate: 8, repeat: 0 })
     }
+    if (!this.anims.exists('thunder_splash')) {
+      this.anims.create({ key: 'thunder_splash', frames: this.anims.generateFrameNumbers('vfx_thunder_splash', { start: 0, end: 13 }), frameRate: 24, repeat: 0 })
+      this.anims.create({ key: 'thunder_strike', frames: this.anims.generateFrameNumbers('vfx_thunder_strike', { start: 0, end: 12 }), frameRate: 24, repeat: 0 })
+      this.anims.create({ key: 'air_burst', frames: this.anims.generateFrameNumbers('vfx_air_burst', { start: 0, end: 8 }), frameRate: 20, repeat: 0 })
+      this.anims.create({ key: 'air_explosion', frames: this.anims.generateFrameNumbers('vfx_air_explosion', { start: 0, end: 11 }), frameRate: 22, repeat: 0 })
+      this.anims.create({ key: 'fire_breath', frames: this.anims.generateFrameNumbers('vfx_fire_breath', { start: 0, end: 17 }), frameRate: 16, repeat: -1 })
+      this.anims.create({ key: 'fire_breath_once', frames: this.anims.generateFrameNumbers('vfx_fire_breath', { start: 0, end: 17 }), frameRate: 18, repeat: 0 })
+      this.anims.create({ key: 'fire_breath_proj', frames: this.anims.generateFrameNumbers('vfx_fire_breath', { start: 0, end: 5 }), frameRate: 14, repeat: -1 })
+      this.anims.create({ key: 'fire_breath_hit', frames: this.anims.generateFrameNumbers('vfx_fire_breath_hit', { start: 0, end: 4 }), frameRate: 16, repeat: 0 })
+      this.anims.create({ key: 'firebolt_fly', frames: this.anims.generateFrameNumbers('vfx_firebolt', { start: 0, end: 3 }), frameRate: 12, repeat: -1 })
+      this.anims.create({ key: 'firebolt_explode', frames: this.anims.generateFrameNumbers('vfx_firebolt', { start: 4, end: 10 }), frameRate: 18, repeat: 0 })
+    }
 
     Orc1.createAnimations(this)
     Orc2.createAnimations(this)
     Orc3.createAnimations(this)
+    Archer.createAnimations(this)
     Player.createAnimations(this)
+
+    // Pre-warm all VFX sprite animations — prevents first-frame GPU upload stutter.
+    // Each sprite plays one frame, is then destroyed. Cost: ~1ms at startup.
+    const vfxWarmup: Array<[string, string]> = [
+      ['vfx_air_burst',     'air_burst'],
+      ['vfx_air_explosion', 'air_explosion'],
+      ['vfx_firebolt',      'firebolt_fly'],
+      ['vfx_firebolt',      'firebolt_explode'],
+      ['vfx_thunder_splash','thunder_splash'],
+      ['vfx_thunder_strike','thunder_strike'],
+    ]
+    for (const [tex, anim] of vfxWarmup) {
+      if (!this.textures.exists(tex) || !this.anims.exists(anim)) continue
+      const w = this.add.sprite(-9999, -9999, tex).setVisible(false).setActive(false)
+      w.play(anim)
+      this.time.delayedCall(0, () => w.destroy())
+    }
 
     if (this.useInfiniteMap()) {
       // Infinite map path
       this.physics.world.setBounds(-1e7, -1e7, 2e7, 2e7)
       this.rocks = this.physics.add.staticGroup()
-      this.player = new Player(this, 0, 0, this.selectedHero)
-      this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
+      this.localPlayer = new Player(this, 0, 0, this.selectedHero)
+      this.players = [this.localPlayer]
       // NO camera.setBounds — infinite scroll
-      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y))
+      this.chests = this.add.group()
+      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.localPlayer, this.chests, this._online)
       this.chunkManager.create(0, 0)
       this.generateGraveTextures()
       this.events.emit('terrain-ready')
@@ -224,9 +346,9 @@ export class GameScene extends Phaser.Scene {
       this.physics.world.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
       this.rocks = this.physics.add.staticGroup()
       this.terrainRT = this.add.renderTexture(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT).setOrigin(0).setDepth(0)
-      this.terrainRT.fill(0x4a7c3f)
-      this.player = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
-      this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
+      this.terrainRT.fill(0x305426)
+      this.localPlayer = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
+      this.players = [this.localPlayer]
       this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
       this.drawTerrainProgressive()
       this.scatterDecorations(0, Infinity)
@@ -234,6 +356,59 @@ export class GameScene extends Phaser.Scene {
       this.generateGraveTextures()
       this.events.emit('terrain-ready')
     }
+
+    // ── Local coop: spawn player 2 with a different hero ──
+    if (this._localCoop) {
+      // Player 1 uses WASD only
+      this.localPlayer.inputController?.destroy()
+      this.localPlayer.inputController = new KeyboardInputController(this, 'wasd')
+
+      // Player 2 spawns beside player 1 and uses arrow keys
+      const p2 = new Player(this, this.localPlayer.x + 80, this.localPlayer.y, this._p2Hero)
+      p2.isLocalPlayer = true  // both are local in local coop
+      p2.inputController?.destroy()
+      p2.inputController = new KeyboardInputController(this, 'arrows')
+      this.players.push(p2)
+
+      // Physics: player 2 collides with rocks
+      this.physics.add.collider(p2, this.rocks)
+
+      // Camera: follow invisible midpoint target with lerp
+      this._cameraTarget = this.add.rectangle(this.localPlayer.x, this.localPlayer.y, 1, 1, 0, 0)
+        .setVisible(false)
+      this.cameras.main.startFollow(this._cameraTarget, true, 0.1, 0.1)
+
+      // Nameplates for both players
+      const np1 = this.add.text(0, 0, this.selectedHero.toUpperCase(), {
+        fontFamily: gameFont(), fontSize: '11px', color: '#ffffff',
+      }).setOrigin(0.5).setDepth(15)
+      const np2 = this.add.text(0, 0, this._p2Hero.toUpperCase(), {
+        fontFamily: gameFont(), fontSize: '11px', color: '#aaffaa',
+      }).setOrigin(0.5).setDepth(15)
+      this._nameplates = [np1, np2]
+    } else {
+      // Single player: follow localPlayer normally
+      this.cameras.main.startFollow(this.localPlayer, true, 0.1, 0.1)
+    }
+
+    // Mobile-portrait camera zoom — zoom out 20% for wider field of view
+    const applyPortraitZoom = () => {
+      const mobilePortrait = isMobileUserAgent() && isPortrait()
+      this.cameras.main.setZoom(mobilePortrait ? 0.8 : 1)
+    }
+    applyPortraitZoom()
+    this.scale.on('resize', applyPortraitZoom)
+    this.events.once('shutdown', () => this.scale.off('resize', applyPortraitZoom))
+
+    // Zone marker centered on hero spawn
+    this.add.image(this.player.x, this.player.y, 'zone_marker').setOrigin(0.5).setScale(0.252).setDepth(1).setAlpha(0.85)
+
+    // Caesar — decorative cat companion
+    Cat.registerAnims(this)
+    this._caesar = new Cat(this, this.player.x + 60, this.player.y + 40, this.player)
+
+    // ── Dark reveal effect: two shadow halves part to reveal the map ──
+    this.playMapReveal()
 
     // Collide player with rocks and trees
     this.physics.add.collider(this.player, this.rocks)
@@ -249,32 +424,38 @@ export class GameScene extends Phaser.Scene {
       return !(enemy as any).isFlying
     })
 
-    // XP + Gold systems
-    this.xpSystem = new XPSystem(this, this.player)
-    this.goldSystem = new GoldSystem(this, this.player)
+    // XP + Gold systems — use full players array (includes p2 in coop)
+    this.xpSystem = new XPSystem(this, this.players)
+    this.goldSystem = new GoldSystem(this, this.players)
 
     // Pickups group (HP orbs, magnets)
     this.pickups = this.add.group()
 
-    // Chests scattered around the map
-    this.chests = this.add.group()
-    this.spawnChests()
+    // Chests — spawned by ChunkManager (infinite map) or manually (bounded map)
+    if (!this.chests) this.chests = this.add.group()
 
-    // Wave manager
-    this.waveManager = new WaveManager(this, this.player, this.enemies)
+    // Wave manager — use full players array (skipped in online mode — server controls spawning)
+    this.waveManager = new WaveManager(this, this.players, this.enemies)
 
     // Touch controls — virtual joystick on mobile, tap-to-move on desktop
     this.setupTouchControls()
 
     // Events
-    this.events.on('enemy-died', (x: number, y: number, xpValue: number, goldValue: number = 0) => {
-      this.xpSystem.spawnOrb(x, y, xpValue)
+    this.events.on('enemy-died', (x: number, y: number, xpValue: number, goldValue: number = 0, isMiniBoss: boolean = false, isLarge: boolean = false) => {
+      // Mini-bosses always drop large purple orb; large mobs 25% chance
+      if (isMiniBoss || (isLarge && Math.random() < 0.25)) {
+        this.xpSystem.spawnLargeOrb(x, y, xpValue)
+      } else {
+        this.xpSystem.spawnOrb(x, y, xpValue)
+      }
       this.player.kills++
+      if (isMiniBoss) this.player.miniBossKills++
+      MetaProgress.reportKill()
       // Branch Mastery: +0.25 XP on kill
       if (this.player.currentAttackBranch) {
         this.player.awardMasteryXP(this.player.currentAttackBranch, 0.25)
       }
-      this.waveManager.onEnemyKilled()
+      if (!this._online) this.waveManager.onEnemyKilled()
       this.spawnGrave(x, y)
 
       // Gold drop — bosses always, regular mobs 8% chance
@@ -309,43 +490,98 @@ export class GameScene extends Phaser.Scene {
       // (Stone Skin stacks now trigger on damage taken, not kills — see Player.takeDamage)
 
       // Ignara kill-triggered mechanics
-      if (this.player.heroType === 'ignara' && this.player.hasPyromaniac) {
+      if (this.player.heroType === 'ignara' && this.player.hasPyromaniac
+          && this.player.chosenBranch !== 'Wildfire') {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + 2)
+      }
+      // Powder Keg counter
+      if (this.player.hasPowderKeg) {
+        this.player.powderKegCounter++
+        if (this.player.powderKegCounter >= this.player.powderKegThreshold) {
+          this.player.powderKegCounter = 0
+          this.player.powderKegReady = true
+        }
+      }
+      // Ashen Veil: on kill stack DR
+      if (this.player.hasAshenVeil) {
+        if (this.player.ashenVeilStacks < this.player.ashenVeilMaxStacks) this.player.ashenVeilStacks++
+        this.player.ashenVeilUntil = this.time.now + 2000
+      }
+      // Infernal Cadence: trigger on kill when off cooldown (not during active window + CD)
+      if (this.player.hasInfernalCadence && this.time.now >= this.player.infernalCadenceCooldownUntil) {
+        this.player.infernalCadenceEndTime = this.time.now + this.player.infernalCadenceDuration
+        this.player.infernalCadenceCooldownUntil = this.player.infernalCadenceEndTime + this.player.infernalCadenceCooldown
+      }
+      if (this.player.hasEmberVolley) {
+        const maxStacks = Math.round(this.player.emberVolleyCap / 0.02)
+        if (this.player.emberVolleyStacks < maxStacks) {
+          this.player.emberVolleyStacks++
+          this.player.attackCooldown = Math.max(200, Math.ceil(this.player.attackCooldown * 0.98))
+          if (this.player.emberVolleyDmg) this.player.damage = Math.ceil(this.player.damage * 1.01)
+        }
+      }
+      if (this.player.hasFlashpoint) {
+        this.player.flashpointRemaining = Math.min(this.player.flashpointCharges, this.player.flashpointRemaining + 1)
+      }
+
+      // Nightborne kill-triggered mechanics
+      if (this.player.heroType === 'nightborne') {
+        nightborneHero.onKillNightborne(this.player, x, y, this.enemies)
+      }
+
+      // Vael kill-triggered mechanics (soul orbs, risen, virulent spread, necrotic bloom)
+      if (this.player.heroType === 'vael') {
+        // Find the enemy object that just died to pass rot stacks
+        const deadEnemy = { x, y, rotStacks: 0, rotExpiry: 0 } as any
+        vaelHero.onVaelKill(this.player, deadEnemy, this.enemies)
       }
 
       // Heart drop with progressive thresholds: 100, 300, 500, then every 500
+      // Disabled in online mode — pickups are client-side only, causing desync
       const kills = this.player.kills
       const heartThresholds = [100, 300, 500]
       const isThreshold = heartThresholds.includes(kills) || (kills > 500 && kills % 500 === 0)
-      if (isThreshold) {
+      if (!this._online && isThreshold) {
         const heart = new Pickup(this, x, y, 'heart', this.player)
         this.pickups.add(heart)
       }
 
     })
 
-    // Pickup overlap — collect on touch
-    this.physics.add.overlap(this.player, this.pickups, (_player, pickup) => {
-      (pickup as Pickup).collect()
-    })
+    // Pickup overlap — collect on touch (all players)
+    for (const p of this.players) {
+      this.physics.add.overlap(p, this.pickups, (_player, pickup) => {
+        (pickup as Pickup).collect()
+      })
+    }
 
-    // Chest overlap — open on touch
-    this.physics.add.overlap(this.player, this.chests, (_player, chest) => {
-      (chest as Chest).open()
-    })
+    // Chest overlap — open on touch (all players)
+    for (const p of this.players) {
+      this.physics.add.overlap(p, this.chests, (_player, chest) => {
+        (chest as Chest).open()
+      })
+    }
 
-    // Magnet pickup — pull all XP orbs to player instantly
+    // Magnet pickup — pull all XP orbs to nearest alive player
     this.events.on('magnet-activated', () => {
       const orbs = this.xpSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]
       for (const orb of orbs) {
         if (!orb.active) continue
+        // Find nearest alive player to pull toward
+        let target = this.localPlayer
+        let minDist = Infinity
+        for (const p of this.players) {
+          if (p.isDead) continue
+          const d = Phaser.Math.Distance.Between(orb.x, orb.y, p.cx, p.cy)
+          if (d < minDist) { minDist = d; target = p }
+        }
         this.tweens.add({
           targets: orb,
-          x: this.player.cx, y: this.player.cy,
+          x: target.cx, y: target.cy,
           duration: 300,
           onComplete: () => {
             if (orb.active) {
-              this.player.addXP((orb as any).xpValue || 10)
+              target.addXP((orb as any).xpValue || 10)
               orb.destroy()
             }
           },
@@ -355,57 +591,306 @@ export class GameScene extends Phaser.Scene {
 
     this.upgradeTracker = new UpgradeTracker()
 
-    this.events.on('player-levelup', () => {
+    this.events.on('player-levelup', (levelingPlayer?: Player) => {
+      if (this._online) {
+        const lvlPlayer = levelingPlayer ?? this.localPlayer
+        const isBranch = this.upgradeTracker.isBranchSelection
+        const choices = isBranch
+          ? this.upgradeTracker.getBranchChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
+          : this.upgradeTracker.getChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
+        if (choices.length === 0) return
+        // Queue level-ups — Phaser silently drops scene.launch if scene already active
+        this._pendingLevelUps.push({ player: lvlPlayer, choices, isBranch })
+        this._tryShowNextLevelUp()
+        return
+      }
+      // Use the player that leveled up; fall back to localPlayer for backward compat
+      const lvlPlayer = levelingPlayer ?? this.localPlayer
       // Kill nearby enemies so player can safely choose upgrades
+      // Skip bosses and mini-bosses — they don't get cleared on level up
       const CLEAR_RADIUS = 150
-      const px = this.player.cx
-      const py = this.player.cy
+      const px = lvlPlayer.cx
+      const py = lvlPlayer.cy
       for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!enemy.active) continue
+        const ae = enemy as any
+        if (ae.isBoss || ae.isMiniBoss) continue
         const dist = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y)
-        if (dist < CLEAR_RADIUS && typeof (enemy as any).die === 'function') {
-          (enemy as any).die()
+        if (dist < CLEAR_RADIUS && typeof ae.die === 'function') {
+          ae.die()
         }
       }
-      // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter
+      // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter.
+      // Defer destroys to next frame so the spike doesn't overlap LevelUpScene launch.
+      const toDestroy: Phaser.GameObjects.GameObject[] = []
       for (const orb of this.xpSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (orb.active && Math.random() < 0.5) orb.destroy()
+        if (orb.active && Math.random() < 0.5) toDestroy.push(orb)
       }
       for (const orb of this.goldSystem.getOrbs().getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (orb.active && Math.random() < 0.5) orb.destroy()
+        if (orb.active && Math.random() < 0.5) toDestroy.push(orb)
       }
       for (const p of this.pickups.getChildren() as Phaser.GameObjects.GameObject[]) {
-        if (p.active && Math.random() < 0.5) p.destroy()
+        if (p.active && Math.random() < 0.5) toDestroy.push(p)
+      }
+      if (toDestroy.length) {
+        this.time.delayedCall(0, () => { for (const o of toDestroy) if (o.active) o.destroy() })
       }
       const isBranch = this.upgradeTracker.isBranchSelection
       const choices = isBranch
-        ? this.upgradeTracker.getBranchChoices(this.player.heroType, this.player.getActiveStance())
-        : this.upgradeTracker.getChoices(this.player.heroType, this.player.getActiveStance())
+        ? this.upgradeTracker.getBranchChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
+        : this.upgradeTracker.getChoices(lvlPlayer.heroType, lvlPlayer.getActiveStance())
       if (choices.length === 0) return  // all upgrades taken — skip level-up UI
-      this.scene.launch('LevelUpScene', { player: this.player, tracker: this.upgradeTracker, callerSceneKey: this.scene.key })
-      this.scene.pause()
+      // Slow-motion cinematic pause before upgrade screen (300ms real-time at timeScale 0.15)
+      this.physics.world.timeScale = 8
+      this.time.timeScale = 0.15
+      // delay of 45 scene-ms / 0.15 timeScale ≈ 300ms real time
+      this.time.delayedCall(45, () => {
+        this._restoreTimeScale()
+        this.scene.launch('LevelUpScene', { player: lvlPlayer, tracker: this.upgradeTracker, callerSceneKey: this.scene.key })
+        this.scene.pause()
+      })
     })
 
     this.events.on('player-died', () => {
-      this.gameOver = true
+      // In local coop, only trigger game over when ALL players are dead
+      const anyAlive = this.players.some(p => !p.isDead)
+      if (!anyAlive) {
+        this.gameOver = true
+      }
     })
 
     // CLAWS boss at 10 minutes
     this.events.on('claws-incoming', () => {
+      console.log('[BOSS] GameScene: received claws-incoming, forwarding to UIScene')
       this.scene.get('UIScene').events.emit('claws-warning')
     })
 
     this.events.once('claws-spawn', () => {
+      console.log('[BOSS] GameScene: received claws-spawn, calling spawnClawsBoss()')
       this.spawnClawsBoss()
     })
 
     // Start UI
     this.scene.launch('UIScene', { gameScene: this })
 
-    // Start spawning after brief delay
-    this.time.delayedCall(2000, () => {
-      this.waveManager.start()
+    // Online multiplayer: create network adapter (handles remote players, enemies, server sync)
+    if (this._online) {
+      console.log(`[GameScene] Online mode: seed=${this._seed}, players=${this._playerSlots.length}`)
+      this.localPlayer.serverAuthoritative = true
+      this._networkAdapter = new NetworkGameAdapter(this, this.localPlayer)
+      // Replace the local enemies group with network adapter's group
+      // so ALL hero abilities (AoE, passives, splash) auto-target network enemies
+      this.enemies = this._networkAdapter.enemySprites
+      // Listen for network game events
+      this.events.on('network-game-over', () => {
+        this.gameOver = true
+        this.scene.get('UIScene')?.events.emit('show-end-screen', { won: false })
+      })
+      this.events.on('network-game-won', () => {
+        this.gameOver = true
+        this.scene.get('UIScene')?.events.emit('show-end-screen', { won: true })
+      })
+      // Server echo only — client already applied optimistically in LevelUpScene
+      this.events.on('network-upgrade-applied', (_upgradeId: string) => { /* no-op */ })
+      // Small impact flash at remote attack hit position
+      this.events.on('network-attack-vfx', (data: { playerId: string; x: number; y: number; damage: number }) => {
+        const flash = this.add.circle(data.x, data.y, 10, 0xffffff, 0.7).setDepth(10)
+        this.tweens.add({ targets: flash, alpha: 0, scaleX: 2.5, scaleY: 2.5, duration: 180, onComplete: () => flash.destroy() })
+      })
+      // When LevelUpScene closes in online mode, show next queued level-up
+      this.events.on('levelup-closed', () => {
+        this._levelUpActive = false
+        this._tryShowNextLevelUp()
+      })
+      // Signal server that this client is loaded and ready
+      networkManager.sendReady()
+    }
+
+    // Start spawning after brief delay (skipped in online mode — server controls spawning)
+    if (!this._online) {
+      this.time.delayedCall(2000, () => {
+        this.waveManager.start()
+      })
+    }
+
+    // ── Sifra NPC (Amun tutorial quest 3) ──
+    // Spawn is gated: only after both q_forged_in_battle (kills) and
+    // q_the_long_watch (200s) complete. Listen for quest-complete events.
+    if (this.selectedHero === 'amun') {
+      MetaProgress.onQuestComplete((qid) => {
+        if (qid === 'q_forged_in_battle' || qid === 'q_the_long_watch') {
+          this._trySpawnSifraNpc()
+        }
+      })
+      // If both prereq quests were completed in a prior run but Sifra hasn't been
+      // found yet, spawn the NPC immediately at run start (don't re-gate it).
+      const killDone = MetaProgress.isQuestPersistentlyComplete('q_forged_in_battle')
+      const timeDone = MetaProgress.isQuestPersistentlyComplete('q_the_long_watch')
+      const sifraFound = MetaProgress.isQuestPersistentlyComplete('q_find_sifra')
+      if (killDone && timeDone && !sifraFound) {
+        this._spawnSifraNpc()
+      }
+    }
+  }
+
+  // ── Decorative cat companion ──────────────────────────────────────────────
+  private _caesar: Cat | null = null
+
+  // ── Sifra NPC state ───────────────────────────────────────────────────────
+  private _sifraNpc: Phaser.GameObjects.GameObject | null = null
+  private _sifraLabel: Phaser.GameObjects.Text | null = null
+  private _sifraAuraGfx: Phaser.GameObjects.Graphics | null = null
+  private _sifraAuraTween: Phaser.Tweens.Tween | null = null
+  private _sifraAuraTimer: Phaser.Time.TimerEvent | null = null
+  private _sifraProximityTimer: Phaser.Time.TimerEvent | null = null
+  private _sifraFading = false
+  /** World position of the Sifra NPC (set when spawned, read by UIScene for minimap). */
+  sifraNpcX = 0
+  sifraNpcY = 0
+
+  /** Called from quest-complete listener — spawns NPC only when both first quests are done. */
+  private _trySpawnSifraNpc(): void {
+    if (this._sifraNpc || this.selectedHero !== 'amun') return
+    const killGoal = 100
+    const timeGoal = 150_000
+    const killDone = MetaProgress.getQuestProgress('q_forged_in_battle') >= killGoal
+    const timeDone = MetaProgress.getQuestProgress('q_the_long_watch') >= timeGoal
+    if (killDone && timeDone) this._spawnSifraNpc()
+  }
+
+  private _spawnSifraNpc(): void {
+    // 50% of previous range (was 700-1000), centered around hero spawn point (0,0)
+    const angle = Math.random() * Math.PI * 2
+    const dist = 350 + Math.random() * 150
+    const nx = Math.cos(angle) * dist
+    const ny = Math.sin(angle) * dist
+    this.sifraNpcX = nx
+    this.sifraNpcY = ny
+
+    // Real Sifra hero sprite (idle animation)
+    if (this.textures.exists('sifra_idle')) {
+      const sprite = this.add.sprite(nx, ny, 'sifra_idle', 0).setDepth(4)
+      if (!this.anims.exists('sifra_npc_idle')) {
+        this.anims.create({
+          key: 'sifra_npc_idle',
+          frames: this.anims.generateFrameNumbers('sifra_idle', { start: 0, end: 3 }),
+          frameRate: 6, repeat: -1,
+        })
+      }
+      sprite.play('sifra_npc_idle')
+      this._sifraNpc = sprite
+    } else {
+      // Fallback placeholder if asset missing
+      const g = this.add.graphics().setDepth(4)
+      g.fillStyle(0x82ccdd, 0.9)
+      g.fillCircle(nx, ny, 16)
+      g.lineStyle(2, 0xffffff, 0.8)
+      g.strokeCircle(nx, ny, 16)
+      this._sifraNpc = g
+    }
+
+    // "?" label above NPC
+    this._sifraLabel = this.add.text(nx, ny - 60, '?', {
+      fontFamily: gameFont(), fontSize: '20px', color: '#FFD700',
+    }).setOrigin(0.5).setDepth(5)
+
+    // ── Aura: 200% × Sifra base range (160) = 320px ──
+    // Pulsing icy ring + kills basic mobs (skips mini-bosses & boss) every 200ms.
+    const auraRadius = 320
+    this._sifraAuraGfx = this.add.graphics().setDepth(3)
+    const drawAura = (pulseT: number) => {
+      const g = this._sifraAuraGfx
+      if (!g) return
+      g.clear()
+      // Soft layered fill from center outward
+      for (let i = 4; i >= 1; i--) {
+        const a = 0.04 + pulseT * 0.04
+        g.fillStyle(0x82ccdd, a)
+        g.fillCircle(nx, ny, auraRadius * (0.55 + i * 0.11))
+      }
+      // Crisp ring at outer edge
+      g.lineStyle(2, 0xaaeeff, 0.45 + pulseT * 0.35)
+      g.strokeCircle(nx, ny, auraRadius)
+      // Inner ring for depth
+      g.lineStyle(1, 0xffffff, 0.25 + pulseT * 0.2)
+      g.strokeCircle(nx, ny, auraRadius * 0.85)
+    }
+    drawAura(0)
+    this._sifraAuraTween = this.tweens.add({
+      targets: { t: 0 },
+      t: 1,
+      duration: 1400, yoyo: true, repeat: -1,
+      onUpdate: (tw) => drawAura(tw.getValue() as number),
     })
+
+    // Aura kill timer: every 200ms, instakill basic enemies inside the radius
+    const r2 = auraRadius * auraRadius
+    this._sifraAuraTimer = this.time.addEvent({
+      delay: 200, loop: true,
+      callback: () => {
+        if (!this._sifraNpc) return
+        for (const e of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e.active) continue
+          if ((e as any).isMiniBoss) continue
+          const dx = e.x - nx, dy = e.y - ny
+          if (dx * dx + dy * dy <= r2) {
+            ;(e as any).takeDamage?.(99999, 'magic')
+          }
+        }
+      },
+    })
+
+    // Proximity check (every 200ms, not every frame)
+    this._sifraProximityTimer = this.time.addEvent({
+      delay: 200, loop: true,
+      callback: () => {
+        if (!this._sifraNpc || !this._sifraNpc.active || this._sifraFading) return
+        const dx = this.player.x - this.sifraNpcX
+        const dy = this.player.y - this.sifraNpcY
+        if (Math.sqrt(dx * dx + dy * dy) < 80) {
+          MetaProgress.reportSifraFound()
+          this._sifraProximityTimer?.remove()
+          this._sifraProximityTimer = null
+          this._fadeOutSifra()
+        }
+      },
+    })
+  }
+
+  /** Smoothly fade out Sifra NPC + aura after the player meets her. */
+  public _fadeOutSifra(): void {
+    if (this._sifraFading) return
+    this._sifraFading = true
+
+    // Stop aura tick + aura pulse tween
+    this._sifraAuraTimer?.remove(); this._sifraAuraTimer = null
+    this._sifraAuraTween?.stop(); this._sifraAuraTween = null
+
+    const duration = 1200
+    // Fade NPC sprite/graphic
+    if (this._sifraNpc) {
+      this.tweens.add({
+        targets: this._sifraNpc, alpha: 0,
+        duration, ease: 'Quad.easeOut',
+        onComplete: () => { this._sifraNpc?.destroy(); this._sifraNpc = null },
+      })
+    }
+    // Fade "?" label
+    if (this._sifraLabel) {
+      this.tweens.add({
+        targets: this._sifraLabel, alpha: 0, y: this._sifraLabel.y - 30,
+        duration, ease: 'Quad.easeOut',
+        onComplete: () => { this._sifraLabel?.destroy(); this._sifraLabel = null },
+      })
+    }
+    // Fade aura graphics (object alpha, since we already stopped the redraw tween)
+    if (this._sifraAuraGfx) {
+      this.tweens.add({
+        targets: this._sifraAuraGfx, alpha: 0,
+        duration, ease: 'Quad.easeOut',
+        onComplete: () => { this._sifraAuraGfx?.destroy(); this._sifraAuraGfx = null },
+      })
+    }
   }
 
   protected useInfiniteMap(): boolean { return true }
@@ -418,6 +903,192 @@ export class GameScene extends Phaser.Scene {
     if (dist < 1800) return 2
     if (dist < 2400) return 3
     return 4
+  }
+
+  /** Dark shadow halves part to reveal the map — runs once on scene start */
+  private playMapReveal() {
+    const cam = this.cameras.main
+    const sw = cam.width
+    const sh = cam.height
+    const cx = sw / 2
+
+    // ── Draw two demon-claw shadow halves with jagged claw edges ──
+    const leftGfx = this.add.graphics().setDepth(999).setScrollFactor(0)
+    const rightGfx = this.add.graphics().setDepth(999).setScrollFactor(0)
+    this._revealObjects.push(leftGfx, rightGfx)
+
+    // Claw parameters — 5 claws per side reaching inward
+    const clawCount = 5
+    const clawData: ClawSegment[] = []
+    for (let i = 0; i < clawCount; i++) {
+      const t = (i + 0.5) / clawCount
+      clawData.push({
+        y: t * sh,
+        len: 50 + Math.random() * 40,   // how far the claw reaches past center
+        w: 25 + Math.random() * 20,      // width of claw base
+        curve: 10 + Math.random() * 15,  // curve offset for organic feel
+      })
+    }
+
+    const drawSide = (g: Phaser.GameObjects.Graphics, side: 'left' | 'right') => {
+      g.clear()
+      // Solid dark fill for the half
+      g.fillStyle(0x0a0008, 1)
+      if (side === 'left') {
+        g.fillRect(-sw, 0, sw + cx, sh)
+      } else {
+        g.fillRect(cx, 0, sw, sh)
+      }
+
+      // Draw claw fingers reaching toward center
+      for (const c of clawData) {
+        const dir = side === 'left' ? 1 : -1
+        const baseX = side === 'left' ? cx : cx
+        const tipX = baseX + dir * c.len
+
+        g.fillStyle(0x1a0015, 1)
+        g.beginPath()
+        // Claw shape: wide base tapering to sharp point
+        g.moveTo(baseX, c.y - c.w / 2)
+        g.lineTo(baseX + dir * c.len * 0.4, c.y - c.w * 0.35 + c.curve * 0.3)
+        g.lineTo(tipX, c.y + dir * 3)  // sharp tip, slightly curved
+        g.lineTo(baseX + dir * c.len * 0.4, c.y + c.w * 0.35 - c.curve * 0.2)
+        g.lineTo(baseX, c.y + c.w / 2)
+        g.closePath()
+        g.fillPath()
+
+        // Inner claw highlight (dark purple/red vein)
+        g.lineStyle(2, 0x330022, 0.6)
+        g.beginPath()
+        g.moveTo(baseX, c.y)
+        g.lineTo(baseX + dir * c.len * 0.5, c.y + c.curve * 0.15)
+        g.lineTo(tipX, c.y + dir * 3)
+        g.strokePath()
+
+        // Claw tip nail — lighter pointed triangle
+        const nailLen = 12
+        g.fillStyle(0x443344, 0.9)
+        g.beginPath()
+        g.moveTo(tipX, c.y + dir * 3)
+        g.lineTo(tipX + dir * nailLen, c.y + dir * 1)
+        g.lineTo(tipX + dir * 2, c.y + dir * 3 + 5)
+        g.lineTo(tipX + dir * 2, c.y + dir * 3 - 5)
+        g.closePath()
+        g.fillPath()
+      }
+
+      // Jagged edge along the seam (torn skin / shadow border)
+      g.fillStyle(0x0a0008, 1)
+      const edgeX = side === 'left' ? cx : cx
+      const jagSegments = 20
+      g.beginPath()
+      g.moveTo(edgeX, 0)
+      for (let i = 0; i <= jagSegments; i++) {
+        const py = (i / jagSegments) * sh
+        const jag = (Math.sin(i * 2.7) * 8 + Math.sin(i * 5.1) * 4) * (side === 'left' ? 1 : -1)
+        g.lineTo(edgeX + jag, py)
+      }
+      g.lineTo(edgeX, sh)
+      // Fill back to solid side
+      const solidX = side === 'left' ? -sw : sw * 2
+      g.lineTo(solidX, sh)
+      g.lineTo(solidX, 0)
+      g.closePath()
+      g.fillPath()
+    }
+
+    drawSide(leftGfx, 'left')
+    drawSide(rightGfx, 'right')
+
+    // ── Fog wisps along the seam ──
+    const fogParts: Phaser.GameObjects.Graphics[] = []
+    for (let i = 0; i < 18; i++) {
+      const fy = Math.random() * sh
+      const fg = this.add.graphics().setDepth(1000).setScrollFactor(0)
+      const size = 10 + Math.random() * 25
+      const alpha = 0.15 + Math.random() * 0.25
+      // Soft fog blob
+      fg.fillStyle(0x221133, alpha)
+      fg.fillCircle(cx + (Math.random() - 0.5) * 30, fy, size)
+      fg.fillStyle(0x110022, alpha * 0.6)
+      fg.fillCircle(cx + (Math.random() - 0.5) * 20, fy + (Math.random() - 0.5) * 10, size * 0.7)
+      fogParts.push(fg)
+      this._revealObjects.push(fg)
+    }
+
+    // ── Red glow eyes peering from the darkness (2 pairs) ──
+    const eyes: Phaser.GameObjects.Arc[] = []
+    const eyePositions = [
+      { x: cx - 80, y: sh * 0.25 }, { x: cx - 68, y: sh * 0.25 + 2 },
+      { x: cx + 68, y: sh * 0.65 }, { x: cx + 80, y: sh * 0.65 - 1 },
+    ]
+    for (const ep of eyePositions) {
+      const eye = this.add.circle(ep.x, ep.y, 3, 0xff2200, 0.8).setDepth(1001).setScrollFactor(0)
+      eyes.push(eye)
+      // Inner bright pupil
+      const pupil = this.add.circle(ep.x, ep.y, 1.5, 0xff6644, 1).setDepth(1002).setScrollFactor(0)
+      eyes.push(pupil)
+    }
+    this._revealObjects.push(...eyes)
+
+    // ── Animate: hold briefly, then part ──
+    const holdTime = 300
+    const partDuration = 800
+
+    // Eyes fade first
+    this.time.delayedCall(holdTime - 100, () => {
+      for (const e of eyes) {
+        this.tweens.add({
+          targets: e, alpha: 0, duration: 200,
+          onComplete: () => e.destroy(),
+        })
+      }
+    })
+
+    // Claws part — redraw each frame as x shifts
+    const leftTarget = { x: 0 }
+    const rightTarget = { x: 0 }
+
+    this.tweens.add({
+      targets: leftTarget, x: -(sw / 2 + 100), duration: partDuration,
+      ease: 'Cubic.easeIn', delay: holdTime,
+      onUpdate: () => {
+        leftGfx.setX(leftTarget.x)
+      },
+      onComplete: () => leftGfx.destroy(),
+    })
+
+    this.tweens.add({
+      targets: rightTarget, x: sw / 2 + 100, duration: partDuration,
+      ease: 'Cubic.easeIn', delay: holdTime,
+      onUpdate: () => {
+        rightGfx.setX(rightTarget.x)
+      },
+      onComplete: () => rightGfx.destroy(),
+    })
+
+    // Fog dissipates
+    for (const fg of fogParts) {
+      const goLeft = Math.random() < 0.5
+      this.tweens.add({
+        targets: fg,
+        x: goLeft ? -60 : 60,
+        alpha: 0, duration: 600 + Math.random() * 400,
+        delay: holdTime + 100 + Math.random() * 300,
+        onComplete: () => fg.destroy(),
+      })
+    }
+
+    // Final: subtle dark vignette fade
+    const vignette = this.add.graphics().setDepth(998).setScrollFactor(0)
+    vignette.fillStyle(0x000000, 0.3)
+    vignette.fillRect(0, 0, sw, sh)
+    this._revealObjects.push(vignette)
+    this.tweens.add({
+      targets: vignette, alpha: 0, duration: 500,
+      delay: holdTime + partDuration * 0.5,
+      onComplete: () => vignette.destroy(),
+    })
   }
 
   /** Draw all terrain tiles synchronously onto the RenderTexture */
@@ -443,9 +1114,9 @@ export class GameScene extends Phaser.Scene {
         const grassFrame = GRASS_FRAMES[Math.floor(rand * GRASS_FRAMES.length)]
         tmpTile.setFrame(grassFrame).setPosition(px, py)
 
-        if (zone === 3) tmpTile.setTint(0xccddcc)
-        else if (zone === 4) tmpTile.setTint(0xbbccbb)
-        else tmpTile.clearTint()
+        if (zone === 3) tmpTile.setTint(0x8f9f8f)
+        else if (zone === 4) tmpTile.setTint(0x7e8f7e)
+        else tmpTile.setTint(0xb1c1b1)
 
         this.terrainRT.draw(tmpTile)
       }
@@ -565,17 +1236,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupTouchControls() {
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-      || (navigator.maxTouchPoints > 1)
+    const isMobile = isMobileDevice()
 
     if (!isMobile) {
       // Desktop: tap-to-move
       this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-        this.player.setTouchTarget(pointer.worldX, pointer.worldY)
+        this.localPlayer.setTouchTarget(pointer.worldX, pointer.worldY)
       })
       this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
         if (pointer.isDown) {
-          this.player.setTouchTarget(pointer.worldX, pointer.worldY)
+          this.localPlayer.setTouchTarget(pointer.worldX, pointer.worldY)
         }
       })
       return
@@ -611,12 +1281,12 @@ export class GameScene extends Phaser.Scene {
       joyKnob.clear()
       joyOrigin = null
       activePointerId = -1
-      this.player.clearJoystick()
+      this.localPlayer.clearJoystick()
     }
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       // Only use left half of screen for joystick
-      if (pointer.x < this.scale.width * 0.5 && activePointerId === -1) {
+      if (pointer.x < this.scale.width * 0.5 && pointer.y > 150 && activePointerId === -1) {
         joyOrigin = { x: pointer.x, y: pointer.y }
         activePointerId = pointer.id
         drawBase(pointer.x, pointer.y)
@@ -634,7 +1304,7 @@ export class GameScene extends Phaser.Scene {
 
       if (dist < DEAD_ZONE) {
         drawKnob(joyOrigin.x, joyOrigin.y)
-        this.player.clearJoystick()
+        this.localPlayer.clearJoystick()
         return
       }
 
@@ -646,7 +1316,7 @@ export class GameScene extends Phaser.Scene {
       const knobY = joyOrigin.y + ny * clampDist
 
       drawKnob(knobX, knobY)
-      this.player.setJoystickDirection(nx, ny)
+      this.localPlayer.setJoystickDirection(nx, ny)
     })
 
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
@@ -996,151 +1666,206 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private spawnClawsBoss() {
-    // Kill all remaining mobs
-    for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+  spawnClawsBoss(cheat = false) {
+    console.log('[BOSS] spawnClawsBoss called', { cheat, bossActive: this._bossActive, hasTexture: this.textures.exists('flyingeye_attack') })
+
+    // Guard: don't spawn if texture is missing or boss already active
+    if (!this.textures.exists('flyingeye_attack')) {
+      console.warn('[BOSS] BLOCKED: flyingeye_attack texture not loaded')
+      return
+    }
+    if (this._bossActive) {
+      console.warn('[BOSS] BLOCKED: _bossActive is already true')
+      return
+    }
+    this._bossActive = true
+
+    // Kill all remaining mobs — copy array to avoid mutation during iteration
+    const toKill = [...this.enemies.getChildren()] as Phaser.Physics.Arcade.Sprite[]
+    console.log(`[BOSS] Killing ${toKill.filter(e => e.active).length} active enemies`)
+    for (const enemy of toKill) {
       if (enemy.active) enemy.destroy()
     }
 
-    // Create boss animations from demon slime spritesheet
-    if (!this.anims.exists('boss_walk')) {
-      // Mini spritesheet: idle(0-5), walk(6-17), cleave(18-32), hit(33-37), death(38-59)
-      this.anims.create({ key: 'boss_idle', frames: this.anims.generateFrameNumbers('boss_demon', { start: 0, end: 5 }), frameRate: 8, repeat: -1 })
-      this.anims.create({ key: 'boss_walk', frames: this.anims.generateFrameNumbers('boss_demon', { start: 6, end: 17 }), frameRate: 10, repeat: -1 })
-      this.anims.create({ key: 'boss_cleave', frames: this.anims.generateFrameNumbers('boss_demon', { start: 18, end: 32 }), frameRate: 12, repeat: 0 })
-      this.anims.create({ key: 'boss_hit', frames: this.anims.generateFrameNumbers('boss_demon', { start: 33, end: 37 }), frameRate: 8, repeat: 0 })
-      this.anims.create({ key: 'boss_death', frames: this.anims.generateFrameNumbers('boss_demon', { start: 38, end: 59 }), frameRate: 10, repeat: 0 })
+    // Spawn boss near player
+    const cam = this.cameras.main
+    const bx = Phaser.Math.Clamp(this.player.x - 300, cam.worldView.x + 50, cam.worldView.right - 50)
+    const by = Phaser.Math.Clamp(this.player.y, cam.worldView.y + 50, cam.worldView.bottom - 50)
+    console.log(`[BOSS] Spawning at (${Math.round(bx)}, ${Math.round(by)}), player at (${Math.round(this.player.x)}, ${Math.round(this.player.y)})`)
+
+    try {
+      const boss = new EyeBoss(this, bx, by, this.player)
+      this.enemies.add(boss)
+      console.log('[BOSS] EyeBoss created and added to enemies group', { active: boss.active, alpha: boss.alpha, visible: boss.visible })
+    } catch (err) {
+      console.error('[BOSS] FAILED to create EyeBoss:', err)
+      this._bossActive = false
+      return
     }
-    if (!this.anims.exists('boss_spawn')) {
-      // Reverse death animation — frames 59 down to 38 — for materializing effect
-      const spawnFrames: Phaser.Types.Animations.AnimationFrame[] = []
-      for (let f = 59; f >= 38; f--) {
-        spawnFrames.push({ key: 'boss_demon', frame: f })
+
+    // Listen for minion spawns (Phase 2 transition) — flying eye minions
+    this.events.once('boss-spawn-minions', (count: number) => {
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count
+        const r = 220
+        const mx = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * r, 100, 2900)
+        const my = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * r, 100, 2900)
+        if (this.waveManager) {
+          this.waveManager.spawnMobAt('flyingeye', mx, my)
+        }
       }
-      this.anims.create({ key: 'boss_spawn', frames: spawnFrames, frameRate: 10, repeat: 0 })
-    }
-
-    // Spawn boss to the LEFT of the player
-    const bx = this.player.x - 400  // no clamp
-    const by = this.player.y         // no clamp
-
-    const boss = this.physics.add.sprite(bx, by, 'boss_demon')
-    boss.setScale(3)
-    boss.setDepth(15)
-    boss.setBodySize(60, 50)
-    boss.setOffset(114, 70)
-    boss.setAlpha(0)
-    ;(boss as any).hp = 9999
-    ;(boss as any).maxHp = 9999
-    ;(boss as any).bossSpawning = true
-
-    // Shadow under boss
-    const shadow = this.add.ellipse(boss.x, boss.y, 80, 24, 0x000000, 0.35).setDepth(14)
-
-    // Spawn animation: reverse death (materializing effect) with alpha fade-in
-    boss.play('boss_spawn')
-    this.tweens.add({ targets: boss, alpha: 1, duration: 600, ease: 'Linear' })
-    boss.once('animationcomplete', () => {
-      if (!boss.active) return
-      ;(boss as any).bossSpawning = false
-      boss.play('boss_idle')
-      // Brief idle pause before entering walk loop
-      this.time.delayedCall(400, () => {
-        if (boss.active) boss.play('boss_walk')
-      })
     })
 
-    // Boss cleave attack cooldown
-    let cleaveCooldown = 0
-
-    // Boss moves toward player, cleave attacks, kills on contact
-    const bossTimer = this.time.addEvent({
-      delay: 50,
-      loop: true,
-      callback: () => {
-        if (!boss.active || this.gameOver) {
-          bossTimer.destroy()
-          return
-        }
-        // Wait for spawn animation to complete before acting
-        if ((boss as any).bossSpawning) return
-        this.physics.moveTo(boss, this.player.x, this.player.y, 100)
-        boss.setFlipX(this.player.x < boss.x)
-        shadow.setPosition(boss.x, (boss.body as Phaser.Physics.Arcade.Body).bottom)
-
-        const dist = Phaser.Math.Distance.Between(boss.x, boss.y, this.player.x, this.player.y)
-
-        // Contact = instant kill (check first, skip cleave if triggering)
-        if (dist < 50) {
-          this.player.takeDamage(99999)
-          return
-        }
-
-        // Cleave attack when close
-        cleaveCooldown -= 50
-        if (dist < 130 && cleaveCooldown <= 0) {
-          cleaveCooldown = 3000
-          boss.play('boss_cleave')
-          boss.once('animationcomplete', () => {
-            if (boss.active) boss.play('boss_walk')
-          })
-          // Cleave damage — 30% maxHP
-          this.player.takeDamage(Math.ceil(this.player.maxHp * 0.3))
-          this.cameras.main.shake(200, 0.01)
-        }
-      },
+    // Victory — set gameOver after delay so death VFX can play
+    // In cheat mode, skip game over so the run continues
+    this.events.once('boss-defeated', () => {
+      this.bossDefeated = true
+      if (cheat) {
+        this._bossActive = false   // allow re-spawn from cheat panel
+      } else {
+        this.time.delayedCall(3000, () => { this.gameOver = true })
+      }
     })
   }
 
   update(time: number, delta: number) {
     if (this.gameOver) return
 
-    this.chunkManager?.update(this.player.x, this.player.y)
+    // Clamp delta to 100ms to prevent massive accumulated damage from lag spikes
+    // or tab-switch resumption. A spike of 1000ms × 30 enemies = insta-death.
+    const dt = Math.min(delta, 100)
 
-    this.gameTime += delta
+    this._frameKills = 0
 
-    this.player.update(time, delta)
-    this.player.tryAutoAttack(this.enemies, time, delta)
+    this._caesar?.update(dt)
 
-    // XP/gold magnet pull — throttled to every other frame
-    this._magnetFrame = (this._magnetFrame + 1) % 2
+    this.chunkManager?.update(this.localPlayer.x, this.localPlayer.y)
+
+    // Online mode: network adapter handles remote players, enemies, input sending
+    if (this._networkAdapter) {
+      this._networkAdapter.update(time, dt)
+    }
+
+    this.gameTime += dt
+
+    for (const p of this.players) {
+      p.update(time, dt)
+      p.tryAutoAttack(this.enemies, time, dt)
+      if (p.heroType === 'nightborne') nightborneHero.updateNightbornePassives(p, dt, this.enemies)
+    }
+
+    // Local coop: move camera target to midpoint between alive players
+    if (this._cameraTarget && this.players.length > 1) {
+      let sx = 0, sy = 0, count = 0
+      for (const p of this.players) {
+        if (!p.isDead) { sx += p.x; sy += p.y; count++ }
+      }
+      if (count > 0) {
+        this._cameraTarget.x = sx / count
+        this._cameraTarget.y = sy / count
+      }
+    }
+
+    // Update nameplates (local coop)
+    if (this._nameplates.length > 0) {
+      for (let i = 0; i < this._nameplates.length && i < this.players.length; i++) {
+        const np = this._nameplates[i]
+        const p = this.players[i]
+        np.setPosition(p.x, p.y - 40)
+        np.setVisible(!p.isDead)
+      }
+    }
+
+    // XP/gold magnet pull — throttled to every 6 frames (velocity persists between recalcs)
+    this._magnetFrame = (this._magnetFrame + 1) % 6
     if (this._magnetFrame === 0) {
       this.xpSystem.updateMagnet()
       this.goldSystem.updateMagnet()
     }
 
     // Single merged enemy loop: update + HP bars
-    this.enemyHpBars.clear()
-    for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-      if (!enemy.active) continue
-      ;(enemy as Orc1 | Orc2 | Orc3 | FlyingEye | SandGolem).update(time, delta)
+    // HP bars are redrawn only when an enemy took damage (hpDirty) OR every 3 frames
+    // to keep bar positions in sync with moving enemies. This avoids 200+ draw calls
+    // per frame when no damage occurs.
+    this._hpBarFrame = (this._hpBarFrame + 1) % 3
+    this._hpBarsDirty = this._hpBarFrame === 0
 
-      const e = enemy as any
-      if (e.hp === undefined || e.maxHp === undefined || e.hp >= e.maxHp) continue
-      const barWidth = e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 24
-      const barHeight = e.maxHp > 100 ? 5 : 3
-      const barY = enemy.y - (e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 22)
-      const barX = enemy.x - barWidth / 2
-      this.enemyHpBars.fillStyle(0x333333)
-      this.enemyHpBars.fillRect(barX, barY, barWidth, barHeight)
-      const hpRatio = Math.max(0, e.hp / e.maxHp)
-      const color = hpRatio > 0.5 ? 0x00ff00 : hpRatio > 0.25 ? 0xffff00 : 0xff0000
-      this.enemyHpBars.fillStyle(color)
-      this.enemyHpBars.fillRect(barX, barY, barWidth * hpRatio, barHeight)
+    const enemies = this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+    for (const enemy of enemies) {
+      if (!enemy.active) continue
+      // Online enemies are plain sprites (no BaseEnemy.update) — adapter handles them
+      if (!this._online) {
+        ;(enemy as unknown as BaseEnemy).update(time, dt)
+
+        const e = enemy as any
+        if (e.hpDirty) {
+          this._hpBarsDirty = true
+        }
+      }
+    }
+
+    if (this._hpBarsDirty) {
+      this.enemyHpBars.clear()
+      for (const enemy of enemies) {
+        if (!enemy.active) continue
+        const e = enemy as any
+        if (e.isBoss) continue  // Boss HP bar is rendered by UIScene
+        if (e.hp === undefined || e.maxHp === undefined || e.hp >= e.maxHp) continue
+        const barWidth = e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 24
+        const barHeight = e.maxHp > 100 ? 5 : 3
+        const barY = enemy.y - (e.maxHp > 100 ? 40 : e.maxHp > 30 ? 30 : 22)
+        const barX = enemy.x - barWidth / 2
+        this.enemyHpBars.fillStyle(0x333333)
+        this.enemyHpBars.fillRect(barX, barY, barWidth, barHeight)
+        const hpRatio = Math.max(0, e.hp / e.maxHp)
+        const color = hpRatio > 0.5 ? 0x00ff00 : hpRatio > 0.25 ? 0xffff00 : 0xff0000
+        this.enemyHpBars.fillStyle(color)
+        this.enemyHpBars.fillRect(barX, barY, barWidth * hpRatio, barHeight)
+        if (e.hpDirty !== undefined) e.hpDirty = false
+      }
+      // Online mode: draw HP bars for network enemies and remote players
+      if (this._networkAdapter) {
+        this._networkAdapter.drawEnemyHpBars(this.enemyHpBars)
+        this._networkAdapter.drawRemotePlayerHpBars(this.enemyHpBars)
+      }
     }
   }
 
-  private isChestPositionClear(x: number, y: number, minDist = 80): boolean {
-    // Check other chests
-    for (const c of this.chests.getChildren() as Phaser.GameObjects.Sprite[]) {
-      if (Phaser.Math.Distance.Between(x, y, c.x, c.y) < minDist) return false
+
+  private _tryShowNextLevelUp() {
+    if (this._levelUpActive || this._pendingLevelUps.length === 0) return
+    const next = this._pendingLevelUps.shift()!
+    this._levelUpActive = true
+    this.scene.launch('LevelUpScene', {
+      player: next.player,
+      tracker: this.upgradeTracker,
+      callerSceneKey: this.scene.key,
+      onlineMode: true,
+      isBranchSelection: next.isBranch,
+      choices: next.choices,
+    })
+  }
+
+  applyHitStop(duration = 15) {
+    if (this._hitStopActive) return
+    this._hitStopActive = true
+    this.physics.world.timeScale = 20   // effectively pause physics
+    this.time.timeScale = 0.05          // slow scene time
+    this.time.delayedCall(duration, () => {
+      this._restoreTimeScale()
+      this._hitStopActive = false
+    })
+  }
+
+  /** Restore timeScale to normal (or cheat ×2 if active) */
+  _restoreTimeScale() {
+    if (this._cheatSpeedUp) {
+      this.time.timeScale = 2
+      this.physics.world.timeScale = 0.5
+    } else {
+      this.time.timeScale = 1
+      this.physics.world.timeScale = 1
     }
-    // Check rocks — wider zone since rocks can be scaled up to 1.8x
-    if (this._rockPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < 120)) return false
-    // Check trees — larger exclusion zone (trees are big sprites)
-    if (this.treePositions.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < 150)) return false
-    if (this._decoPlaced.some(p => Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDist)) return false
-    return true
   }
 
   shutdown() {
@@ -1150,37 +1875,35 @@ export class GameScene extends Phaser.Scene {
     this.events.off('player-died')
     this.events.off('claws-incoming')
     this.events.off('claws-spawn')
-  }
-
-  private spawnChests() {
-    const cx = 0, cy = 0
-    const MAX_ATTEMPTS = 30
-
-    // Common chests — scattered in mid-range
-    for (let i = 0; i < 10; i++) {
-      for (let a = 0; a < MAX_ATTEMPTS; a++) {
-        const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.5
-        const dist = Phaser.Math.Between(400, 1200)
-        const x = cx + Math.cos(angle) * dist
-        const y = cy + Math.sin(angle) * dist
-        if (!this.isChestPositionClear(x, y)) continue
-        const chest = new Chest(this, x, y, 'common', this.player)
-        this.chests.add(chest)
-        break
+    // Cancel Sifra tutorial tweens/timers (NPC, aura, proximity)
+    this._sifraAuraTween?.stop(); this._sifraAuraTween = null
+    this._sifraAuraTimer?.remove(); this._sifraAuraTimer = null
+    this._sifraProximityTimer?.remove(); this._sifraProximityTimer = null
+    this._sifraAuraGfx?.destroy(); this._sifraAuraGfx = null
+    this._sifraLabel?.destroy(); this._sifraLabel = null
+    this._sifraNpc = null
+    this._sifraFading = false
+    // Destroy any still-live intro reveal graphics (fog/claws/eyes/vignette)
+    // if the scene shuts down before their fade tweens complete.
+    for (const obj of this._revealObjects) {
+      if (obj && obj.active) {
+        this.tweens.killTweensOf(obj)
+        obj.destroy()
       }
     }
-    // Rare chests — further out
-    for (let i = 0; i < 3; i++) {
-      for (let a = 0; a < MAX_ATTEMPTS; a++) {
-        const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.3
-        const dist = Phaser.Math.Between(800, 1400)
-        const x = cx + Math.cos(angle) * dist
-        const y = cy + Math.sin(angle) * dist
-        if (!this.isChestPositionClear(x, y)) continue
-        const chest = new Chest(this, x, y, 'rare', this.player)
-        this.chests.add(chest)
-        break
-      }
+    this._revealObjects.length = 0
+    this._networkAdapter?.destroy()
+    this._networkAdapter = null
+    this.chunkManager?.destroy()
+    this.chunkManager = undefined
+    for (const p of this.players) {
+      p?.destroy()
     }
+    this.players = []
+    for (const np of this._nameplates) np?.destroy()
+    this._nameplates = []
+    this._cameraTarget?.destroy()
+    this._cameraTarget = null
   }
+
 }

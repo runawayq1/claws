@@ -1,9 +1,10 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { Player, type HeroType } from '../entities/Player'
-import { Orc2 } from '../entities/Skeleton'
-import { Orc1 } from '../entities/Zergling'
-import { FlyingEye } from '../entities/Scorpion'
-import { Orc3 } from '../entities/Skeleton2'
+import { Orc2 } from '../entities/Orc2'
+import { Orc1 } from '../entities/Orc1'
+import { FlyingEye } from '../entities/FlyingEye'
+import { Orc3 } from '../entities/Orc3'
 import { SandGolem } from '../entities/SandGolem'
 import { Orc0 } from '../entities/Grunt'
 
@@ -102,6 +103,16 @@ export class TestScene extends Phaser.Scene {
     // Boss demon slime (288x160 frames)
     this.load.spritesheet('boss_demon', 'assets/boss_demon/spritesheet.png', { frameWidth: 288, frameHeight: 160 })
 
+    // Vael — single combined sheet (160x128 per frame, 17 cols × 7 rows)
+    this.load.spritesheet('vael_sheet', 'assets/vael/sheet.png', { frameWidth: 160, frameHeight: 128 })
+
+    // Nightborne — separate per-animation sheets (240x240 frames)
+    this.load.spritesheet('nightborne_idle',   'assets/nightborne/idle.png',   { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_run',    'assets/nightborne/run.png',    { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_attack', 'assets/nightborne/attack.png', { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_hurt',   'assets/nightborne/hurt.png',   { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_death',  'assets/nightborne/death.png',  { frameWidth: 240, frameHeight: 240 })
+
     // Rock images
     this.load.image('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
     this.load.image('rock1_2', 'assets/rocks/Rock1_2_no_shadow.png')
@@ -114,6 +125,9 @@ export class TestScene extends Phaser.Scene {
     this.load.image('deco_tree1', 'assets/terrain/tree1.png')
     this.load.image('deco_tree2', 'assets/terrain/tree2.png')
     this.load.image('deco_tree3', 'assets/terrain/tree3.png')
+
+    // Amun thorns sword VFX
+    this.load.image('sword', 'assets/vfx/sword.png')
   }
 
   create() {
@@ -124,20 +138,16 @@ export class TestScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 30, 'HITBOX TEST', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '28px',
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 4,
     }).setOrigin(0.5, 0).setDepth(20)
 
     // Back button
     const backBtn = this.add.text(16, 16, '< BACK', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#888888',
-      stroke: '#000000',
-      strokeThickness: 3,
       backgroundColor: '#1a1a2e',
       padding: { x: 10, y: 6 },
     }).setOrigin(0, 0).setDepth(20).setInteractive({ useHandCursor: true })
@@ -148,13 +158,13 @@ export class TestScene extends Phaser.Scene {
 
     // Row labels
     this.add.text(20, 110, 'HEROES', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#aaffaa', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#aaffaa',
     }).setDepth(20)
     this.add.text(20, 310, 'ENEMIES', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#ffaaaa', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#ffaaaa',
     }).setDepth(20)
     this.add.text(20, 500, 'OBJECTS', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#aaaaff', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#aaaaff',
     }).setDepth(20)
 
     // Create animations
@@ -166,8 +176,8 @@ export class TestScene extends Phaser.Scene {
     // -----------------------------------------------------------------------
     // ROW 1: Heroes (y=150)
     // -----------------------------------------------------------------------
-    const heroTypes: HeroType[] = ['ignara', 'sifra', 'nazar', 'amun', 'huntress', 'khashin', 'muller']
-    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun', 'Lyra', 'Khashin', 'Givi']
+    const heroTypes: HeroType[] = ['ignara', 'sifra', 'nazar', 'amun', 'huntress', 'khashin', 'muller', 'vael', 'nightborne']
+    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun', 'Lyra', 'Khashin', 'Givi', 'Vael', 'Nightborne']
 
     const totalHeroes = heroTypes.length
     const heroSpacing = 150
@@ -191,9 +201,13 @@ export class TestScene extends Phaser.Scene {
       body.updateFromGameObject()
 
       const bw = body.width, bh = body.height
+      // Draw hitbox outline (green rect)
+      const hbX = body.x + bw / 2
+      const hbY = body.y + bh / 2
+      this.add.rectangle(hbX, hbY, bw, bh).setStrokeStyle(2, 0x00ff00, 0.9).setDepth(25)
       this.add.text(x, heroBottomY + 10, `${heroNames[i]}\n${Math.round(bw)}×${Math.round(bh)}`, {
-        fontFamily: 'monospace', fontSize: '11px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '11px', color: '#ffffff',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -258,8 +272,8 @@ export class TestScene extends Phaser.Scene {
 
       const bw = body.width, bh = body.height
       this.add.text(x, enemyBottomY + 10, `${def.name}\n${Math.round(bw)}×${Math.round(bh)}`, {
-        fontFamily: 'monospace', fontSize: '11px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '11px', color: '#ffffff',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -301,8 +315,8 @@ export class TestScene extends Phaser.Scene {
       }
 
       this.add.text(x, objBottomY + 8, key, {
-        fontFamily: 'monospace', fontSize: '10px', color: '#ccccff',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '10px', color: '#ccccff',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -310,7 +324,7 @@ export class TestScene extends Phaser.Scene {
     // ROW 4: Boss (y=700)
     // -----------------------------------------------------------------------
     this.add.text(20, 640, 'BOSS', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#ff4444', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px', color: '#ff4444',
     }).setDepth(20)
 
     // Create boss animations
@@ -340,8 +354,8 @@ export class TestScene extends Phaser.Scene {
       const sprite = this.add.sprite(x, bossRowY, 'boss_demon').setScale(2).setDepth(10)
       sprite.play(a.key)
       this.add.text(x, bossRowY + 80, bossLabels[i], {
-        fontFamily: 'monospace', fontSize: '11px', color: '#ff8888',
-        stroke: '#000000', strokeThickness: 2, align: 'center',
+        fontFamily: gameFont(), fontSize: '11px', color: '#ff8888',
+        align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
 
@@ -354,16 +368,26 @@ export class TestScene extends Phaser.Scene {
 
     // Boss Test button
     const bossBtn = this.add.text(width - 16, 16, 'BOSS TEST >', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#ff4444',
-      stroke: '#000000',
-      strokeThickness: 3,
       backgroundColor: '#1a1a2e',
       padding: { x: 10, y: 6 },
     }).setOrigin(1, 0).setDepth(20).setInteractive({ useHandCursor: true })
     bossBtn.on('pointerover', () => bossBtn.setColor('#FFD700'))
     bossBtn.on('pointerout', () => bossBtn.setColor('#ff4444'))
     bossBtn.on('pointerdown', () => this.scene.start('BossTestScene'))
+
+    // Swords Test button (right side, below boss button)
+    const swordsBtn = this.add.text(width - 16, 50, 'SWORDS TEST >', {
+      fontFamily: gameFont(),
+      fontSize: '14px',
+      color: '#ffaa44',
+      backgroundColor: '#1a1a2e',
+      padding: { x: 10, y: 6 },
+    }).setOrigin(1, 0).setDepth(20).setInteractive({ useHandCursor: true })
+    swordsBtn.on('pointerover', () => swordsBtn.setColor('#FFD700'))
+    swordsBtn.on('pointerout', () => swordsBtn.setColor('#ffaa44'))
+    swordsBtn.on('pointerdown', () => this.scene.start('SwordsTestScene'))
   }
 }

@@ -1,0 +1,17 @@
+---
+source_file: "src/scenes/GameScene.ts"
+type: "code"
+community: "Scene Navigation Hub"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Scene_Navigation_Hub
+---
+
+# loadHeroAssets (lazy per-hero loading)
+
+## Connections
+- [[GameScene_1]] - `calls` [EXTRACTED]
+- [[LoadingScene_1]] - `shares_data_with` [INFERRED]
+
+#graphify/code #graphify/EXTRACTED #community/Scene_Navigation_Hub

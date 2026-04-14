@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
+import type { GameSceneContext } from '../../types/scene-context'
 
 export function attackIceShard(p: Player, target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
   const baseAngle = Phaser.Math.Angle.Between(p.x, p.y, target.x, target.y)
@@ -35,9 +36,13 @@ export function attackIceShard(p: Player, target: Phaser.Physics.Arcade.Sprite, 
         p.scene.tweens.add({
           targets: novaShard, x: novaEndX, y: novaEndY, duration: 250,
           onUpdate: () => {
-            for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+            const novaHitR = hitRadius * 0.8
+            const children = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+            for (const e of children) {
               if (!e.active || novaHitSet.has(e)) continue
-              if (Phaser.Math.Distance.Between(novaShard.x, novaShard.y, e.x, e.y) <= hitRadius * 0.8) {
+              // AABB pre-filter
+              if (Math.abs(e.x - novaShard.x) > novaHitR || Math.abs(e.y - novaShard.y) > novaHitR) continue
+              if (Phaser.Math.Distance.Between(novaShard.x, novaShard.y, e.x, e.y) <= novaHitR) {
                 (e as BaseEnemy).takeDamage(p.damage * 0.5 * iceMasteryMult, 'ice')
                 if ((e as BaseEnemy).speed) (e as BaseEnemy).speed *= 0.6
                 novaHitSet.add(e)
@@ -94,8 +99,11 @@ export function attackIceShard(p: Player, target: Phaser.Physics.Arcade.Sprite, 
       targets: shard, x: endX, y: endY,
       duration: 300,
       onUpdate: () => {
-        for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+        const children = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+        for (const e of children) {
           if (!e.active || hitSet.has(e)) continue
+          // AABB pre-filter
+          if (Math.abs(e.x - shard.x) > hitRadius || Math.abs(e.y - shard.y) > hitRadius) continue
           if (Phaser.Math.Distance.Between(shard.x, shard.y, e.x, e.y) <= hitRadius) {
             // Permafrost: bonus dmg to slowed enemies
             const isSlowed = (e as BaseEnemy).speed && (e as BaseEnemy).baseSpeed && (e as BaseEnemy).speed < (e as BaseEnemy).baseSpeed * 0.9
@@ -466,23 +474,32 @@ export function updateSifraEnergy(p: Player, delta: number) {
   const regenAmt = p.energyRegenRate * (delta / 1000)
   if (p.stance === 'ice') {
     p.lightningEnergy = Math.min(p.maxEnergy, p.lightningEnergy + regenAmt)
+    // Frost Mastery 3: slow passive regen of active stance energy
+    if (p.getMasteryLevel('frost') >= 3) {
+      p.iceEnergy = Math.min(p.maxEnergy, p.iceEnergy + regenAmt * 0.15)
+    }
   } else {
     p.iceEnergy = Math.min(p.maxEnergy, p.iceEnergy + regenAmt)
+    // Lightning Mastery 3: slow passive regen of active stance energy
+    if (p.getMasteryLevel('lightning') >= 3) {
+      p.lightningEnergy = Math.min(p.maxEnergy, p.lightningEnergy + regenAmt * 0.15)
+    }
   }
 }
 
 export function updateSifraPassives(p: Player, delta: number) {
-  const scene = p.scene as any
-  const enemies = scene.enemies as Phaser.Physics.Arcade.Group | undefined
+  const scene = p.scene as GameSceneContext
+  const enemies = scene.enemies
 
   // Sifra Blizzard Aura — slow nearby enemies passively
   if (p.hasBlizzardAura) {
-    const baseRadius = 60 + p.splashRadius * 0.3
+    // Min radius is fixed (level-1 contracted size) so upgrades only widen the
+    // max swing — the aura never visually shrinks below where it started.
+    const minRadius = 60
+    const maxRadius = 120 + p.splashRadius * 0.6
     const t = p.scene.time.now / 1000
-
-    // Breathe: expands from baseRadius to 2× baseRadius and back (3s cycle)
     const breathe = (Math.sin(t * 2.1) + 1) / 2  // 0..1
-    const auraRadius = baseRadius + baseRadius * breathe
+    const auraRadius = minRadius + (maxRadius - minRadius) * breathe
 
     // Procedural frost aura — rotating ice particles + pulsing ring
     if (!p.blizzardAuraGfx) {
@@ -492,10 +509,10 @@ export function updateSifraPassives(p: Player, delta: number) {
     g.clear()
 
     // Outer pulsing ring — alpha fades as it expands
-    const ringAlpha = 0.25 - breathe * 0.12
-    g.lineStyle(2, 0x88ddff, ringAlpha)
+    const ringAlpha = 0.65 - breathe * 0.2
+    g.lineStyle(3, 0x88ddff, ringAlpha)
     g.strokeCircle(p.x, p.y, auraRadius)
-    g.lineStyle(1, 0xaaeeff, ringAlpha * 0.6)
+    g.lineStyle(2, 0xaaeeff, ringAlpha * 0.8)
     g.strokeCircle(p.x, p.y, auraRadius - 4)
 
     // Rotating ice particles (12 particles in 2 rings)
@@ -508,8 +525,8 @@ export function updateSifraPassives(p: Player, delta: number) {
       const angle = (idx / count) * Math.PI * 2 + t * speed
       const px = p.x + Math.cos(angle) * r
       const py = p.y + Math.sin(angle) * r
-      const sz = ring === 0 ? 3.5 : 2.5
-      const alpha = 0.4 + Math.sin(t * 4 + i) * 0.2
+      const sz = ring === 0 ? 4 : 3
+      const alpha = 0.85 + Math.sin(t * 4 + i) * 0.15
 
       // Diamond ice crystal shape
       g.fillStyle(0xccf0ff, alpha)
@@ -517,12 +534,12 @@ export function updateSifraPassives(p: Player, delta: number) {
       g.fillTriangle(px, py + sz, px - sz * 0.6, py, px + sz * 0.6, py)
 
       // Bright core dot
-      g.fillStyle(0xffffff, alpha * 0.7)
-      g.fillCircle(px, py, 1)
+      g.fillStyle(0xffffff, alpha)
+      g.fillCircle(px, py, 1.5)
     }
 
     // Inner frost glow — brighter when contracted
-    g.fillStyle(0x66bbff, 0.06 - breathe * 0.03)
+    g.fillStyle(0x66bbff, 0.22 - breathe * 0.08)
     g.fillCircle(p.x, p.y, auraRadius * 0.6)
 
     // Slow enemies in effective range (uses max expanded radius)
@@ -635,19 +652,21 @@ export function updateSifraPassives(p: Player, delta: number) {
       p.iceArmorHP = Math.min(p.iceArmorMax, p.iceArmorHP + p.iceArmorMax * 0.1 * (delta / 1000))
     }
     // Ice aura ring when shield is active
-    if (!(p as any)._iceArmorAura) {
-      (p as any)._iceArmorAura = p.scene.add.graphics().setDepth(3).setBlendMode(Phaser.BlendModes.ADD)
+    if (!p._iceArmorAura) {
+      p._iceArmorAura = p.scene.add.graphics().setDepth(3).setBlendMode(Phaser.BlendModes.ADD)
     }
-    const ag = (p as any)._iceArmorAura as Phaser.GameObjects.Graphics
+    const ag = p._iceArmorAura
     ag.clear()
     if (p.iceArmorHP > 0) {
       const ratio = p.iceArmorHP / p.iceArmorMax
       const t = p.scene.time.now / 1000
-      const pulse = 0.5 + Math.sin(t * 3) * 0.2
+      const pulse = 0.9 + Math.sin(t * 3) * 0.15
       const r = 30 + ratio * 10
-      ag.lineStyle(2, 0x88ddff, pulse * ratio)
+      ag.fillStyle(0x66bbff, 0.2 * ratio)
+      ag.fillCircle(p.x, p.y, r)
+      ag.lineStyle(3, 0x88ddff, pulse * ratio)
       ag.strokeCircle(p.x, p.y, r)
-      ag.lineStyle(1, 0xaaeeff, pulse * ratio * 0.4)
+      ag.lineStyle(2, 0xaaeeff, pulse * ratio * 0.85)
       ag.strokeCircle(p.x, p.y, r + 3)
     }
   }

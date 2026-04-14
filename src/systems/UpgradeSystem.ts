@@ -1,4 +1,5 @@
 import { Player, type HeroType } from '../entities/Player'
+import { MetaProgress } from './MetaProgress'
 
 export interface Upgrade {
   id: string
@@ -13,19 +14,19 @@ export interface Upgrade {
 }
 
 // ============================================================
-// GENERIC POOL (G1–G10) — available to all heroes, one-shot
+// GENERIC POOL (G1–G10) — available to all heroes, 3 levels each
 // ============================================================
 export const GENERIC_POOL: Upgrade[] = [
-  { id: 'g1',  label: 'Sharp Edge',   desc: ['+20% dmg to all attacks', '+10% dmg (total +32%)', '+10% dmg (total +45%)'],            icon: 'g1_sharp_edge',   apply: (p, lvl) => { if (lvl === 1) { p.damage = Math.ceil(p.damage * 1.2) } else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) } else { p.damage = Math.ceil(p.damage * 1.1) } } },
-  { id: 'g2',  label: 'Swift Feet',   desc: ['+15% move speed permanently', '+10% more speed', '+10% more speed'],                    icon: 'g2_swift_feet',   apply: (p, lvl) => { if (lvl === 1) { p.speed = Math.ceil(p.speed * 1.15) } else if (lvl === 2) { p.speed = Math.ceil(p.speed * 1.1) } else { p.speed = Math.ceil(p.speed * 1.1) } } },
-  { id: 'g3',  label: 'Eagle Eye',    desc: ['+20% attack range permanently', '+15% more range', '+15% more range'],                  icon: 'g3_eagle_eye',    apply: (p, lvl) => { if (lvl === 1) { p.range = Math.ceil(p.range * 1.2) } else if (lvl === 2) { p.range = Math.ceil(p.range * 1.15) } else { p.range = Math.ceil(p.range * 1.15) } } },
-  { id: 'g4',  label: 'Quick Hands',  desc: ['-20% attack cooldown (min 200ms)', '-10% more cooldown', '-10% more cooldown'],         icon: 'g4_quick_hands',  apply: (p, lvl) => { if (lvl === 1) { p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.8)) } else if (lvl === 2) { p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) } else { p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) } } },
-  { id: 'g5',  label: 'Vitality',     desc: ['+25% max HP, heal for the bonus', '+20% more max HP', '+20% more max HP'],              icon: 'g5_vitality',     apply: (p, lvl) => { if (lvl === 1) { const b = Math.ceil(p.maxHp * 0.25); p.maxHp += b; p.hp += b } else if (lvl === 2) { const b = Math.ceil(p.maxHp * 0.2); p.maxHp += b; p.hp += b } else { const b = Math.ceil(p.maxHp * 0.2); p.maxHp += b; p.hp += b } } },
-  { id: 'g6',  label: 'Regeneration', desc: ['+2 HP/s passive regen', '+2 HP/s more regen', '+3 HP/s more regen'],                   icon: 'g6_regeneration', apply: (p, lvl) => { if (lvl === 1) { p.hpRegen += 2 } else if (lvl === 2) { p.hpRegen += 2 } else { p.hpRegen += 3 } } },
-  { id: 'g7',  label: 'Cleave',       desc: ['AoE: attacks splash in 6m radius', 'Splash radius +3m', 'Splash radius +4m'],           icon: 'g7_cleave',       apply: (p, lvl) => { if (lvl === 1) { p.splashRadius = Math.max(p.splashRadius, 60) } else if (lvl === 2) { p.splashRadius += 30 } else { p.splashRadius += 40 } } },
-  { id: 'g8',  label: 'Wisdom',       desc: ['+25% XP from all sources', '+15% more XP', '+15% more XP'],                             icon: 'g8_wisdom',       apply: (p, lvl) => { if (lvl === 1) { p.xpMult += 0.25 } else if (lvl === 2) { p.xpMult += 0.15 } else { p.xpMult += 0.15 } } },
-  { id: 'g9',  label: 'Multistrike',  desc: ['+1 strike: attack hits one more time', '+1 more strike', '+1 more strike'],             icon: 'g9_multistrike',  apply: (p, _lvl) => { p.strikeCount += 1 } },
-  { id: 'g10', label: 'Iron Skin',    desc: ['+25% armor (reduces dmg taken)', '+15% more armor', '+15% more armor'],                 icon: 'g10_iron_skin',   apply: (p, lvl) => { if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.25) } else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.15) } else { p.armor = Math.min(0.7, p.armor + 0.15) } } },
+  { id: 'g1',  label: 'Sharp Edge',   desc: ['+12% dmg to all attacks', '+6% dmg (total ~19%)', '+6% dmg (total ~26%)'],              icon: 'g1_sharp_edge',   apply: (p, lvl) => { const m = [1.12, 1.06, 1.06][lvl - 1]; p.damage = Math.ceil(p.damage * m) } },
+  { id: 'g2',  label: 'Swift Feet',   desc: ['+9% move speed permanently', '+6% more speed', '+6% more speed'],                       icon: 'g2_swift_feet',   apply: (p, lvl) => { const m = [1.09, 1.06, 1.06][lvl - 1]; p.speed = Math.ceil(p.speed * m) } },
+  { id: 'g3',  label: 'Eagle Eye',    desc: ['+12% attack range permanently', '+9% more range', '+9% more range'],                    icon: 'g3_eagle_eye',    apply: (p, lvl) => { const m = [1.12, 1.09, 1.09][lvl - 1]; p.range = Math.ceil(p.range * m) } },
+  { id: 'g4',  label: 'Quick Hands',  desc: ['+12% attack speed (min 200ms)', '+6% attack speed', '+6% attack speed'],                icon: 'g4_quick_hands',  apply: (p, lvl) => { const m = [0.88, 0.94, 0.94][lvl - 1]; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * m)) } },
+  { id: 'g5',  label: 'Vitality',     desc: ['+15% max HP, heal for the bonus', '+12% more max HP', '+12% more max HP'],              icon: 'g5_vitality',     apply: (p, lvl) => { const pct = [0.15, 0.12, 0.12][lvl - 1]; const b = Math.ceil(p.maxHp * pct); p.maxHp += b; p.hp += b } },
+  { id: 'g6',  label: 'Regeneration', desc: ['+1 HP/s passive regen', '+1 HP/s more regen', '+2 HP/s more regen'],                    icon: 'g6_regeneration', apply: (p, lvl) => { p.hpRegen += [1, 1, 2][lvl - 1] } },
+  { id: 'g7',  label: 'Cleave',       desc: ['AoE: attacks splash in 4m radius', 'Splash radius +2m', 'Splash radius +2.5m'],         icon: 'g7_cleave',       apply: (p, lvl) => { if (lvl === 1) { p.splashRadius = Math.max(p.splashRadius, 40) } else { p.splashRadius += lvl === 2 ? 20 : 25 } } },
+  { id: 'g8',  label: 'Wisdom',       desc: ['+15% XP from all sources', '+9% more XP', '+9% more XP'],                               icon: 'g8_wisdom',       apply: (p, lvl) => { p.xpMult += [0.15, 0.09, 0.09][lvl - 1] } },
+  { id: 'g9',  label: 'Multistrike',  desc: ['+1 target for ranged, +1 strike for melee', '+5% dmg to all attacks', '+1 more target/strike'],             icon: 'g9_multistrike',  apply: (p, lvl) => { if (lvl === 1 || lvl === 3) { p.strikeCount += 1 } else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.05) } } },
+  { id: 'g10', label: 'Iron Skin',    desc: ['+10% armor (reduces dmg taken)', '+10% more armor', '+10% more armor'],                 icon: 'g10_iron_skin',   apply: (p, _lvl) => { p.armor = Math.min(0.7, p.armor + 0.10) } },
 ]
 
 // ============================================================
@@ -41,11 +42,11 @@ export interface BranchDef {
 const IGNARA_BRANCHES: BranchDef[] = [
   {
     name: 'Inferno', color: 0xff6600,
-    theme: 'Burn everything. Ask questions never.',
+    theme: 'The flame grows. The field burns. Nothing leaves the circle.',
     upgrades: [
       {
         id: 'if1', label: 'Wide Burn', icon: 'if1_wide_burn',
-        desc: ['Explosion radius +2m', 'Radius +2m more (total +4m)', 'Radius +3m more + applies Scorched Earth burn DOT'],
+        desc: ['Wider blast\nExplosion radius +2m', 'The fire spreads\n+2m radius (4m total)', 'Earth remembers\n+3m radius. Ground left burning (Scorched Earth DOT)'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.splashRadius += 20 }
           else if (lvl === 2) { p.splashRadius += 20 }
@@ -54,7 +55,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'if2', label: 'Inferno Reach', icon: 'if2_inferno_reach',
-        desc: ['Fireball range +3m', 'Range +2m more, +10% dmg', 'Range +2m more, +15% dmg'],
+        desc: ['Longer arc\nFireball range +3m', 'Hotter throw\n+2m range, +10% dmg', 'Sun-cast\n+2m range, +15% dmg'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.range += 30 }
           else if (lvl === 2) { p.range += 20; p.damage = Math.ceil(p.damage * 1.1) }
@@ -63,7 +64,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'if3', label: 'White Fire', icon: 'if3_white_fire',
-        desc: ['+30% fireball dmg', '+15% more dmg', '+15% dmg + gains Wildfire on-kill chain explosion'],
+        desc: ['Heat beyond flame\n+30% fireball dmg', 'Forge-white\n+15% dmg', 'Contagion of flame\n+15% dmg. Kills trigger Wildfire chain blast'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.damage = Math.ceil(p.damage * 1.3) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -71,96 +72,123 @@ const IGNARA_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'if5', label: 'Firestorm', icon: 'if5_firestorm', isUltimate: true,
-        desc: ['2 mini-fireballs: 50% dmg in 3.5m AoE, +15% dmg', '+1 more mini-fireball, +10% dmg', 'Mini-fireballs also drop Scorched Earth on impact'],
+        id: 'if4', label: 'Ashen Veil', icon: 'if4_scorched_earth',
+        desc: ['Shroud of cinders\nOn kill: -10% damage taken for 2s', 'Thickening ash\n-14% damage taken, up to 2 stacks', 'Cascade\n-18% damage taken, 2 stacks. Wildfire chain kills also stack'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasFirestorm = true; p.damage = Math.ceil(p.damage * 1.15) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.hasAshenVeil = true; p.ashenVeilDR = 0.10; p.ashenVeilMaxStacks = 1 }
+          else if (lvl === 2) { p.ashenVeilDR = 0.14; p.ashenVeilMaxStacks = 2 }
+          else { p.ashenVeilDR = 0.18 }
+        },
+      },
+      {
+        id: 'if5', label: 'Firestorm', icon: 'if5_firestorm', isUltimate: true,
+        desc: ['Twin suns orbit\n2 mini-fireballs strike nearby foes (50% dmg). +15% dmg', 'Third companion\n+1 orbiting fireball, +10% dmg', 'Consecrated ground\nMini-fireballs leave Scorched Earth on impact'],
+        apply: (p, lvl) => {
+          if (lvl === 1) { p.hasFirestorm = true; p.firestormOrbCount = 2; p.damage = Math.ceil(p.damage * 1.15) }
+          else if (lvl === 2) { p.firestormOrbCount = 3; p.damage = Math.ceil(p.damage * 1.1) }
           else { p.hasScorchedEarth = true }
         },
       },
     ],
   },
   {
-    name: 'Fortress', color: 0xff4444,
-    theme: 'Stand in the fire. Let the Swarm come to you.',
+    name: 'Wildfire', color: 0xff3300,
+    theme: 'Relentless. Burning. It never stops.',
     upgrades: [
       {
-        id: 'io1', label: 'Heat Shield', icon: 'io1_heat_shield',
-        desc: ['+15% armor (dmg reduction)', '+10% more armor', '+10% armor + Ember Veil aura (reflect 10% dmg)'],
+        id: 'bh1', label: 'Sustained Burn', icon: 'bh1_sustained_burn',
+        desc: ['Hits apply Burn (4%/tick, max 5)\n-10% CD', 'Max stacks → 7\n-10% CD', 'Fully stacked: +20% dmg taken\n-10% CD'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.15) }
-          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.1) }
-          else { p.armor = Math.min(0.7, p.armor + 0.1); p.hasMoltenSkin = true }
+          if (lvl === 1) { p.hasSustainedBurn = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
+          else if (lvl === 2) { p.burnMaxStacks = 7; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
+          else { p.burnStackedDmgBonus = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
         },
       },
       {
-        id: 'io2', label: 'Pyromaniac', icon: 'io2_pyromaniac',
-        desc: ['On kill: +2 HP, +1 HP/s regen', 'On kill: +3 HP instead, +1 HP/s regen', 'On kill: +4 HP, +2 HP/s more regen'],
+        id: 'bh2', label: 'Powder Keg', icon: 'bh2_powder_keg',
+        desc: ['Every 10 kills: next shot ×2 blast', 'Every 8 kills: ×2.5 blast', 'Every 6 kills: ×3 blast + 2 shrapnel'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasPyromaniac = true; p.hpRegen += 1 }
-          else if (lvl === 2) { p.hpRegen += 1 }
-          else { p.hpRegen += 2 }
+          if (lvl === 1) { p.hasPowderKeg = true; p.powderKegThreshold = 10 }
+          else if (lvl === 2) { p.powderKegThreshold = 8 }
+          else { p.powderKegThreshold = 6; p.powderKegShrapnel = true }
         },
       },
       {
-        id: 'io3', label: 'Molten Skin', icon: 'io3_molten_skin',
-        desc: ['When hit: AoE 30% dmg in 5m, +10% armor', 'AoE range +3m, +10% more armor', 'AoE range +3m + grants Phoenix Heart revive'],
+        id: 'bh3', label: 'Ember Volley', icon: 'bh3_ember_volley',
+        desc: ['-12% CD. On kill: -2% CD (max 20%)', '-12% CD. Cap → 30%', '-12% CD, +10% dmg. Burns nearby also reduce CD'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasMoltenSkin = true; p.armor = Math.min(0.7, p.armor + 0.1) }
-          else if (lvl === 2) { p.splashRadius += 30; p.armor = Math.min(0.7, p.armor + 0.1) }
-          else { p.splashRadius += 30; p.hasPhoenixHeart = true }
+          if (lvl === 1) { p.hasEmberVolley = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)) }
+          else if (lvl === 2) { p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)); p.emberVolleyCap = 0.3 }
+          else { p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)); p.damage = Math.ceil(p.damage * 1.1); p.emberVolleyDmg = true }
         },
       },
       {
-        id: 'io5', label: 'Phoenix Heart', icon: 'io5_phoenix_heart', isUltimate: true,
-        desc: ['Revive once at 50% HP, +30 max HP', '+30 more max HP, heal on revive to 70%', '+40 max HP, revive spawns fire burst'],
+        id: 'bh4', label: 'Flashpoint', icon: 'bh4_flashpoint',
+        desc: ['On kill: next shot instant', 'On kill: 2 instant shots', '2 instant shots + 10% dmg burst'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasPhoenixHeart = true; p.maxHp += 30; p.hp += 30 }
-          else if (lvl === 2) { p.maxHp += 30; p.hp += 30 }
-          else { p.maxHp += 40; p.hp += 40 }
+          if (lvl === 1) { p.hasFlashpoint = true; p.flashpointCharges = 1 }
+          else if (lvl === 2) { p.flashpointCharges = 2 }
+          else { p.flashpointBurst = true }
+        },
+      },
+      {
+        id: 'bh5', label: 'Infernal Cadence', icon: 'bh5_infernal_cadence', isUltimate: true,
+        desc: ['6s ×3 speed. Burns apply ×2. +15% dmg', '8s duration. Full-stack kills explode', '10s. Explosion radius ×1.5, +10% dmg'],
+        apply: (p, lvl) => {
+          if (lvl === 1) { p.hasInfernalCadence = true; p.infernalCadenceDuration = 6000; p.damage = Math.ceil(p.damage * 1.15) }
+          else if (lvl === 2) { p.infernalCadenceDuration = 8000 }
+          else { p.infernalCadenceDuration = 10000; p.damage = Math.ceil(p.damage * 1.1) }
         },
       },
     ],
   },
   {
-    name: 'Havoc', color: 0xffaa00,
-    theme: 'Chaos is a weapon. Learn to throw it.',
+    name: 'Pyre', color: 0xff8800,
+    theme: 'Get close. Hit hard. Walk away burning.',
     upgrades: [
       {
-        id: 'ih1', label: 'Backdraft', icon: 'ih1_backdraft',
-        desc: ['Fireball knockback 12→30m, +10% dmg', '+10% more dmg, knockback pulls enemies back in', '+10% dmg + adds Meltdown berserker threshold'],
+        id: 'ih1', label: 'Slug Round', icon: 'ih1_backdraft',
+        desc: ['Heavy shot\n×1.6 proj, 20px blast, +15% dmg', 'Bigger punch\n+15% dmg, blast → 30px', 'Piercing slug\n+15% dmg, pierces 1 enemy'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasBackdraft = true; p.damage = Math.ceil(p.damage * 1.1) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
-          else { p.damage = Math.ceil(p.damage * 1.1); p.hasMeltdown = true }
+          if (lvl === 1) { p.hasSlugRound = true; p.damage = Math.ceil(p.damage * 1.15) }
+          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
+          else { p.damage = Math.ceil(p.damage * 1.15); p.slugPierce = 1 }
         },
       },
       {
-        id: 'ih2', label: 'Eruption', icon: 'ih2_eruption',
-        desc: ['Explosion radius +4m', 'Radius +3m more, +5% dmg', 'Radius +3m more, +10% dmg'],
+        id: 'ih2', label: 'Thick Skin', icon: 'ih2_eruption',
+        desc: ['Stand your ground\n+5% armor, +0.3 regen', 'Tempered\n+5% armor, +0.3 regen', 'Furnace heart\n+0.5 regen, +15 HP'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.splashRadius += 40 }
-          else if (lvl === 2) { p.splashRadius += 30; p.damage = Math.ceil(p.damage * 1.05) }
-          else { p.splashRadius += 30; p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.05); p.hpRegen += 0.3 }
+          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.05); p.hpRegen += 0.3 }
+          else { p.hpRegen += 0.5; p.maxHp += 15; p.hp += 15 }
         },
       },
       {
-        id: 'ih3', label: 'Lava Trail', icon: 'ih3_lava_trail',
-        desc: ['Moving: drop fire pools, 20% dmg/tick, +10 speed', '+10 more speed, longer pool duration', '+10 speed + gains Wildfire on-kill chain explosion'],
+        id: 'ih3', label: 'Immolation', icon: 'ih3_lava_trail',
+        desc: ['Burn aura 70px, 12% dmg/s', 'Aura grows\n85px, 16% dmg/s', 'Consecrated pyre\n20% dmg/s. Kills drop Scorched Earth'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasLavaTrail = true; p.speed += 10 }
-          else if (lvl === 2) { p.speed += 10 }
-          else { p.speed += 10; p.hasWildfire = true }
+          if (lvl === 1) { p.hasImmolation = true; p.immolationRadius = 70; p.immolationDmgPct = 0.12 }
+          else if (lvl === 2) { p.immolationRadius = 85; p.immolationDmgPct = 0.16 }
+          else { p.immolationDmgPct = 0.25; p.hasScorchedEarth = true }
         },
       },
       {
-        id: 'ih5', label: 'Meltdown', icon: 'ih5_meltdown', isUltimate: true,
-        desc: ['Below 40% HP: ×1.5 dmg; +15% base dmg', 'Threshold rises to 50% HP, +10% dmg', 'Also below threshold: +20 speed and armor +10%'],
+        id: 'ih4', label: 'Molten Volley', icon: 'io4_ember_veil',
+        desc: ['3 slugs (40% dmg) in cone, burn 1s', '4 slugs, burn 2s. ×2 tick with aura', '5 slugs. 3+ hits = Scorch: -20% armor 4s'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasMeltdown = true; p.damage = Math.ceil(p.damage * 1.15) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
-          else { p.speed += 20; p.armor = Math.min(0.7, p.armor + 0.1) }
+          if (lvl === 1) { p.hasMoltenVolley = true; p.moltenVolleyCount = 3 }
+          else if (lvl === 2) { p.moltenVolleyCount = 4 }
+          else { p.moltenVolleyCount = 5; p.moltenVolleyScorch = true }
+        },
+      },
+      {
+        id: 'ih5', label: 'Scorched Bastion', icon: 'ih5_meltdown', isUltimate: true,
+        desc: ['+15 HP. Aura radius → 100px', '+10 HP. Aura dmg ×1.3', '+10 HP. Aura lifesteal 2%'],
+        apply: (p, lvl) => {
+          if (lvl === 1) { p.hasScorchedBastion = true; p.maxHp += 15; p.hp += 15; p.immolationRadius = 100 }
+          else if (lvl === 2) { p.maxHp += 10; p.hp += 10; p.immolationDmgPct *= 1.3 }
+          else { p.maxHp += 10; p.hp += 10; p.scorchedBastionLifesteal = 0.02 }
         },
       },
     ],
@@ -192,7 +220,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'nb3', label: 'Blade Surge', icon: 'nb3_chain_dash',
-        desc: ['Lunge 1.5× range, hit 70% dmg line, +5 dmg', '+8 dmg, lunge hits twice', '+8 dmg + Assassinate: 2× dmg vs lone enemy'],
+        desc: ['Lunge 1.5× range, hit 70% dmg line, +5 dmg', '+8 dmg, lunge hits twice', '+8 dmg + Assassinate: 2× dmg if alone, 1.5× vs few'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasChainDash = true; p.damage += 5 }
           else if (lvl === 2) { p.damage += 8 }
@@ -201,7 +229,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'nb5', label: 'Assassinate', icon: 'nb5_assassinate', isUltimate: true,
-        desc: ['2× dmg when only 1 enemy in melee range, +15% dmg', '+10% more dmg, execute targets below 10% HP', '+15% dmg, execute range doubled'],
+        desc: ['1.5× dmg vs lone/few enemies (2× if truly alone), +15% dmg', '+10% more dmg, execute targets below 10% HP', '+15% dmg, execute range doubled'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasAssassinate = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1); p.hasBloodScent = true }
@@ -304,7 +332,7 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'sf1', label: 'Deep Freeze', icon: 'sf1_deep_freeze',
-        desc: ['Shards slow enemies +30%, +10% dmg', '+10% dmg, frozen enemies shatter for +20% bonus dmg', '+10% dmg, shatter AoE in 3m radius'],
+        desc: ['+30% enemy slow, +10% dmg', '+10% dmg, frozen enemies shatter for +20% bonus dmg', '+10% dmg, shatter AoE in 3m radius'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasDeepFreeze = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -313,7 +341,7 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'sc2', label: 'Ice Armor', icon: 'sc2_ice_armor',
-        desc: ['Absorb shield (30+15% maxHP), regens after 3s', 'Shield strength +10% maxHP, regen timer -1s', '+15% maxHP shield + Blizzard Aura activates when shield is up'],
+        desc: ['Absorb shield (30+15% maxHP), regens after 5s', 'Shield strength +10% maxHP, regen timer -1s', '+15% maxHP shield + Blizzard Aura activates when shield is up'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasIceArmor = true; p.iceArmorMax = 30 + p.maxHp * 0.15; p.iceArmorHP = p.iceArmorMax }
           else if (lvl === 2) { p.iceArmorMax += p.maxHp * 0.1; p.iceArmorHP = p.iceArmorMax }
@@ -440,26 +468,27 @@ const AMUN_BRANCHES: BranchDef[] = [
     theme: 'A thousand years of patience, ended.',
     upgrades: [
       {
-        id: 'aw1', label: 'Thorns', icon: 'aq1_titans_pulse',
-        desc: ['When hit: reflect 50% dmg to enemies in 6m, +5% armor', 'Reflect radius +2m, +5% armor', '+5% armor + Wrath AoE burst on hit'],
+        id: 'aw1', label: 'Thorns', icon: 'aw1_thorns',
+        desc: ['4 orbiting swords slash nearby foes', '+2 swords, +5% sword dmg', '+2 swords, +10% sword dmg'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasThorns = true; p.armor = Math.min(0.7, p.armor + 0.05) }
-          else if (lvl === 2) { p.splashRadius += 20; p.armor = Math.min(0.7, p.armor + 0.05) }
-          else { p.armor = Math.min(0.7, p.armor + 0.05); p.hasWrath = true }
+          p.hasThorns = true
+          p.thornsLevel = lvl
+          if (lvl === 2) p.thornsDmgBonus += 0.05
+          else if (lvl === 3) p.thornsDmgBonus += 0.10
         },
       },
       {
-        id: 'aw2', label: 'Wrath', icon: 'aq2_earthquake',
-        desc: ['When hit: AoE burst 60% dmg in 7m, +10% dmg', '+10% dmg, AoE radius +2m', '+10% dmg + Living Fortress: aura scales with HP%'],
+        id: 'aw2', label: 'Wrath', icon: 'aw2_wrath',
+        desc: ['When hit: AoE burst 60% dmg in 10m, +5% dmg', '+10% dmg, AoE radius +2m', '+10% dmg + Living Fortress: aura scales with HP%'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.05) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1); p.splashRadius += 20 }
           else { p.damage = Math.ceil(p.damage * 1.1); p.hasLivingFortress = true }
         },
       },
       {
-        id: 'aw3', label: 'Consecration', icon: 'aq3_colossus',
-        desc: ['Aura: pulse 40% dmg in 7m every 1.5s, +25 splash, +3 dmg', '+4 dmg, pulse rate increases to 1.2s', '+5 dmg, splash +20 + gains +30 max HP'],
+        id: 'aw3', label: 'Consecration', icon: 'aw3_consecration',
+        desc: ['Aura: pulse 40% dmg in 12m every 1.5s, +25 splash, +3 dmg', '+4 dmg, pulse rate increases to 1.2s', '+5 dmg, splash +20 + gains +30 max HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.splashRadius += 25; p.damage += 3; p.dmgAuraActive = true }
           else if (lvl === 2) { p.damage += 4 }
@@ -467,11 +496,11 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aw5', label: 'Divine Judgment', icon: 'aq5_cataclysm', isUltimate: true,
-        desc: ['Auto-execute enemies below 15% HP in range, +15% dmg', '+10% dmg, execute range doubled', '+15% dmg, execute threshold rises to 20% HP'],
+        id: 'aw5', label: 'Divine Judgment', icon: 'aw5_divine_judgment', isUltimate: true,
+        desc: ['Auto-execute enemies below 15% HP in 12m range, +10% dmg', '+5% dmg, execute range doubled', '+15% dmg, execute threshold rises to 20% HP'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.15) }
-          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
+          if (lvl === 1) { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.1) }
+          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.05) }
           else { p.damage = Math.ceil(p.damage * 1.15) }
         },
       },
@@ -483,18 +512,20 @@ const AMUN_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'ab1', label: 'Fortify', icon: 'ab1_fortify',
-        desc: ['+15% armor, activates defense aura visual', '+10% more armor', '+10% armor, Iron Will: cap incoming hit at 10% maxHP'],
+        desc: ['+15% armor (cap 60%)\nreduce dmg taken and activate defense aura', '+15% more armor\nstacks with previous, stronger aura', '+10% armor\nIron Will: cap incoming hit at 10% maxHP'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.armor = Math.min(0.7, p.armor + 0.15); p.defenseAuraActive = true }
-          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.1) }
-          else { p.armor = Math.min(0.7, p.armor + 0.1); p.hasIronWill = true }
+          if (lvl === 1) { p.armor = Math.min(0.6, p.armor + 0.15); p.defenseAuraActive = true }
+          else if (lvl === 2) { p.armor = Math.min(0.6, p.armor + 0.1) }
+          else { p.armor = Math.min(0.6, p.armor + 0.1); p.hasIronWill = true }
         },
       },
       {
-        id: 'ab2', label: 'Aura of Might', icon: 'ab2_thorns',
-        desc: ['Aura: 3 DPS to all enemies in 6m, +3 dmg', '+3 dmg, aura radius +2m, 4 DPS', '+4 dmg, aura DPS doubles + low HP regen ×3 below 40%'],
+        id: 'ab2', label: 'Aura of Might', icon: 'ab2_aura_of_might',
+        desc: ['Orbiting shield deflects arrows, +3 dmg', '+3 dmg, +1 shield (2 total)', '+4 dmg, +2 shields (3 total) + low HP regen ×3'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasPassiveAura = true; p.damage += 3 }
+          p.hasPassiveAura = true
+          p.passiveAuraLevel = lvl
+          if (lvl === 1) { p.damage += 3 }
           else if (lvl === 2) { p.damage += 3; p.splashRadius += 20 }
           else { p.damage += 4; p.hasLowHpRegen = true }
         },
@@ -503,18 +534,18 @@ const AMUN_BRANCHES: BranchDef[] = [
         id: 'ab3', label: 'Iron Will', icon: 'ab3_iron_will',
         desc: ['Any single hit capped at 10% max HP, +10% armor', '+10% more armor, regen +2 HP/s', '+10% armor, +2 HP/s + Undying revive at full HP'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasIronWill = true; p.armor = Math.min(0.7, p.armor + 0.1) }
-          else if (lvl === 2) { p.armor = Math.min(0.7, p.armor + 0.1); p.hpRegen += 2 }
-          else { p.armor = Math.min(0.7, p.armor + 0.1); p.hpRegen += 2; p.hasUndying = true }
+          if (lvl === 1) { p.hasIronWill = true; p.armor = Math.min(0.6, p.armor + 0.1) }
+          else if (lvl === 2) { p.armor = Math.min(0.6, p.armor + 0.1); p.hpRegen += 2 }
+          else { p.armor = Math.min(0.6, p.armor + 0.1); p.hpRegen += 2; p.rebirthStacks = Math.max(p.rebirthStacks, 1) }
         },
       },
       {
         id: 'ab5', label: 'Undying', icon: 'ab5_undying', isUltimate: true,
-        desc: ['Revive once at full HP + 10m shockwave, +30 max HP', '+30 max HP, revive shockwave is 15m', '+40 max HP, revive triggers a 2s invuln window'],
+        desc: ['1 rebirth at full HP + shockwave, +30 max HP', '+30 max HP, shockwave 15m', '+40 max HP, 2 rebirths'],
         apply: (p, lvl) => {
-          if (lvl === 1) { p.hasUndying = true; p.maxHp += 30; p.hp += 30 }
+          if (lvl === 1) { p.rebirthStacks = Math.max(p.rebirthStacks, 1); p.maxHp += 30; p.hp += 30 }
           else if (lvl === 2) { p.maxHp += 30; p.hp += 30 }
-          else { p.maxHp += 40; p.hp += 40 }
+          else { p.rebirthStacks = 2; p.maxHp += 40; p.hp += 40 }
         },
       },
     ],
@@ -524,7 +555,7 @@ const AMUN_BRANCHES: BranchDef[] = [
     theme: 'The Amunat wastes remember every earthquake. Make more.',
     upgrades: [
       {
-        id: 'aq1', label: "Titan's Pulse", icon: 'as1_living_fortress',
+        id: 'aq1', label: "Titan's Pulse", icon: 'aq1_titans_pulse',
         desc: ["Unlock stance toggle (Q): melee / quake. Boulder 30m, +5 dmg", '+5 dmg, shockwave boulder splits into 2', '+5 dmg, boulder AoE splash +20'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasQuakeStance = true; p.hasTitansPulse = true; p.damage += 5; p.splashRadius += 15 }
@@ -533,7 +564,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aq2', label: 'Earthquake', icon: 'as2_consecration',
+        id: 'aq2', label: 'Earthquake', icon: 'aq2_earthquake',
         desc: ['Shockwave hit: stun enemies 0.8s, +10% dmg', '+10% dmg, stun duration 1.2s', '+10% dmg + Gravity Well: pull enemies every 2s'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasEarthquake = true; p.damage = Math.ceil(p.damage * 1.1) }
@@ -542,7 +573,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aq3', label: 'Colossus', icon: 'as3_wrath',
+        id: 'aq3', label: 'Colossus', icon: 'aq3_colossus',
         desc: ['Shockwave knockback 50m (vs 20m), +5 dmg', '+5 dmg, knockback pulls enemies in after rebound', '+5 dmg + Gravity Well: pull every 2s in 12m range'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasColossus = true; p.damage += 5 }
@@ -551,7 +582,7 @@ const AMUN_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'aq5', label: 'Cataclysm', icon: 'as5_divine_judgment', isUltimate: true,
+        id: 'aq5', label: 'Cataclysm', icon: 'aq5_cataclysm', isUltimate: true,
         desc: ['2nd shockwave 60% dmg at 350ms delay, +15% dmg', '+10% dmg, 3rd shockwave 40% dmg at 700ms', '+15% dmg, all shockwaves 15% wider AoE'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCataclysm = true; p.damage = Math.ceil(p.damage * 1.15) }
@@ -578,7 +609,7 @@ const KHASHIN_GALE_BRANCH: BranchDef = {
     },
     {
       id: 'kw2', label: 'Gust Strike', icon: 'kw2_gust_strike',
-      desc: ['Wind slash knocks back enemies 15m', 'Knockback pushes 25m, hit targets take +15% dmg', '+15% dmg + Cyclone Surge: Dust Devils +50% bigger'],
+      desc: ['Wind slash knocks back enemies 15m', 'Knockback stays at 15m, hit targets take +15% dmg', '+15% dmg + Cyclone Surge: Dust Devils +50% bigger'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasGustStrike = true }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -655,7 +686,7 @@ const KHASHIN_MIRAGE_BRANCH: BranchDef = {
   upgrades: [
     {
       id: 'km1', label: 'Tailwind', icon: 'km1_tailwind',
-      desc: ['+20 speed, -10% attack CD', '+15 speed, -10% more attack CD', '+15 speed, -10% CD + Drift: leave slow trails while moving'],
+      desc: ['+20 speed, +10% attack speed', '+15 speed, +10% attack speed', '+15 speed, +10% attack speed + Drift: leave slow trails while moving'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.speed += 20; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) }
         else if (lvl === 2) { p.speed += 15; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * 0.9)) }
@@ -843,7 +874,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hp2', label: 'Marked Target', icon: 'g3_eagle_eye',
-        desc: ['Hit marks enemy 5s; marked take +30% dmg, +3 dmg', '+3 dmg, mark lasts 8s, +40% dmg vs marked', '+4 dmg, marks spread to adjacent enemies on kill'],
+        desc: ['Hit marks enemy 5s; marked take +25% dmg, +3 dmg', '+3 dmg, mark lasts 8s, +25% dmg vs marked', '+4 dmg, marks spread to adjacent enemies on kill'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasMarkedTarget = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 3 }
@@ -852,7 +883,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hp3', label: 'Battle Frenzy', icon: 'g4_quick_hands',
-        desc: ['On kill: -10% attack CD for 5s, +3 dmg', '+3 dmg, frenzy duration 8s', '+4 dmg + Headhunter: auto-execute enemies below 15% HP'],
+        desc: ['On kill: +10% attack speed for 5s, +3 dmg', '+3 dmg, frenzy duration 8s', '+4 dmg + Headhunter: auto-execute enemies below 15% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasBattleFrenzy = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 3 }
@@ -956,6 +987,450 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
   },
 ]
 
+// ============================================================
+// VAEL — Pale Doctor
+// ============================================================
+const VAEL_BRANCHES: BranchDef[] = [
+  {
+    name: 'Pale Harvest', color: 0xaaddff,
+    theme: 'Soul drain, lifesteal, regeneration through killing. Every death feeds you.',
+    upgrades: [
+      {
+        id: 'ph1', label: 'Hollow Touch', icon: 'ph1_hollow_touch',
+        desc: [
+          'A sliver returned\nHeal for 8% of Soul Bolt damage dealt',
+          'Hungry technique\nHeal for 14% of Soul Bolt damage dealt',
+          'The body is just a vessel\nHeal for 20% of Soul Bolt damage dealt. Overkill damage converts at half rate',
+        ],
+        apply: (p, lvl) => {
+          p.hasHollowTouch = true
+          p.hollowTouchRate = [0.08, 0.14, 0.20][lvl - 1]
+        },
+      },
+      {
+        id: 'ph2', label: 'Soul Siphon', icon: 'ph2_soul_siphon',
+        desc: [
+          'Bones of the fallen\n10% kill → soul drops. +1 armor per soul (max 8)',
+          'Scavenger\n20% drop, max 14 soul stacks',
+          'Reaper\n30% drop, max 25 soul stacks',
+        ],
+        apply: (p, lvl) => {
+          p.hasSoulSiphon = true
+          p.soulSiphonDropChance = [0.10, 0.20, 0.30][lvl - 1]
+          p.soulSiphonMaxStacks = [8, 14, 25][lvl - 1]
+        },
+      },
+      {
+        id: 'ph3', label: 'Wound Memory', icon: 'ph3_wound_memory',
+        desc: [
+          'The body remembers\nRooted enemies take +20% damage from all sources. Root duration: 0.7s',
+          'Carved into bone\n+30% damage taken while rooted. Root duration: 0.9s',
+          'It will not forget\n+40% damage taken while rooted. Root duration: 1.1s. Re-rooting resets the debuff',
+        ],
+        apply: (p, lvl) => {
+          p.hasWoundMemory = true
+          p.woundMemoryBonus = [0.20, 0.30, 0.40][lvl - 1]
+          p.woundMemoryRootDur = [700, 900, 1100][lvl - 1]
+        },
+      },
+      {
+        id: 'ph4', label: 'Exsanguination', icon: 'ph4_exsanguination',
+        desc: [
+          'Chain the harvest\nSoul Bolt chains to 2 nearby enemies at 60% damage. Each chain hit heals at the standard rate',
+          'The chain grows hungry\nChains to 3 enemies at 65% damage. Chain range +30px',
+          'No waste. Only transfer.\nChains to 3 enemies at 70% damage. 0.5s after the chain completes, a second arc fires from the last target',
+        ],
+        apply: (p, lvl) => {
+          p.hasExsanguination = true
+          p.exsangChainCount = lvl >= 2 ? 3 : 2
+          p.exsangDmgPct = [0.60, 0.65, 0.70][lvl - 1]
+          p.exsangRangeBonus = lvl >= 2 ? 30 : 0
+          p.exsangDoubleArc = lvl >= 3
+        },
+      },
+      {
+        id: 'ph5', label: 'Sanguine Ascendancy', icon: 'ph5_sanguine_ascendancy', isUltimate: true,
+        desc: [
+          'The pale tide rises\nActivate: for 6s, kills restore 12% of max HP. Soul Bolt heal rate doubled during window',
+          'Convergence of the dead\nWindow extends to 9s. Kills restore 18% max HP. Soul orbs spawned during window arc instantly',
+          'I am the end of the cycle\nWindow: 12s. Kills restore 22% max HP. If Vael is below 30% HP when activated, the window also grants 40% damage reduction',
+        ],
+        apply: (p, lvl) => {
+          p.hasSanguineAscendancy = true
+          p.sanguineWindowDuration = [6000, 9000, 12000][lvl - 1]
+          p.sanguineHealPct = [0.12, 0.18, 0.22][lvl - 1]
+          p.sanguineInstantOrbs = lvl >= 2
+          p.sanguineLowHpDR = lvl >= 3
+        },
+      },
+    ],
+  },
+  {
+    name: 'Ossuary', color: 0xccbb88,
+    theme: 'Raise the fallen as temporary undead servants. The battlefield becomes your army.',
+    upgrades: [
+      {
+        id: 'os1', label: 'Risen', icon: 'os1_risen',
+        desc: [
+          "Death is just a reassignment\n25% chance on Soul Bolt kill: spawn a Bone Thrall (lasts 4s, 30% of Vael's damage/hit)",
+          "The ranks grow\n35% proc chance. Thralls last 6s and deal 35% of Vael's damage/hit",
+          "No rest for the useful\n45% proc chance. Thralls last 8s and deal 40% of Vael's damage/hit. Max 3 Thralls active at once",
+        ],
+        apply: (p, lvl) => {
+          p.hasRisen = true
+          p.risenProcChance = [0.25, 0.35, 0.45][lvl - 1]
+          p.risenDuration = [4000, 6000, 8000][lvl - 1]
+          p.risenDmgPct = [0.30, 0.35, 0.40][lvl - 1]
+          p.risenMaxThralls = lvl >= 3 ? 3 : 999
+        },
+      },
+      {
+        id: 'os2', label: 'Grave Pact', icon: 'os2_grave_pact',
+        desc: [
+          "A deal well struck\nThralls gain +20% HP and deal 50% of Vael's damage/hit (overrides Risen base)",
+          "Binding contract\nThralls gain +40% HP. On death, each Thrall releases a 40px bone-shrapnel burst dealing 60% of Vael's damage",
+          "Until the last\nThralls gain +60% HP. Shrapnel burst radius +20px. Shrapnel applies the Soul Bolt root (0.4s)",
+        ],
+        apply: (p, lvl) => {
+          p.hasGravePact = true
+          p.gravePactHPBonus = [0.20, 0.40, 0.60][lvl - 1]
+          p.risenDmgPct = 0.50
+          p.gravePactDeathBurst = lvl >= 2
+          p.gravePactBurstDmgPct = 0.60
+          p.gravePactBurstRadiusBonus = lvl >= 3 ? 20 : 0
+          p.gravePactDeathRoot = lvl >= 3
+        },
+      },
+      {
+        id: 'os3', label: 'Undying Labor', icon: 'os3_undying_labor',
+        desc: [
+          '+5% attack speed per active Bone Thrall (stacks, max 3 Thralls = +15%)',
+          'Efficient delegation\n+7% attack speed per active Thrall (max +21%). Thrall lifespan +2s',
+          'Full employment\n+9% attack speed per active Thrall (max +27%). Thralls also grant +3% damage each while active',
+        ],
+        apply: (p, lvl) => {
+          p.hasUndyingLabor = true
+          p.undyingLaborAtkSpeedPct = [0.05, 0.07, 0.09][lvl - 1]
+          if (lvl >= 2) p.risenDuration += 2000
+          p.undyingLaborDmgBonus = lvl >= 3 ? 0.03 : 0
+        },
+      },
+      {
+        id: 'os4', label: 'Charnel Tide', icon: 'os4_charnel_tide',
+        desc: [
+          'You brought so many\nActivate: all corpses within 250px rise as Bone Thralls (up to 5). Duration 8s. CD: 20s',
+          'The tide crests\nRadius 300px, up to 6 Thralls, duration 10s. CD: 18s',
+          "I was running low\nRadius 300px, up to 6 Thralls, duration 10s. Surviving Thralls explode on timeout (80% Vael's damage, 60px radius each). CD: 16s",
+        ],
+        apply: (p, lvl) => {
+          p.hasCharnelTide = true
+          p.charnelTideRadius = lvl >= 2 ? 300 : 250
+          p.charnelTideMax = lvl >= 2 ? 6 : 5
+          p.charnelTideDuration = lvl >= 2 ? 10000 : 8000
+          p.charnelTideCooldown = [20000, 18000, 16000][lvl - 1]
+          p.charnelTideExplode = lvl >= 3
+        },
+      },
+      {
+        id: 'os5', label: 'Lich Dominion', icon: 'os5_lich_dominion', isUltimate: true,
+        desc: [
+          "A general, not a soldier\nSummon 1 Revenant (150% Vael's HP, 80% dmg/hit). It persists until destroyed then reforms in 20s",
+          "Authority over the grave\nRevenant gains +40% HP and aura: nearby Bone Thralls deal +20% damage. Reform cooldown: 15s",
+          "The Pale Court\nRevenant aura now also reduces enemy move speed by 15% within 120px. On Revenant death: all nearby corpses instantly rise (Charnel Tide effect, no CD consumed). Reform: 12s",
+        ],
+        apply: (p, lvl) => {
+          p.hasLichDominion = true
+          p.revenantHPBonus = [0, 0.40, 0.40][lvl - 1]
+          p.revenantDmgPct = 0.80
+          p.revenantSlowAura = lvl >= 3
+          p.lichRevenantCharnelOnDeath = lvl >= 3
+        },
+      },
+    ],
+  },
+  {
+    name: 'Wasting Plague', color: 0x88cc55,
+    theme: 'AoE disease, debuffs, spreading contagion. Attrition warfare through rot.',
+    upgrades: [
+      {
+        id: 'wp1', label: 'Festering Wound', icon: 'wp1_festering_wound',
+        desc: [
+          "It doesn't hurt at first\nSoul Bolt applies 1 Rot stack. Enemies with 3+ stacks take +15% damage from all sources",
+          'Deeper in\nSoul Bolt applies 1 Rot stack. 3+ stacks: +20% damage taken. Rot stacks decay 1 per 3s (slower decay)',
+          'Past the point of return\nSoul Bolt applies 2 Rot stacks. 3+ stacks: +25% damage taken. 6+ stacks: also slow enemy movement 15%',
+        ],
+        apply: (p, lvl) => {
+          p.hasFesteringWound = true
+          p.festeringWoundStacks = lvl >= 3 ? 2 : 1
+          p.festeringWoundDmgBonus = [0.15, 0.20, 0.25][lvl - 1]
+          p.rotSlowDecay = lvl >= 2
+          p.rotSlow = lvl >= 3
+        },
+      },
+      {
+        id: 'wp2', label: 'Virulent Spread', icon: 'wp2_virulent_spread',
+        desc: [
+          'One carrier is all you need\nOn kill: all Rot stacks transfer to enemies within 80px. Each transferred stack deals 10% of Vael\'s damage as a burst',
+          'Epidemic logic\nTransfer radius: 110px. Burst damage per stack: 15% of Vael\'s damage',
+          'The math is inevitable\nTransfer radius: 140px. Burst: 15% per stack. Enemies receiving 4+ stacks from a single transfer are briefly stunned (0.5s)',
+        ],
+        apply: (p, lvl) => {
+          p.hasVirulentSpread = true
+          p.virulentSpreadRadius = [80, 110, 140][lvl - 1]
+          p.virulentDmgPerStack = [0.10, 0.15, 0.15][lvl - 1]
+          p.virulentStunAt = lvl >= 3 ? 4 : 999
+        },
+      },
+      {
+        id: 'wp3', label: 'Necrotic Bloom', icon: 'wp3_necrotic_bloom',
+        desc: [
+          "Even the ground remembers\nEnemies dying with 5+ Rot stacks leave a Blight Pool (100px radius, 12% Vael's dmg/s, lasts 5s)",
+          "Spreading wound\nBlight threshold reduced to 4 stacks. Pools last 7s and deal 16% dmg/s",
+          "The ground is mine\nThreshold: 3 stacks. Pools last 8s, 20% dmg/s. Enemies standing in a Pool gain 1 Rot stack/s",
+        ],
+        apply: (p, lvl) => {
+          p.hasNecroticBloom = true
+          p.necroticBloomThreshold = [5, 4, 3][lvl - 1]
+          p.necroticBloomDuration = [5000, 7000, 8000][lvl - 1]
+          p.necroticBloomDmgPct = [0.12, 0.16, 0.20][lvl - 1]
+          p.necroticBloomAddRot = lvl >= 3
+        },
+      },
+      {
+        id: 'wp4', label: 'Pandemic', icon: 'wp4_pandemic',
+        desc: [
+          'The Rift does not discriminate\nActivate: 200px miasma ring — all enemies gain 5 Rot stacks instantly. CD: 18s',
+          'Second breath\nRing radius: 240px. Cloud pulses a second time 2s after cast (adds 3 more stacks). CD: 16s',
+          'Neither do I\nRadius 280px. Two pulses (+3 stacks each). Enemies that die while inside the cloud zone spread Blight Pools at double radius. CD: 14s',
+        ],
+        apply: (p, lvl) => {
+          p.hasVaelPandemic = true
+          p.pandemicRadius = [200, 240, 280][lvl - 1]
+          p.pandemicCooldown = [18000, 16000, 14000][lvl - 1]
+          p.pandemicDoublePulse = lvl >= 2
+          p.pandemicDoubleRadiusBlight = lvl >= 3
+        },
+      },
+      {
+        id: 'wp5', label: 'Carrion Crown', icon: 'wp5_carrion_crown', isUltimate: true,
+        desc: [
+          'The source of all rot\nPassive aura (150px): enemies inside gain 1 Rot stack every 2s. Stacks accumulate alongside Soul Bolt stacks',
+          'The crown spreads\nAura radius: 200px. Rot application: 1 stack every 1.5s. Enemies that exit the aura retain stacks',
+          'Nothing leaves clean\nAura: 240px, 1 stack/s. Enemies in the aura also deal 10% less damage (weakened by rot). On Vael kill: aura pulses once at 400px, applying 3 stacks to all enemies reached',
+        ],
+        apply: (p, lvl) => {
+          p.hasCarrionCrown = true
+          p.carrionAuraRadius = [150, 200, 240][lvl - 1]
+          p.carrionAuraInterval = [2000, 1500, 1000][lvl - 1]
+          p.carrionWeaken = lvl >= 3
+          p.carrionKillPulse = lvl >= 3
+        },
+      },
+    ],
+  },
+]
+
+// ============================================================
+// NIGHTBORNE BRANCHES — Void Blade hero
+// IDs: vb* (Void Blade), vp* (Phantom), vr* (Rift) — avoids collision with Nazar nb/ns/nv
+// ============================================================
+const NIGHTBORNE_BRANCHES: BranchDef[] = [
+  {
+    name: 'Void Blade', color: 0x9933FF,
+    theme: 'Pure offensive escalation — deeper cut, wider arc, void energy overload.',
+    upgrades: [
+      {
+        id: 'vb1', label: 'Void Edge', icon: 'vb1_void_edge',
+        desc: ['+20% dmg; arc range → 105px', '+35% dmg total; range → 115px', '+50% dmg total; range → 130px; crescent lingers 0.3s'],
+        branch: 'Void Blade', branchColor: 0x9933FF,
+        apply: (p, lvl) => {
+          p.hasVoidEdge = true
+          p.voidEdgeLevel = lvl
+          if (lvl === 1) { p.damage = Math.ceil(p.damage * 1.20); p.voidArcRange = 105 }
+          else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.146); p.voidArcRange = 115 }
+          else { p.damage = Math.ceil(p.damage * 1.107); p.voidArcRange = 130 }
+        },
+      },
+      {
+        id: 'vb2', label: 'Cleave', icon: 'vb2_cleave',
+        desc: ['Arc angle → 190°', 'Arc → 220°; +10% dmg to outer-edge enemies', 'Arc → 270°; outer-edge dmg bonus +20%'],
+        branch: 'Void Blade', branchColor: 0x9933FF,
+        apply: (p, lvl) => {
+          p.hasCleave = true
+          if (lvl === 1) { p.voidArcAngle = 190 }
+          else if (lvl === 2) { p.voidArcAngle = 220; p.voidCleaveEdgeBonus = 0.10 }
+          else { p.voidArcAngle = 270; p.voidCleaveEdgeBonus = 0.20 }
+        },
+      },
+      {
+        id: 'vb3', label: 'Void Surge', icon: 'vb3_void_surge',
+        desc: ['Every 4th attack: void ring (140px, 60% dmg)', 'Ring → 180px, 80% dmg; every 3rd attack', 'Ring → 220px, 100% dmg; surge leaves slow zone'],
+        branch: 'Void Blade', branchColor: 0x9933FF,
+        apply: (p, lvl) => {
+          p.hasVoidSurge = true
+          p.voidSurgeLevel = lvl
+          if (lvl === 1) { p.voidSurgeRadius = 140; p.voidSurgeDmgPct = 0.60; p.voidSurgeEvery = 4 }
+          else if (lvl === 2) { p.voidSurgeRadius = 180; p.voidSurgeDmgPct = 0.80; p.voidSurgeEvery = 3 }
+          else { p.voidSurgeRadius = 220; p.voidSurgeDmgPct = 1.00 }
+        },
+      },
+      {
+        id: 'vb4', label: 'Dark Resonance', icon: 'vb4_dark_resonance',
+        desc: ['2nd hit within 1.5s → resonance burst (40px, 50% dmg)', 'Burst → 60px, 70% dmg', 'Burst → 80px, 100% dmg; 0.4s stagger'],
+        branch: 'Void Blade', branchColor: 0x9933FF,
+        apply: (p, lvl) => {
+          p.hasDarkResonance = true
+          p.darkResonanceLevel = lvl
+          if (lvl === 1) { p.darkResonanceRadius = 40; p.darkResonanceDmgPct = 0.50 }
+          else if (lvl === 2) { p.darkResonanceRadius = 60; p.darkResonanceDmgPct = 0.70 }
+          else { p.darkResonanceRadius = 80; p.darkResonanceDmgPct = 1.00 }
+        },
+      },
+      {
+        id: 'vb5', label: 'Void Ascendant', icon: 'vb5_void_ascendant', isUltimate: true,
+        desc: ['6s: CD halved, +80% dmg, secondary crescent per slash. 45s CD', 'Duration 8s, CD 38s; crescents pierce 2', 'Duration 10s, CD 30s; burst 180px on activation'],
+        branch: 'Void Blade', branchColor: 0x9933FF,
+        apply: (p, lvl) => {
+          p.hasVoidAscendant = true
+          p.voidAscendantLevel = lvl
+          p._ascendantCDTimer = 0
+          if (lvl === 1) { p.voidAscendantDuration = 6000; p.voidAscendantCooldown = 45000 }
+          else if (lvl === 2) { p.voidAscendantDuration = 8000; p.voidAscendantCooldown = 38000 }
+          else { p.voidAscendantDuration = 10000; p.voidAscendantCooldown = 30000 }
+        },
+      },
+    ],
+  },
+  {
+    name: 'Phantom', color: 0xCC66FF,
+    theme: 'Spectral duplication — multiply strikes, echo damage, shadow split.',
+    upgrades: [
+      {
+        id: 'vp1', label: 'Echo Strike', icon: 'vp1_echo_strike',
+        desc: ['Echo slash 0.2s after each attack (35% dmg)', 'Echo → 50% dmg; inherits Void Edge bonus', 'Second echo 0.15s after first (25% dmg)'],
+        branch: 'Phantom', branchColor: 0xCC66FF,
+        apply: (p, lvl) => {
+          p.hasEchoStrike = true
+          p.echoStrikeLevel = lvl
+          if (lvl === 1) { p.echoStrikeDmgPct = 0.35 }
+          else if (lvl === 2) { p.echoStrikeDmgPct = 0.50 }
+        },
+      },
+      {
+        id: 'vp2', label: 'Split Shade', icon: 'vp2_split_shade',
+        desc: ['On hit: decoy shade 80px away (1.5s), 6s CD', 'Shade 2.5s, CD 4s; shade echo-slashes on expiry', 'Shade 3s, CD 3s; 2 shades spawn'],
+        branch: 'Phantom', branchColor: 0xCC66FF,
+        apply: (p, lvl) => {
+          p.hasSplitShade = true
+          p.splitShadeLevel = lvl
+        },
+      },
+      {
+        id: 'vp3', label: 'Phantom Veil', icon: 'vp3_phantom_veil',
+        desc: ['30% chance to negate dmg during attack cooldown', 'Chance → 55%', 'Chance → 80%; negate resets attack CD'],
+        branch: 'Phantom', branchColor: 0xCC66FF,
+        apply: (p, lvl) => {
+          p.hasPhantomVeil = true
+          p.phantomVeilLevel = lvl
+          if (lvl === 1) { p.phantomVeilChance = 0.30 }
+          else if (lvl === 2) { p.phantomVeilChance = 0.55 }
+          else { p.phantomVeilChance = 0.80 }
+        },
+      },
+      {
+        id: 'vp4', label: 'Mirror Swarm', icon: 'vp4_mirror_swarm',
+        desc: ['On kill: phantom ally does 1 slash (100% dmg)', '2 slashes', '3 slashes; chain kill spawns smaller phantom'],
+        branch: 'Phantom', branchColor: 0xCC66FF,
+        apply: (p, lvl) => {
+          p.hasMirrorSwarm = true
+          p.mirrorSwarmSlashes = lvl
+        },
+      },
+      {
+        id: 'vp5', label: 'Shade Legion', icon: 'vp5_shade_legion', isUltimate: true,
+        desc: ['5s: 4 duplicates (70% dmg, 600ms). Invulnerable. 50s CD', '7s, CD 42s; duplicates 85% dmg', '8s, CD 35s; on expiry: 160px void implosion 150% dmg'],
+        branch: 'Phantom', branchColor: 0xCC66FF,
+        apply: (p, lvl) => {
+          p.hasShadeLegion = true
+          p.shadeLegionLevel = lvl
+          p._shadeLegionCDTimer = 0
+          if (lvl === 1) { p.shadeLegionDuration = 5000; p.shadeLegionCooldown = 50000; p.shadeLegionDmgPct = 0.70 }
+          else if (lvl === 2) { p.shadeLegionDuration = 7000; p.shadeLegionCooldown = 42000; p.shadeLegionDmgPct = 0.85 }
+          else { p.shadeLegionDuration = 8000; p.shadeLegionCooldown = 35000 }
+        },
+      },
+    ],
+  },
+  {
+    name: 'Rift', color: 0x4400BB,
+    theme: 'Dimensional manipulation — blink strikes, void zones, spatial anchors.',
+    upgrades: [
+      {
+        id: 'vr1', label: 'Void Step', icon: 'vr1_void_step',
+        desc: ['Blink 50px toward enemy before each attack', 'Blink → 75px; +15% dmg when landing ≤25px', 'Blink → 100px; micro-rift at origin (20px, 0.5s, 20% dmg)'],
+        branch: 'Rift', branchColor: 0x4400BB,
+        apply: (p, lvl) => {
+          p.hasVoidStep = true
+          p.voidStepLevel = lvl
+          if (lvl === 1) { p.voidStepDist = 50 }
+          else if (lvl === 2) { p.voidStepDist = 75 }
+          else { p.voidStepDist = 100 }
+        },
+      },
+      {
+        id: 'vr2', label: 'Rift Anchor', icon: 'vr2_rift_anchor',
+        desc: ['Every 12s: anchor placed; auto-teleport when HP<25%', 'CD 9s, lasts 10s; HP threshold 35%; return dmg 80px', 'CD 6s; return dmg 130%; placement stuns 40px 0.6s'],
+        branch: 'Rift', branchColor: 0x4400BB,
+        apply: (p, lvl) => {
+          p.hasRiftAnchor = true
+          p.riftAnchorLevel = lvl
+          p._anchorTimer = 0
+          if (lvl === 1) { p.riftAnchorCooldown = 12000; p.riftAnchorDuration = 8000; p.riftAnchorHpThreshold = 0.25 }
+          else if (lvl === 2) { p.riftAnchorCooldown = 9000; p.riftAnchorDuration = 10000; p.riftAnchorHpThreshold = 0.35 }
+          else { p.riftAnchorCooldown = 6000 }
+        },
+      },
+      {
+        id: 'vr3', label: 'Void Zone', icon: 'vr3_void_zone',
+        desc: ['On kill: void zone (40px, 3s, 35% slow, 8% DoT/s)', 'Zone → 60px, 4s, 14% DoT/s', 'Zone → 80px, 6s, 20% DoT/s'],
+        branch: 'Rift', branchColor: 0x4400BB,
+        apply: (p, lvl) => {
+          p.hasVoidZone = true
+          if (lvl === 1) { p.voidZoneRadius = 40; p.voidZoneDuration = 3000; p.voidZoneDotPct = 0.08 }
+          else if (lvl === 2) { p.voidZoneRadius = 60; p.voidZoneDuration = 4000; p.voidZoneDotPct = 0.14 }
+          else { p.voidZoneRadius = 80; p.voidZoneDuration = 6000; p.voidZoneDotPct = 0.20 }
+        },
+      },
+      {
+        id: 'vr4', label: 'Spatial Tear', icon: 'vr4_spatial_tear',
+        desc: ['Every 8s: void burst at nearest enemy (80px, 120% dmg)', 'CD 6s; AoE → 110px', 'CD 5s; AoE → 140px; drops void zone at burst'],
+        branch: 'Rift', branchColor: 0x4400BB,
+        apply: (p, lvl) => {
+          p.hasSpatialTear = true
+          p.spatialTearLevel = lvl
+          p._spatialTearTimer = 0
+          if (lvl === 1) { p.spatialTearCooldown = 8000; p.spatialTearRadius = 80 }
+          else if (lvl === 2) { p.spatialTearCooldown = 6000; p.spatialTearRadius = 110 }
+          else { p.spatialTearCooldown = 5000; p.spatialTearRadius = 140 }
+        },
+      },
+      {
+        id: 'vr5', label: 'Rift Collapse', icon: 'vr5_rift_collapse', isUltimate: true,
+        desc: ['0.8s wind-up; 200px pull + 180% dmg. 40s CD', 'Pull → 240px, 220% dmg; CD 34s', 'Pull → 280px, 280% dmg; CD 28s; void zone at collapse'],
+        branch: 'Rift', branchColor: 0x4400BB,
+        apply: (p, lvl) => {
+          p.hasRiftCollapse = true
+          p.riftCollapseLevel = lvl
+          p._riftCollapseCDTimer = 0
+          if (lvl === 1) { p.riftCollapseRadius = 200; p.riftCollapseDmgPct = 1.80; p.riftCollapseCooldown = 40000 }
+          else if (lvl === 2) { p.riftCollapseRadius = 240; p.riftCollapseDmgPct = 2.20; p.riftCollapseCooldown = 34000 }
+          else { p.riftCollapseRadius = 280; p.riftCollapseDmgPct = 2.80; p.riftCollapseCooldown = 28000 }
+        },
+      },
+    ],
+  },
+]
+
 // Map hero → branches
 export const HERO_BRANCHES: Record<string, BranchDef[]> = {
   ignara: IGNARA_BRANCHES,
@@ -965,6 +1440,8 @@ export const HERO_BRANCHES: Record<string, BranchDef[]> = {
   huntress: HUNTRESS_BRANCHES,
   khashin: KHASHIN_BRANCHES,
   muller:  MULLER_BRANCHES,
+  vael:    VAEL_BRANCHES,
+  nightborne: NIGHTBORNE_BRANCHES,
 }
 
 // ============================================================
@@ -972,6 +1449,7 @@ export const HERO_BRANCHES: Record<string, BranchDef[]> = {
 // ============================================================
 
 const MAX_SKILL_LEVEL = 3
+const MAX_TOTAL_SKILLS = 8
 
 /** Track which upgrades have been picked and to what level */
 export class UpgradeTracker {
@@ -1014,9 +1492,20 @@ export class UpgradeTracker {
       branches = KHASHIN_BRANCHES
     }
 
-    // For any hero with more than 3 branches, randomly pick 3
+    // Filter out branches that haven't been unlocked yet.
+    // For Amun during the tutorial, Bastion and Quake start locked.
+    // getUnlockedBranches returns ['__all__'] for heroes with no gating.
+    const unlockedBranches = MetaProgress.getUnlockedBranches(heroType)
+    if (!unlockedBranches.includes('__all__')) {
+      branches = branches.filter(b => unlockedBranches.includes(b.name))
+    }
+
+    // Shuffle branch order so positions are random each time
+    branches = [...branches].sort(() => Math.random() - 0.5)
+
+    // For any hero with more than 3 branches, pick 3
     if (branches.length > 3) {
-      branches = [...branches].sort(() => Math.random() - 0.5).slice(0, 3)
+      branches = branches.slice(0, 3)
     }
 
     return branches.map(b => ({
@@ -1030,13 +1519,24 @@ export class UpgradeTracker {
   /**
    * Returns 5 cards:
    *  - 3 branch skill cards: randomly drawn from the available pool of the chosen branch
-   *    (3 regulars always available; ultimate only when all 3 regulars are at level ≥ 2)
+   *    (ultimate available when all regulars are picked; its max level = min level of regulars)
    *    Skills at max level (3) are excluded.
-   *  - 2 random generic cards (one-shot)
+   *  - 2-3 generic cards (3 levels each, capped at MAX_TOTAL_SKILLS distinct)
    */
   getChoices(heroType: HeroType, _stance?: string): Upgrade[] {
     // ── Generic portion ──────────────────────────────────────────────────
-    const availGenerics = GENERIC_POOL.filter(u => !this.pickedGeneric.has(u.id))
+    // Count distinct skills the player has learned (branch + generic)
+    const totalDistinctSkills = this.pickedGeneric.size +
+      Object.keys(this.skillLevels).filter(id => !this.pickedGeneric.has(id) && this.skillLevels[id] > 0).length
+    const atSkillCap = totalDistinctSkills >= MAX_TOTAL_SKILLS
+
+    // Generics not yet maxed: already-picked can level up; new ones only if under skill cap
+    const availGenerics = GENERIC_POOL.filter(u => {
+      const lvl = this.skillLevels[u.id] || 0
+      if (lvl >= MAX_SKILL_LEVEL) return false          // maxed out
+      if (this.pickedGeneric.has(u.id)) return true      // already picked — can level up
+      return !atSkillCap                                  // new skill — only if under cap
+    })
     const shuffledGen = [...availGenerics].sort(() => Math.random() - 0.5)
 
     // ── Branch portion ───────────────────────────────────────────────────
@@ -1050,9 +1550,11 @@ export class UpgradeTracker {
         const regulars = chosenBranchDef.upgrades.filter(u => !u.isUltimate)
         const ultimate = chosenBranchDef.upgrades.find(u => u.isUltimate)
 
-        // Ultimate unlocks when ALL regulars are at level ≥ 2
-        const ultimateUnlocked = ultimate &&
-          regulars.every(u => (this.skillLevels[u.id] || 0) >= 2)
+        // Ultimate available when all regulars are at least N → ultimate can be taken at level N.
+        // e.g. all regulars at 1 → ultimate unlocks at lvl 1; all at 2 → can level ult to 2.
+        const minRegularLevel = Math.min(...regulars.map(u => this.skillLevels[u.id] || 0))
+        const ultLevel = this.skillLevels[ultimate?.id ?? ''] || 0
+        const ultimateAvailable = ultimate && minRegularLevel >= 1 && ultLevel < minRegularLevel
 
         // Build the available pool (exclude maxed skills)
         const pool: Upgrade[] = []
@@ -1061,7 +1563,7 @@ export class UpgradeTracker {
             pool.push({ ...u, branch: chosenBranchDef.name, branchColor: chosenBranchDef.color })
           }
         }
-        if (ultimateUnlocked && (this.skillLevels[ultimate.id] || 0) < MAX_SKILL_LEVEL) {
+        if (ultimateAvailable && ultLevel < MAX_SKILL_LEVEL) {
           pool.push({ ...ultimate, branch: chosenBranchDef.name, branchColor: chosenBranchDef.color })
         }
 
@@ -1097,6 +1599,23 @@ export class UpgradeTracker {
     return result
   }
 
+  /**
+   * Find upgrade by ID and apply it (for online mode — server sends chosen ID).
+   * Searches both GENERIC_POOL and hero branch upgrades.
+   */
+  pickById(upgradeId: string, heroType: HeroType): void {
+    // Check generic pool
+    const generic = GENERIC_POOL.find(u => u.id === upgradeId)
+    if (generic) { this.pick(generic); return }
+    // Check hero branches
+    const branches = HERO_BRANCHES[heroType] ?? []
+    for (const branch of branches) {
+      for (const skill of branch.upgrades) {
+        if (skill.id === upgradeId) { this.pick(skill); return }
+      }
+    }
+  }
+
   /** Get the current level for a skill */
   getLevel(id: string): number {
     return this.skillLevels[id] || 0
@@ -1114,8 +1633,8 @@ export class UpgradeTracker {
       this.skillLevels[upgrade.id] = Math.min(cur + 1, MAX_SKILL_LEVEL)
     } else {
       this.pickedGeneric.add(upgrade.id)
-      // Generics are one-shot but still track a level for display
-      this.skillLevels[upgrade.id] = 1
+      const cur = this.skillLevels[upgrade.id] || 0
+      this.skillLevels[upgrade.id] = Math.min(cur + 1, MAX_SKILL_LEVEL)
     }
   }
 }
@@ -1134,15 +1653,24 @@ const ICON_FRAME_MAP: Record<string, number> = {
   'sl1_spark_initiate': 45, 'sl2_arc_reach': 46, 'sl3_overcharge': 47, 'sl4_ball_lightning': 48, 'sl5_storm_lord': 49,
   'ss1_permafrost': 70, 'ss2_shatter': 71, 'ss3_ice_spear': 72, 'ss4_frostbite': 48, 'ss5_avalanche': 73,
   'sc1_glacial_pierce': 50, 'sc2_ice_armor': 51, 'sc3_mirror_ice': 52, 'sc4_cryo_shield': 53, 'sc5_diamond_dust': 54,
-  'aq1_titans_pulse': 55, 'aq2_earthquake': 56, 'aq3_colossus': 57, 'aq4_rally_cry': 58, 'aq5_cataclysm': 59,
-  'ab1_fortify': 60, 'ab2_thorns': 61, 'ab3_iron_will': 62, 'ab4_regenerate': 63, 'ab5_undying': 64,
-  'as1_living_fortress': 65, 'as2_consecration': 66, 'as3_wrath': 67, 'as4_gravity_well': 68, 'as5_divine_judgment': 69,
+  'aw1_thorns': 55, 'aw2_wrath': 56, 'aw3_consecration': 57, 'aw5_divine_judgment': 58,
+  'ab1_fortify': 60, 'ab2_aura_of_might': 61, 'ab3_iron_will': 62, 'ab5_undying': 63,
+  'aq1_titans_pulse': 65, 'aq2_earthquake': 66, 'aq3_colossus': 67, 'aq5_cataclysm': 68,
   'kw1_razor_wind': 70, 'kw2_gust_strike': 71, 'kw3_dust_devil': 72, 'kw4_cyclone_surge': 73, 'kw5_eye_of_the_storm': 74,
   'kd1_choking_sand': 75, 'kd2_sand_armor': 76, 'kd3_abrasion': 77, 'kd4_scarab_tide': 78, 'kd5_sandstorm_wall': 79,
   'km1_tailwind': 80, 'km2_phantom_step': 81, 'km3_mirage': 82, 'km4_drift': 83, 'km5_desert_wind': 84,
   'cm1_coarse_cut': 85, 'cm2_deep_vein': 86, 'cm3_shardstorm': 87, 'cm4_crystal_shrapnel': 88, 'cm5_tectonic_fury': 89,
   'cr1_stone_skin': 90, 'cr2_geode_shell': 91, 'cr3_crystal_wall': 92, 'cr4_resonance_armor': 93, 'cr5_living_geode': 94,
   'cf1_planted_shard': 95, 'cf2_crystal_pillar': 96, 'cf3_fault_line': 97, 'cf4_resonance_field': 98, 'cf5_mother_lode': 99,
+  'bh1_sustained_burn': 100, 'bh2_powder_keg': 101, 'bh3_ember_volley': 102, 'bh4_flashpoint': 103, 'bh5_infernal_cadence': 104,
+  // Nightborne — reuse existing frames (no new icons yet; update when spritesheet expands)
+  'vb1_void_edge': 25, 'vb2_cleave': 26, 'vb3_void_surge': 27, 'vb4_dark_resonance': 28, 'vb5_void_ascendant': 29,
+  'vp1_echo_strike': 35, 'vp2_split_shade': 36, 'vp3_phantom_veil': 37, 'vp4_mirror_swarm': 38, 'vp5_shade_legion': 39,
+  'vr1_void_step': 50, 'vr2_rift_anchor': 51, 'vr3_void_zone': 52, 'vr4_spatial_tear': 53, 'vr5_rift_collapse': 54,
+  // Vael — dedicated frames (sheet rows 10-11)
+  'ph1_hollow_touch': 105, 'ph2_soul_siphon': 106, 'ph3_wound_memory': 107, 'ph4_exsanguination': 108, 'ph5_sanguine_ascendancy': 109,
+  'os1_risen': 110, 'os2_grave_pact': 111, 'os3_undying_labor': 112, 'os4_charnel_tide': 113, 'os5_lich_dominion': 114,
+  'wp1_festering_wound': 115, 'wp2_virulent_spread': 116, 'wp3_necrotic_bloom': 117, 'wp4_pandemic': 118, 'wp5_carrion_crown': 119,
 }
 export function getIconFrame(iconName: string): number {
   return ICON_FRAME_MAP[iconName] ?? 0

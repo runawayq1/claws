@@ -1,9 +1,23 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { getSteeringTarget } from '../systems/Pathfinding'
+import type { GameSceneContext } from '../types/scene-context'
 
 export type DamageType = 'fire' | 'ice' | 'lightning' | 'poison' | 'melee' | 'shockwave'
+  | 'fireball' | 'frost' | 'venom' | 'sword' | 'ground' | 'quake' | 'wind' | 'sand' | 'crystal' | 'void'
 
-type PlayerLike = Phaser.Physics.Arcade.Sprite & { takeDamage(amount: number): void }
+const DMG_COLORS: Record<string, string> = {
+  fire: '#ff4444', fireball: '#ff4444',
+  ice: '#66ccff', frost: '#66ccff',
+  lightning: '#bb88ff',
+  poison: '#44dd44', venom: '#44dd44',
+  melee: '#ffaa44', sword: '#ffaa44',
+  shockwave: '#ddaa22', ground: '#ddaa22', quake: '#ddaa22',
+  wind: '#88ddcc', sand: '#88ddcc',
+  crystal: '#55bbff',
+}
+
+type PlayerLike = Phaser.Physics.Arcade.Sprite & { takeDamage(amount: number): void; isDead?: boolean }
 
 export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // --- Public fields (hero modules access these) ---
@@ -13,6 +27,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public baseSpeed: number = 0
   public xpValue: number = 0
   public goldValue: number = 0
+  public isMiniBoss: boolean = false
+  public isLarge: boolean = false
   public damagePerSecond: number = 0
   public isDying: boolean = false
   public isAttacking: boolean = false
@@ -24,7 +40,13 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public markTimer: number = 0
   public isRooted: boolean = false
   public rootTimer: number = 0
+  public burnStacks: number = 0
+  public burnExpiry: number = 0
+  public rotStacks: number = 0
+  public rotExpiry: number = 0
   public player: PlayerLike
+  public players: PlayerLike[] = []
+  public hpDirty: boolean = true
 
   // --- Configurable per-enemy constants (set in subclass constructor) ---
   protected kbForce: number = 120
@@ -46,7 +68,12 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // Pathfinding throttle cache
   private _steerFrame = 0
   private _steerCache: { x: number; y: number } | null = null
+  // Retarget timer — staggered so not all enemies retarget on the same frame
+  private _retargetTimer: number = Math.random() * 2000
   private _flashUntil = 0
+  private _kbRestoreAt = 0
+  private _moveFrame = 0
+  private _currentTint = 0
   private poisonTimer?: Phaser.Time.TimerEvent
 
   constructor(
@@ -58,6 +85,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   ) {
     super(scene, x, y, texture, 0)
     this.player = player
+    // Stagger steering frames so not all enemies compute pathfinding on the same frame
+    this._steerFrame = Math.floor(Math.random() * 4)
   }
 
   // -------------------------------------------------------------------------
@@ -65,8 +94,13 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // -------------------------------------------------------------------------
   takeDamage(amount: number, type?: DamageType) {
     if (this.isDying) return
+    // Scorch debuff: +20% damage taken
+    if ((this as any)._scorchUntil && this.scene && this.scene.time.now < (this as any)._scorchUntil) {
+      amount *= 1.2
+    }
     this.lastDamageType = type ?? 'melee'
     this.hp -= amount
+    this.hpDirty = true
 
     // Skip visuals for tiny aura ticks
     if (amount < 1) {
@@ -82,13 +116,14 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
       const displayDmg = Math.floor(this.dmgAccum)
       this.dmgAccum = 0
 
+      const dmgColor = (type && DMG_COLORS[type]) ? DMG_COLORS[type] : this.dmgTextColor
       const dmgText = this.scene.add.text(
         this.x, this.y + this.dmgTextYOffset,
         displayDmg.toString(),
         {
-          fontFamily: 'monospace',
+          fontFamily: gameFont(),
           fontSize: this.dmgTextSize,
-          color: this.dmgTextColor,
+          color: dmgColor,
           stroke: '#000000',
           strokeThickness: 2,
         }
@@ -107,22 +142,27 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     this.setTintFill(this.flashTint)
     this._flashUntil = this.scene.time.now + this.flashDuration
 
-    // Knockback
+    // Knockback — use timestamp, restored in update() to avoid per-hit timer allocation
     if (this.body) {
       const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, this.x, this.y)
       const body = this.body as Phaser.Physics.Arcade.Body
       body.setVelocity(Math.cos(angle) * this.kbForce, Math.sin(angle) * this.kbForce)
-      this.scene.time.delayedCall(this.kbRestoreDuration, () => {
-        if (this.active && !this.isDying) {
-          this.scene.physics.moveTo(this, this.player.x, this.player.y, this.speed)
-        }
-      })
+      this._kbRestoreAt = this.scene.time.now + this.kbRestoreDuration
     }
 
     if (this.hp <= 0) {
       this.hp = 0
       this.die()
     }
+  }
+
+  /** Apply knockback from an external source (e.g. fireball explosion) */
+  applyKnockback(fromX: number, fromY: number, force: number, durationMs = 200) {
+    if (this.isDying || !this.body) return
+    const angle = Phaser.Math.Angle.Between(fromX, fromY, this.x, this.y)
+    const body = this.body as Phaser.Physics.Arcade.Body
+    body.setVelocity(Math.cos(angle) * force, Math.sin(angle) * force)
+    this._kbRestoreAt = this.scene.time.now + durationMs
   }
 
   // -------------------------------------------------------------------------
@@ -152,8 +192,15 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   die() {
     if (this.isDying || !this.scene) return
     this.isDying = true
+    this.poisonTimer?.remove(); this.poisonTimer = undefined
+    const bt = (this as any)._burnTimer as Phaser.Time.TimerEvent | undefined
+    if (bt) { bt.remove(); (this as any)._burnTimer = undefined }
     this.setVelocity(0, 0)
     if (this.body) (this.body as Phaser.Physics.Arcade.Body).enable = false
+
+    // Increment per-frame kill counter for hit-stop detection
+    const sctx = this.scene as GameSceneContext
+    sctx._frameKills = (sctx._frameKills ?? 0) + 1
 
     this.scene.cameras.main.shake(this.shakeIntensity, this.shakeAmplitude)
 
@@ -167,10 +214,25 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
 
     this.onDeathVfx(() => {
       if (this.scene) {
-        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue, this.goldValue)
+        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue, this.goldValue, this.isMiniBoss, this.isLarge)
       }
       this.destroy()
     })
+  }
+
+  // -------------------------------------------------------------------------
+  // retargetNearest — pick the closest alive player from this.players
+  // -------------------------------------------------------------------------
+  retargetNearest(): void {
+    if (this.players.length === 0) return
+    let nearest: PlayerLike | null = null
+    let nearestDist = Infinity
+    for (const p of this.players) {
+      if (p.isDead) continue
+      const d = Phaser.Math.Distance.Between(this.x, this.y, p.x, p.y)
+      if (d < nearestDist) { nearestDist = d; nearest = p }
+    }
+    if (nearest) this.player = nearest
   }
 
   // -------------------------------------------------------------------------
@@ -178,6 +240,13 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // -------------------------------------------------------------------------
   update(time: number, delta: number) {
     if (!this.active || !this.player.active || this.isDying) return
+
+    // Retarget nearest player every 2000ms (staggered per-enemy)
+    this._retargetTimer += delta
+    if (this._retargetTimer >= 2000) {
+      this._retargetTimer = 0
+      this.retargetNearest()
+    }
 
     // Clear hit flash by timestamp (zero-allocation)
     if (this._flashUntil > 0 && time >= this._flashUntil) {
@@ -190,19 +259,28 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
       this.speed = Math.min(this.baseSpeed, this.speed + this.baseSpeed * 0.5 * (delta / 1000))
     }
 
-    if (!this.isRooted) {
+    // Restore velocity after knockback (replaces per-hit delayedCall)
+    if (this._kbRestoreAt > 0 && time >= this._kbRestoreAt) {
+      this._kbRestoreAt = 0
+    }
+
+    if (!this.isRooted && this._kbRestoreAt === 0) {
       if (this.usesSteering) {
         // Throttle pathfinding to every 4 frames — cache steering target
-        this._steerFrame = ((this._steerFrame || 0) + 1) % 4
+        this._steerFrame = (this._steerFrame + 1) % 4
         if (this._steerFrame === 0 || !this._steerCache) {
-          const rocks = (this.scene as any).rocks as Phaser.Physics.Arcade.StaticGroup | undefined
+          const rocks = (this.scene as GameSceneContext).rocks
           this._steerCache = rocks
             ? getSteeringTarget(this, this.player.x, this.player.y, rocks)
             : { x: this.player.x, y: this.player.y }
         }
         this.scene.physics.moveTo(this, this._steerCache.x, this._steerCache.y, this.speed)
       } else {
-        this.scene.physics.moveTo(this, this.player.x, this.player.y, this.speed)
+        // Throttle direction recalc to every 3 frames — velocity persists between
+        this._moveFrame = (this._moveFrame + 1) % 3
+        if (this._moveFrame === 0) {
+          this.scene.physics.moveTo(this, this.player.x, this.player.y, this.speed)
+        }
       }
     } else {
       this.setVelocity(0, 0)
@@ -213,13 +291,20 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     const dx = this.player.x - this.x
     if (Math.abs(dx) > 4) this.setFlipX(dx < 0)
 
-    // Blue tint when slowed, red tint when marked
+    // Blue tint when slowed, red tint when marked — only apply when changed
+    let wantTint = 0
     if (this.speed < this.baseSpeed * 0.95) {
-      this.setTint(0x6688ff)
+      wantTint = 0x6688ff
     } else if (this.isMarked) {
-      this.setTint(0xff6666)
+      wantTint = 0xff6666
     } else if (this._flashUntil <= 0) {
-      if (this.baseTint) this.setTint(this.baseTint); else this.clearTint()
+      wantTint = this.baseTint // 0 means clearTint
+    } else {
+      wantTint = this._currentTint // keep current during flash
+    }
+    if (wantTint !== this._currentTint) {
+      this._currentTint = wantTint
+      if (wantTint) this.setTint(wantTint); else this.clearTint()
     }
 
     const dist = Phaser.Math.Distance.Between(this.x, this.y, this.player.x, this.player.y)

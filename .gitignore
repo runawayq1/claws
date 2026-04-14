@@ -1,4 +1,34 @@
 node_modules/
 dist/
+server/node_modules/
+server/dist/
 .vercel
 .DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Claude Code / MCP config
+.mcp.json
+.claude/
+.agents/
+skills-lock.json
+CLAUDE.md
+
+# Editor state
+.obsidian/
+
+# Test artifacts
+test-results/
+tests/*.png
+
+# Raw/scratch artwork at root
+/card_front.png
+/card_back.png
+/card_back2.png
+/icon.png
+/shield.png
+/wall.png
+/sifra icons/

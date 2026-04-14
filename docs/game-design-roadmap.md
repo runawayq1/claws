@@ -1,6 +1,6 @@
 # CLAWS — Дизайн-документ та Дорожня карта розвитку
 
-> Версія: v0.2.1 | Дата: 2026-04-05 | Основа: Phaser 3 + Vite + TypeScript
+> Версія: v0.4.4 | Дата: 2026-04-13 | Основа: Phaser 3 + Vite + TypeScript
 
 ---
 
@@ -10,41 +10,46 @@
 
 Зараз цикл CLAWS виглядає так:
 
-**Вибрати героя → Вижити 10 хвилин → Прокачати гілку → Загинути або перемогти → Відкрити нові записи в Енциклопедії → Повторити**
+**Вибрати героя → Вижити 10 хвилин → Прокачати гілку → Загинути або перемогти → Отримати золото → Покращити мета-апгрейди у Кузні → Повторити**
 
-Це правильна основа, але цикл ще не "тягне" достатньо. Гравець після першого пробігу запитує себе: "А чому грати наступного разу?" Зараз відповідь — "щоб побачити іншого героя", але цього мало.
+Цикл має хорошу основу і вже тягне через кілька рівнів мотивації. Але деякі шари ще в розробці.
 
-**Пропоновані шари мотивації:**
+**Шар 1 — Run Loop (внутрішньозабіговий) — ✅ реалізовано:**
+Вибір гілки на першому левел-апі, 3 рівні скілів (mastery), stance-toggle (Q) для п'яти героїв. Мінібоси кожні 30 секунд (SandGolem) тримають тиск. Фінальний бос CLAWS на 10-й хвилині. Скрині з лутом і вибором апгрейду після вбивства мінібоса. Онлайн ко-оп (Colyseus): 2 гравці, сервер-авторитетний рух, синхронізація ворогів і здоровʼя.
 
-**Шар 1 — Run Loop (внутрішньозабіговий):**
-Поточний стан достатньо сильний: вибір гілки на першому левел-апі, поступове розкриття сінергій між скілами. Ключова проблема — відчуття, що "все вирішується у перші 3 хвилини". Коли гравець обрав гілку, решта забігу передбачувана. Рішення: ввести **Events** (події) — несподівані зміни умов кожні 2–3 хвилини (детальніше в розділі 4).
+**Шар 2 — Meta-progression (між забігами) — ✅ частково реалізовано:**
+- ✅ **Gold economy** — золото падає з ворогів і босів, зберігається між сесіями (MetaProgress.ts)
+- ✅ **ForgeScene** — кузня з 5 мета-апгрейдами (HP, DMG, SPD, Regen, CD), 5 рівнів кожен, 100h бюджет балансу
+- ✅ **MetaProgress** — зберігає: kills, runs, time, wins, heroRuns, achievements, goldTotal, сесії
+- ✅ **ProfileScene** — статистика героя, журнал сесій
+- ✅ **Achievements** — 25 досягнень (kills, survival, hero, progression, wave, secret)
+- ❌ **Lore Fragments** — не реалізовано (тільки у дизайні)
+- ❌ **Cursed Relics** — не реалізовано
+- ✅ **Hero unlock через умови** — Ignara (3 runs), Nazar (1 win), Khashin (8хв як Sifra), Lyra (1000g у Forge), Sifra (tutorial)
 
-**Шар 2 — Meta-progression (між забігами):**
-Наразі є Енциклопедія зі збереженням відкритих героїв і гілок. Треба розширити до:
-- **Unlockable heroes** — Амун і Назар доступні зразу, але Кашін, Гіві, Ліра відкриваються через умови ("пройди забіг з Ігнарою без отримання шкоди від Вогню", "вбий 500 ворогів у стрибку")
-- **Lore Fragments** — з кожного забігу "падає" 1–3 уламки лору, котрі поступово розкривають сюжет і розблоковують діалоги в Енциклопедії
-- **Cursed Relics** — після першого пройденого забігу з героєм відкривається "прокляте реліквія" — пасивний пред-забіговий бафф, що ціною певного штрафу дає нову силу (напр. "Попіл Ігнари": +40% вогневий урон, але HP не може перевищувати 50%)
+**Шар 3 — Mastery (довгострокова ціль) — ❌ не реалізовано:**
+- ❌ **Tome of Trials** — "Випробування" для кожного героя
+- ❌ **Ascension Mode** — підвищена складність після N забігів
 
-**Шар 3 — Mastery (довгострокова ціль):**
-- **Tome of Trials** — для кожного героя є 5 "Випробувань" (як Mission в Hades): "Пройди забіг, ніколи не зупиняючись", "Вбий боса за 10 секунд", "Досягни рівня 30". Завершення Випробувань дає косметику або унікальний Relic для героя.
-- **Ascension** — після 5 пройдених забігів одним героєм відкривається "Підвищення": той самий герой з +20% щільністю хвиль і новим 4-м боссом наприкінці.
+### Прогресія між забігами — поточна таблиця
 
-### Прогресія між забігами — повна таблиця
-
-| Що відкривається | Умова | Механіка збереження |
+| Що відкривається | Умова | Статус |
 |---|---|---|
-| Нові герої (Кашін, Ліра, Гіві) | Конкретні досягнення | MetaProgress.ts → localStorage |
-| Lore Fragments | Перший забіг з героєм / перший кіл боса | Новий масив `lorefragments[]` |
-| Cursed Relics | Перший завершений забіг з героєм | Масив `relics[]` |
-| Tome of Trials — сторінки | Виконати завдання героя | Масив `trials[]` |
-| Другий скін героя | Завершити всі 5 Випробувань | Масив `skins[]` |
-| Ascension Mode | 5 завершених забігів одним героєм | Лічильник `runCount[heroType]` |
-| Encyclopedia — повний лор | Зібрати всі Fragments героя | Вже є базова система |
+| Gold та мета-апгрейди (Forge) | Кожен забіг | ✅ Реалізовано |
+| Achievements (25 шт.) | Виконати умову | ✅ Реалізовано |
+| ProfileScene — статистика | Після будь-якого забігу | ✅ Реалізовано |
+| Encyclopedia — лор героїв | Вибрати героя | ✅ Реалізовано |
+| Lore Fragments | Перший забіг / кіл боса | ❌ Заплановано |
+| Cursed Relics | Перший завершений забіг | ❌ Заплановано |
+| Tome of Trials | Виконати завдання героя | ❌ Заплановано |
+| Ascension Mode | 5 завершених забігів | ❌ Заплановано |
+| Скіни героїв | Всі Trials | ❌ Заплановано |
 
 ### Чого ще не вистачає у поточному циклі
 
-1. **Екран результатів із вагою** — "Ти дійшов до хвилини 7:23. Найбільше вбивств: Скелети — 312. +2 Lore Fragments"
-2. **"Спадщина"** — невелика пасивна перевага від попереднього забігу (як Hades "Darkness"): +5 XP до наступного забігу за кожну хвилину виживання.
+1. **Run Events** — несподівані події кожні 2–3 хв (Темна Хмара, Чужинець тощо) — не реалізовано
+2. **Skill challenge / Tome of Trials** — немає місії-стимулу грати конкретним героєм
+3. **Lore Fragments** — не реалізовано
 
 ---
 
@@ -59,6 +64,8 @@
 **Центральний конфлікт:** Сімка героїв, кожен з власної причини, прийшли до серця Піщаного Моря. Рій нескінченний. Брамоутроба не закрита. Але кожен герой несе частину Ключа Рівноваги — предмету, що може запечатати розлом навіки. Вони знайшли один одного випадково, вони не команда, вони не друзі — але Ключ складається лише якщо вони всі ще живі, коли зустрінуться в центрі.
 
 **Структура розкриття сюжету:** Кожен забіг — один герой у своїй "крапці входу" до Рою. Поки герой виживає, він проходить крізь Рій і вбирає Lore Fragments — спомини мертвих мешканців Амунату. Наприкінці — або герой гине і фрагменти розсіюються, або герой виживає і "чує" повне спогад.
+
+*(Ця система Lore Fragments ще не реалізована — лор зберігається тільки в Encyclopedia як статичний текст)*
 
 ### Лор кожного героя
 
@@ -76,7 +83,7 @@
 
 **Гіві (Мюллер) — Гном Кристалів:** Гірничий майстер з Півночі. Прийшов за контрактом. Кристали ростуть на шкірі — не магія, а геологічний феномен. Хоче просто повернутись додому.
 
-### Сюжетна прогресія через забіги
+### Сюжетна прогресія через забіги (заплановано, не реалізовано)
 
 | Lore Fragments | Що відкривається |
 |---|---|
@@ -88,36 +95,85 @@
 
 ---
 
-## 3. Що зробити в грі (Feature Roadmap)
+## 3. Що зроблено і що ще треба (Feature Roadmap)
 
-### Критично відсутні core features
+### Реалізовано станом на v0.4.3
 
-1. **Run Summary Screen** — час, рівень, вбивства, топ скіли, Lore Fragments
-2. **Pause Menu з контентом** — активні скіли, опис, стати героя
-3. **Реальний бос** замість instant kill placeholder
-4. **Lore Fragment System** — зв'язка Run Summary → Encyclopedia
-5. **Debug mode вимкнення** перед деплоєм
+#### Герої та механіки
+- ✅ **7 героїв** — Ігнара, Сіфра, Амун, Назар, Ліра (Huntress), Кашін, Гіві (Мюллер)
+- ✅ **Branch mastery system** — 3 гілки по 3-4 скіли, 3 рівні кожен (XP-based)
+- ✅ **Stance system** — Q-toggle для Сіфри, Назара, Huntress, Кашіна, Амуна (з Quake-гілкою)
+- ✅ **Muller**: stance через апгрейд (Eruption), не Q-toggle
+- ✅ **Branch selection** — перший левел-ап = вибір гілки з трьох
 
-### Quality of Life
+#### Вороги та боси
+- ✅ **5 типів ворогів** — Grunt, Orc1, Orc2, Orc3, FlyingEye
+- ✅ **SandGolem** — мінібос кожні 30 секунд, HP залежить від хвилі
+- ✅ **CLAWS** — фінальний бос (ClawsBoss.ts), 4000 HP, 3 фази (Wrath 100–60% → Frenzy 60–30% → Desperation 30–0%), скіли: Cleave, Ground Slam, Void Dash, Void Burst, велика HP-полоска під XP баром, victory screen
+- ✅ **Зони 0–4** — щільність і склад хвиль змінюються з відстанню від центру
 
-- Stance indicator у HUD
-- Підказка про Q-toggle для нових гравців
-- Preview Effect при виборі апгрейду
-- Backdrop blur/затемнення при level-up
-- Адаптивний розмір мінімапи
+#### Карта та рух
+- ✅ **Infinite procedural map** — чанки з зонами 0–4, трава + камінь
+- ✅ **RenderTexture baking** — 1 draw call замість тисяч для terrain
+- ✅ **Progressive map gen** — 3 deferred пакети для миттєвого першого кадру
+- ✅ **ChunkManager** — динамічне завантаження/вивантаження чанків
 
-### Нові вороги
+#### UI та сцени
+- ✅ **StartScene** — вибір героя, кнопки Forge / Encyclopedia / Profile
+- ✅ **UIScene** — мінімальний HUD: HP-бар (Graphics), XP-бар зверху, stance-btn, пауза
+- ✅ **LevelUpScene** — карти апгрейдів з брендом гілки, 3 варіанти на вибір
+- ✅ **ForgeScene** — мета-апгрейди за золото (5 × 5 тирів)
+- ✅ **EncyclopediaScene** — лор героїв, навігація між сторінками
+- ✅ **ProfileScene** — статистика героя, журнал сесій
+- ✅ **NameInputScene** — ввід імені гравця
+- ✅ **LoadingScene** — прогрес-бар для завантаження карти
+- ✅ **Pause Menu** — STATS / INVENTORY таби, Resume / Quit кнопки, прив'язка SPACE/ESC
+- ✅ **Stance indicator у HUD** — для всіх героїв зі стансом (кнопка + іконка)
 
-**MVP:** Мумія (Curse debuff), Скорпіон пустелі (dash з-під піску), Гарпія (ranged)
-**Середня черга:** Фараон-Ліч (міні-бос, 3 фази), Кристальний Голем (armor, elemental weakness)
+#### Системи
+- ✅ **Gold economy** — 35% дроп з мобів, гарантований з мінібосів, зберігається між сесіями
+- ✅ **MetaProgress** — totalKills, totalRuns, totalTime, heroRuns, achievements, goldTotal, sessions
+- ✅ **HintFlags** — система одноразових підказок (не показувати двічі)
+- ✅ **Chest system** — скрині дропають після мінібоса, дають вибір апгрейду
+- ✅ **SessionLogger / SupabaseClient** — логування сесій (опційно)
+- ✅ **Pathfinding** — A* для навігації ворогів навколо перешкод
+- ✅ **Online Co-op** — LobbyScene + HeroSelectScene, Colyseus server, server-authoritative movement, enemy/health sync
 
-### Бос-дизайн
+#### Performance (v0.4.3)
+- ✅ **Zero per-frame allocations у LevelUpScene** — пул 40 confetti + 15 sparks + 1 flash Graphics
+- ✅ **Deferred scene stop** — `setVisible(false)` → `delayedCall(0, stop)`, без freeze при виході
+- ✅ **BaseEnemy: timestamp knockback** — без per-hit таймерів; throttled moveTo (кожні 3 кадри)
+- ✅ **WaveManager O(1) alive count** — `_aliveCount` замість `countActive()`
+- ✅ **XPSystem 5s sweep** — один таймер на клас замість per-orb delayedCall
+- ✅ **Font/UI cleanup** — system font скрізь, `textStyles.ts`, без stroke (тільки shadow)
 
-**Ан-Нубіс, Страж Брами** (замість placeholder):
-- Фаза 1 (100–60%): Swing 180°, Summon 4 скелетів, Dark Bolt tracking
-- Фаза 2 (60–30%): Enrage +30% speed, Curse Zone (no regen)
-- Фаза 3 (30–0%): Death Shroud (damage ring 100px)
-- Дроп: Lore Fragment + 500 XP
+### Заплановано, не реалізовано
+
+#### Core features
+- ✅ **Run Summary Screen** — 6 stats (Time/Kills/Level/Gold/Minibosses/DmgTaken) + TOP SKILLS з мастері-точками + victory screen для вбитого CLAWS
+- ❌ **Lore Fragment System** — дроп Fragments із забігів, розблокування діалогів в Encyclopedia
+- ❌ **Run Events** — динамічні події кожні 2–3 хв (Темна Хмара, Чужинець, Кризова Точка)
+- ❌ **Elemental Combos** — Ice+Fire=Shatter, Wind+Fire=Firestorm, Lightning+Water=ChainShock
+- ❌ **Tutorial system** — ознайомлення з Q-toggle, stance, гілками для нових гравців
+- ❌ **Skill challenges / Tome of Trials** — місії для кожного героя
+
+#### Мета та прогресія
+- ❌ **Cursed Relics** — пре-забіговий бафф/дебафф за ціну обмеження
+- ❌ **Ascension System** — підвищена складність після N забігів одним героєм
+- ✅ **Hero unlock через умови** — реалізовано через `checkPostRunUnlocks` в MetaProgress
+- ❌ **Скіни героїв** — косметика за Trials
+
+#### Вороги та боси
+- ❌ **Мумія** — Curse debuff
+- ❌ **Гарпія** — ranged ворог
+- ❌ **Фараон-Ліч** — 3-фазний елітний мінібос
+- ❌ **Кристальний Голем** — armor + elemental weakness
+
+#### Endgame
+- ❌ **Blitz Mode** — 5 хвилин, подвійна щільність, +50% урон
+- ❌ **Cursed Run** — 3 рандомних Прокляття
+- ❌ **Gauntlet Mode** — 3 забіги підряд, HP залишається
+- ❌ **GLORY scoring** — глобальна таблиця рекордів
 
 ---
 
@@ -125,52 +181,53 @@
 
 ### Відмінності від Vampire Survivors
 
-1. **Dual Stance** — активна зміна режиму (VS ніколи не має "або-або")
-2. **Elemental System** — `lastDamageType` вже є, треба реалізувати combos
-3. **Hero Identity** — кожен герой = інший жанр
+1. **Dual Stance** — ✅ активна зміна режиму (Q-toggle) для 5 героїв, кожен з унікальними стансами
+2. **Elemental System** — `lastDamageType` вже є, але elemental combos ще не реалізовані
+3. **Hero Identity** — ✅ кожен герой = інший жанр (melee/ranged/tank/assassin/support...)
+4. **Gold meta-loop** — ✅ ForgeScene дає постійний приріст між забігами
 
-### Elemental Combos
+### Elemental Combos (заплановано)
 
 - **Ice + Fire = Shatter:** Заморожений ворог + вогонь → розлітається на осколки (30% HP AoE)
 - **Wind + Fire = Firestorm:** Dust Devil + вогонь → вогняний смерч з burn DoT
 - **Lightning + Water = Chain Shock** (майбутнє)
 
-### Run Events (динамічні події)
+### Run Events (заплановано)
 
 - **"Темна Хмара"** (хв 2): Пісочна буря 30с — видимість 60%, снаряди відхиляються. Після — 3 скрині.
 - **"Прибуття Чужинця"**: NPC з вибором: +30% урон / регенерація / підказка
 - **"Кризова Точка"** (HP < 20%): Desperado Card — heal / invuln / damage boost
 
-### Cursed Relics (pre-run бафф/дебафф)
+### Cursed Relics (заплановано)
 
 - **Попіл Ігнари:** +afterburn DoT, але HP max 50%
 - **Маска Назара:** Перший удар подвійний, але ворог стає швидшим
 - **Вічний Вітер Кашіна:** Безлімітний stance swap, але зупинка дрейнить енергію
 - **Кристалева Шкіра Гіві:** StoneSkin стеки зберігаються, але -15 speed
 
-### Cross-stance сінергії
+### Cross-stance сінергії (заплановано)
 
 **Кашін:** Sirocco накопичує "Wind Charge" (+10/хіт) → Haboob витрачає для підсилення (+5%/charge)
-**Сіфра:** Ice накопичує Frost Stack на ворогах → Lightning bonus damage по Frost Stack-ам
+**Сіфра:** Ice накопичує Frost Stack на ворогах → Lightning bonus damage по Frost Stack-ах
 
 ---
 
 ## 5. Ендгейм і реіграбельність
 
-### Challenge Modes
+### Challenge Modes (заплановано)
 
 - **Blitz Mode** — 5 хвилин, подвійна щільність хвиль, +50% урон ворогів
 - **Cursed Run** — 3 рандомних Прокляття ("Зворотній час", "Дзеркальний Ворог", "Тягар Слави")
 - **Gauntlet Mode** — 3 забіги підряд, HP залишається
 
-### Scoring — GLORY
+### Scoring — GLORY (заплановано)
 
 ```
 GLORY = (kills × 10) + (хвилини × 50) + (рівень × 30)
       + (Challenge bonus) - (удари отримані × 1)
 ```
 
-### Ascension System
+### Ascension System (заплановано)
 
 - **Ascension I** (5 забігів): Унікальний Trait + складніші хвилі
 - **Ascension II** (10 забігів): 4-та "тіньова" гілка скілів
@@ -179,37 +236,63 @@ GLORY = (kills × 10) + (хвилини × 50) + (рівень × 30)
 
 ## 6. Контент-план
 
-### Пріоритетна матриця
+### Пріоритетна матриця (станом на v0.4.3)
 
-| Фіча | Пріоритет | Scope |
-|---|---|---|
-| Run Summary Screen | CRITICAL | Малий |
-| Вимкнути debug | CRITICAL | Мінімальний |
-| Stance Indicator у HUD | HIGH | Малий |
-| Skill levels система | HIGH | Великий |
-| Реальний бос | HIGH | Середній |
-| Run Events | MEDIUM | Середній |
-| Lore Fragment System | MEDIUM | Середній |
-| Нові вороги (Мумія, Скорпіон) | MEDIUM | Середній |
-| Cursed Relics | MEDIUM | Середній |
-| Elemental Combos | MEDIUM | Великий |
-| Daily Challenge | LOW-MEDIUM | Середній |
-| Нова карта | LOW | Великий |
-| Ascension System | LOW | Великий |
-| Co-op | FUTURE | Величезний |
+| Фіча | Пріоритет | Scope | Статус |
+|---|---|---|---|
+| Детальний Run Summary Screen | HIGH | Малий | ✅ |
+| Run Events (динамічні події) | HIGH | Середній | ❌ |
+| Tutorial / HintFlags розширення | HIGH | Малий | ❌ |
+| Lore Fragment System | MEDIUM | Середній | ❌ |
+| Нові вороги (Мумія, Гарпія) | MEDIUM | Середній | ❌ |
+| Cursed Relics | MEDIUM | Середній | ❌ |
+| Elemental Combos | MEDIUM | Великий | ❌ |
+| Tome of Trials (skill challenges) | MEDIUM | Середній | ❌ |
+| Ascension System | LOW | Великий | ❌ |
+| Blitz / Cursed / Gauntlet Modes | LOW | Середній | ❌ |
+| GLORY scoring | LOW | Малий | ❌ |
+| Нова карта (Undead Map) | LOW | Великий | 🚧 (UndeadMapScene.ts) |
+| Co-op polish (spectate, reconnect, 3-4 players) | LOW | Середній | 🚧 (базова версія готова) |
 
-### MVP (2–3 тижні)
+### Вже зроблено (закрите)
 
-1. Debug off, NameInputScene
-2. Run Summary Screen
-3. Stance Indicator + Pause Menu
-4. Бос Ан-Нубіс
-5. GLORY scoring
+| Фіча | Версія |
+|---|---|
+| 7 героїв з унікальними механіками | v0.1–v0.4 |
+| Branch mastery (3 рівні) | v0.3 |
+| Stance system (5 героїв) | v0.3–v0.4 |
+| Gold economy + ForgeScene | v0.4 |
+| MetaProgress + Achievements (25) | v0.4 |
+| SandGolem мінібос (кожні 30с) | v0.4 |
+| CLAWS фінальний бос (10 хв) | v0.4 |
+| Chest system | v0.4.1 |
+| Pause Menu з STATS/INVENTORY табами | v0.4 |
+| Stance indicator у HUD | v0.4 |
+| EncyclopediaScene + ProfileScene | v0.4 |
+| LoadingScene з прогрес-баром | v0.4 |
+| HintFlags система | v0.4 |
+| Infinite procedural map (зони 0–4) | v0.3 |
+| RenderTexture terrain baking | v0.3 |
+| Online Co-op (Colyseus, server-auth movement) | v0.4.1–v0.4.2 |
+| LeaderboardScene + NameInputScene | v0.4.2 |
+| Perf pass: pools, deferred stop, throttling | v0.4.3 |
+| Font/UI cleanup: system font, textStyles.ts | v0.4.3 |
+| ClawsBoss з 3 фазами, HP бар, victory screen | v0.4.4 |
+| Run Summary Screen (stats grid + top skills) | v0.4.4 |
+| Perf round 3 (magnet zero-alloc, vignette pulse, pathfinding squared-dist, etc.) | v0.4.4 |
 
-### Content Wave 2 (1–2 місяці)
+### Наступна хвиля — Wave 5 (v0.5.x)
 
-Skill levels, Run Events, нові вороги, Lore Fragments, Cursed Relics
+1. Детальний Run Summary Screen
+2. Run Events (Темна Хмара, Чужинець, Кризова Точка)
+3. Tutorial / розширення HintFlags
+4. Lore Fragment System (зв'язка з Encyclopedia)
+5. Нові вороги (Мумія, Гарпія)
 
-### Content Wave 3 (3+ місяці)
+### Wave 6 (v0.6.x)
 
-Нова карта, Daily/Weekly, Elemental Combos, Ascension, нові герої
+Cursed Relics, Tome of Trials, Elemental Combos, Ascension System
+
+### Wave 7 (v0.7+)
+
+Challenge Modes, GLORY scoring, нова карта, нові герої

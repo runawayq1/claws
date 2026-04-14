@@ -1,12 +1,13 @@
 {
   "name": "claws",
   "private": true,
-  "version": "0.4.2",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "tsc && vite build && vercel --prod --yes"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
+    "colyseus.js": "^0.16.22",
     "phaser": "^3.90.0"
   }
 }

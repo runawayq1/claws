@@ -1,10 +1,14 @@
 import Phaser from 'phaser'
 import { type HeroType } from '../entities/Player'
+import { gameFont } from '../utils/device'
 
 export class LoadingScene extends Phaser.Scene {
   private hero: HeroType = 'ignara'
   private map = 'GameScene'
   private playerName = ''
+  private online = false
+  private seed = 0
+  private playerSlots: any[] = []
   private barFill!: Phaser.GameObjects.Graphics
   private barX = 0
   private barY = 0
@@ -16,10 +20,13 @@ export class LoadingScene extends Phaser.Scene {
     super({ key: 'LoadingScene' })
   }
 
-  init(data: { hero: HeroType; map: string; playerName?: string }) {
+  init(data: { hero: HeroType; map: string; playerName?: string; online?: boolean; seed?: number; playerSlots?: any[] }) {
     this.hero = data.hero || 'ignara'
     this.map = data.map || 'GameScene'
     this.playerName = data.playerName || ''
+    this.online = data.online ?? false
+    this.seed = data.seed ?? 0
+    this.playerSlots = data.playerSlots ?? []
   }
 
   preload() {
@@ -28,14 +35,15 @@ export class LoadingScene extends Phaser.Scene {
     // ── Progress bar UI ──
     this.cameras.main.setBackgroundColor(0x0d0d1a)
 
-    this.add.text(width / 2, height * 0.35, 'CLAWS', {
-      fontFamily: 'monospace', fontSize: '48px',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 6,
+    const loadTitle = this.add.text(width / 2, height * 0.35, 'CLAWS', {
+      fontFamily: gameFont(), fontSize: '48px',
+      color: '#FFD700',
     }).setOrigin(0.5)
+    loadTitle.setShadow(0, 1, '#000000', 2, true, true)
 
     this.add.text(width / 2, height * 0.35 + 48, 'Survive the Swarm', {
-      fontFamily: 'monospace', fontSize: '16px',
-      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      fontFamily: gameFont(), fontSize: '16px',
+      color: '#888888',
     }).setOrigin(0.5)
 
     this.barW = width * 0.6
@@ -55,8 +63,8 @@ export class LoadingScene extends Phaser.Scene {
 
     // Percentage text centered ON the bar
     const pctText = this.add.text(width / 2, this.barY + this.barH / 2, '0%', {
-      fontFamily: 'monospace', fontSize: '11px',
-      color: '#000000', stroke: '#FFD700', strokeThickness: 1,
+      fontFamily: gameFont(), fontSize: '11px',
+      color: '#000000',
     }).setOrigin(0.5).setDepth(1)
 
     // Flavor text below the bar — cycles on each progress tick
@@ -76,8 +84,8 @@ export class LoadingScene extends Phaser.Scene {
     ]
 
     this.loadingText = this.add.text(width / 2, this.barY + this.barH + 18, flavorTexts[0], {
-      fontFamily: 'monospace', fontSize: '13px',
-      color: '#888888', stroke: '#000000', strokeThickness: 2,
+      fontFamily: gameFont(), fontSize: '13px',
+      color: '#888888',
     }).setOrigin(0.5)
 
     // Asset loading fills bar to 90% — swap flavor text every ~10% progress
@@ -188,8 +196,15 @@ export class LoadingScene extends Phaser.Scene {
     img('prop_grass_tuft1', 'assets/props/grass_tuft1.png')
     img('prop_grass_tuft3', 'assets/props/grass_tuft3.png')
 
-    // Hero-specific assets
+    // Hero-specific assets — in multiplayer, load all heroes in the lobby
     this.loadHeroAssets(this.hero, ss)
+    if (this.online && this.playerSlots.length > 0) {
+      for (const slot of this.playerSlots) {
+        if (slot.heroType && slot.heroType !== this.hero) {
+          this.loadHeroAssets(slot.heroType, ss)
+        }
+      }
+    }
 
     // Undead map assets (only when needed)
     if (this.map === 'UndeadMapScene') {
@@ -283,12 +298,26 @@ export class LoadingScene extends Phaser.Scene {
         ss('crystal_blue_0',     'assets/givi/crystal_blue_0.png',  54, 51)
         ss('crystal_blue_1',     'assets/givi/crystal_blue_1.png',  43, 27)
         break
+      case 'vael':
+        // Vael has no spritesheet — reuses sifra visuals (tinted purple)
+        ss('sifra_idle',    'assets/sifra/Idle.png',    231, 190)
+        ss('sifra_run',     'assets/sifra/Run.png',     231, 190)
+        ss('sifra_attack',  'assets/sifra/Attack1.png', 231, 190)
+        ss('sifra_hurt',    'assets/sifra/Hit.png',     231, 190)
+        ss('sifra_death',   'assets/sifra/Death.png',   231, 190)
+        break
     }
   }
 
   create() {
     // Launch game scene behind us, keep LoadingScene on top
-    this.scene.launch(this.map, { hero: this.hero, playerName: this.playerName })
+    this.scene.launch(this.map, {
+      hero: this.hero,
+      playerName: this.playerName,
+      online: this.online,
+      seed: this.seed,
+      playerSlots: this.playerSlots,
+    })
     this.scene.bringToTop(this.scene.key)
 
     // Cycle flavor texts while waiting for terrain (timers work in create phase)

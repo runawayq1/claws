@@ -1,3 +1,5 @@
+// Note: not `as const` — CHUNK_SIZE/CHUNK_TILES are sized to the viewport in
+// main.ts before scenes start, so the 3x3 chunk grid always covers the canvas.
 export const CONFIG = {
   WORLD_WIDTH: 3000,
   WORLD_HEIGHT: 3000,
@@ -21,9 +23,9 @@ export const CONFIG = {
   // Row 2 = facing down (toward camera) — best for top-down view
   SPRITE_DIR_ROW: 2,
 
-  // XP
-  XP_BASE: 100,
-  XP_SCALE: 1.4,
+  // XP — linear growth: XP_BASE + XP_PER_LEVEL * (level - 1)
+  XP_BASE: 120,
+  XP_PER_LEVEL: 55,
 
   // Zergling / Orc
   ZERGLING_BASE_HP: 40,
@@ -58,7 +60,7 @@ export const CONFIG = {
   // Gold drops
   GOLD_MOB_CHANCE: 0.35,
   GOLD_MOB_MIN: 1,
-  GOLD_MOB_MAX: 1,
+  GOLD_MOB_MAX: 3,
   GOLD_BOSS_MIN: 5,
   GOLD_BOSS_MAX: 10,
-} as const
+}

@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { Player } from '../Player'
 import { BaseEnemy } from '../BaseEnemy'
+import type { GameSceneContext } from '../../types/scene-context'
 
 /** Haboob melee: cone AoE sand swipe — applies blind + knockback */
 export function attackSandSwipe(p: Player, target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
@@ -84,7 +85,7 @@ export function attackSandSwipe(p: Player, target: Phaser.Physics.Arcade.Sprite,
         delay: 500, loop: true,
         callback: () => {
           cloudLife += 500
-          const enemies2 = (p.scene as any).enemies as Phaser.Physics.Arcade.Group
+          const enemies2 = (p.scene as GameSceneContext).enemies
           if (enemies2) {
             for (const e2 of enemies2.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
               if (!e2.active) continue
@@ -185,11 +186,8 @@ export function attackWindSlash(p: Player, target: Phaser.Physics.Arcade.Sprite,
           if (p.hasAbrasion && (e as any)._isBlinded) dmg = Math.ceil(dmg * 1.2)
           ;(e as BaseEnemy).takeDamage(dmg, 'melee')
           // Gust Strike: knockback
-          if (p.hasGustStrike && e.body) {
-            const kb = Phaser.Math.Angle.Between(cx, cy, e.x, e.y)
-            const eBody = e.body as Phaser.Physics.Arcade.Body
-            eBody.velocity.x += Math.cos(kb) * 150
-            eBody.velocity.y += Math.sin(kb) * 150
+          if (p.hasGustStrike) {
+            ;(e as BaseEnemy).applyKnockback(cx, cy, 150)
           }
           hitSet.add(e)
           // Hit VFX
@@ -230,7 +228,7 @@ export function spawnDustDevil(p: Player, x: number, y: number, angle: number) {
   const dmg = Math.ceil(p.damage * 0.3)
   const tornado = p.scene.add.graphics().setDepth(9)
   let elapsed = 0
-  const enemies = (p.scene as any).enemies as Phaser.Physics.Arcade.Group
+  const enemies = (p.scene as GameSceneContext).enemies
 
   const timer = p.scene.time.addEvent({
     delay: 16, loop: true,
@@ -270,16 +268,16 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
     p.windEnergy = Math.min(p.maxEnergy, p.windEnergy + regenAmt)
   }
 
-  const scene = p.scene as any
-  const enemies = scene.enemies as Phaser.Physics.Arcade.Group | undefined
+  const scene = p.scene as GameSceneContext
+  const enemies = scene.enemies
 
   // Sand Armor regen
-  if (p.hasSandArmor && (p as any)._sandArmorMax) {
-    if ((p as any)._sandArmorRegenDelay > 0) {
-      (p as any)._sandArmorRegenDelay -= delta
-    } else if ((p as any)._sandArmorHP < (p as any)._sandArmorMax) {
-      (p as any)._sandArmorHP = Math.min((p as any)._sandArmorMax,
-        (p as any)._sandArmorHP + (p as any)._sandArmorMax * 0.1 * (delta / 1000))
+  if (p.hasSandArmor && p._sandArmorMax) {
+    if (p._sandArmorRegenDelay > 0) {
+      p._sandArmorRegenDelay -= delta
+    } else if (p._sandArmorHP < p._sandArmorMax) {
+      p._sandArmorHP = Math.min(p._sandArmorMax,
+        p._sandArmorHP + p._sandArmorMax * 0.1 * (delta / 1000))
     }
   }
 
@@ -415,19 +413,16 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
 
   // Scarab Tide: on kill, spawn 4 seeking blind scarabs
   if (p.hasScarabTide && enemies) {
-    if (!(p as any)._scarabs) (p as any)._scarabs = [] as Phaser.GameObjects.Arc[]
-
     // Listen for enemy deaths via scene event (register once)
-    if (!(p as any)._scarabDeathListener) {
+    if (!p._scarabDeathListener) {
       const onEnemyDied = (ex: number, ey: number) => {
         if (!p.hasScarabTide) return
         // Prune dead scarabs (always read from the property, not the stale local ref)
-        const alive = ((p as any)._scarabs as any[] || []).filter(s => s.active)
-        ;(p as any)._scarabs = alive
+        const alive = p._scarabs.filter(s => s.active)
+        p._scarabs = alive
         if (alive.length >= 8) return  // cap at 8
 
-        const scene = p.scene as any
-        const scarabEnemies = scene.enemies as Phaser.Physics.Arcade.Group | undefined
+        const scarabEnemies = (p.scene as GameSceneContext).enemies
         for (let i = 0; i < 4 && alive.length < 8; i++) {
           const angle = (i / 4) * Math.PI * 2
           const scarab = p.scene.add.circle(
@@ -507,7 +502,7 @@ export function updateKhashinPassives(p: Player, delta: number, moving: boolean)
           p.scene.time.delayedCall(5000, () => { if (scarab.active) scarab.destroy() })
         }
       }
-      ;(p as any)._scarabDeathListener = onEnemyDied
+      p._scarabDeathListener = onEnemyDied
       p.scene.events.on('enemy-died', onEnemyDied)
     }
   }

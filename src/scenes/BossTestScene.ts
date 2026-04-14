@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 
 /**
  * BossTestScene — visual test for the demon slime boss spritesheet.
@@ -29,20 +30,16 @@ export class BossTestScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 24, 'BOSS TEST — DEMON SLIME', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '24px',
       color: '#FF4444',
-      stroke: '#000000',
-      strokeThickness: 4,
     }).setOrigin(0.5, 0).setDepth(20)
 
     // Back button
     const backBtn = this.add.text(16, 16, '< BACK', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#888888',
-      stroke: '#000000',
-      strokeThickness: 3,
       backgroundColor: '#1a1a2e',
       padding: { x: 10, y: 6 },
     }).setOrigin(0, 0).setDepth(20).setInteractive({ useHandCursor: true })
@@ -89,21 +86,17 @@ export class BossTestScene extends Phaser.Scene {
 
       // Label
       this.add.text(x, rowY + 120, labels[i], {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize: '12px',
         color: '#ff8888',
-        stroke: '#000000',
-        strokeThickness: 2,
         align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
 
       // Frame info
       this.add.text(x, rowY + 138, `${a.end - a.start + 1}f`, {
-        fontFamily: 'monospace',
+        fontFamily: gameFont(),
         fontSize: '10px',
         color: '#666666',
-        stroke: '#000000',
-        strokeThickness: 2,
         align: 'center',
       }).setOrigin(0.5, 0).setDepth(20)
     })
@@ -124,21 +117,17 @@ export class BossTestScene extends Phaser.Scene {
     })
 
     const animLabel = this.add.text(width / 2, height * 0.72 + 110, 'CLICK TO CYCLE — IDLE', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '14px',
       color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 3,
       align: 'center',
     }).setOrigin(0.5, 0).setDepth(20)
 
     // Boss info panel
     this.add.text(width / 2, height - 40, 'Spritesheet: 288×160 per frame | 22 cols × 5 rows | idle:6  walk:12  cleave:15  hit:5  death:22', {
-      fontFamily: 'monospace',
+      fontFamily: gameFont(),
       fontSize: '10px',
       color: '#555555',
-      stroke: '#000000',
-      strokeThickness: 2,
       align: 'center',
     }).setOrigin(0.5, 0.5).setDepth(20)
   }

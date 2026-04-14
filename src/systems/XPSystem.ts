@@ -1,45 +1,69 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { Player } from '../entities/Player'
 
 export class XPSystem {
   private scene: Phaser.Scene
-  private player: Player
+  private players: Player[]
   private orbs: Phaser.Physics.Arcade.Group
   magnetRadius = 100
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  constructor(scene: Phaser.Scene, players: Player[]) {
     this.scene = scene
-    this.player = player
+    this.players = players
 
     this.orbs = scene.physics.add.group()
 
-    // Generate XP orb texture — bright blue gem
+    // Generate XP orb texture — bright blue gem (16x16)
     const g = scene.add.graphics()
-    // Outer glow
     g.fillStyle(0x4488ff, 0.3)
     g.fillCircle(8, 8, 8)
-    // Core
     g.fillStyle(0x4488ff)
     g.fillCircle(8, 8, 5)
-    // Highlight
     g.fillStyle(0x88ccff)
     g.fillCircle(7, 6, 2)
     g.generateTexture('xp_orb', 16, 16)
     g.destroy()
 
-    // Collect orbs on overlap
-    scene.physics.add.overlap(player, this.orbs, (_p, orb) => {
-      const xpOrb = orb as Phaser.Physics.Arcade.Sprite
-      const xpValue = (xpOrb as any).xpValue || 10
-      this.player.addXP(xpValue)
-      xpOrb.destroy()
-    })
+    // Generate large XP orb texture — purple gem (32x32, x2 size)
+    const gl = scene.add.graphics()
+    gl.fillStyle(0x9944ff, 0.3)
+    gl.fillCircle(16, 16, 16)
+    gl.fillStyle(0x9944ff)
+    gl.fillCircle(16, 16, 10)
+    gl.fillStyle(0xcc88ff)
+    gl.fillCircle(14, 12, 4)
+    gl.generateTexture('xp_orb_large', 32, 32)
+    gl.destroy()
+
+    // Collect orbs on overlap — register for each player
+    for (const p of this.players) {
+      scene.physics.add.overlap(p, this.orbs, (_p, orb) => {
+        const xpOrb = orb as Phaser.Physics.Arcade.Sprite
+        const xpValue = (xpOrb as any).xpValue || 10
+        p.addXP(xpValue)
+        xpOrb.destroy()
+      })
+    }
+
+    // Single sweep timer to expire old orbs (replaces per-orb delayedCall timers)
+    scene.time.addEvent({ delay: 5000, loop: true, callback: () => this._expireOldOrbs() })
+  }
+
+  private _expireOldOrbs() {
+    const now = this.scene.time.now
+    for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+      if (orb.active && (orb as any)._spawnTime && now - (orb as any)._spawnTime > 30000) {
+        orb.destroy()
+      }
+    }
   }
 
   spawnOrb(x: number, y: number, value: number) {
     const orb = this.scene.physics.add.sprite(x, y, 'xp_orb')
     orb.setDepth(3)
     ;(orb as any).xpValue = value
+    ;(orb as any)._spawnTime = this.scene.time.now
     this.orbs.add(orb)
 
     // Small scatter burst
@@ -48,22 +72,57 @@ export class XPSystem {
     this.scene.time.delayedCall(250, () => {
       if (orb.active) orb.setVelocity(0, 0)
     })
+  }
 
-    // Auto-expire after 30s to prevent unbounded accumulation
-    this.scene.time.delayedCall(30000, () => {
-      if (orb.active) orb.destroy()
+  /** Spawn a large purple XP orb (x2 value, x2 size) */
+  spawnLargeOrb(x: number, y: number, value: number) {
+    const orb = this.scene.physics.add.sprite(x, y, 'xp_orb_large')
+    orb.setDepth(3)
+    ;(orb as any).xpValue = value * 2
+    ;(orb as any)._spawnTime = this.scene.time.now
+    this.orbs.add(orb)
+
+    // Pop-in scale
+    orb.setScale(0)
+    this.scene.tweens.add({
+      targets: orb, scaleX: 1.3, scaleY: 1.3, duration: 150, ease: 'Back.easeOut',
+      onComplete: () => {
+        if (orb.active) this.scene.tweens.add({ targets: orb, scaleX: 1, scaleY: 1, duration: 100 })
+      },
+    })
+
+    // Scatter burst
+    const angle = Math.random() * Math.PI * 2
+    orb.setVelocity(Math.cos(angle) * 80, Math.sin(angle) * 80)
+    this.scene.time.delayedCall(300, () => {
+      if (orb.active) orb.setVelocity(0, 0)
+    })
+
+    // Gentle pulse glow
+    this.scene.tweens.add({
+      targets: orb, alpha: 0.6, duration: 500, yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
     })
   }
 
-  /** Call every frame — pulls nearby orbs toward player */
+  /** Call every frame — pulls nearby orbs toward the nearest player */
   updateMagnet() {
     for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!orb.active) continue
-      const dist = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.cx, this.player.cy)
-      if (dist < this.magnetRadius) {
-        // Accelerate toward player — faster when closer
-        const speed = 200 + (1 - dist / this.magnetRadius) * 300
-        this.scene.physics.moveTo(orb, this.player.cx, this.player.cy, speed)
+      let nearest: Player | null = null
+      let minDist = this.magnetRadius
+      for (const p of this.players) {
+        if (p.isDead) continue
+        const dist = Phaser.Math.Distance.Between(orb.x, orb.y, p.cx, p.cy)
+        if (dist < minDist) { nearest = p; minDist = dist }
+      }
+      if (nearest) {
+        const speed = 200 + (1 - minDist / this.magnetRadius) * 300
+        const dx = nearest.cx - orb.x
+        const dy = nearest.cy - orb.y
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        const body = orb.body as Phaser.Physics.Arcade.Body
+        body.setVelocity((dx / len) * speed, (dy / len) * speed)
       }
     }
   }
@@ -75,13 +134,13 @@ export class XPSystem {
 
 export class GoldSystem {
   private scene: Phaser.Scene
-  private player: Player
+  private players: Player[]
   private orbs: Phaser.Physics.Arcade.Group
   magnetRadius = 100
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  constructor(scene: Phaser.Scene, players: Player[]) {
     this.scene = scene
-    this.player = player
+    this.players = players
     this.orbs = scene.physics.add.group()
 
     // Generate spinning coin spritesheet (8 frames, 16x16 each)
@@ -127,24 +186,28 @@ export class GoldSystem {
       })
     }
 
-    // Collect gold on overlap — fly-away +N text
-    scene.physics.add.overlap(player, this.orbs, (_p, orb) => {
-      const goldOrb = orb as Phaser.Physics.Arcade.Sprite
-      const value = (goldOrb as any).goldValue || 1
-      this.player.goldThisRun += value
+    // Single sweep timer to expire old gold orbs
+    scene.time.addEvent({ delay: 5000, loop: true, callback: () => this._expireOldOrbs() })
 
-      // Floating "+N" text
-      const txt = this.scene.add.text(goldOrb.x, goldOrb.y - 10, `+${value}`, {
-        fontFamily: 'monospace', fontSize: '13px', color: '#FFD700',
-        stroke: '#000000', strokeThickness: 2,
-      }).setOrigin(0.5).setDepth(25)
-      this.scene.tweens.add({
-        targets: txt, y: txt.y - 30, alpha: 0, duration: 600,
-        onComplete: () => txt.destroy(),
+    // Collect gold on overlap — fly-away +N text — register for each player
+    for (const p of this.players) {
+      scene.physics.add.overlap(p, this.orbs, (_p, orb) => {
+        const goldOrb = orb as Phaser.Physics.Arcade.Sprite
+        const value = (goldOrb as any).goldValue || 1
+        p.goldThisRun += value
+
+        // Floating "+N" text
+        const txt = this.scene.add.text(goldOrb.x, goldOrb.y - 10, `+${value}`, {
+          fontFamily: gameFont(), fontSize: '13px', color: '#FFD700',
+        }).setOrigin(0.5).setDepth(25)
+        this.scene.tweens.add({
+          targets: txt, y: txt.y - 30, alpha: 0, duration: 600,
+          onComplete: () => txt.destroy(),
+        })
+
+        goldOrb.destroy()
       })
-
-      goldOrb.destroy()
-    })
+    }
   }
 
   spawnOrb(x: number, y: number, value: number) {
@@ -152,6 +215,7 @@ export class GoldSystem {
     orb.play('gold_spin')
     orb.setDepth(3).setScale(0)
     ;(orb as any).goldValue = value
+    ;(orb as any)._spawnTime = this.scene.time.now
     this.orbs.add(orb)
 
     // Pop-in scale + scatter burst
@@ -180,20 +244,34 @@ export class GoldSystem {
       targets: orb, alpha: 0.7, duration: 600, yoyo: true, repeat: -1,
       ease: 'Sine.easeInOut',
     })
-
-    // Auto-expire after 30s
-    this.scene.time.delayedCall(30000, () => {
-      if (orb.active) orb.destroy()
-    })
   }
 
   updateMagnet() {
     for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!orb.active) continue
-      const dist = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.cx, this.player.cy)
-      if (dist < this.magnetRadius) {
-        const speed = 200 + (1 - dist / this.magnetRadius) * 300
-        this.scene.physics.moveTo(orb, this.player.cx, this.player.cy, speed)
+      let nearest: Player | null = null
+      let minDist = this.magnetRadius
+      for (const p of this.players) {
+        if (p.isDead) continue
+        const dist = Phaser.Math.Distance.Between(orb.x, orb.y, p.cx, p.cy)
+        if (dist < minDist) { nearest = p; minDist = dist }
+      }
+      if (nearest) {
+        const speed = 200 + (1 - minDist / this.magnetRadius) * 300
+        const dx = nearest.cx - orb.x
+        const dy = nearest.cy - orb.y
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        const body = orb.body as Phaser.Physics.Arcade.Body
+        body.setVelocity((dx / len) * speed, (dy / len) * speed)
+      }
+    }
+  }
+
+  private _expireOldOrbs() {
+    const now = this.scene.time.now
+    for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+      if (orb.active && (orb as any)._spawnTime && now - (orb as any)._spawnTime > 30000) {
+        orb.destroy()
       }
     }
   }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { gameFont } from '../utils/device'
 import { CONFIG } from '../config/GameConfig'
 import * as ignara from './heroes/ignara'
 import * as sifra from './heroes/sifra'
@@ -7,13 +8,19 @@ import * as nazar from './heroes/nazar'
 import * as huntress from './heroes/huntress'
 import * as khashin from './heroes/khashin'
 import * as muller from './heroes/muller'
+import * as nightborne from './heroes/nightborne'
+import * as vael from './heroes/vael'
+import { generateHeroFallbackTexture } from './heroes/fallbackTextures'
 import { MetaProgress } from '../systems/MetaProgress'
+import { type IInputController, KeyboardInputController } from '../systems/InputController'
 
-export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller'
+export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller' | 'nightborne' | 'vael'
+
+const ZERO_DIR = { dx: 0, dy: 0 } as const
 
 interface HeroDef {
   hp: number; speed: number; damage: number; range: number; cooldown: number
-  color: number; attackType: 'flamethrower' | 'dash' | 'iceshard' | 'shockwave' | 'poison' | 'melee' | 'fireball' | 'spear' | 'windslash' | 'crystalwave'
+  color: number; attackType: 'flamethrower' | 'dash' | 'iceshard' | 'shockwave' | 'poison' | 'melee' | 'fireball' | 'spear' | 'windslash' | 'crystalwave' | 'voidslash' | 'soulbolt'
 }
 
 // Heroes with real spritesheet animations (side-view)
@@ -29,6 +36,13 @@ interface SpriteHeroCfg extends SpriteConfig {
   reuseFrom?: HeroType
   /** Tint color to differentiate from the original */
   tint?: number
+  /**
+   * If set, hero uses ONE combined sheet (key = sheetKey) instead of separate
+   * per-animation textures. Frame ranges override the anims frame counts.
+   */
+  sheetKey?: string
+  /** Frame ranges for single-sheet heroes — [start, end] inclusive */
+  animFrames?: { idle: [number, number]; run: [number, number]; attack: [number, number]; hurt: [number, number]; death: [number, number] }
 }
 
 const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
@@ -40,19 +54,36 @@ const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
   amun:   { scale: 1.5, bodyW: 33, bodyH: 46, bodyOffX: 65, bodyOffY: 57, anims: { idle: 8, run: 8, attack: 4, hurt: 4, death: 6 } },
   huntress: { scale: 1.61, bodyW: 22, bodyH: 34, bodyOffX: 62, bodyOffY: 62, anims: { idle: 8, run: 8, attack: 5, hurt: 3, death: 8 } },
   khashin:  { scale: 1.65, bodyW: 26, bodyH: 40, bodyOffX: 129, bodyOffY: 88, anims: { idle: 8, run: 8, attack: 8, hurt: 6, death: 19 } },
-  muller:   { scale: 1.35, bodyW: 26, bodyH: 40, bodyOffX: 127, bodyOffY: 87, anims: { idle: 8, run: 8, attack: 7, hurt: 6, death: 15 } },
+  muller:     { scale: 1.35, bodyW: 26, bodyH: 40, bodyOffX: 127, bodyOffY: 87, anims: { idle: 8, run: 8, attack: 7, hurt: 6, death: 15 } },
+  nightborne: { scale: 0.65, bodyW: 43, bodyH: 60, bodyOffX: 95, bodyOffY: 141, anims: { idle: 9, run: 6, attack: 12, hurt: 5, death: 23 } },
+  vael: {
+    scale: 1.6, bodyW: 24, bodyH: 40, bodyOffX: 68, bodyOffY: 78,
+    anims: { idle: 8, run: 8, attack: 13, hurt: 5, death: 9 },
+    sheetKey: 'vael_sheet',
+    animFrames: {
+      // 17-col grid. Row 0: idle (8), Row 1: run (8), Row 2: cast+star (13),
+      // Row 4: attack (17), Row 5: hurt (5), Row 6: death (9)
+      idle:   [0,   7],
+      run:    [17,  24],
+      attack: [34,  46],  // row 2 — cast with star burst (visible attack anim)
+      hurt:   [85,  89],
+      death:  [102, 110],
+    },
+  },
 }
 
 const HERO_DEFS: Record<HeroType, HeroDef> = {
-  ignara:  { hp: 80,  speed: 140, damage: 30, range: 180, cooldown: 700, color: 0xe84118, attackType: 'fireball' },
+  ignara:    { hp: 80,  speed: 140, damage: 30, range: 200, cooldown: 700,  color: 0xe84118, attackType: 'fireball' },
   // khet removed from playable roster
   // khet:    { hp: 55,  speed: 220, damage: 35, range: 48,  cooldown: 600,  color: 0x4a0072, attackType: 'dash' },
-  sifra:   { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
-  amun:    { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800, color: 0xfff200, attackType: 'shockwave' },
-  nazar:   { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
-  huntress: { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
-  khashin:  { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
-  muller:   { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
+  sifra:     { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
+  amun:      { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800,  color: 0xfff200, attackType: 'shockwave' },
+  nazar:     { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
+  huntress:  { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
+  khashin:   { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
+  muller:    { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
+  nightborne: { hp: 110, speed: 150, damage: 28, range: 90,  cooldown: 850,  color: 0x9933FF, attackType: 'voidslash' },
+  vael:       { hp: 85,  speed: 130, damage: 22, range: 220, cooldown: 700,  color: 0x8866cc, attackType: 'soulbolt' },
 }
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -82,14 +113,61 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasBackdraft = false
   hasWildfire = false
   hasFirestorm = false
+  firestormOrbCount = 0
   hasPyromaniac = false
   hasMoltenSkin = false
+  hasEmberVolley = false
+  emberVolleyCap = 0.2
+  emberVolleyDmg = false
+  emberVolleyStacks = 0
   lavaTrailTimer = 0
+  hasFlashpoint = false
+  flashpointCharges = 1
+  flashpointBurst = false
+  flashpointRemaining = 0
+
+  // Inferno — Ashen Veil
+  hasAshenVeil = false
+  ashenVeilDR = 0.10
+  ashenVeilMaxStacks = 1
+  ashenVeilStacks = 0
+  ashenVeilUntil = 0
+
+  // Pyre branch
+  hasMoltenVolley = false
+  moltenVolleyCount = 3
+  moltenVolleyScorch = false
+
+  // Pyre — Slug Round
+  hasSlugRound = false
+  slugPierce = 0
+  hasImmolation = false
+  immolationRadius = 50
+  immolationDmgPct = 0.15
+  hasScorchedBastion = false
+  scorchedBastionLifesteal = 0
+
+  // Bullet Heaven branch
+  hasSustainedBurn = false
+  burnMaxStacks = 5
+  burnStackedDmgBonus = false
+  hasPowderKeg = false
+  powderKegThreshold = 10
+  powderKegCounter = 0
+  powderKegReady = false
+  powderKegShrapnel = false
+  hasInfernalCadence = false
+  infernalCadenceEndTime = 0
+  infernalCadenceDuration = 6000
+  infernalCadenceCooldownUntil = 0
+  infernalCadenceCooldown = 18000
+  burnTickTimer = 0
 
   // Nazar upgrade mechanic flags
   hasChainDash = false
   hasVanish = false
   vanishUntil = 0
+  vanishCooldownUntil = 0
   hasSmokeBomb = false
   hasPandemic = false
   hasHemorrhage = false
@@ -103,6 +181,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasWeakness = false        // poisoned enemies take +30% dmg
   hasNecrosis = false        // poison DPS ramps per tick
   phantomTrailTimer = 0
+  _phantomTrails: Phaser.GameObjects.Arc[] = []
 
   // Sifra ice upgrade mechanic flags
   hasFrostNova = false
@@ -117,6 +196,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   iceArmorHP = 0
   iceArmorMax = 0
   iceArmorRegenDelay = 0
+  _iceArmorAura: Phaser.GameObjects.Graphics | null = null
   hasCryoShield = false         // counter shards when hit
   hasSparkInitiate = false      // chain to 1 extra enemy
   hasArcReach = false           // wider cone + arc outside
@@ -129,7 +209,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   xp = 0
   level = 1
   kills = 0
+  miniBossKills = 0
   goldThisRun = 0
+  damageTakenThisRun = 0
   shieldHp = 0
   shieldMaxHp = 0
   shieldTimer = 0
@@ -141,7 +223,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private _shadow!: Phaser.GameObjects.Ellipse
   private lastAttackTime = 0
   isAttacking = false
-  private isDead = false
+  isDead = false
   private heroDef: HeroDef
   private poisonEndTime = 0
   private poisonDps = 0
@@ -167,11 +249,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasEarthquake = false       // stun enemies on shockwave
   hasColossus = false         // massive knockback on shockwave
   hasCataclysm = false        // double shockwave burst
-  hasPassiveAura = false      // constant dps ring around player
-  hasThorns = false           // reflect damage to melee attackers
+  hasPassiveAura = false      // orbiting shield projectiles
+  passiveAuraLevel = 0        // 1/2/3 — controls shield count & appearance
+  orbitShields: Phaser.GameObjects.Image[] = []  // managed by updateAmunPassives
+  shieldTickTimer = 0         // discrete tick accumulator for shield swept-arc damage
+  hasThorns = false           // orbiting swords (Wrath skill)
+  thornsLevel = 0             // 1/2/3 — controls sword count & rotation speed
+  thornsDmgBonus = 0          // additive % bonus to sword damage (lvl2 +0.05, lvl3 +0.10)
+  thornsTickTimer = 0         // discrete tick accumulator for sword damage
+  orbitSwords: Phaser.GameObjects.Image[] = []  // managed by updateAmunPassives
+  thornsTrailGfx: Phaser.GameObjects.Graphics | null = null  // lvl3 trail VFX
   hasIronWill = false         // cap incoming damage to 10% maxHP
   hasLowHpRegen = false       // regen ×3 when below 40% HP
-  hasUndying = false          // revive once at full HP
+  rebirthStacks = 0           // revive N times at full HP (Undying)
   hasLivingFortress = false   // aura damage scales with HP %
   hasWrath = false            // damage aura spike when hit
   hasGravityWell = false      // pull enemies toward Amun
@@ -201,8 +291,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   camouflageUntil = 0     // timer for Camouflage
   leapCooldown = 0       // cooldown for auto-leap
   caltropTimer = 0       // cooldown for caltrops drop
+  lastHeadhunterCheck = 0  // timestamp of last Headhunter execute scan
   spearWallGfx: Phaser.GameObjects.Graphics | null = null
   spearWallAngle = 0     // rotating spear wall angle
+
+  // Vael stance — 'orbs' (homing soul orbs) or 'drain' (vampiric green bolts)
+  vaelStance: 'orbs' | 'drain' = 'orbs'
+  orbsEnergy = 100
+  drainEnergy = 100
 
   // Khashin (Wind) upgrade mechanic flags
   khashinStance: 'sirocco' | 'haboob' = 'sirocco'
@@ -229,6 +325,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   desertWindTimer = 0
   driftTimer = 0
   windSlashPierce = 2           // base pierce for wind slash
+  // Khashin ad-hoc runtime fields (written by UpgradeSystem and khashin.ts)
+  _sandArmorHP = 0
+  _sandArmorMax = 0
+  _sandArmorRegenDelay = 0
+  _scarabs: Phaser.GameObjects.Arc[] = []
+  _scarabDeathListener: ((x: number, y: number) => void) | null = null
 
   // Crystal Muller upgrade mechanic flags
   mullerStance: 'spike' | 'eruption' = 'spike'
@@ -249,7 +351,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasFaultLine = false          // persistent ground hazard
   hasResonanceField = false     // debuff aura on structures
   hasMotherLode = false         // periodic full-screen eruption every 12s
-  private tectonicCounter = 0
+  tectonicCounter = 0
   stoneSkinStacks = 0
   stoneSkinTimer = 0
   private _stoneSkinAccum = 0
@@ -258,6 +360,155 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   crystalPillarTimer = 0
   crystalWaveConeAngle = 40     // degrees
   motherLodeTimer = 0
+
+  // Nightborne (Void Blade) upgrade mechanic flags
+  // -- Void Blade branch
+  hasVoidEdge = false
+  voidEdgeLevel = 0
+  hasCleave = false                // NOTE: generic g7 also sets splashRadius; this is hero-specific arc widener
+  voidCleaveEdgeBonus = 0
+  hasVoidSurge = false
+  voidSurgeLevel = 0
+  _surgeCounter = 0
+  voidSurgeEvery = 4
+  voidSurgeRadius = 140
+  voidSurgeDmgPct = 0.6
+  hasDarkResonance = false
+  darkResonanceLevel = 0
+  darkResonanceRadius = 40
+  darkResonanceDmgPct = 0.5
+  hasVoidAscendant = false
+  voidAscendantLevel = 0
+  _ascendantUntil = 0
+  _ascendantCDTimer = 999999
+  voidAscendantDuration = 6000
+  voidAscendantCooldown = 45000
+  // -- Phantom branch
+  hasEchoStrike = false
+  echoStrikeLevel = 0
+  echoStrikeDmgPct = 0.35
+  hasSplitShade = false
+  splitShadeLevel = 0
+  _splitShadeCooldownUntil = 0
+  hasPhantomVeil = false
+  phantomVeilLevel = 0
+  phantomVeilChance = 0.3
+  hasMirrorSwarm = false
+  mirrorSwarmSlashes = 1
+  hasShadeLegion = false
+  shadeLegionLevel = 0
+  shadeLegionDuration = 5000
+  shadeLegionCooldown = 50000
+  shadeLegionDmgPct = 0.7
+  _shadeLegionUntil = 0
+  _shadeLegionCDTimer = 999999
+  _invulnUntil = 0
+  // -- Rift branch
+  hasVoidStep = false
+  voidStepLevel = 0
+  voidStepDist = 50
+  hasRiftAnchor = false
+  riftAnchorLevel = 0
+  _anchorX!: number
+  _anchorY!: number
+  _anchorExpiry = 0
+  _anchorTimer = 0
+  riftAnchorCooldown = 12000
+  riftAnchorDuration = 8000
+  riftAnchorHpThreshold = 0.25
+  hasVoidZone = false
+  voidZoneRadius = 40
+  voidZoneDuration = 3000
+  voidZoneDotPct = 0.08
+  hasSpatialTear = false
+  spatialTearLevel = 0
+  _spatialTearTimer = 0
+  spatialTearCooldown = 8000
+  spatialTearRadius = 80
+  hasRiftCollapse = false
+  riftCollapseLevel = 0
+  _riftCollapseCDTimer = 999999
+  riftCollapseCooldown = 40000
+  riftCollapseRadius = 200
+  riftCollapseDmgPct = 1.8
+  // Derived arc stats (set by upgrade apply fns)
+  voidArcRange = 90
+  voidArcAngle = 150
+
+  // Vael (Pale Doctor) upgrade mechanic flags
+  // Pale Harvest branch
+  hasHollowTouch = false
+  hollowTouchRate = 0.08
+  hasSoulSiphon = false
+  soulSiphonDropChance = 0.10
+  soulSiphonMaxStacks = 8
+  soulStacks = 0   // current armor stacks from collected souls
+  hasWoundMemory = false
+  woundMemoryBonus = 0.20
+  woundMemoryRootDur = 400
+  hasExsanguination = false
+  exsangChainCount = 2
+  exsangDmgPct = 0.60
+  exsangRangeBonus = 0
+  exsangDoubleArc = false
+  hasSanguineAscendancy = false
+  sanguineWindowDuration = 6000
+  sanguineHealPct = 0.12
+  sanguineInstantOrbs = false
+  sanguineLowHpDR = false
+  // Ossuary branch
+  hasRisen = false
+  risenProcChance = 0.25
+  risenDuration = 4000
+  risenDmgPct = 0.30
+  risenMaxThralls = 999
+  hasGravePact = false
+  gravePactHPBonus = 0
+  gravePactDeathBurst = false
+  gravePactDeathRoot = false
+  gravePactBurstDmgPct = 0.60
+  gravePactBurstRadiusBonus = 0
+  hasUndyingLabor = false
+  undyingLaborAtkSpeedPct = 0.05
+  undyingLaborDmgBonus = 0
+  hasCharnelTide = false
+  charnelTideRadius = 250
+  charnelTideMax = 5
+  charnelTideDuration = 8000
+  charnelTideCooldown = 20000
+  charnelTideExplode = false
+  hasLichDominion = false
+  revenantDmgPct = 0.80
+  revenantHPBonus = 0
+  revenantSlowAura = false
+  lichRevenantCharnelOnDeath = false
+  // Wasting Plague branch
+  hasFesteringWound = false
+  festeringWoundStacks = 1
+  festeringWoundDmgBonus = 0.15
+  rotSlowDecay = false
+  rotSlow = false
+  hasVirulentSpread = false
+  virulentSpreadRadius = 80
+  virulentDmgPerStack = 0.10
+  virulentStunAt = 999
+  hasNecroticBloom = false
+  necroticBloomThreshold = 5
+  necroticBloomRadius = 100
+  necroticBloomDuration = 5000
+  necroticBloomDmgPct = 0.12
+  necroticBloomAddRot = false
+  hasVaelPandemic = false
+  pandemicRadius = 200
+  pandemicStacks = 5
+  pandemicCooldown = 18000
+  pandemicDoublePulse = false
+  pandemicDoubleRadiusBlight = false
+  hasCarrionCrown = false
+  carrionAuraRadius = 150
+  carrionAuraInterval = 2000
+  carrionWeaken = false
+  carrionKillPulse = false
 
   stance: 'ice' | 'lightning' = 'ice'
   iceEnergy = 100
@@ -280,6 +531,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // Branch Mastery system — XP earned by casting, levels up branch damage & reduces energy cost
   static readonly MASTERY_THRESHOLDS = [50, 150, 300]
+  static readonly MASTERY_THRESHOLDS_DOUBLE = [100, 300, 600]
+  /** Branches that require 2x XP per level (single-stance heroes + Amun ground) */
+  static readonly DOUBLE_XP_BRANCHES = new Set(['fireball', 'crystal', 'ground'])
   static readonly MASTERY_COST_MULT = [1.0, 0.90, 0.82, 0.76]  // energy cost multiplier per level
   static readonly MASTERY_NAMES = ['', 'Practiced', 'Adept', 'Master']
   branchMasteryXP: Record<string, number> = {}
@@ -288,13 +542,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   currentAttackBranch = ''
   private _lightningMasteryAccum = 0  // throttle continuous lightning XP
 
+  static getMasteryThresholds(branch: string): readonly number[] {
+    return Player.DOUBLE_XP_BRANCHES.has(branch)
+      ? Player.MASTERY_THRESHOLDS_DOUBLE
+      : Player.MASTERY_THRESHOLDS
+  }
+
   awardMasteryXP(branch: string, amount: number) {
     if (!branch) return
     const xp = (this.branchMasteryXP[branch] ?? 0) + amount
     this.branchMasteryXP[branch] = xp
     const curLevel = this.branchMasteryLevel[branch] ?? 0
-    if (curLevel < 3 && xp >= Player.MASTERY_THRESHOLDS[curLevel]) {
+    const thresholds = Player.getMasteryThresholds(branch)
+    if (curLevel < 3 && xp >= thresholds[curLevel]) {
       this.branchMasteryLevel[branch] = curLevel + 1
+      // Sifra mastery 1 & 2: +2 range per level
+      if (this.heroType === 'sifra' && curLevel + 1 <= 2) {
+        this.range += 2
+      }
       this.scene.events.emit('branch-mastery-levelup', { branch, level: curLevel + 1 })
     }
   }
@@ -312,17 +577,28 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   // flameGfx removed — using sprite-based flamethrower now
-  private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null
-  private wasd: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key } | null = null
+  private _stanceKey: Phaser.Input.Keyboard.Key | null = null
+
+  public inputController: IInputController | null = null
+  public isLocalPlayer = true
+  /** In online mode, server is authoritative — skip local physics movement */
+  public serverAuthoritative = false
 
   constructor(scene: Phaser.Scene, x: number, y: number, heroType: HeroType = 'ignara') {
     const sprCfg = SPRITE_HEROES[heroType]
-    // For reuse heroes (ignara→sifra sheets), check the source texture
-    const srcHero = sprCfg?.reuseFrom || heroType
-    const hasSpr = scene.textures.exists(`${srcHero}_idle`)
-    const texKey = hasSpr ? `${srcHero}_idle` : `hero_${heroType}`
+    // Single-sheet heroes (e.g. vael) use sheetKey; reuse heroes use srcHero_idle; else hero_idle
+    let hasSpr: boolean
+    let texKey: string
+    if (sprCfg?.sheetKey) {
+      hasSpr = scene.textures.exists(sprCfg.sheetKey)
+      texKey = hasSpr ? sprCfg.sheetKey : `hero_${heroType}`
+    } else {
+      const srcHero = sprCfg?.reuseFrom || heroType
+      hasSpr = scene.textures.exists(`${srcHero}_idle`)
+      texKey = hasSpr ? `${srcHero}_idle` : `hero_${heroType}`
+    }
 
-    if (!hasSpr) Player.generateTexture(scene, heroType)
+    if (!hasSpr) generateHeroFallbackTexture(scene, heroType)
     super(scene, x, y, texKey, 0)
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -392,37 +668,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body
     body.pushable = false
 
-    // Keyboard controls (desktop)
-    if (scene.input.keyboard) {
-      this.cursors = scene.input.keyboard.createCursorKeys()
-      this.wasd = {
-        W: scene.input.keyboard.addKey('W'),
-        A: scene.input.keyboard.addKey('A'),
-        S: scene.input.keyboard.addKey('S'),
-        D: scene.input.keyboard.addKey('D'),
-      }
-      // Stance toggle for Sifra (Q key)
-      if (heroType === 'sifra') {
-        scene.input.keyboard.addKey('Q').on('down', () => this.toggleStance())
-      }
-      // Stance toggle for Nazar (Q key)
-      if (heroType === 'nazar') {
-        scene.input.keyboard.addKey('Q').on('down', () => this.toggleNazarStance())
-      }
-      // Stance toggle for Huntress (Q key)
-      if (heroType === 'huntress') {
-        scene.input.keyboard.addKey('Q').on('down', () => this.toggleHuntressStance())
-      }
-      // Stance toggle for Khashin (Q key)
-      if (heroType === 'khashin') {
-        scene.input.keyboard.addKey('Q').on('down', () => this.toggleKhashinStance())
-      }
-      // Amun stance toggle (Q key) — activated when Quake branch chosen
-      if (heroType === 'amun') {
-        scene.input.keyboard.addKey('Q').on('down', () => this.toggleAmunStance())
-      }
-      // Muller has no stance toggle — eruption is an upgrade ability
+    // Input controller — handles keyboard/joystick/touch input
+    if (this.isLocalPlayer) {
+      this.inputController = new KeyboardInputController(scene)
     }
+  }
+
+  destroy(fromScene?: boolean) {
+    if (this._stanceKey) {
+      this._stanceKey.destroy()
+      this._stanceKey = null
+    }
+    if (this.inputController) {
+      this.inputController.destroy()
+      this.inputController = null
+    }
+    super.destroy(fromScene)
   }
 
   toggleStance() {
@@ -457,6 +718,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       case 'khashin': return this.khashinStance
       case 'muller': return this.mullerStance
       case 'amun': return this.hasQuakeStance ? this.amunStance : ''
+      case 'vael': return this.vaelStance
       default: return ''
     }
   }
@@ -465,6 +727,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.heroType !== 'khashin') return
     this.khashinStance = this.khashinStance === 'sirocco' ? 'haboob' : 'sirocco'
     this.scene.events.emit('khashin-stance-changed', this.khashinStance)
+  }
+
+  toggleVaelStance() {
+    if (this.heroType !== 'vael') return
+    this.vaelStance = this.vaelStance === 'orbs' ? 'drain' : 'orbs'
+    this.scene.events.emit('vael-stance-changed', this.vaelStance)
   }
 
   toggleAmunStance() {
@@ -521,6 +789,32 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   static createAnimations(scene: Phaser.Scene) {
     for (const [hero, cfg] of Object.entries(SPRITE_HEROES) as [HeroType, SpriteHeroCfg][]) {
       if (cfg.reuseFrom) continue // reuse heroes share animations from source
+      if (hero === 'nightborne') continue // nightborne anims created below with custom frameRates
+
+      // Single-sheet heroes (e.g. vael): all anims live on one combined texture
+      if (cfg.sheetKey && cfg.animFrames) {
+        if (!scene.textures.exists(cfg.sheetKey)) continue
+        const frames = cfg.animFrames
+        const sheetDefs: [string, [number, number], number][] = [
+          ['idle',   frames.idle,   -1],
+          ['run',    frames.run,    -1],
+          ['attack', frames.attack,  0],
+          ['hurt',   frames.hurt,    0],
+          ['death',  frames.death,   0],
+        ]
+        for (const [name, [start, end], repeat] of sheetDefs) {
+          const key = `${hero}_${name}`
+          if (scene.anims.exists(key)) continue
+          scene.anims.create({
+            key,
+            frames: scene.anims.generateFrameNumbers(cfg.sheetKey, { start, end }),
+            frameRate: name === 'run' ? 10 : name === 'attack' ? 12 : 8,
+            repeat,
+          })
+        }
+        continue
+      }
+
       if (!scene.textures.exists(`${hero}_idle`)) continue
       const animDefs: [string, number, number][] = [
         ['idle', cfg.anims.idle, -1],
@@ -650,6 +944,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         repeat: 0,
       })
     }
+    // Nightborne — custom frameRates per spec (240×240 spritesheets)
+    if (scene.textures.exists('nightborne_idle')) {
+      const nbDefs: [string, number, number, number][] = [
+        ['nightborne_idle',   8,  8, -1],
+        ['nightborne_run',    5, 10, -1],
+        ['nightborne_attack', 11, 18, 0],
+        ['nightborne_hurt',   4,  12, 0],
+        ['nightborne_death',  22, 12, 0],
+      ]
+      for (const [key, end, frameRate, repeat] of nbDefs) {
+        if (!scene.anims.exists(key)) {
+          scene.anims.create({
+            key,
+            frames: scene.anims.generateFrameNumbers(key, { start: 0, end }),
+            frameRate,
+            repeat,
+          })
+        }
+      }
+    }
   }
 
   /** Get the animation key prefix (source hero for reuse heroes) */
@@ -684,424 +998,54 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.play(key, true)
   }
 
-  static generateTexture(scene: Phaser.Scene, heroType: HeroType) {
-    const key = `hero_${heroType}`
-    if (scene.textures.exists(key)) return
-
-    const g = scene.add.graphics()
-    const w = 64, h = 64
-
-    switch (heroType) {
-      case 'ignara': {
-        // === IGNARA — Fire Sorceress ===
-        // Feet / boots
-        g.fillStyle(0x8b4513)
-        g.fillRect(22, 56, 6, 6); g.fillRect(36, 56, 6, 6)
-        g.fillStyle(0x6b3410)
-        g.fillRect(22, 60, 6, 2); g.fillRect(36, 60, 6, 2)
-
-        // Legs
-        g.fillStyle(0xc0392b)
-        g.fillRect(24, 46, 5, 12); g.fillRect(36, 46, 5, 12)
-
-        // Robe body — flowing red with orange trim
-        g.fillStyle(0xc0392b)
-        g.fillRoundedRect(18, 26, 28, 22, 3)
-        // Robe darker inner fold
-        g.fillStyle(0x922b21)
-        g.fillRect(26, 30, 12, 16)
-        // Orange trim at edges
-        g.fillStyle(0xe67e22)
-        g.fillRect(18, 26, 2, 22); g.fillRect(44, 26, 2, 22)
-        // Belt
-        g.fillStyle(0xf39c12)
-        g.fillRect(19, 36, 26, 3)
-        g.fillStyle(0xe74c3c)
-        g.fillCircle(32, 37, 2) // belt jewel
-
-        // Arms — robe sleeves
-        g.fillStyle(0xc0392b)
-        g.fillRect(10, 28, 8, 14); g.fillRect(46, 28, 8, 14)
-        g.fillStyle(0xe67e22) // cuff trim
-        g.fillRect(10, 40, 8, 2); g.fillRect(46, 40, 8, 2)
-
-        // Hands — skin tone
-        g.fillStyle(0xe8b88a)
-        g.fillRect(11, 42, 6, 4); g.fillRect(47, 42, 6, 4)
-
-        // Left hand holds fireball
-        g.fillStyle(0xff6600, 0.7)
-        g.fillCircle(14, 48, 5)
-        g.fillStyle(0xffaa00, 0.8)
-        g.fillCircle(14, 47, 3)
-        g.fillStyle(0xffdd44)
-        g.fillCircle(14, 46, 1.5)
-
-        // Neck
-        g.fillStyle(0xe8b88a)
-        g.fillRect(28, 22, 8, 6)
-
-        // Head
-        g.fillStyle(0xe8b88a)
-        g.fillCircle(32, 16, 8)
-
-        // Hair — fiery red/orange
-        g.fillStyle(0xd35400)
-        g.fillEllipse(32, 10, 18, 10)
-        g.fillStyle(0xe74c3c)
-        g.fillRect(23, 6, 18, 6)
-        // Hair flowing down sides
-        g.fillStyle(0xd35400)
-        g.fillRect(22, 10, 3, 10); g.fillRect(39, 10, 3, 10)
-
-        // Face
-        g.fillStyle(0x2c3e50) // eyes
-        g.fillRect(28, 14, 3, 3); g.fillRect(34, 14, 3, 3)
-        g.fillStyle(0xffffff) // eye whites
-        g.fillRect(28, 14, 2, 2); g.fillRect(34, 14, 2, 2)
-        g.fillStyle(0xc0392b) // lips
-        g.fillRect(30, 19, 4, 1)
-
-        // Fire crown / circlet
-        g.fillStyle(0xf1c40f)
-        g.fillRect(25, 8, 14, 2)
-        g.fillStyle(0xff6600)
-        g.fillCircle(32, 6, 2) // crown gem
-        g.fillStyle(0xf39c12)
-        g.fillCircle(28, 7, 1); g.fillCircle(36, 7, 1)
-        break
-      }
-
-      // khet case removed from playable roster (kept in comment for re-adding)
-      // case 'khet': { ... }
-
-      case 'sifra': {
-        // === SIFRA — Ice Mage / Frost Scholar ===
-        // Feet — light boots
-        g.fillStyle(0x5dade2)
-        g.fillRect(23, 56, 6, 6); g.fillRect(35, 56, 6, 6)
-        g.fillStyle(0x2e86c1)
-        g.fillRect(23, 60, 6, 2); g.fillRect(35, 60, 6, 2)
-
-        // Legs
-        g.fillStyle(0x85c1e9)
-        g.fillRect(24, 44, 5, 14); g.fillRect(36, 44, 5, 14)
-
-        // Robe body — icy blue with white accents
-        g.fillStyle(0x5dade2)
-        g.fillRoundedRect(18, 24, 28, 24, 4)
-        // Inner robe fold
-        g.fillStyle(0x3498db)
-        g.fillRect(28, 28, 8, 18)
-        // Frost patterns on robe
-        g.fillStyle(0xd6eaf8, 0.5)
-        g.fillCircle(24, 34, 2); g.fillCircle(40, 38, 2); g.fillCircle(22, 42, 1.5)
-        // White fur collar
-        g.fillStyle(0xecf0f1)
-        g.fillEllipse(32, 26, 26, 6)
-        g.fillStyle(0xd5dbdb)
-        g.fillEllipse(32, 26, 22, 4)
-        // Belt — silver
-        g.fillStyle(0xbdc3c7)
-        g.fillRect(19, 38, 26, 2)
-        g.fillStyle(0x00d2d3)
-        g.fillCircle(32, 39, 2) // ice crystal buckle
-
-        // Arms
-        g.fillStyle(0x5dade2)
-        g.fillRect(10, 26, 8, 14); g.fillRect(46, 26, 8, 14)
-        // Cuff frost trim
-        g.fillStyle(0xecf0f1)
-        g.fillRect(10, 38, 8, 2); g.fillRect(46, 38, 8, 2)
-
-        // Hands
-        g.fillStyle(0xfdebd0)
-        g.fillRect(11, 40, 5, 4); g.fillRect(48, 40, 5, 4)
-
-        // Staff — right hand (ice crystal staff)
-        g.fillStyle(0x85c1e9)
-        g.fillRect(50, 14, 3, 34) // shaft
-        g.fillStyle(0xaed6f1)
-        g.fillRect(50, 14, 3, 2) // shaft detail
-        // Crystal top
-        g.fillStyle(0x00d2d3)
-        g.fillTriangle(51, 6, 47, 14, 55, 14)
-        g.fillStyle(0x76d7ea, 0.7)
-        g.fillTriangle(51, 8, 48, 13, 54, 13)
-        // Crystal glow
-        g.fillStyle(0xaaeeff, 0.3)
-        g.fillCircle(51, 10, 6)
-
-        // Neck
-        g.fillStyle(0xfdebd0)
-        g.fillRect(28, 20, 8, 6)
-
-        // Head
-        g.fillStyle(0xfdebd0)
-        g.fillCircle(32, 14, 8)
-
-        // Hair — white/silver
-        g.fillStyle(0xd5f5e3)
-        g.fillEllipse(32, 9, 18, 10)
-        g.fillStyle(0xabebc6)
-        g.fillRect(24, 4, 16, 6)
-        // Hair side strands
-        g.fillStyle(0xd5f5e3)
-        g.fillRect(22, 8, 3, 12); g.fillRect(39, 8, 3, 12)
-
-        // Face
-        g.fillStyle(0x2e86c1) // eyes — icy blue
-        g.fillRect(28, 13, 3, 3); g.fillRect(34, 13, 3, 3)
-        g.fillStyle(0xaed6f1) // eye highlights
-        g.fillRect(28, 13, 2, 2); g.fillRect(34, 13, 2, 2)
-        // Lips
-        g.fillStyle(0xe8b4b8)
-        g.fillRect(30, 19, 4, 1)
-
-        // Circlet — ice
-        g.fillStyle(0x85c1e9)
-        g.fillRect(25, 7, 14, 2)
-        g.fillStyle(0x00d2d3)
-        g.fillCircle(32, 6, 2)
-        break
-      }
-
-      case 'amun': {
-        // === AMUN — Pharaoh Guardian ===
-        // Feet — golden sandals
-        g.fillStyle(0xd4a017)
-        g.fillRect(22, 56, 7, 6); g.fillRect(35, 56, 7, 6)
-        g.fillStyle(0xb8860b)
-        g.fillRect(22, 60, 7, 2); g.fillRect(35, 60, 7, 2)
-
-        // Legs — white linen skirt
-        g.fillStyle(0xfdfefe)
-        g.fillRect(20, 40, 24, 18)
-        g.fillStyle(0xeaecee)
-        g.fillRect(30, 40, 2, 18) // center fold
-        // Gold trim on skirt
-        g.fillStyle(0xf1c40f)
-        g.fillRect(20, 40, 24, 2)
-        g.fillRect(20, 56, 24, 2)
-
-        // Torso — golden armor
-        g.fillStyle(0xf1c40f)
-        g.fillRoundedRect(18, 22, 28, 20, 3)
-        // Chest plate — pharaoh eagle emblem
-        g.fillStyle(0xd4a017)
-        g.fillRect(24, 24, 16, 14)
-        g.fillStyle(0xf39c12)
-        g.fillTriangle(32, 24, 26, 36, 38, 36) // emblem
-        g.fillStyle(0x00bcd4) // turquoise inlay
-        g.fillCircle(32, 30, 3)
-        g.fillStyle(0x00838f)
-        g.fillCircle(32, 30, 1.5)
-        // Shoulder pauldrons
-        g.fillStyle(0xf1c40f)
-        g.fillEllipse(16, 24, 10, 8)
-        g.fillEllipse(48, 24, 10, 8)
-        g.fillStyle(0xd4a017) // pauldron detail
-        g.lineStyle(1, 0xb8860b)
-        g.strokeCircle(16, 24, 3); g.strokeCircle(48, 24, 3)
-
-        // Arms
-        g.fillStyle(0xc68642) // skin
-        g.fillRect(10, 26, 8, 14); g.fillRect(46, 26, 8, 14)
-        // Gold arm bands
-        g.fillStyle(0xf1c40f)
-        g.fillRect(10, 28, 8, 2); g.fillRect(46, 28, 8, 2)
-        g.fillRect(10, 34, 8, 2); g.fillRect(46, 34, 8, 2)
-
-        // Hands
-        g.fillStyle(0xc68642)
-        g.fillRect(11, 40, 6, 4); g.fillRect(47, 40, 6, 4)
-
-        // Shield — left hand (ankh shaped)
-        g.fillStyle(0xd4a017)
-        g.fillRect(4, 24, 10, 22)
-        g.fillStyle(0xf1c40f)
-        g.fillRect(5, 25, 8, 20)
-        // Ankh symbol on shield
-        g.fillStyle(0x00bcd4)
-        g.fillCircle(9, 30, 3)
-        g.fillStyle(0xf1c40f)
-        g.fillCircle(9, 30, 1.5)
-        g.fillStyle(0x00bcd4)
-        g.fillRect(8, 33, 2, 8)
-        g.fillRect(6, 36, 6, 2)
-
-        // Head — pharaoh headdress
-        g.fillStyle(0xc68642) // face skin
-        g.fillCircle(32, 14, 8)
-        // Nemes headdress (striped)
-        g.fillStyle(0x1a237e)
-        g.fillRect(22, 4, 20, 12)
-        g.fillStyle(0xf1c40f)
-        g.fillRect(24, 4, 2, 12); g.fillRect(28, 4, 2, 12)
-        g.fillRect(32, 4, 2, 12); g.fillRect(36, 4, 2, 12)
-        g.fillRect(40, 4, 2, 12)
-        // Headdress sides flowing down
-        g.fillStyle(0x1a237e)
-        g.fillRect(20, 10, 4, 16); g.fillRect(40, 10, 4, 16)
-        g.fillStyle(0xf1c40f) // gold stripes on sides
-        g.fillRect(20, 12, 4, 2); g.fillRect(40, 12, 4, 2)
-        g.fillRect(20, 18, 4, 2); g.fillRect(40, 18, 4, 2)
-        // Uraeus (cobra) on forehead
-        g.fillStyle(0xf1c40f)
-        g.fillCircle(32, 5, 2)
-        g.fillStyle(0xff0000)
-        g.fillCircle(32, 4, 1) // ruby eye
-
-        // Face
-        g.fillStyle(0xffffff) // eyes
-        g.fillRect(28, 12, 3, 3); g.fillRect(34, 12, 3, 3)
-        g.fillStyle(0x1a1a1a) // pupils
-        g.fillRect(29, 13, 2, 2); g.fillRect(35, 13, 2, 2)
-        // Kohl eyeliner (Egyptian style)
-        g.lineStyle(1, 0x1a1a1a)
-        g.lineBetween(26, 13, 28, 13); g.lineBetween(37, 13, 39, 13)
-        // Gold aura glow
-        g.fillStyle(0xfff59d, 0.15)
-        g.fillCircle(32, 32, 24)
-        break
-      }
-
-      case 'nazar': {
-        // === NAZAR — Plague Doctor ===
-        // Feet — heavy boots
-        g.fillStyle(0x34495e)
-        g.fillRect(22, 56, 6, 6); g.fillRect(36, 56, 6, 6)
-        g.fillStyle(0x2c3e50)
-        g.fillRect(22, 60, 6, 2); g.fillRect(36, 60, 6, 2)
-        // Boot buckles
-        g.fillStyle(0x7f8c8d)
-        g.fillRect(24, 56, 2, 1); g.fillRect(38, 56, 2, 1)
-
-        // Legs
-        g.fillStyle(0x515a5a)
-        g.fillRect(24, 44, 5, 14); g.fillRect(36, 44, 5, 14)
-
-        // Long coat body — dark grey-green
-        g.fillStyle(0x515a5a)
-        g.fillRoundedRect(16, 22, 32, 26, 3)
-        // Coat inner lining — darker
-        g.fillStyle(0x3d4646)
-        g.fillRect(26, 26, 12, 20)
-        // Coat buttons
-        g.fillStyle(0x7f8c8d)
-        g.fillCircle(32, 28, 1); g.fillCircle(32, 32, 1)
-        g.fillCircle(32, 36, 1); g.fillCircle(32, 40, 1)
-        // Coat flared bottom
-        g.fillStyle(0x515a5a)
-        g.fillTriangle(16, 46, 14, 56, 24, 56)
-        g.fillTriangle(48, 46, 50, 56, 40, 56)
-        // Belt with vials
-        g.fillStyle(0x6b4226)
-        g.fillRect(17, 38, 30, 3)
-        // Potion vials on belt
-        g.fillStyle(0xa3cb38)
-        g.fillRect(20, 36, 3, 4); g.fillRect(26, 36, 3, 4)
-        g.fillStyle(0x009432)
-        g.fillRect(41, 36, 3, 4)
-        g.fillStyle(0xf39c12)
-        g.fillRect(35, 36, 3, 4)
-
-        // Arms — coat sleeves
-        g.fillStyle(0x515a5a)
-        g.fillRect(8, 24, 8, 16); g.fillRect(48, 24, 8, 16)
-        // Cuff detail
-        g.fillStyle(0x3d4646)
-        g.fillRect(8, 38, 8, 2); g.fillRect(48, 38, 8, 2)
-
-        // Gloved hands
-        g.fillStyle(0x2c3e50)
-        g.fillRect(9, 40, 6, 4); g.fillRect(49, 40, 6, 4)
-
-        // Right hand — poison vial (large)
-        g.fillStyle(0x2ecc71, 0.7)
-        g.fillRoundedRect(50, 42, 8, 10, 2)
-        g.fillStyle(0x27ae60)
-        g.fillRect(52, 40, 4, 3) // vial neck
-        g.fillStyle(0x6b4226)
-        g.fillRect(52, 39, 4, 2) // cork
-        // Bubbles in vial
-        g.fillStyle(0x82e0aa, 0.6)
-        g.fillCircle(54, 47, 1.5); g.fillCircle(52, 49, 1)
-
-        // Neck
-        g.fillStyle(0x515a5a)
-        g.fillRect(28, 18, 8, 6)
-
-        // Head — plague doctor mask
-        g.fillStyle(0x2d3436)
-        g.fillCircle(32, 12, 9)
-        // Hat — wide brim
-        g.fillStyle(0x2d3436)
-        g.fillEllipse(32, 6, 24, 6)
-        g.fillStyle(0x1a1a2e)
-        g.fillRect(26, 2, 12, 6) // hat crown
-        // Hat band
-        g.fillStyle(0x6b4226)
-        g.fillRect(26, 6, 12, 2)
-        g.fillStyle(0xa3cb38) // green feather accent
-        g.fillRect(38, 2, 2, 6)
-
-        // Plague mask beak
-        g.fillStyle(0xbaaa7c)
-        g.fillTriangle(32, 12, 24, 18, 32, 24)
-        g.fillStyle(0xa89060)
-        g.fillTriangle(32, 14, 26, 18, 32, 22)
-        // Mask nostril detail
-        g.fillStyle(0x2d3436)
-        g.fillCircle(28, 18, 1)
-
-        // Eye lenses — yellow/green glow
-        g.fillStyle(0xfdcb6e)
-        g.fillCircle(28, 10, 3); g.fillCircle(36, 10, 3)
-        g.fillStyle(0xf9e79f)
-        g.fillCircle(28, 10, 1.5); g.fillCircle(36, 10, 1.5)
-        // Lens frame
-        g.lineStyle(1, 0x2d3436)
-        g.strokeCircle(28, 10, 3); g.strokeCircle(36, 10, 3)
-
-        // Poison drip effect from vial
-        g.fillStyle(0xa3cb38, 0.5)
-        g.fillCircle(54, 54, 2)
-        g.fillCircle(55, 57, 1)
-        break
-      }
-    }
-
-    g.generateTexture(key, w, h)
-    g.destroy()
-  }
 
   setTouchTarget(x: number, y: number) {
     if (this.isDead) return
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.setTouchTarget) kbic.setTouchTarget(x, y)
+    // Keep local touchTarget in sync for legacy access paths
     if (this.touchTarget) this.touchTarget.set(x, y)
     else this.touchTarget = new Phaser.Math.Vector2(x, y)
   }
 
-  clearTouchTarget() { this.touchTarget = null }
-
-  // Virtual joystick: dx/dy normalized direction, 0/0 = stop
-  private joystickDir: { dx: number; dy: number } | null = null
-
-  setJoystickDirection(dx: number, dy: number) {
-    if (this.isDead) return
-    if (dx === 0 && dy === 0) {
-      this.joystickDir = null
-    } else {
-      this.joystickDir = { dx, dy }
-    }
+  clearTouchTarget() {
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.clearTouchTarget) kbic.clearTouchTarget()
     this.touchTarget = null
   }
 
-  clearJoystick() { this.joystickDir = null }
+  // Virtual joystick: dx/dy normalized direction, 0/0 = stop
+  setJoystickDirection(dx: number, dy: number) {
+    if (this.isDead) return
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.setJoystickDirection) kbic.setJoystickDirection(dx, dy)
+    this.touchTarget = null
+  }
+
+  clearJoystick() {
+    const kbic = this.inputController as KeyboardInputController | null
+    if (kbic?.clearJoystick) kbic.clearJoystick()
+  }
 
   takeDamage(amount: number) {
     if (this.isDead) return
     if (this.vanishUntil > this.scene.time.now) return  // Invulnerable after dash
+    // Shade Legion: invulnerable while fractured
+    if (this.hasShadeLegion && this.scene.time.now < this._invulnUntil) return
+    // Phantom Veil: chance to negate incoming damage during attack cooldown window
+    if (this.hasPhantomVeil) {
+      const now = this.scene.time.now
+      const sinceLastAtk = now - (this as any).lastAttackTime
+      if (sinceLastAtk > 0 && sinceLastAtk < this.attackCooldown) {
+        if (Math.random() < this.phantomVeilChance) {
+          const veilFx = this.scene.add.circle(this.x, this.y, 14, 0xCC66FF, 0.5).setDepth(10)
+          this.scene.tweens.add({ targets: veilFx, alpha: 0, scale: 2, duration: 250, onComplete: () => veilFx.destroy() })
+          // L3: reset attack cooldown
+          if (this.phantomVeilLevel >= 3) (this as any).lastAttackTime = now - this.attackCooldown
+          return
+        }
+      }
+    }
     // Shield absorbs damage first
     if (this.shieldHp > 0) {
       if (amount <= this.shieldHp) {
@@ -1113,14 +1057,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
     // Stone Skin DR: +2% per stack, max 5
     const stoneSkinDR = this.hasStoneSkin ? this.stoneSkinStacks * 0.05 : 0
-    let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR))
+    // Ashen Veil DR
+    const ashenDR = (this.hasAshenVeil && this.ashenVeilStacks > 0 && this.scene.time.now < this.ashenVeilUntil)
+      ? this.ashenVeilDR * this.ashenVeilStacks : 0
+    // Soul Siphon armor stacks: +1% DR per soul
+    const soulDR = this.hasSoulSiphon ? this.soulStacks * 0.01 : 0
+    let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR + ashenDR + soulDR))
 
     // Sand Armor (Khashin): absorb shield
-    if (this.hasSandArmor && (this as any)._sandArmorHP > 0) {
-      const absorbed = Math.min(reduced, (this as any)._sandArmorHP)
-      ;(this as any)._sandArmorHP -= absorbed
+    if (this.hasSandArmor && this._sandArmorHP > 0) {
+      const absorbed = Math.min(reduced, this._sandArmorHP)
+      this._sandArmorHP -= absorbed
       reduced -= absorbed
-      ;(this as any)._sandArmorRegenDelay = 4000
+      this._sandArmorRegenDelay = 4000
       if (absorbed > 0) {
         const fx = this.scene.add.circle(this.x, this.y, 16, 0xe8a040, 0.4).setDepth(10)
         this.scene.tweens.add({ targets: fx, scale: 2, alpha: 0, duration: 200, onComplete: () => fx.destroy() })
@@ -1140,7 +1089,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const absorbed = Math.min(reduced, this.iceArmorHP)
       this.iceArmorHP -= absorbed
       reduced -= absorbed
-      this.iceArmorRegenDelay = 3000 // 3s before regen starts
+      this.iceArmorRegenDelay = 5000 // 5s before regen starts
       if (absorbed > 0) {
         const shieldFx = this.scene.add.circle(this.x, this.y, 16, 0x88ddff, 0.4).setDepth(10)
         this.scene.tweens.add({ targets: shieldFx, scale: 2, alpha: 0, duration: 200, onComplete: () => shieldFx.destroy() })
@@ -1155,6 +1104,37 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.hp -= reduced
+    this.damageTakenThisRun += reduced
+
+    // Split Shade: spawn decoy on hit received
+    if (this.hasSplitShade && reduced >= 1 && this.scene.time.now >= this._splitShadeCooldownUntil) {
+      const shadeCD = this.splitShadeLevel >= 2 ? (this.splitShadeLevel >= 3 ? 3000 : 4000) : 6000
+      this._splitShadeCooldownUntil = this.scene.time.now + shadeCD
+      const shadeCount = this.splitShadeLevel >= 3 ? 2 : 1
+      for (let si = 0; si < shadeCount; si++) {
+        const ang = Math.random() * Math.PI * 2
+        const sx = this.x + Math.cos(ang) * 80
+        const sy = this.y + Math.sin(ang) * 80
+        const shade = this.scene.add.circle(sx, sy, 10, 0xCC66FF, 0.5).setDepth(9)
+        const shadeDur = this.splitShadeLevel >= 2 ? (this.splitShadeLevel >= 3 ? 3000 : 2500) : 1500
+        this.scene.tweens.add({ targets: shade, alpha: 0.1, yoyo: true, repeat: -1, duration: 300 })
+        // Echo slash on expiry (L2+)
+        this.scene.time.delayedCall(shadeDur, () => {
+          shade.destroy()
+          if (this.splitShadeLevel >= 2) {
+            const scene = this.scene as any
+            if (scene.enemies) {
+              for (const e of (scene.enemies as Phaser.Physics.Arcade.Group).getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+                if (!e.active) continue
+                if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) <= 80) {
+                  ;(e as any).takeDamage?.(this.damage * 0.2, 'void')
+                }
+              }
+            }
+          }
+        })
+      }
+    }
 
     // Stone Skin: accumulate damage, gain stack every 10 HP lost
     if (this.hasStoneSkin && reduced > 0 && this.stoneSkinStacks < 5) {
@@ -1171,7 +1151,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Combined on-hit enemy scan — single loop for all reactive passives
-    const needsScan = reduced >= 1 && (this.hasCryoShield || this.hasThorns || this.hasLivingGeode || this.hasWrath || this.hasMoltenSkin)
+    const needsScan = reduced >= 1 && (this.hasCryoShield || this.hasLivingGeode || this.hasWrath || this.hasMoltenSkin)
     if (needsScan) {
       const scene = this.scene as any
       if (scene.enemies) {
@@ -1189,9 +1169,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.scene.tweens.add({ targets: shard, x: e.x, y: e.y, alpha: 0, duration: 200, onComplete: () => shard.destroy() })
             cryoCount++
           }
-          if (this.hasThorns && dist <= 60) {
-            (e as any).takeDamage(reduced * 0.5, 'melee')
-          }
           if (this.hasLivingGeode && dist <= 60) {
             ;(e as any).takeDamage?.(15, 'melee')
           }
@@ -1203,10 +1180,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           }
         }
         // VFX rings for active passives
-        if (this.hasThorns) {
-          const spikes = this.scene.add.circle(this.x, this.y, 10, 0xffdd44, 0.5).setDepth(9)
-          this.scene.tweens.add({ targets: spikes, scale: 5, alpha: 0, duration: 250, onComplete: () => spikes.destroy() })
-        }
         if (this.hasLivingGeode) {
           const fx = this.scene.add.circle(this.x, this.y, 10, 0x44aaff, 0.4).setDepth(9)
           this.scene.tweens.add({ targets: fx, scale: 4, alpha: 0, duration: 250, onComplete: () => fx.destroy() })
@@ -1237,7 +1210,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
         // Floating damage number — large, bold, shakes up
         const dmgText = this.scene.add.text(this.x + Phaser.Math.Between(-10, 10), this.y - 30, `-${Math.ceil(reduced)}`, {
-          fontFamily: 'monospace', fontSize: '22px', color: '#ff2222',
+          fontFamily: gameFont(), fontSize: '22px', color: '#ff2222',
           stroke: '#000000', strokeThickness: 4,
         }).setDepth(20).setOrigin(0.5)
         this.scene.tweens.add({
@@ -1268,9 +1241,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         // Camera shake on every hit (mild), stronger flash for heavy hits
-        this.scene.cameras.main.shake(80, 0.003)
-        if (reduced > this.maxHp * 0.1) {
-          this.scene.cameras.main.flash(200, 200, 20, 20)
+        if (this.isLocalPlayer) {
+          this.scene.cameras.main.shake(80, 0.003)
+          if (reduced > this.maxHp * 0.1) {
+            this.scene.cameras.main.flash(200, 200, 20, 20)
+          }
         }
       }
     }
@@ -1294,26 +1269,84 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.hp = Math.ceil(this.maxHp * 0.5)
       const ring = this.scene.add.circle(this.x, this.y, 10, 0xff4400, 0.6).setDepth(15)
       this.scene.tweens.add({ targets: ring, scale: 8, alpha: 0, duration: 500, onComplete: () => ring.destroy() })
-      this.scene.cameras.main.flash(300, 255, 100, 0)
+      if (this.isLocalPlayer) this.scene.cameras.main.flash(300, 255, 100, 0)
       return
     }
 
-    // Undying (Amun): revive once at full HP
-    if (this.hasUndying) {
-      this.hasUndying = false
+    // Undying (Amun): revive at full HP, consume one rebirth stack
+    if (this.rebirthStacks > 0) {
+      this.rebirthStacks--
       this.hp = this.maxHp
-      const ring = this.scene.add.circle(this.x, this.y, 10, 0xfff200, 0.7).setDepth(15)
-      this.scene.tweens.add({ targets: ring, scale: 10, alpha: 0, duration: 600, onComplete: () => ring.destroy() })
-      this.scene.cameras.main.flash(400, 255, 255, 100)
-      // Shockwave burst on revive
+
+      // --- Enhanced rebirth VFX ---
+      const cx = this.x, cy = this.y
+
+      // 1. Light beam from above
+      const beam = this.scene.add.rectangle(cx, cy - 300, 40, 600, 0xfff8cc, 0.8)
+        .setDepth(16).setBlendMode(Phaser.BlendModes.ADD).setOrigin(0.5, 1)
+      beam.setScale(0.3, 0)
+      this.scene.tweens.add({
+        targets: beam, scaleX: 1.5, scaleY: 1, alpha: 0.9, duration: 300, ease: 'Quad.easeOut',
+        onComplete: () => {
+          this.scene.tweens.add({
+            targets: beam, scaleX: 0.2, alpha: 0, duration: 500, delay: 200,
+            onComplete: () => beam.destroy(),
+          })
+        },
+      })
+
+      // 2. Expanding golden ring
+      const ring = this.scene.add.circle(cx, cy, 10, 0xfff200, 0.7).setDepth(15)
+      this.scene.tweens.add({ targets: ring, scale: 12, alpha: 0, duration: 700, onComplete: () => ring.destroy() })
+
+      // 3. Second slower ring
+      this.scene.time.delayedCall(150, () => {
+        const ring2 = this.scene.add.circle(cx, cy, 10, 0xffe066, 0.5).setDepth(15)
+        this.scene.tweens.add({ targets: ring2, scale: 8, alpha: 0, duration: 600, onComplete: () => ring2.destroy() })
+      })
+
+      // 4. Smoke/dust burst — 12 particles radiating outward
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2
+        const dist = 40 + Math.random() * 50
+        const size = 6 + Math.random() * 6
+        const smoke = this.scene.add.circle(cx, cy, size, 0xccaa66, 0.6).setDepth(14)
+        this.scene.tweens.add({
+          targets: smoke,
+          x: cx + Math.cos(a) * dist,
+          y: cy + Math.sin(a) * dist,
+          alpha: 0, scale: 2.5, duration: 500 + Math.random() * 300,
+          onComplete: () => smoke.destroy(),
+        })
+      }
+
+      // 5. Rising golden sparkles
+      for (let i = 0; i < 8; i++) {
+        this.scene.time.delayedCall(i * 60, () => {
+          const sx = cx + (Math.random() - 0.5) * 30
+          const spark = this.scene.add.circle(sx, cy, 2, 0xfff200, 0.9).setDepth(16)
+          this.scene.tweens.add({
+            targets: spark, y: cy - 40 - Math.random() * 30, alpha: 0,
+            duration: 400 + Math.random() * 200,
+            onComplete: () => spark.destroy(),
+          })
+        })
+      }
+
+      // Camera flash + shake
+      if (this.isLocalPlayer) {
+        this.scene.cameras.main.flash(500, 255, 255, 100)
+        this.scene.cameras.main.shake(200, 0.008)
+      }
+
+      // Shockwave burst on revive — damages + knocks back enemies
       const scene = this.scene as any
       if (scene.enemies) {
         for (const e of scene.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
           if (!e.active) continue
-          if (Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y) <= 100) {
+          if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= 120) {
             (e as any).takeDamage(this.damage, 'shockwave');
-            const kb = Phaser.Math.Angle.Between(this.x, this.y, e.x, e.y);
-            (e.body as Phaser.Physics.Arcade.Body).setVelocity(Math.cos(kb) * 300, Math.sin(kb) * 300)
+            (e as any).applyKnockback?.(cx, cy, 400)
           }
         }
       }
@@ -1328,6 +1361,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.defenseAuraGfx) { this.defenseAuraGfx.destroy(); this.defenseAuraGfx = null }
     if (this.passiveAuraGfx) { this.passiveAuraGfx.destroy(); this.passiveAuraGfx = null }
     if (this.dmgAuraGfx) { this.dmgAuraGfx.destroy(); this.dmgAuraGfx = null }
+    for (const s of this.orbitShields) if (s) s.destroy()
+    this.orbitShields = []
+    for (const s of this.orbitSwords) if (s) s.destroy()
+    this.orbitSwords = []
+    if (this.thornsTrailGfx) { this.thornsTrailGfx.destroy(); this.thornsTrailGfx = null }
 
     // Givi death: crystal ring burst VFX
     if (this.heroType === 'muller') {
@@ -1359,7 +1397,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.maxHp += 8
       this.hp = Math.min(this.hp + 8, this.maxHp)
       this.showLevelUpVfx()
-      this.scene.events.emit('player-levelup')
+      this.scene.events.emit('player-levelup', this)
     }
   }
 
@@ -1407,16 +1445,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     })
 
     // Camera flash
-    this.scene.cameras.main.flash(150, 255, 215, 0, false)
+    if (this.isLocalPlayer) this.scene.cameras.main.flash(150, 255, 215, 0, false)
   }
 
   xpToNextLevel(): number {
-    if (this.level <= 2) {
-      return Math.floor(CONFIG.XP_BASE * Math.pow(CONFIG.XP_SCALE, this.level - 1))
-    }
-    // Level 3+: +25% more XP needed per level
-    const base = CONFIG.XP_BASE * Math.pow(CONFIG.XP_SCALE, 1) // level 2 base
-    return Math.floor(base * Math.pow(CONFIG.XP_SCALE * 1.25, this.level - 2))
+    return CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * (this.level - 1)
   }
 
   tryAutoAttack(enemies: Phaser.Physics.Arcade.Group, time: number, delta: number) {
@@ -1441,13 +1474,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (this.isAttacking) return
-    // Amun melee stance: faster attack speed (600ms vs 1200ms base)
     let cd = this.attackCooldown
-    if (this.heroType === 'amun' && this.hasQuakeStance && this.amunStance === 'melee') cd = Math.min(cd, 600)
-    if (time - this.lastAttackTime < cd) return
+    if (this.hasInfernalCadence && time < this.infernalCadenceEndTime) cd = Math.max(100, Math.floor(cd / 3))
+    const usingFlashpoint = this.flashpointRemaining > 0
+    if (!usingFlashpoint && time - this.lastAttackTime < cd) return
 
     // Nazar venom / Huntress spear stance gets extended range
     let searchRange = this.range
+    if (this.heroType === 'ignara' && this.splashRadius > 0) searchRange = Math.max(60, this.range - this.splashRadius * 0.6)
     if (this.heroType === 'nazar' && this.nazarStance === 'venom') searchRange += 100
     if (this.heroType === 'huntress' && this.huntressStance === 'melee') searchRange = 80
     if (this.heroType === 'khashin' && this.khashinStance === 'haboob') searchRange = 90
@@ -1466,12 +1500,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (!closest) return
 
     this.lastAttackTime = time
+    if (usingFlashpoint) {
+      this.flashpointRemaining--
+    }
+    const flashBurstActive = usingFlashpoint && this.flashpointBurst
+    if (flashBurstActive) this.damage = Math.ceil(this.damage * 1.1)
     const melee = (this.heroType === 'nazar' && this.nazarStance === 'sword')
       || (this.heroType === 'amun' && (this.amunStance === 'melee' || !this.hasQuakeStance))
       || (this.heroType === 'huntress' && this.huntressStance === 'melee')
     this.isAttacking = melee
     this.setFlipX(closest.x < this.x)
-    if (this.hasSprite && this.heroType !== 'huntress' && this.heroType !== 'khashin' && this.heroType !== 'muller' && !(this.heroType === 'amun' && this.hasQuakeStance)) {
+    if (this.hasSprite && this.heroType !== 'huntress' && this.heroType !== 'khashin' && this.heroType !== 'muller' && this.heroType !== 'ignara' && !(this.heroType === 'amun' && this.hasQuakeStance)) {
       const branchAnim = this.getBranchAttackAnim()
       if (branchAnim && this.scene.anims.exists(branchAnim)) {
         this.currentAnim = branchAnim; this.play(branchAnim)
@@ -1520,7 +1559,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           }
           this.attackAmunMelee(target, enemies)
         } else {
-          // Base attack — always melee (no stance)
+          // Base attack — always melee (no stance); still earns 'ground' mastery XP
+          this.currentAttackBranch = 'ground'
+          this.awardMasteryXP('ground', 1.0)
           this.attackAmunMelee(target, enemies)
         }
         break
@@ -1529,6 +1570,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.currentAttackBranch = 'fireball'
         this.awardMasteryXP('fireball', 1.0)
         this.attackFireball(target, enemies)
+        if (flashBurstActive) this.damage = Math.ceil(this.damage / 1.1)
         break
       case 'spear':
         if (this.huntressStance === 'melee') {
@@ -1655,7 +1697,44 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           this.attackMelee(enemies)
         }
         break
+      case 'voidslash':
+        this.currentAttackBranch = 'void'
+        this.awardMasteryXP('void', 1.0)
+        // Void Ascendant: halve CD during ascendant window
+        if (this.hasVoidAscendant && this.scene.time.now < this._ascendantUntil) {
+          this.lastAttackTime -= Math.floor(this.attackCooldown / 2)
+        }
+        this.attackVoidSlash(target, enemies)
+        break
+      case 'soulbolt': {
+        // Drain stance: no Soul Bolt (drain handles DPS passively)
+        if (this.vaelStance === 'drain') {
+          this.isAttacking = false
+          return
+        }
+        // Orbs stance: drain per shot, auto-switch on empty
+        if (this.orbsEnergy <= 0) {
+          this.toggleVaelStance()
+          this.isAttacking = false
+          return
+        }
+        this.orbsEnergy = Math.max(0, this.orbsEnergy - this.energyDrainPerShot)
+        this.currentAttackBranch = 'orbs'
+        this.awardMasteryXP('orbs', 1.0)
+        // Undying Labor: reduce CD by thrall count
+        if (this.hasUndyingLabor) {
+          const bonus = (this as any)._vaelAttackCDMult ?? 1
+          if (bonus < 1) this.lastAttackTime -= Math.floor(this.attackCooldown * (1 - bonus))
+        }
+        vael.attackSoulBolt(this, target, enemies)
+        break
+      }
     }
+  }
+
+  // NIGHTBORNE — Void Slash arc
+  private attackVoidSlash(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
+    nightborne.attackVoidSlash(this, target, enemies)
   }
 
   // NAZAR SWORD — Melee slash around player
@@ -1702,35 +1781,50 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     nazar.attackPoison(this, target, enemies)
   }
 
+  private _buffParticlePool: Phaser.GameObjects.Arc[] = []
+  private _buffColors: number[] = []
+
   private spawnBuffParticles() {
-    // Only show buff auras if the hero has been upgraded (level > 1)
     if (this.level <= 1) return
 
-    const buffColors: number[] = []
+    // Reuse array to avoid per-call allocation
+    const bc = this._buffColors
+    bc.length = 0
+    if (this.armor > 0) bc.push(0x8888ff)
+    if (this.hpRegen > 0) bc.push(0x44ff44)
+    if (this.splashRadius > 0) bc.push(0xff8844)
+    if (this.strikeCount > 1) bc.push(0xffffff)
+    if (this.xpMult > 1) bc.push(0xffd700)
+    if (bc.length === 0) return
 
-    // Determine which buff categories are active based on stat changes
-    if (this.armor > 0) buffColors.push(0x8888ff) // blue — armor/defense
-    if (this.hpRegen > 0) buffColors.push(0x44ff44) // green — regen
-    if (this.splashRadius > 0) buffColors.push(0xff8844) // orange — splash/AoE
-    if (this.strikeCount > 1) buffColors.push(0xffffff) // white — multistrike
-    if (this.xpMult > 1) buffColors.push(0xffd700) // gold — wisdom
+    // Ensure pool exists (3 particles covers 400ms interval × 500-800ms lifetime)
+    if (this._buffParticlePool.length === 0) {
+      for (let i = 0; i < 3; i++) {
+        this._buffParticlePool.push(
+          this.scene.add.circle(0, 0, 2, 0xffffff, 0.6).setDepth(7).setVisible(false)
+        )
+      }
+    }
 
-    if (buffColors.length === 0) return
+    // Find a free particle from pool (manual loop — avoids closure alloc)
+    let particle: Phaser.GameObjects.Arc | null = null
+    for (const pp of this._buffParticlePool) { if (!pp.visible) { particle = pp; break } }
+    if (!particle) return
 
-    // Pick a random active buff color and spawn a small particle
-    const color = buffColors[Math.floor(Math.random() * buffColors.length)]
+    const color = bc[Math.floor(Math.random() * bc.length)]
     const angle = Math.random() * Math.PI * 2
     const dist = Phaser.Math.Between(10, 22)
     const px = this.x + Math.cos(angle) * dist
     const py = this.y + Math.sin(angle) * dist
 
-    const particle = this.scene.add.circle(px, py, Phaser.Math.Between(1, 3), color, 0.6).setDepth(7)
+    particle.setPosition(px, py).setRadius(Phaser.Math.Between(1, 3))
+    particle.setFillStyle(color, 0.6).setAlpha(1).setScale(1).setVisible(true)
     this.scene.tweens.add({
       targets: particle,
       y: py - Phaser.Math.Between(15, 30),
       alpha: 0, scale: 0.2,
       duration: Phaser.Math.Between(500, 800),
-      onComplete: () => particle.destroy(),
+      onComplete: () => particle.setVisible(false),
     })
   }
 
@@ -1788,42 +1882,60 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Hero-specific aura/passive updates
     if (this.heroType === 'amun') amun.updateAmunPassives(this, delta)
     if (this.heroType === 'sifra') sifra.updateSifraPassives(this, delta)
+    if (this.heroType === 'vael') vael.updateVaelPassives(this, delta)
 
     const pBody = this.body as Phaser.Physics.Arcade.Body
 
-    // Keyboard movement (WASD / arrows) — takes priority
-    let kbX = 0, kbY = 0
-    if (this.cursors && this.wasd) {
-      if (this.cursors.left.isDown || this.wasd.A.isDown) kbX = -1
-      if (this.cursors.right.isDown || this.wasd.D.isDown) kbX = 1
-      if (this.cursors.up.isDown || this.wasd.W.isDown) kbY = -1
-      if (this.cursors.down.isDown || this.wasd.S.isDown) kbY = 1
+    // Update input controller before reading direction
+    if (this.inputController) this.inputController.update()
+
+    // Handle stance toggle via inputController
+    if (this.inputController?.getStanceToggle()) {
+      switch (this.heroType) {
+        case 'sifra': this.toggleStance(); break
+        case 'nazar': this.toggleNazarStance(); break
+        case 'huntress': this.toggleHuntressStance(); break
+        case 'khashin': this.toggleKhashinStance(); break
+        case 'amun': this.toggleAmunStance(); break
+        case 'vael': this.toggleVaelStance(); break
+      }
     }
 
     // During melee attack: allow movement at 50% speed (no full freeze)
     const atkSpeedMult = this.isAttacking ? 0.5 : 1
     let moving = false
-    if (kbX !== 0 || kbY !== 0) {
-      const len = Math.sqrt(kbX * kbX + kbY * kbY)
-      pBody.setVelocity((kbX / len) * this.speed * atkSpeedMult, (kbY / len) * this.speed * atkSpeedMult)
-      if (!this.isAttacking) this.setFlipX(kbX < 0)
+
+    // Get direction from inputController (keyboard + joystick)
+    const dir = this.inputController?.getDirection() ?? ZERO_DIR
+
+    // Resolve touch target from inputController (KeyboardInputController exposes it)
+    const kbic = this.inputController as KeyboardInputController | null
+    const activeTouchTarget = kbic?.getTouchTarget?.() ?? this.touchTarget
+
+    if (this.serverAuthoritative) {
+      // Online mode: server controls position — only play animations from input
+      if (dir.dx !== 0 || dir.dy !== 0) {
+        if (!this.isAttacking) this.setFlipX(dir.dx < 0)
+        moving = true
+      }
+      // Don't set velocity — NetworkGameAdapter handles positioning
+    } else if (dir.dx !== 0 || dir.dy !== 0) {
+      pBody.setVelocity(dir.dx * this.speed * atkSpeedMult, dir.dy * this.speed * atkSpeedMult)
+      if (!this.isAttacking) this.setFlipX(dir.dx < 0)
+      // Clear touch target when keyboard/joystick is active
+      kbic?.clearTouchTarget?.()
       this.touchTarget = null
-      this.joystickDir = null
       moving = true
-    } else if (this.joystickDir) {
-      const { dx, dy } = this.joystickDir
-      pBody.setVelocity(dx * this.speed * atkSpeedMult, dy * this.speed * atkSpeedMult)
-      if (!this.isAttacking) this.setFlipX(dx < 0)
-      moving = true
-    } else if (this.touchTarget) {
-      const dist = Phaser.Math.Distance.Between(this.x, this.y, this.touchTarget.x, this.touchTarget.y)
+    } else if (activeTouchTarget) {
+      const dist = Phaser.Math.Distance.Between(this.x, this.y, activeTouchTarget.x, activeTouchTarget.y)
       if (dist > 10) {
-        const angle = Phaser.Math.Angle.Between(this.x, this.y, this.touchTarget.x, this.touchTarget.y)
+        const angle = Phaser.Math.Angle.Between(this.x, this.y, activeTouchTarget.x, activeTouchTarget.y)
         pBody.setVelocity(Math.cos(angle) * this.speed * atkSpeedMult, Math.sin(angle) * this.speed * atkSpeedMult)
-        if (!this.isAttacking) this.setFlipX(this.touchTarget.x < this.x)
+        if (!this.isAttacking) this.setFlipX(activeTouchTarget.x < this.x)
         moving = true
       } else {
         pBody.setVelocity(0, 0)
+        kbic?.consumeTouchTarget?.()
         this.touchTarget = null
       }
     } else {
@@ -1832,6 +1944,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Hero-specific movement-based passives
     if (this.hasLavaTrail && moving) ignara.updateLavaTrail(this, delta)
+    if (this.hasFirestorm) { ignara.initFirestormOrbit(this); ignara.updateFirestormOrbit(this, delta) }
+    if (this.hasImmolation) ignara.updateImmolation(this, delta)
+    if (this.hasSustainedBurn) ignara.updateBurnTicks(this, delta)
+    // Ashen Veil decay
+    if (this.hasAshenVeil && this.ashenVeilStacks > 0 && this.scene.time.now >= this.ashenVeilUntil) {
+      this.ashenVeilStacks = 0
+    }
+
     if (this.hasPhantomTrail && moving) nazar.updatePhantomTrail(this, delta, moving)
 
     // Hero-specific passive mechanics (per-hero)
@@ -1886,17 +2006,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     muller.attackCrystalEruption(this, enemies)
   }
 
-  /** Small impact burst when spear hits an enemy */
+  /** Impact burst when spear hits an enemy */
   spearHitVfx(x: number, y: number, tint: number) {
-    for (let i = 0; i < 4; i++) {
-      const a = Math.random() * Math.PI * 2
-      const d = Phaser.Math.Between(6, 14)
-      const p = this.scene.add.circle(x, y, Phaser.Math.Between(1, 3), tint, 0.7).setDepth(10)
-      this.scene.tweens.add({
-        targets: p,
+    const scene = this.scene
+
+    // Flash ring
+    const ring = scene.add.circle(x, y, 4, tint, 0.85).setDepth(10).setBlendMode(Phaser.BlendModes.ADD)
+    scene.tweens.add({ targets: ring, displayWidth: 32, displayHeight: 32, alpha: 0, duration: 160, ease: 'Quad.easeOut', onComplete: () => ring.destroy() })
+
+    // Bright core flash
+    const flash = scene.add.circle(x, y, 3, 0xffffff, 0.9).setDepth(11).setBlendMode(Phaser.BlendModes.ADD)
+    scene.tweens.add({ targets: flash, displayWidth: 14, displayHeight: 14, alpha: 0, duration: 100, onComplete: () => flash.destroy() })
+
+    // 6 sparks
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.random() * 0.5
+      const d = Phaser.Math.Between(10, 22)
+      const spark = scene.add.circle(x, y, Phaser.Math.Between(1, 3), tint, 0.85)
+        .setDepth(10).setBlendMode(Phaser.BlendModes.ADD)
+      scene.tweens.add({
+        targets: spark,
         x: x + Math.cos(a) * d, y: y + Math.sin(a) * d,
-        alpha: 0, scale: 0, duration: 200,
-        onComplete: () => p.destroy(),
+        alpha: 0, scaleX: 0.2, scaleY: 0.2, duration: 220,
+        ease: 'Quad.easeOut', onComplete: () => spark.destroy(),
       })
     }
   }
