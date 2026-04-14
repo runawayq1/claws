@@ -117,9 +117,12 @@ export class XPSystem {
         if (dist < minDist) { nearest = p; minDist = dist }
       }
       if (nearest) {
-        // Accelerate toward nearest player — faster when closer
         const speed = 200 + (1 - minDist / this.magnetRadius) * 300
-        this.scene.physics.moveTo(orb, nearest.cx, nearest.cy, speed)
+        const dx = nearest.cx - orb.x
+        const dy = nearest.cy - orb.y
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        const body = orb.body as Phaser.Physics.Arcade.Body
+        body.setVelocity((dx / len) * speed, (dy / len) * speed)
       }
     }
   }
@@ -255,7 +258,11 @@ export class GoldSystem {
       }
       if (nearest) {
         const speed = 200 + (1 - minDist / this.magnetRadius) * 300
-        this.scene.physics.moveTo(orb, nearest.cx, nearest.cy, speed)
+        const dx = nearest.cx - orb.x
+        const dy = nearest.cy - orb.y
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        const body = orb.body as Phaser.Physics.Arcade.Body
+        body.setVelocity((dx / len) * speed, (dy / len) * speed)
       }
     }
   }

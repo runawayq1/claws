@@ -47,8 +47,10 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
   // Count enemies in range for Assassinate
   const enemiesInRange = (enemies.getChildren() as Phaser.Physics.Arcade.Sprite[])
     .filter(e => e.active && Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y) <= hitRadius).length
-  const isAssassinating = p.hasAssassinate && enemiesInRange === 1
-  const meleeDmg = (isAssassinating ? p.damage * 2 : p.damage) * p.getMasteryDamageMult('sword')
+  const isAssassinating = p.hasAssassinate && enemiesInRange <= 2
+  // ×2 when truly alone (1 enemy), ×1.5 when a few nearby (2 enemies), ×1 otherwise
+  const assassinateMult = enemiesInRange === 1 ? 2 : 1.5
+  const meleeDmg = (isAssassinating ? p.damage * assassinateMult : p.damage) * p.getMasteryDamageMult('sword')
 
   // Damage all enemies in range
   for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
@@ -154,9 +156,10 @@ export function attackMelee(p: Player, enemies: Phaser.Physics.Arcade.Group) {
 
   p.scene.time.delayedCall(150, () => {
     p.isAttacking = false
-    // Vanish — brief invulnerability after melee
-    if (p.hasVanish) {
+    // Vanish — brief invulnerability after melee (1.5s internal CD)
+    if (p.hasVanish && p.scene.time.now >= p.vanishCooldownUntil) {
       p.vanishUntil = p.scene.time.now + 400
+      p.vanishCooldownUntil = p.scene.time.now + 1500
       p.setAlpha(0.5)
       p.scene.time.delayedCall(400, () => { if (p.active) p.setAlpha(1) })
     }
@@ -287,8 +290,9 @@ export function attackDash(p: Player, target: Phaser.Physics.Arcade.Sprite, enem
                 targets: p, x: ox, y: oy, duration: 80,
                 onComplete: () => {
                   p.isAttacking = false
-                  if (p.hasVanish) {
+                  if (p.hasVanish && p.scene.time.now >= p.vanishCooldownUntil) {
                     p.vanishUntil = p.scene.time.now + 600
+                    p.vanishCooldownUntil = p.scene.time.now + 1500
                     p.setAlpha(0.5)
                     p.scene.time.delayedCall(600, () => { if (p.active) p.setAlpha(1) })
                   }
@@ -305,8 +309,9 @@ export function attackDash(p: Player, target: Phaser.Physics.Arcade.Sprite, enem
         targets: p, x: ox, y: oy, duration: 80,
         onComplete: () => {
           p.isAttacking = false
-          if (p.hasVanish) {
+          if (p.hasVanish && p.scene.time.now >= p.vanishCooldownUntil) {
             p.vanishUntil = p.scene.time.now + 600
+            p.vanishCooldownUntil = p.scene.time.now + 1500
             p.setAlpha(0.5)
             p.scene.time.delayedCall(600, () => { if (p.active) p.setAlpha(1) })
           }

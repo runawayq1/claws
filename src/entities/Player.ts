@@ -8,17 +8,19 @@ import * as nazar from './heroes/nazar'
 import * as huntress from './heroes/huntress'
 import * as khashin from './heroes/khashin'
 import * as muller from './heroes/muller'
+import * as nightborne from './heroes/nightborne'
+import * as vael from './heroes/vael'
 import { generateHeroFallbackTexture } from './heroes/fallbackTextures'
 import { MetaProgress } from '../systems/MetaProgress'
 import { type IInputController, KeyboardInputController } from '../systems/InputController'
 
-export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller'
+export type HeroType = 'ignara' | 'sifra' | 'amun' | 'nazar' | 'huntress' | 'khashin' | 'muller' | 'nightborne' | 'vael'
 
 const ZERO_DIR = { dx: 0, dy: 0 } as const
 
 interface HeroDef {
   hp: number; speed: number; damage: number; range: number; cooldown: number
-  color: number; attackType: 'flamethrower' | 'dash' | 'iceshard' | 'shockwave' | 'poison' | 'melee' | 'fireball' | 'spear' | 'windslash' | 'crystalwave'
+  color: number; attackType: 'flamethrower' | 'dash' | 'iceshard' | 'shockwave' | 'poison' | 'melee' | 'fireball' | 'spear' | 'windslash' | 'crystalwave' | 'voidslash' | 'soulbolt'
 }
 
 // Heroes with real spritesheet animations (side-view)
@@ -34,6 +36,13 @@ interface SpriteHeroCfg extends SpriteConfig {
   reuseFrom?: HeroType
   /** Tint color to differentiate from the original */
   tint?: number
+  /**
+   * If set, hero uses ONE combined sheet (key = sheetKey) instead of separate
+   * per-animation textures. Frame ranges override the anims frame counts.
+   */
+  sheetKey?: string
+  /** Frame ranges for single-sheet heroes — [start, end] inclusive */
+  animFrames?: { idle: [number, number]; run: [number, number]; attack: [number, number]; hurt: [number, number]; death: [number, number] }
 }
 
 const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
@@ -45,19 +54,36 @@ const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
   amun:   { scale: 1.5, bodyW: 33, bodyH: 46, bodyOffX: 65, bodyOffY: 57, anims: { idle: 8, run: 8, attack: 4, hurt: 4, death: 6 } },
   huntress: { scale: 1.61, bodyW: 22, bodyH: 34, bodyOffX: 62, bodyOffY: 62, anims: { idle: 8, run: 8, attack: 5, hurt: 3, death: 8 } },
   khashin:  { scale: 1.65, bodyW: 26, bodyH: 40, bodyOffX: 129, bodyOffY: 88, anims: { idle: 8, run: 8, attack: 8, hurt: 6, death: 19 } },
-  muller:   { scale: 1.35, bodyW: 26, bodyH: 40, bodyOffX: 127, bodyOffY: 87, anims: { idle: 8, run: 8, attack: 7, hurt: 6, death: 15 } },
+  muller:     { scale: 1.35, bodyW: 26, bodyH: 40, bodyOffX: 127, bodyOffY: 87, anims: { idle: 8, run: 8, attack: 7, hurt: 6, death: 15 } },
+  nightborne: { scale: 0.65, bodyW: 43, bodyH: 60, bodyOffX: 95, bodyOffY: 141, anims: { idle: 9, run: 6, attack: 12, hurt: 5, death: 23 } },
+  vael: {
+    scale: 1.6, bodyW: 24, bodyH: 40, bodyOffX: 68, bodyOffY: 78,
+    anims: { idle: 8, run: 8, attack: 13, hurt: 5, death: 9 },
+    sheetKey: 'vael_sheet',
+    animFrames: {
+      // 17-col grid. Row 0: idle (8), Row 1: run (8), Row 2: cast+star (13),
+      // Row 4: attack (17), Row 5: hurt (5), Row 6: death (9)
+      idle:   [0,   7],
+      run:    [17,  24],
+      attack: [34,  46],  // row 2 — cast with star burst (visible attack anim)
+      hurt:   [85,  89],
+      death:  [102, 110],
+    },
+  },
 }
 
 const HERO_DEFS: Record<HeroType, HeroDef> = {
-  ignara:  { hp: 80,  speed: 140, damage: 30, range: 200, cooldown: 700, color: 0xe84118, attackType: 'fireball' },
+  ignara:    { hp: 80,  speed: 140, damage: 30, range: 200, cooldown: 700,  color: 0xe84118, attackType: 'fireball' },
   // khet removed from playable roster
   // khet:    { hp: 55,  speed: 220, damage: 35, range: 48,  cooldown: 600,  color: 0x4a0072, attackType: 'dash' },
-  sifra:   { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
-  amun:    { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800, color: 0xfff200, attackType: 'shockwave' },
-  nazar:   { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
-  huntress: { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
-  khashin:  { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
-  muller:   { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
+  sifra:     { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
+  amun:      { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800,  color: 0xfff200, attackType: 'shockwave' },
+  nazar:     { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
+  huntress:  { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
+  khashin:   { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
+  muller:    { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
+  nightborne: { hp: 110, speed: 150, damage: 28, range: 90,  cooldown: 850,  color: 0x9933FF, attackType: 'voidslash' },
+  vael:       { hp: 85,  speed: 130, damage: 22, range: 220, cooldown: 700,  color: 0x8866cc, attackType: 'soulbolt' },
 }
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -100,7 +126,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   flashpointBurst = false
   flashpointRemaining = 0
 
-  // Buckshot branch
+  // Inferno — Ashen Veil
+  hasAshenVeil = false
+  ashenVeilDR = 0.10
+  ashenVeilMaxStacks = 1
+  ashenVeilStacks = 0
+  ashenVeilUntil = 0
+
+  // Pyre branch
+  hasMoltenVolley = false
+  moltenVolleyCount = 3
+  moltenVolleyScorch = false
+
+  // Pyre — Slug Round
   hasSlugRound = false
   slugPierce = 0
   hasImmolation = false
@@ -121,12 +159,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasInfernalCadence = false
   infernalCadenceEndTime = 0
   infernalCadenceDuration = 6000
+  infernalCadenceCooldownUntil = 0
+  infernalCadenceCooldown = 18000
   burnTickTimer = 0
 
   // Nazar upgrade mechanic flags
   hasChainDash = false
   hasVanish = false
   vanishUntil = 0
+  vanishCooldownUntil = 0
   hasSmokeBomb = false
   hasPandemic = false
   hasHemorrhage = false
@@ -254,6 +295,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   spearWallGfx: Phaser.GameObjects.Graphics | null = null
   spearWallAngle = 0     // rotating spear wall angle
 
+  // Vael stance — 'orbs' (homing soul orbs) or 'drain' (vampiric green bolts)
+  vaelStance: 'orbs' | 'drain' = 'orbs'
+  orbsEnergy = 100
+  drainEnergy = 100
+
   // Khashin (Wind) upgrade mechanic flags
   khashinStance: 'sirocco' | 'haboob' = 'sirocco'
   windEnergy = 100
@@ -314,6 +360,155 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   crystalPillarTimer = 0
   crystalWaveConeAngle = 40     // degrees
   motherLodeTimer = 0
+
+  // Nightborne (Void Blade) upgrade mechanic flags
+  // -- Void Blade branch
+  hasVoidEdge = false
+  voidEdgeLevel = 0
+  hasCleave = false                // NOTE: generic g7 also sets splashRadius; this is hero-specific arc widener
+  voidCleaveEdgeBonus = 0
+  hasVoidSurge = false
+  voidSurgeLevel = 0
+  _surgeCounter = 0
+  voidSurgeEvery = 4
+  voidSurgeRadius = 140
+  voidSurgeDmgPct = 0.6
+  hasDarkResonance = false
+  darkResonanceLevel = 0
+  darkResonanceRadius = 40
+  darkResonanceDmgPct = 0.5
+  hasVoidAscendant = false
+  voidAscendantLevel = 0
+  _ascendantUntil = 0
+  _ascendantCDTimer = 999999
+  voidAscendantDuration = 6000
+  voidAscendantCooldown = 45000
+  // -- Phantom branch
+  hasEchoStrike = false
+  echoStrikeLevel = 0
+  echoStrikeDmgPct = 0.35
+  hasSplitShade = false
+  splitShadeLevel = 0
+  _splitShadeCooldownUntil = 0
+  hasPhantomVeil = false
+  phantomVeilLevel = 0
+  phantomVeilChance = 0.3
+  hasMirrorSwarm = false
+  mirrorSwarmSlashes = 1
+  hasShadeLegion = false
+  shadeLegionLevel = 0
+  shadeLegionDuration = 5000
+  shadeLegionCooldown = 50000
+  shadeLegionDmgPct = 0.7
+  _shadeLegionUntil = 0
+  _shadeLegionCDTimer = 999999
+  _invulnUntil = 0
+  // -- Rift branch
+  hasVoidStep = false
+  voidStepLevel = 0
+  voidStepDist = 50
+  hasRiftAnchor = false
+  riftAnchorLevel = 0
+  _anchorX!: number
+  _anchorY!: number
+  _anchorExpiry = 0
+  _anchorTimer = 0
+  riftAnchorCooldown = 12000
+  riftAnchorDuration = 8000
+  riftAnchorHpThreshold = 0.25
+  hasVoidZone = false
+  voidZoneRadius = 40
+  voidZoneDuration = 3000
+  voidZoneDotPct = 0.08
+  hasSpatialTear = false
+  spatialTearLevel = 0
+  _spatialTearTimer = 0
+  spatialTearCooldown = 8000
+  spatialTearRadius = 80
+  hasRiftCollapse = false
+  riftCollapseLevel = 0
+  _riftCollapseCDTimer = 999999
+  riftCollapseCooldown = 40000
+  riftCollapseRadius = 200
+  riftCollapseDmgPct = 1.8
+  // Derived arc stats (set by upgrade apply fns)
+  voidArcRange = 90
+  voidArcAngle = 150
+
+  // Vael (Pale Doctor) upgrade mechanic flags
+  // Pale Harvest branch
+  hasHollowTouch = false
+  hollowTouchRate = 0.08
+  hasSoulSiphon = false
+  soulSiphonDropChance = 0.10
+  soulSiphonMaxStacks = 8
+  soulStacks = 0   // current armor stacks from collected souls
+  hasWoundMemory = false
+  woundMemoryBonus = 0.20
+  woundMemoryRootDur = 400
+  hasExsanguination = false
+  exsangChainCount = 2
+  exsangDmgPct = 0.60
+  exsangRangeBonus = 0
+  exsangDoubleArc = false
+  hasSanguineAscendancy = false
+  sanguineWindowDuration = 6000
+  sanguineHealPct = 0.12
+  sanguineInstantOrbs = false
+  sanguineLowHpDR = false
+  // Ossuary branch
+  hasRisen = false
+  risenProcChance = 0.25
+  risenDuration = 4000
+  risenDmgPct = 0.30
+  risenMaxThralls = 999
+  hasGravePact = false
+  gravePactHPBonus = 0
+  gravePactDeathBurst = false
+  gravePactDeathRoot = false
+  gravePactBurstDmgPct = 0.60
+  gravePactBurstRadiusBonus = 0
+  hasUndyingLabor = false
+  undyingLaborAtkSpeedPct = 0.05
+  undyingLaborDmgBonus = 0
+  hasCharnelTide = false
+  charnelTideRadius = 250
+  charnelTideMax = 5
+  charnelTideDuration = 8000
+  charnelTideCooldown = 20000
+  charnelTideExplode = false
+  hasLichDominion = false
+  revenantDmgPct = 0.80
+  revenantHPBonus = 0
+  revenantSlowAura = false
+  lichRevenantCharnelOnDeath = false
+  // Wasting Plague branch
+  hasFesteringWound = false
+  festeringWoundStacks = 1
+  festeringWoundDmgBonus = 0.15
+  rotSlowDecay = false
+  rotSlow = false
+  hasVirulentSpread = false
+  virulentSpreadRadius = 80
+  virulentDmgPerStack = 0.10
+  virulentStunAt = 999
+  hasNecroticBloom = false
+  necroticBloomThreshold = 5
+  necroticBloomRadius = 100
+  necroticBloomDuration = 5000
+  necroticBloomDmgPct = 0.12
+  necroticBloomAddRot = false
+  hasVaelPandemic = false
+  pandemicRadius = 200
+  pandemicStacks = 5
+  pandemicCooldown = 18000
+  pandemicDoublePulse = false
+  pandemicDoubleRadiusBlight = false
+  hasCarrionCrown = false
+  carrionAuraRadius = 150
+  carrionAuraInterval = 2000
+  carrionWeaken = false
+  carrionKillPulse = false
 
   stance: 'ice' | 'lightning' = 'ice'
   iceEnergy = 100
@@ -391,10 +586,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   constructor(scene: Phaser.Scene, x: number, y: number, heroType: HeroType = 'ignara') {
     const sprCfg = SPRITE_HEROES[heroType]
-    // For reuse heroes (ignara→sifra sheets), check the source texture
-    const srcHero = sprCfg?.reuseFrom || heroType
-    const hasSpr = scene.textures.exists(`${srcHero}_idle`)
-    const texKey = hasSpr ? `${srcHero}_idle` : `hero_${heroType}`
+    // Single-sheet heroes (e.g. vael) use sheetKey; reuse heroes use srcHero_idle; else hero_idle
+    let hasSpr: boolean
+    let texKey: string
+    if (sprCfg?.sheetKey) {
+      hasSpr = scene.textures.exists(sprCfg.sheetKey)
+      texKey = hasSpr ? sprCfg.sheetKey : `hero_${heroType}`
+    } else {
+      const srcHero = sprCfg?.reuseFrom || heroType
+      hasSpr = scene.textures.exists(`${srcHero}_idle`)
+      texKey = hasSpr ? `${srcHero}_idle` : `hero_${heroType}`
+    }
 
     if (!hasSpr) generateHeroFallbackTexture(scene, heroType)
     super(scene, x, y, texKey, 0)
@@ -516,6 +718,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       case 'khashin': return this.khashinStance
       case 'muller': return this.mullerStance
       case 'amun': return this.hasQuakeStance ? this.amunStance : ''
+      case 'vael': return this.vaelStance
       default: return ''
     }
   }
@@ -524,6 +727,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.heroType !== 'khashin') return
     this.khashinStance = this.khashinStance === 'sirocco' ? 'haboob' : 'sirocco'
     this.scene.events.emit('khashin-stance-changed', this.khashinStance)
+  }
+
+  toggleVaelStance() {
+    if (this.heroType !== 'vael') return
+    this.vaelStance = this.vaelStance === 'orbs' ? 'drain' : 'orbs'
+    this.scene.events.emit('vael-stance-changed', this.vaelStance)
   }
 
   toggleAmunStance() {
@@ -580,6 +789,32 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   static createAnimations(scene: Phaser.Scene) {
     for (const [hero, cfg] of Object.entries(SPRITE_HEROES) as [HeroType, SpriteHeroCfg][]) {
       if (cfg.reuseFrom) continue // reuse heroes share animations from source
+      if (hero === 'nightborne') continue // nightborne anims created below with custom frameRates
+
+      // Single-sheet heroes (e.g. vael): all anims live on one combined texture
+      if (cfg.sheetKey && cfg.animFrames) {
+        if (!scene.textures.exists(cfg.sheetKey)) continue
+        const frames = cfg.animFrames
+        const sheetDefs: [string, [number, number], number][] = [
+          ['idle',   frames.idle,   -1],
+          ['run',    frames.run,    -1],
+          ['attack', frames.attack,  0],
+          ['hurt',   frames.hurt,    0],
+          ['death',  frames.death,   0],
+        ]
+        for (const [name, [start, end], repeat] of sheetDefs) {
+          const key = `${hero}_${name}`
+          if (scene.anims.exists(key)) continue
+          scene.anims.create({
+            key,
+            frames: scene.anims.generateFrameNumbers(cfg.sheetKey, { start, end }),
+            frameRate: name === 'run' ? 10 : name === 'attack' ? 12 : 8,
+            repeat,
+          })
+        }
+        continue
+      }
+
       if (!scene.textures.exists(`${hero}_idle`)) continue
       const animDefs: [string, number, number][] = [
         ['idle', cfg.anims.idle, -1],
@@ -709,6 +944,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         repeat: 0,
       })
     }
+    // Nightborne — custom frameRates per spec (240×240 spritesheets)
+    if (scene.textures.exists('nightborne_idle')) {
+      const nbDefs: [string, number, number, number][] = [
+        ['nightborne_idle',   8,  8, -1],
+        ['nightborne_run',    5, 10, -1],
+        ['nightborne_attack', 11, 18, 0],
+        ['nightborne_hurt',   4,  12, 0],
+        ['nightborne_death',  22, 12, 0],
+      ]
+      for (const [key, end, frameRate, repeat] of nbDefs) {
+        if (!scene.anims.exists(key)) {
+          scene.anims.create({
+            key,
+            frames: scene.anims.generateFrameNumbers(key, { start: 0, end }),
+            frameRate,
+            repeat,
+          })
+        }
+      }
+    }
   }
 
   /** Get the animation key prefix (source hero for reuse heroes) */
@@ -775,6 +1030,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   takeDamage(amount: number) {
     if (this.isDead) return
     if (this.vanishUntil > this.scene.time.now) return  // Invulnerable after dash
+    // Shade Legion: invulnerable while fractured
+    if (this.hasShadeLegion && this.scene.time.now < this._invulnUntil) return
+    // Phantom Veil: chance to negate incoming damage during attack cooldown window
+    if (this.hasPhantomVeil) {
+      const now = this.scene.time.now
+      const sinceLastAtk = now - (this as any).lastAttackTime
+      if (sinceLastAtk > 0 && sinceLastAtk < this.attackCooldown) {
+        if (Math.random() < this.phantomVeilChance) {
+          const veilFx = this.scene.add.circle(this.x, this.y, 14, 0xCC66FF, 0.5).setDepth(10)
+          this.scene.tweens.add({ targets: veilFx, alpha: 0, scale: 2, duration: 250, onComplete: () => veilFx.destroy() })
+          // L3: reset attack cooldown
+          if (this.phantomVeilLevel >= 3) (this as any).lastAttackTime = now - this.attackCooldown
+          return
+        }
+      }
+    }
     // Shield absorbs damage first
     if (this.shieldHp > 0) {
       if (amount <= this.shieldHp) {
@@ -786,7 +1057,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
     // Stone Skin DR: +2% per stack, max 5
     const stoneSkinDR = this.hasStoneSkin ? this.stoneSkinStacks * 0.05 : 0
-    let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR))
+    // Ashen Veil DR
+    const ashenDR = (this.hasAshenVeil && this.ashenVeilStacks > 0 && this.scene.time.now < this.ashenVeilUntil)
+      ? this.ashenVeilDR * this.ashenVeilStacks : 0
+    // Soul Siphon armor stacks: +1% DR per soul
+    const soulDR = this.hasSoulSiphon ? this.soulStacks * 0.01 : 0
+    let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR + ashenDR + soulDR))
 
     // Sand Armor (Khashin): absorb shield
     if (this.hasSandArmor && this._sandArmorHP > 0) {
@@ -813,7 +1089,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const absorbed = Math.min(reduced, this.iceArmorHP)
       this.iceArmorHP -= absorbed
       reduced -= absorbed
-      this.iceArmorRegenDelay = 3000 // 3s before regen starts
+      this.iceArmorRegenDelay = 5000 // 5s before regen starts
       if (absorbed > 0) {
         const shieldFx = this.scene.add.circle(this.x, this.y, 16, 0x88ddff, 0.4).setDepth(10)
         this.scene.tweens.add({ targets: shieldFx, scale: 2, alpha: 0, duration: 200, onComplete: () => shieldFx.destroy() })
@@ -829,6 +1105,36 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.hp -= reduced
     this.damageTakenThisRun += reduced
+
+    // Split Shade: spawn decoy on hit received
+    if (this.hasSplitShade && reduced >= 1 && this.scene.time.now >= this._splitShadeCooldownUntil) {
+      const shadeCD = this.splitShadeLevel >= 2 ? (this.splitShadeLevel >= 3 ? 3000 : 4000) : 6000
+      this._splitShadeCooldownUntil = this.scene.time.now + shadeCD
+      const shadeCount = this.splitShadeLevel >= 3 ? 2 : 1
+      for (let si = 0; si < shadeCount; si++) {
+        const ang = Math.random() * Math.PI * 2
+        const sx = this.x + Math.cos(ang) * 80
+        const sy = this.y + Math.sin(ang) * 80
+        const shade = this.scene.add.circle(sx, sy, 10, 0xCC66FF, 0.5).setDepth(9)
+        const shadeDur = this.splitShadeLevel >= 2 ? (this.splitShadeLevel >= 3 ? 3000 : 2500) : 1500
+        this.scene.tweens.add({ targets: shade, alpha: 0.1, yoyo: true, repeat: -1, duration: 300 })
+        // Echo slash on expiry (L2+)
+        this.scene.time.delayedCall(shadeDur, () => {
+          shade.destroy()
+          if (this.splitShadeLevel >= 2) {
+            const scene = this.scene as any
+            if (scene.enemies) {
+              for (const e of (scene.enemies as Phaser.Physics.Arcade.Group).getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+                if (!e.active) continue
+                if (Phaser.Math.Distance.Between(sx, sy, e.x, e.y) <= 80) {
+                  ;(e as any).takeDamage?.(this.damage * 0.2, 'void')
+                }
+              }
+            }
+          }
+        })
+      }
+    }
 
     // Stone Skin: accumulate damage, gain stack every 10 HP lost
     if (this.hasStoneSkin && reduced > 0 && this.stoneSkinStacks < 5) {
@@ -1391,7 +1697,44 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           this.attackMelee(enemies)
         }
         break
+      case 'voidslash':
+        this.currentAttackBranch = 'void'
+        this.awardMasteryXP('void', 1.0)
+        // Void Ascendant: halve CD during ascendant window
+        if (this.hasVoidAscendant && this.scene.time.now < this._ascendantUntil) {
+          this.lastAttackTime -= Math.floor(this.attackCooldown / 2)
+        }
+        this.attackVoidSlash(target, enemies)
+        break
+      case 'soulbolt': {
+        // Drain stance: no Soul Bolt (drain handles DPS passively)
+        if (this.vaelStance === 'drain') {
+          this.isAttacking = false
+          return
+        }
+        // Orbs stance: drain per shot, auto-switch on empty
+        if (this.orbsEnergy <= 0) {
+          this.toggleVaelStance()
+          this.isAttacking = false
+          return
+        }
+        this.orbsEnergy = Math.max(0, this.orbsEnergy - this.energyDrainPerShot)
+        this.currentAttackBranch = 'orbs'
+        this.awardMasteryXP('orbs', 1.0)
+        // Undying Labor: reduce CD by thrall count
+        if (this.hasUndyingLabor) {
+          const bonus = (this as any)._vaelAttackCDMult ?? 1
+          if (bonus < 1) this.lastAttackTime -= Math.floor(this.attackCooldown * (1 - bonus))
+        }
+        vael.attackSoulBolt(this, target, enemies)
+        break
+      }
     }
+  }
+
+  // NIGHTBORNE — Void Slash arc
+  private attackVoidSlash(target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
+    nightborne.attackVoidSlash(this, target, enemies)
   }
 
   // NAZAR SWORD — Melee slash around player
@@ -1463,8 +1806,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
     }
 
-    // Find a free particle from pool
-    const particle = this._buffParticlePool.find(p => !p.visible)
+    // Find a free particle from pool (manual loop — avoids closure alloc)
+    let particle: Phaser.GameObjects.Arc | null = null
+    for (const pp of this._buffParticlePool) { if (!pp.visible) { particle = pp; break } }
     if (!particle) return
 
     const color = bc[Math.floor(Math.random() * bc.length)]
@@ -1538,6 +1882,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Hero-specific aura/passive updates
     if (this.heroType === 'amun') amun.updateAmunPassives(this, delta)
     if (this.heroType === 'sifra') sifra.updateSifraPassives(this, delta)
+    if (this.heroType === 'vael') vael.updateVaelPassives(this, delta)
 
     const pBody = this.body as Phaser.Physics.Arcade.Body
 
@@ -1552,6 +1897,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         case 'huntress': this.toggleHuntressStance(); break
         case 'khashin': this.toggleKhashinStance(); break
         case 'amun': this.toggleAmunStance(); break
+        case 'vael': this.toggleVaelStance(); break
       }
     }
 
@@ -1601,6 +1947,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.hasFirestorm) { ignara.initFirestormOrbit(this); ignara.updateFirestormOrbit(this, delta) }
     if (this.hasImmolation) ignara.updateImmolation(this, delta)
     if (this.hasSustainedBurn) ignara.updateBurnTicks(this, delta)
+    // Ashen Veil decay
+    if (this.hasAshenVeil && this.ashenVeilStacks > 0 && this.scene.time.now >= this.ashenVeilUntil) {
+      this.ashenVeilStacks = 0
+    }
 
     if (this.hasPhantomTrail && moving) nazar.updatePhantomTrail(this, delta, moving)
 

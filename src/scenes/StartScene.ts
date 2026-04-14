@@ -353,6 +353,14 @@ export class StartScene extends Phaser.Scene {
     forgeBtn.on('pointerout', () => forgeBtn.setColor('#FFD700'))
     forgeBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('ForgeScene')) })
 
+    // DEV: TestScene shortcut (T key)
+    if (import.meta.env.DEV) {
+      this.input.keyboard?.on('keydown-T', () => {
+        this.cameras.main.fadeOut(150)
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('TestScene'))
+      })
+    }
+
     // Logout button — top-right corner, procedural door+arrow icon
     if (this.playerName) {
       const lbSize = compact ? 22 : 28

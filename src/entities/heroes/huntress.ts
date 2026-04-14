@@ -25,8 +25,8 @@ export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Gr
       // Critical Strike: 20% chance for 2x damage
       const isCrit = p.hasCriticalStrike && Math.random() < 0.2
       if (isCrit) dmg *= 2
-      // Marked Target: +30% damage to marked enemies
-      if (p.hasMarkedTarget && (e as BaseEnemy).isMarked) dmg *= 1.3
+      // Marked Target: +25% damage to marked enemies
+      if (p.hasMarkedTarget && (e as BaseEnemy).isMarked) dmg *= 1.25
       ;(e as BaseEnemy).takeDamage(dmg, 'melee')
       // Mark enemy on hit
       if (p.hasMarkedTarget) {
@@ -161,7 +161,7 @@ export function attackSpear(p: Player, target: Phaser.Physics.Arcade.Sprite, ene
             const isCrit = p.hasCriticalStrike && Math.random() < 0.2
             if (isCrit) dmg *= 2
             // Marked Target bonus
-            if (p.hasMarkedTarget && (e as BaseEnemy).isMarked) dmg *= 1.3
+            if (p.hasMarkedTarget && (e as BaseEnemy).isMarked) dmg *= 1.25
             ;(e as BaseEnemy).takeDamage(dmg, 'melee')
             hitSet.add(e)
             // Heavy Spear: knockback on spear hit

@@ -339,7 +339,7 @@ export function updateAmunPassives(p: Player, delta: number) {
   // Amun passive aura — orbiting shield projectiles (requires Aura of Might skill)
   if (p.heroType === 'amun' && p.hasPassiveAura) {
     const hpScale = p.hasLivingFortress ? (0.5 + (p.hp / p.maxHp) * 1.5) : 1
-    const shieldHitRadius = 22
+    const shieldHitRadius = 44
     const orbitRadius = (45 + p.armor * 40) * 1.8  // matches defense aura radius
     const shieldCount = p.passiveAuraLevel >= 3 ? 3 : p.passiveAuraLevel >= 2 ? 2 : 1
     // Negative = orbit counter-clockwise (opposite to Thorns swords at +0.0035)
@@ -352,7 +352,7 @@ export function updateAmunPassives(p: Player, delta: number) {
     if (hasShieldTex) {
       // Create/remove sprites to match shieldCount
       while (p.orbitShields.length < shieldCount) {
-        const s = p.scene.add.image(0, 0, 'shield_blue').setDepth(10).setScale(1.8)
+        const s = p.scene.add.image(0, 0, 'shield_blue').setDepth(10).setScale(3.6)
         p.orbitShields.push(s)
       }
       while (p.orbitShields.length > shieldCount) {
@@ -374,6 +374,47 @@ export function updateAmunPassives(p: Player, delta: number) {
         shield.setAlpha(0.85 + Math.sin(t / 300 + i) * 0.15)
       }
     }
+
+    // Arrow blocking: destroy any active arrow within BLOCK_DIST of any shield
+    const BLOCK_DIST = 30
+    const blockCx = p.cx
+    const blockCy = (p.y + p.cy) / 2
+    const scene2 = p.scene as any
+    const arrows = scene2.children?.list?.filter((c: any) => c._isArrow && c.active) ?? []
+    for (const arrow of arrows) {
+      for (let i = 0; i < p.orbitShields.length; i++) {
+        const shield = p.orbitShields[i]
+        const sx = shield.x
+        const sy = shield.y
+        const d = Phaser.Math.Distance.Between(arrow.x, arrow.y, sx, sy)
+        if (d <= BLOCK_DIST) {
+          // Spark VFX at block point
+          const spark = p.scene.add.circle(arrow.x, arrow.y, 7, 0x88ccff, 0.95)
+            .setDepth(11).setBlendMode(Phaser.BlendModes.ADD)
+          p.scene.tweens.add({
+            targets: spark, scale: 2.5, alpha: 0, duration: 220,
+            onComplete: () => spark.destroy(),
+          })
+          // Extra shard burst (3 tiny streaks)
+          for (let k = 0; k < 3; k++) {
+            const sa = Math.random() * Math.PI * 2
+            const shard = p.scene.add.rectangle(
+              arrow.x, arrow.y, 8, 2, 0xaaddff, 0.8
+            ).setDepth(11).setRotation(sa).setBlendMode(Phaser.BlendModes.ADD)
+            p.scene.tweens.add({
+              targets: shard,
+              x: arrow.x + Math.cos(sa) * 18,
+              y: arrow.y + Math.sin(sa) * 18,
+              alpha: 0, scale: 0.3, duration: 200,
+              onComplete: () => shard.destroy(),
+            })
+          }
+          arrow.destroy()
+          break  // no need to check other shields for this arrow
+        }
+      }
+    }
+    void blockCx; void blockCy  // suppress unused-var warnings
 
     // Clean up old glow trail graphics if they exist
     if (p.passiveAuraGfx) { p.passiveAuraGfx.clear() }

@@ -1,11 +1,14 @@
 import Phaser from 'phaser'
 import { CONFIG } from '../config/GameConfig'
 import { Player, type HeroType } from '../entities/Player'
+import * as nightborneHero from '../entities/heroes/nightborne'
+import * as vaelHero from '../entities/heroes/vael'
 import { Orc2 } from '../entities/Orc2'
 import { Orc1 } from '../entities/Orc1'
 import { Orc3 } from '../entities/Orc3'
+import { Archer } from '../entities/Archer'
 import type { BaseEnemy } from '../entities/BaseEnemy'
-import { ClawsBoss } from '../entities/ClawsBoss'
+import { EyeBoss } from '../entities/EyeBoss'
 import { WaveManager } from '../systems/WaveManager'
 import { XPSystem, GoldSystem } from '../systems/XPSystem'
 import { UpgradeTracker } from '../systems/UpgradeSystem'
@@ -50,6 +53,7 @@ export class GameScene extends Phaser.Scene {
   private enemyHpBars!: Phaser.GameObjects.Graphics
   private gameOver = false
   bossDefeated = false
+  private _bossActive = false
   private graves: Phaser.GameObjects.Image[] = []
   private _magnetFrame = 0
   private _hpBarsDirty = false
@@ -61,6 +65,8 @@ export class GameScene extends Phaser.Scene {
   private chunkManager?: ChunkManager
   private _hitStopActive = false
   _frameKills = 0
+  _cheatSpeedUp = false
+  _pendingBonusPicker = false
   /** Active intro reveal objects — tracked so shutdown() can clean them up if scene ends mid-animation */
   private _revealObjects: Phaser.GameObjects.GameObject[] = []
   private _localCoop = false
@@ -121,6 +127,11 @@ export class GameScene extends Phaser.Scene {
     ss('orc3_attack', 'assets/orc3/orc3_attack_without_shadow.png', 64, 64)
     ss('orc3_hurt',   'assets/orc3/orc3_hurt_without_shadow.png',   64, 64)
     ss('orc3_death',  'assets/orc3/orc3_death_without_shadow.png',  64, 64)
+
+    // Archer mob (64x64)
+    ss('archer_idle_run', 'assets/archer/idle_run.png', 64, 64)
+    ss('archer_attack',   'assets/archer/attack.png',   64, 64)
+    ss('archer_death',    'assets/archer/death.png',    64, 64)
 
     // Boss demon (288x160)
     ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
@@ -217,6 +228,13 @@ export class GameScene extends Phaser.Scene {
         // Tutorial NPC: load Sifra idle so the quest 3 NPC uses her real sprite
         ss('sifra_idle',   'assets/sifra/Idle.png',     231, 190)
         break
+      case 'vael':
+        // Single combined sheet: 17 cols × 7 rows, 160×128 px per frame
+        ss('vael_sheet', 'assets/vael/sheet.png', 160, 128)
+        // Bone Thrall minion sprites (56×48, 20 frames)
+        ss('thrall_walk', 'assets/thrall/walk.png', 56, 48)
+        ss('thrall_attack', 'assets/thrall/attack.png', 56, 48)
+        break
       case 'huntress':
         ss('huntress_idle',    'assets/lyra/Idle.png',     150, 150)
         ss('huntress_run',     'assets/lyra/Run.png',      150, 150)
@@ -249,6 +267,13 @@ export class GameScene extends Phaser.Scene {
         ss('crystal_pink_1',     'assets/givi/crystal_pink_1.png',  30, 21)
         ss('crystal_blue_0',     'assets/givi/crystal_blue_0.png',  54, 51)
         ss('crystal_blue_1',     'assets/givi/crystal_blue_1.png',  43, 27)
+        break
+      case 'nightborne':
+        ss('nightborne_idle',   'assets/nightborne/idle.png',   240, 240)
+        ss('nightborne_run',    'assets/nightborne/run.png',    240, 240)
+        ss('nightborne_attack', 'assets/nightborne/attack.png', 240, 240)
+        ss('nightborne_hurt',   'assets/nightborne/hurt.png',   240, 240)
+        ss('nightborne_death',  'assets/nightborne/death.png',  240, 240)
         break
     }
   }
@@ -284,6 +309,7 @@ export class GameScene extends Phaser.Scene {
     Orc1.createAnimations(this)
     Orc2.createAnimations(this)
     Orc3.createAnimations(this)
+    Archer.createAnimations(this)
     Player.createAnimations(this)
 
     // Pre-warm all VFX sprite animations — prevents first-frame GPU upload stutter.
@@ -476,9 +502,15 @@ export class GameScene extends Phaser.Scene {
           this.player.powderKegReady = true
         }
       }
-      // Infernal Cadence: trigger on kill when off cooldown
-      if (this.player.hasInfernalCadence && this.time.now > this.player.infernalCadenceEndTime) {
+      // Ashen Veil: on kill stack DR
+      if (this.player.hasAshenVeil) {
+        if (this.player.ashenVeilStacks < this.player.ashenVeilMaxStacks) this.player.ashenVeilStacks++
+        this.player.ashenVeilUntil = this.time.now + 2000
+      }
+      // Infernal Cadence: trigger on kill when off cooldown (not during active window + CD)
+      if (this.player.hasInfernalCadence && this.time.now >= this.player.infernalCadenceCooldownUntil) {
         this.player.infernalCadenceEndTime = this.time.now + this.player.infernalCadenceDuration
+        this.player.infernalCadenceCooldownUntil = this.player.infernalCadenceEndTime + this.player.infernalCadenceCooldown
       }
       if (this.player.hasEmberVolley) {
         const maxStacks = Math.round(this.player.emberVolleyCap / 0.02)
@@ -490,6 +522,18 @@ export class GameScene extends Phaser.Scene {
       }
       if (this.player.hasFlashpoint) {
         this.player.flashpointRemaining = Math.min(this.player.flashpointCharges, this.player.flashpointRemaining + 1)
+      }
+
+      // Nightborne kill-triggered mechanics
+      if (this.player.heroType === 'nightborne') {
+        nightborneHero.onKillNightborne(this.player, x, y, this.enemies)
+      }
+
+      // Vael kill-triggered mechanics (soul orbs, risen, virulent spread, necrotic bloom)
+      if (this.player.heroType === 'vael') {
+        // Find the enemy object that just died to pass rot stacks
+        const deadEnemy = { x, y, rotStacks: 0, rotExpiry: 0 } as any
+        vaelHero.onVaelKill(this.player, deadEnemy, this.enemies)
       }
 
       // Heart drop with progressive thresholds: 100, 300, 500, then every 500
@@ -563,14 +607,17 @@ export class GameScene extends Phaser.Scene {
       // Use the player that leveled up; fall back to localPlayer for backward compat
       const lvlPlayer = levelingPlayer ?? this.localPlayer
       // Kill nearby enemies so player can safely choose upgrades
+      // Skip bosses and mini-bosses — they don't get cleared on level up
       const CLEAR_RADIUS = 150
       const px = lvlPlayer.cx
       const py = lvlPlayer.cy
       for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!enemy.active) continue
+        const ae = enemy as any
+        if (ae.isBoss || ae.isMiniBoss) continue
         const dist = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y)
-        if (dist < CLEAR_RADIUS && typeof (enemy as any).die === 'function') {
-          (enemy as any).die()
+        if (dist < CLEAR_RADIUS && typeof ae.die === 'function') {
+          ae.die()
         }
       }
       // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter.
@@ -598,8 +645,7 @@ export class GameScene extends Phaser.Scene {
       this.time.timeScale = 0.15
       // delay of 45 scene-ms / 0.15 timeScale ≈ 300ms real time
       this.time.delayedCall(45, () => {
-        this.physics.world.timeScale = 1
-        this.time.timeScale = 1
+        this._restoreTimeScale()
         this.scene.launch('LevelUpScene', { player: lvlPlayer, tracker: this.upgradeTracker, callerSceneKey: this.scene.key })
         this.scene.pause()
       })
@@ -615,10 +661,12 @@ export class GameScene extends Phaser.Scene {
 
     // CLAWS boss at 10 minutes
     this.events.on('claws-incoming', () => {
+      console.log('[BOSS] GameScene: received claws-incoming, forwarding to UIScene')
       this.scene.get('UIScene').events.emit('claws-warning')
     })
 
     this.events.once('claws-spawn', () => {
+      console.log('[BOSS] GameScene: received claws-spawn, calling spawnClawsBoss()')
       this.spawnClawsBoss()
     })
 
@@ -1619,26 +1667,51 @@ export class GameScene extends Phaser.Scene {
   }
 
   spawnClawsBoss(cheat = false) {
-    // Kill all remaining mobs
-    for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+    console.log('[BOSS] spawnClawsBoss called', { cheat, bossActive: this._bossActive, hasTexture: this.textures.exists('flyingeye_attack') })
+
+    // Guard: don't spawn if texture is missing or boss already active
+    if (!this.textures.exists('flyingeye_attack')) {
+      console.warn('[BOSS] BLOCKED: flyingeye_attack texture not loaded')
+      return
+    }
+    if (this._bossActive) {
+      console.warn('[BOSS] BLOCKED: _bossActive is already true')
+      return
+    }
+    this._bossActive = true
+
+    // Kill all remaining mobs — copy array to avoid mutation during iteration
+    const toKill = [...this.enemies.getChildren()] as Phaser.Physics.Arcade.Sprite[]
+    console.log(`[BOSS] Killing ${toKill.filter(e => e.active).length} active enemies`)
+    for (const enemy of toKill) {
       if (enemy.active) enemy.destroy()
     }
 
-    const bx = this.player.x - 400
-    const by = this.player.y
+    // Spawn boss near player
+    const cam = this.cameras.main
+    const bx = Phaser.Math.Clamp(this.player.x - 300, cam.worldView.x + 50, cam.worldView.right - 50)
+    const by = Phaser.Math.Clamp(this.player.y, cam.worldView.y + 50, cam.worldView.bottom - 50)
+    console.log(`[BOSS] Spawning at (${Math.round(bx)}, ${Math.round(by)}), player at (${Math.round(this.player.x)}, ${Math.round(this.player.y)})`)
 
-    const boss = new ClawsBoss(this, bx, by, this.player)
-    this.enemies.add(boss)
+    try {
+      const boss = new EyeBoss(this, bx, by, this.player)
+      this.enemies.add(boss)
+      console.log('[BOSS] EyeBoss created and added to enemies group', { active: boss.active, alpha: boss.alpha, visible: boss.visible })
+    } catch (err) {
+      console.error('[BOSS] FAILED to create EyeBoss:', err)
+      this._bossActive = false
+      return
+    }
 
-    // Listen for minion spawns (Phase 2 transition)
+    // Listen for minion spawns (Phase 2 transition) — flying eye minions
     this.events.once('boss-spawn-minions', (count: number) => {
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count
         const r = 220
-        const mx = Phaser.Math.Clamp(boss.x + Math.cos(angle) * r, 100, 2900)
-        const my = Phaser.Math.Clamp(boss.y + Math.sin(angle) * r, 100, 2900)
+        const mx = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * r, 100, 2900)
+        const my = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * r, 100, 2900)
         if (this.waveManager) {
-          this.waveManager.spawnMobAt('orc1', mx, my)
+          this.waveManager.spawnMobAt('flyingeye', mx, my)
         }
       }
     })
@@ -1647,7 +1720,9 @@ export class GameScene extends Phaser.Scene {
     // In cheat mode, skip game over so the run continues
     this.events.once('boss-defeated', () => {
       this.bossDefeated = true
-      if (!cheat) {
+      if (cheat) {
+        this._bossActive = false   // allow re-spawn from cheat panel
+      } else {
         this.time.delayedCall(3000, () => { this.gameOver = true })
       }
     })
@@ -1676,14 +1751,18 @@ export class GameScene extends Phaser.Scene {
     for (const p of this.players) {
       p.update(time, dt)
       p.tryAutoAttack(this.enemies, time, dt)
+      if (p.heroType === 'nightborne') nightborneHero.updateNightbornePassives(p, dt, this.enemies)
     }
 
     // Local coop: move camera target to midpoint between alive players
     if (this._cameraTarget && this.players.length > 1) {
-      const alive = this.players.filter(p => !p.isDead)
-      if (alive.length > 0) {
-        this._cameraTarget.x = alive.reduce((s, p) => s + p.x, 0) / alive.length
-        this._cameraTarget.y = alive.reduce((s, p) => s + p.y, 0) / alive.length
+      let sx = 0, sy = 0, count = 0
+      for (const p of this.players) {
+        if (!p.isDead) { sx += p.x; sy += p.y; count++ }
+      }
+      if (count > 0) {
+        this._cameraTarget.x = sx / count
+        this._cameraTarget.y = sy / count
       }
     }
 
@@ -1773,10 +1852,20 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.timeScale = 20   // effectively pause physics
     this.time.timeScale = 0.05          // slow scene time
     this.time.delayedCall(duration, () => {
-      this.physics.world.timeScale = 1
-      this.time.timeScale = 1
+      this._restoreTimeScale()
       this._hitStopActive = false
     })
+  }
+
+  /** Restore timeScale to normal (or cheat ×2 if active) */
+  _restoreTimeScale() {
+    if (this._cheatSpeedUp) {
+      this.time.timeScale = 2
+      this.physics.world.timeScale = 0.5
+    } else {
+      this.time.timeScale = 1
+      this.physics.world.timeScale = 1
+    }
   }
 
   shutdown() {

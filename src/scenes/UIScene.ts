@@ -12,11 +12,13 @@ import { isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
 const HERO_DISPLAY_NAMES: Record<string, string> = {
   huntress: 'Lyra', muller: 'Givi', ignara: 'Ignara',
   sifra: 'Sifra', amun: 'Amun', nazar: 'Nazar', khashin: 'Khashin',
+  vael: 'Vael',
 }
 
 const HERO_COLORS: Record<string, number> = {
   huntress: 0x2ecc71, muller: 0x44aaff, ignara: 0xe84118,
   sifra: 0x82ccdd, amun: 0xfff200, nazar: 0xc23616, khashin: 0x88ddff,
+  vael: 0x8866cc,
 }
 
 // Per-branch mastery accent colors. Used by the HUD mastery diamonds and by
@@ -38,6 +40,7 @@ const HUD_HERO_BRANCHES: Record<string, string[]> = {
   sifra: ['ice', 'lightning'], nazar: ['sword', 'venom'],
   huntress: ['melee', 'spear'], khashin: ['wind', 'sand'],
   ignara: ['fireball'], muller: ['crystal'],
+  nightborne: ['void'], vael: ['orbs', 'drain'],
 }
 
 const KILL_MILESTONES: [number, string][] = [
@@ -47,6 +50,7 @@ const KILL_MILESTONES: [number, string][] = [
 export class UIScene extends Phaser.Scene {
   private gameScene!: GameScene
   private hud!: Phaser.GameObjects.Graphics
+  private _xpShimmerGfx!: Phaser.GameObjects.Graphics
   private hpText!: Phaser.GameObjects.Text
   private lvlText!: Phaser.GameObjects.Text
   private killText!: Phaser.GameObjects.Text
@@ -161,6 +165,8 @@ export class UIScene extends Phaser.Scene {
 
     // Main HUD graphics layer
     this.hud = this.add.graphics()
+    // Separate Graphics for XP shimmer — avoids command accumulation on this.hud
+    this._xpShimmerGfx = this.add.graphics().setDepth(11).setScrollFactor(0)
 
     // HP text (on bar)
     this.hpText = this.add.text(0, 0, '', {
@@ -312,7 +318,7 @@ export class UIScene extends Phaser.Scene {
     // Mobile stance toggle button (big, right side)
     const isMob = isMobileUserAgent()
     const p = this.gameScene.localPlayer
-    const hasStance = p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance)
+    const hasStance = p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance) || p.heroType === 'vael'
     if (isMob && hasStance) {
       const { width, height } = this.scale
       // Right half of screen = stance tap zone
@@ -326,6 +332,7 @@ export class UIScene extends Phaser.Scene {
         else if (p.heroType === 'huntress') p.toggleHuntressStance()
         else if (p.heroType === 'khashin') p.toggleKhashinStance()
         else if (p.heroType === 'amun') p.toggleAmunStance()
+        else if (p.heroType === 'vael') p.toggleVaelStance()
         this.updateMobileStanceBtn()
       })
       // Pill background behind stance label (bottom-right)
@@ -342,6 +349,7 @@ export class UIScene extends Phaser.Scene {
       this.gameScene.events.on('huntress-stance-changed', () => this.updateMobileStanceBtn())
       this.gameScene.events.on('khashin-stance-changed', () => this.updateMobileStanceBtn())
       this.gameScene.events.on('amun-stance-changed', () => this.updateMobileStanceBtn())
+      this.gameScene.events.on('vael-stance-changed', () => this.updateMobileStanceBtn())
       this.updateMobileStanceBtn()
 
       // TAP hint on first game — fades out after 2s
@@ -430,7 +438,11 @@ export class UIScene extends Phaser.Scene {
     this.scale.on('resize', onScaleResize)
 
     // ── Boss HP bar events ────────────────────────────────────────
-    this.gameScene.events.on('boss-spawned', () => {
+    this.gameScene.events.on('boss-spawned', (boss?: any) => {
+      if (boss) {
+        this._bossHp = boss.hp ?? boss.maxHp ?? 1
+        this._bossMaxHp = boss.maxHp ?? boss.hp ?? 1
+      }
       this._showBossBar()
     })
     this.gameScene.events.on('boss-hp', (hp: number, maxHp: number) => {
@@ -559,8 +571,11 @@ export class UIScene extends Phaser.Scene {
       gs.localPlayer.hp = gs.localPlayer.maxHp
     })
 
-    addBtn('[Speed ×2]', () => {
-      gs.localPlayer.speed *= 2
+    const speedBtn = addBtn('[Speed ×2: OFF]', () => {
+      gs._cheatSpeedUp = !gs._cheatSpeedUp
+      gs._restoreTimeScale()
+      speedBtn.setText(`[Speed ×2: ${gs._cheatSpeedUp ? 'ON' : 'OFF'}]`)
+      speedBtn.setColor(gs._cheatSpeedUp ? '#44ff44' : '#aaaaaa')
     })
 
     // Header
@@ -622,6 +637,8 @@ export class UIScene extends Phaser.Scene {
       label = p.khashinStance === 'sirocco' ? '💨' : '🏜'
     } else if (p.heroType === 'amun') {
       label = p.amunStance === 'quake' ? '🌋' : '⚔'
+    } else if (p.heroType === 'vael') {
+      label = p.vaelStance === 'drain' ? '✦' : '◉'
     }
     this.mobileStanceLbl.setText(label)
     // Draw pill background behind the label
@@ -1428,9 +1445,16 @@ export class UIScene extends Phaser.Scene {
     const { width, height } = this.scale
     const gs = this.gameScene
 
+    // Compute visible world bounds — UIScene camera may be zoomed (0.92 on mobile),
+    // so this.scale.width/height are smaller than the actual visible edges.
+    const _z = this.cameras.main.zoom || 1
+    const _ox = width * (1 - 1 / _z) / 2
+    const _oy = height * (1 - 1 / _z) / 2
+    const _ow = width / _z
+    const _oh = height / _z
     this.overlay.clear()
     this.overlay.fillStyle(0x000000, 0.75)
-    this.overlay.fillRect(0, 0, width, height)
+    this.overlay.fillRect(_ox, _oy, _ow, _oh)
     this.overlay.setAlpha(1)
 
     const survived = gs.gameTime
@@ -1447,7 +1471,7 @@ export class UIScene extends Phaser.Scene {
     } else {
       const bossDefeated = (gs as any).bossDefeated === true
       const wasClaws = !bossDefeated && survived >= CONFIG.RUN_DURATION
-      title = bossDefeated ? 'CLAWS DEFEATED!' : (wasClaws ? 'CRUSHED BY CLAWS' : 'GAME OVER')
+      title = bossDefeated ? 'THE EYE IS BLIND!' : (wasClaws ? 'SEEN BY THE EYE' : 'GAME OVER')
       titleColor = bossDefeated ? '#ffdd00' : (wasClaws ? '#ff6600' : '#ff4444')
     }
 
@@ -1503,33 +1527,29 @@ export class UIScene extends Phaser.Scene {
       this.showAchievementNotification(newAchievements)
     }
 
-    // Layout
+    // Layout — compute all content heights, then center vertically
     const cx = width / 2
-    const topY = height * 0.09
+    const mob = this.isMobile
+    const portrait = this._isPortrait
 
-    // Title
-    const t1 = this.add.text(cx, topY, title, {
-      fontFamily: gameFont(), fontSize: '32px', color: titleColor,
-    }).setOrigin(0.5).setDepth(31)
-    t1.setShadow(0, 1, '#000000', 2, true, true)
-
-    // Hero + wave sub-label
-    const heroName = (HERO_DISPLAY_NAMES[gs.player.heroType] ?? gs.player.heroType).toUpperCase()
-    const wave = gs._online ? (gs._networkAdapter?.serverWave || 1) : (gs.waveManager?.currentWave || 1)
-    const subLabel = this.add.text(cx, topY + 36, `${heroName}  ·  WAVE ${wave}`, {
-      fontFamily: gameFont(), fontSize: '13px', color: '#8899aa',
-    }).setOrigin(0.5).setDepth(32)
-
-    // Stats panel — 2-column grid
-    const pw = 300, py = topY + 60
+    // Responsive panel width: fit within screen with 30px margin each side
+    const pw = Math.min(320, width - 60)
     const px = cx - pw / 2
-    const col1 = px + 20, col2 = cx + 12
-    const rowH = 24
+
+    // Spacing scale — tighter on small screens
+    const sp = portrait ? 0.85 : 1
+
+    // ── Pre-compute content heights ────────────────────────────────────
+    const titleH = 36                      // title
+    const subGap = 6 * sp                  // gap below title
+    const subH = 18                        // sub-label
+    const afterSubGap = 14 * sp            // gap to stats panel
+
+    const rowH = mob ? 22 : 24
     const goldDisplay = gs._online
       ? `${gs._networkAdapter?.serverSharedGold ?? 0} ✦`
       : `${gs.player.goldThisRun} ✦`
     const panelRows: Array<[string, string, string, string, string, string]> = [
-      // [leftLabel, leftVal, leftColor, rightLabel, rightVal, rightColor]
       ['TIME',         timeStr,                               '#aabbcc',
        'KILLS',        String(gs.player.kills),               '#ff8888'],
       ['LEVEL',        String(gs.player.level),               '#66bbff',
@@ -1537,33 +1557,9 @@ export class UIScene extends Phaser.Scene {
       ['MINIBOSSES',   String(gs.player.miniBossKills),       '#ffaa44',
        'DMG TAKEN',    Math.round(gs.player.damageTakenThisRun).toLocaleString(), '#ee7777'],
     ]
-    const ph = panelRows.length * rowH + 24
-    const panelG = this.add.graphics().setDepth(31)
-    panelG.fillStyle(0x1a1a2e, 0.9)
-    panelG.fillRoundedRect(px, py, pw, ph, 10)
-    panelG.lineStyle(1, 0x444466)
-    panelG.strokeRoundedRect(px, py, pw, ph, 10)
+    const ph = panelRows.length * rowH + 20
 
-    const labelStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: gameFont(), fontSize: '10px', color: '#556677',
-    }
-    const valStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: gameFont(), fontSize: '15px', color: '#cccccc',
-    }
-
-    const statTexts: Phaser.GameObjects.Text[] = []
-    panelRows.forEach(([ll, lv, lc, rl, rv, rc], i) => {
-      const ry = py + 12 + i * rowH
-      statTexts.push(
-        this.add.text(col1, ry, ll, labelStyle).setOrigin(0, 0).setDepth(32),
-        this.add.text(col1, ry + 11, lv, { ...valStyle, color: lc }).setOrigin(0, 0).setDepth(32),
-        this.add.text(col2, ry, rl, labelStyle).setOrigin(0, 0).setDepth(32),
-        this.add.text(col2, ry + 11, rv, { ...valStyle, color: rc }).setOrigin(0, 0).setDepth(32),
-      )
-    })
-
-    // Hero skills section — top skills by level
-    const skillsY = py + ph + 12
+    // Skills
     const tracker = gs.upgradeTracker
     const heroType = gs.player.heroType
     const personalIds = Object.keys(tracker.skillLevels).filter(id => !tracker.pickedGeneric.has(id))
@@ -1576,63 +1572,128 @@ export class UIScene extends Phaser.Scene {
       }
     }
     heroSkills.sort((a, b) => b.level - a.level)
-    const topSkills = heroSkills.slice(0, 4)
+    const maxSkills = portrait ? 3 : 4
+    const topSkills = heroSkills.slice(0, maxSkills)
+    const skillRowH = mob ? 18 : 20
+    const skillSectionH = topSkills.length > 0 ? 16 + topSkills.length * skillRowH + 6 : 0
+    const afterStatsGap = 10 * sp
 
+    // Leaderboard
+    const lbRows = portrait ? 3 : 5
+    const lbRowH = mob ? 20 : 24
+    const lbH = 30 + lbRows * lbRowH
+    const afterSkillGap = skillSectionH > 0 ? 8 * sp : 0
+    const afterLbGap = 16 * sp
+
+    // Buttons
+    const btnGap = mob ? 10 : 14
+    const btnH1 = mob ? 36 : 40  // Try Again
+    const btnH2 = mob ? 28 : 32  // Choose Hero
+    const btnH3 = mob ? 28 : 32  // FORGE
+    const totalBtnH = btnH1 + btnGap + btnH2 + btnGap + btnH3
+
+    const totalH = titleH + subGap + subH + afterSubGap + ph + afterStatsGap
+      + skillSectionH + afterSkillGap + lbH + afterLbGap + totalBtnH
+
+    // Center the whole block vertically, clamp to not go above 5% from top
+    const topY = Math.max(height * 0.05, (height - totalH) / 2)
+    let cy2 = topY  // running Y cursor
+
+    // ── Title ──────────────────────────────────────────────────────────
+    const t1 = this.add.text(cx, cy2 + titleH / 2, title, {
+      fontFamily: gameFont(), fontSize: mob ? '26px' : '32px', color: titleColor,
+    }).setOrigin(0.5).setDepth(31)
+    t1.setShadow(0, 1, '#000000', 2, true, true)
+    cy2 += titleH + subGap
+
+    // ── Hero + wave sub-label ──────────────────────────────────────────
+    const heroName = (HERO_DISPLAY_NAMES[gs.player.heroType] ?? gs.player.heroType).toUpperCase()
+    const wave = gs._online ? (gs._networkAdapter?.serverWave || 1) : (gs.waveManager?.currentWave || 1)
+    const subLabel = this.add.text(cx, cy2 + subH / 2, `${heroName}  ·  WAVE ${wave}`, {
+      fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#8899aa',
+    }).setOrigin(0.5).setDepth(32)
+    cy2 += subH + afterSubGap
+
+    // ── Stats panel — 2-column grid ────────────────────────────────────
+    const py = cy2
+    const col1 = px + 16, col2 = cx + 8
+    const panelG = this.add.graphics().setDepth(31)
+    panelG.fillStyle(0x1a1a2e, 0.9)
+    panelG.fillRoundedRect(px, py, pw, ph, 10)
+    panelG.lineStyle(1, 0x444466)
+    panelG.strokeRoundedRect(px, py, pw, ph, 10)
+
+    const labelStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: gameFont(), fontSize: mob ? '9px' : '10px', color: '#556677',
+    }
+    const valStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: gameFont(), fontSize: mob ? '13px' : '15px', color: '#cccccc',
+    }
+
+    const statTexts: Phaser.GameObjects.Text[] = []
+    panelRows.forEach(([ll, lv, lc, rl, rv, rc], i) => {
+      const ry = py + 10 + i * rowH
+      statTexts.push(
+        this.add.text(col1, ry, ll, labelStyle).setOrigin(0, 0).setDepth(32),
+        this.add.text(col1, ry + 10, lv, { ...valStyle, color: lc }).setOrigin(0, 0).setDepth(32),
+        this.add.text(col2, ry, rl, labelStyle).setOrigin(0, 0).setDepth(32),
+        this.add.text(col2, ry + 10, rv, { ...valStyle, color: rc }).setOrigin(0, 0).setDepth(32),
+      )
+    })
+    cy2 += ph + afterStatsGap
+
+    // ── Hero skills section — top skills by level ──────────────────────
     const skillTexts: Phaser.GameObjects.Text[] = []
-    let skillSectionH = 0
     if (topSkills.length > 0) {
-      const skillHeader = this.add.text(cx, skillsY + 2, 'TOP SKILLS', {
-        fontFamily: gameFont(), fontSize: '10px', color: '#556677',
+      const skillHeader = this.add.text(cx, cy2 + 2, 'TOP SKILLS', {
+        fontFamily: gameFont(), fontSize: mob ? '9px' : '10px', color: '#556677',
       }).setOrigin(0.5, 0).setDepth(32)
       skillTexts.push(skillHeader)
 
       const dots = ['○○○', '●○○', '●●○', '●●●']
       topSkills.forEach((sk, i) => {
-        const sy = skillsY + 17 + i * 20
+        const sy = cy2 + 16 + i * skillRowH
         skillTexts.push(
           this.add.text(col1, sy, sk.label, {
-            fontFamily: gameFont(), fontSize: '13px', color: '#ccddee',
+            fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#ccddee',
           }).setOrigin(0, 0.5).setDepth(32),
-          this.add.text(cx + pw / 2 - 20, sy, dots[Math.min(sk.level, 3)], {
-            fontFamily: gameFont(), fontSize: '11px', color: sk.level >= 3 ? '#ffcc44' : '#88aacc',
+          this.add.text(cx + pw / 2 - 16, sy, dots[Math.min(sk.level, 3)], {
+            fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color: sk.level >= 3 ? '#ffcc44' : '#88aacc',
           }).setOrigin(1, 0.5).setDepth(32),
         )
       })
-      skillSectionH = 17 + topSkills.length * 20 + 8
+      cy2 += skillSectionH + afterSkillGap
     }
 
-    // Leaderboard panel — global top 5 by kills, fetched from Supabase. Sized
-    // for 5 rows up front so the layout doesn't jump when data arrives.
-    const lbRows = 5
+    // ── Leaderboard panel ──────────────────────────────────────────────
+    const lbW = pw
+    const lbX = px, lbY = cy2
     const lbG = this.add.graphics().setDepth(31)
-    const lbW = Math.min(300, width - 60), lbH = 36 + lbRows * 24
-    const lbX = cx - lbW / 2, lbY = skillsY + skillSectionH + 8
     lbG.fillStyle(0x12122a, 0.9)
     lbG.fillRoundedRect(lbX, lbY, lbW, lbH, 8)
     lbG.lineStyle(1, 0x333355)
     lbG.strokeRoundedRect(lbX, lbY, lbW, lbH, 8)
 
-    const lbTitle = this.add.text(cx, lbY + 14, 'TOP KILLS', {
-      fontFamily: gameFont(), fontSize: '13px', color: '#FFD700',
+    const lbTitle = this.add.text(cx, lbY + 12, 'TOP KILLS', {
+      fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#FFD700',
     }).setOrigin(0.5).setDepth(32)
 
     const lbEntries: Phaser.GameObjects.Text[] = [lbTitle]
-    const lbLoading = this.add.text(cx, lbY + lbH / 2 + 6, 'Loading...', {
-      fontFamily: gameFont(), fontSize: '12px', color: '#666677',
+    const lbLoading = this.add.text(cx, lbY + lbH / 2 + 4, 'Loading...', {
+      fontFamily: gameFont(), fontSize: mob ? '11px' : '12px', color: '#666677',
     }).setOrigin(0.5).setDepth(32)
     lbEntries.push(lbLoading)
 
-    // Async fetch — append rows when ready, no-op if scene was torn down.
-    this._populateEndLeaderboard(cx, lbY, lbLoading, lbEntries)
+    this._populateEndLeaderboard(cx, lbY, lbLoading, lbEntries, lbRows, lbRowH)
+    cy2 += lbH + afterLbGap
 
-    // Buttons
-    const btnY = lbY + lbH + 20
+    // ── Buttons ────────────────────────────────────────────────────────
     const btnStyle = {
-      fontFamily: gameFont(), fontSize: '18px', color: '#FFD700',
-      backgroundColor: '#2a2a4e', padding: { x: 20, y: 10 },
+      fontFamily: gameFont(), fontSize: mob ? '16px' : '18px', color: '#FFD700',
+      backgroundColor: '#2a2a4e', padding: { x: mob ? 16 : 20, y: mob ? 7 : 10 },
     }
 
-    const t5 = this.add.text(cx, btnY, 'Try Again', btnStyle as Phaser.Types.GameObjects.Text.TextStyle)
+    const t5 = this.add.text(cx, cy2 + btnH1 / 2, 'Try Again', btnStyle as Phaser.Types.GameObjects.Text.TextStyle)
       .setOrigin(0.5).setInteractive().setDepth(32)
     t5.on('pointerover', () => t5.setColor('#ffffff'))
     t5.on('pointerout', () => t5.setColor('#FFD700'))
@@ -1643,7 +1704,6 @@ export class UIScene extends Phaser.Scene {
       const sm = this.game.scene
       sm.stop('LevelUpScene'); sm.stop(map); sm.stop('UIScene')
       if ((gs as any)._online) {
-        // Online mode: disconnect and return to start (can't re-use old room)
         import('../systems/NetworkManager').then(({ networkManager }) => {
           networkManager.leave()
           sm.start('StartScene')
@@ -1652,9 +1712,10 @@ export class UIScene extends Phaser.Scene {
         sm.start(map, { hero })
       }
     })
+    cy2 += btnH1 + btnGap
 
-    const t6 = this.add.text(cx, btnY + 46, 'Choose Hero', {
-      ...btnStyle, fontSize: '14px', color: '#aaaaaa',
+    const t6 = this.add.text(cx, cy2 + btnH2 / 2, 'Choose Hero', {
+      ...btnStyle, fontSize: mob ? '13px' : '14px', color: '#aaaaaa',
     } as Phaser.Types.GameObjects.Text.TextStyle)
       .setOrigin(0.5).setInteractive().setDepth(32)
     t6.on('pointerover', () => t6.setColor('#ffffff'))
@@ -1673,6 +1734,7 @@ export class UIScene extends Phaser.Scene {
         sm.start('StartScene')
       }
     })
+    cy2 += btnH2 + btnGap
 
     // Forge button — gets a glow + pulse + hint label when the player has
     // enough gold for their first meta upgrade and hasn't bought any yet.
@@ -1681,8 +1743,9 @@ export class UIScene extends Phaser.Scene {
     const hasAnyMetaUpgrade = Object.values(meta.metaUpgrades).some(t => (t || 0) > 0)
     const showForgeHint = !hasAnyMetaUpgrade && meta.goldTotal >= cheapestFirstCost
 
-    const t7 = this.add.text(cx, btnY + 86, 'FORGE', {
-      ...btnStyle, fontSize: '14px', color: '#FFD700',
+    const forgeY = cy2 + btnH3 / 2
+    const t7 = this.add.text(cx, forgeY, 'FORGE', {
+      ...btnStyle, fontSize: mob ? '13px' : '14px', color: '#FFD700',
       backgroundColor: showForgeHint ? '#3a2a05' : '#1a1a0a',
     } as Phaser.Types.GameObjects.Text.TextStyle)
       .setOrigin(0.5).setInteractive().setDepth(32)
@@ -1705,7 +1768,7 @@ export class UIScene extends Phaser.Scene {
       const drawGlow = (alpha: number) => {
         glow.clear()
         glow.lineStyle(2, 0xffd700, alpha)
-        glow.strokeRoundedRect(cx - gw / 2, btnY + 86 - gh / 2, gw, gh, 8)
+        glow.strokeRoundedRect(cx - gw / 2, forgeY - gh / 2, gw, gh, 8)
       }
       drawGlow(0.6)
       this.tweens.add({
@@ -1717,7 +1780,6 @@ export class UIScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
         onUpdate: (tw) => drawGlow(tw.getValue() ?? 0.6),
       })
-      // Subtle scale pulse on the button itself
       this.tweens.add({
         targets: t7,
         scale: 1.06,
@@ -1726,9 +1788,8 @@ export class UIScene extends Phaser.Scene {
         repeat: -1,
         ease: 'Sine.easeInOut',
       })
-      // Hint label below FORGE button
-      const hint = this.add.text(cx, btnY + 86 + 24, '★ Spend gold on upgrades!', {
-        fontFamily: gameFont(), fontSize: '11px', color: '#FFD700',
+      const hint = this.add.text(cx, forgeY + gh / 2 + 8, '★ Spend gold on upgrades!', {
+        fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color: '#FFD700',
       }).setOrigin(0.5).setDepth(32)
       this.endTexts.push(glow as any, hint)
     }
@@ -1739,13 +1800,15 @@ export class UIScene extends Phaser.Scene {
     lbY: number,
     loadingText: Phaser.GameObjects.Text,
     lbEntries: Phaser.GameObjects.Text[],
+    maxRows = 5,
+    rowH = 24,
   ) {
     const localPlayer = localStorage.getItem('claws_player_name') || ''
     const { data, error } = await supabase
       .from('sessions')
       .select('player_name, hero, kills, level, time_ms')
       .order('kills', { ascending: false })
-      .limit(5)
+      .limit(maxRows)
 
     // Scene may have been torn down (Try Again, Choose Hero, etc.)
     if (!this.scene.isActive() || !loadingText.active) return
@@ -1766,6 +1829,7 @@ export class UIScene extends Phaser.Scene {
     const loadingIdx = lbEntries.indexOf(loadingText)
     if (loadingIdx >= 0) lbEntries.splice(loadingIdx, 1)
 
+    const mob = isMobileUserAgent()
     data.forEach((entry, i) => {
       const m = Math.floor(entry.time_ms / 60000)
       const s = Math.floor((entry.time_ms % 60000) / 1000)
@@ -1774,12 +1838,11 @@ export class UIScene extends Phaser.Scene {
       const color = isLocal ? '#ffdd44' : '#aaaaaa'
       const heroLabel = (HERO_DISPLAY_NAMES[entry.hero] || entry.hero).slice(0, 7).padEnd(7)
       const nameLabel = (entry.player_name || '???').slice(0, 8).padEnd(8)
-      const txt = this.add.text(cx, lbY + 32 + i * 24,
+      const txt = this.add.text(cx, lbY + 26 + i * rowH,
         `${i + 1}. ${nameLabel} ${heroLabel} ${String(entry.kills).padStart(4)}k  ${t}  L${entry.level}`,
-        { fontFamily: gameFont(), fontSize: '11px', color }
+        { fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color }
       ).setOrigin(0.5).setDepth(32)
       lbEntries.push(txt)
-      // Track for cleanup so it's destroyed on Try Again / Choose Hero
       this.endTexts.push(txt)
     })
   }
@@ -1828,7 +1891,8 @@ export class UIScene extends Phaser.Scene {
    * while the rest of the HUD skips redraw when nothing else changed.
    */
   private drawXpShimmer(p: Player) {
-    const g = this.hud
+    const g = this._xpShimmerGfx
+    g.clear()
     const screenW = this.scale.width
     const xpPad = 40
     const xpTopY = 4
@@ -1941,18 +2005,32 @@ export class UIScene extends Phaser.Scene {
       mm.strokeCircle(ox, oy, worldRadius * scale)
     }
 
-    // Enemies as colored dots
-    for (const enemy of gs.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+    // Enemies as colored dots — batched by color to minimize fillStyle calls
+    const enemyChildren = gs.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+    mm.fillStyle(0xcccccc)
+    for (const enemy of enemyChildren) {
       if (!enemy.active) continue
-      const ex = toMmX(enemy.x)
-      const ey = toMmY(enemy.y)
-      if (ex < mapX || ex > mapX + size || ey < mapY || ey > mapY + size) continue
       const e = enemy as any
-      if (e.isFlying) mm.fillStyle(0xff4444)
-      else if (e.isSandGolem) mm.fillStyle(0xff8800)
-      else mm.fillStyle(0xcccccc)
-      const s = e.isSandGolem ? 3 : 1.5
-      mm.fillRect(ex - s / 2, ey - s / 2, s, s)
+      if (e.isFlying || e.isSandGolem) continue
+      const ex = toMmX(enemy.x), ey = toMmY(enemy.y)
+      if (ex < mapX || ex > mapX + size || ey < mapY || ey > mapY + size) continue
+      mm.fillRect(ex - 0.75, ey - 0.75, 1.5, 1.5)
+    }
+    mm.fillStyle(0xff4444)
+    for (const enemy of enemyChildren) {
+      if (!enemy.active) continue
+      if (!(enemy as any).isFlying) continue
+      const ex = toMmX(enemy.x), ey = toMmY(enemy.y)
+      if (ex < mapX || ex > mapX + size || ey < mapY || ey > mapY + size) continue
+      mm.fillRect(ex - 0.75, ey - 0.75, 1.5, 1.5)
+    }
+    mm.fillStyle(0xff8800)
+    for (const enemy of enemyChildren) {
+      if (!enemy.active) continue
+      if (!(enemy as any).isSandGolem) continue
+      const ex = toMmX(enemy.x), ey = toMmY(enemy.y)
+      if (ex < mapX || ex > mapX + size || ey < mapY || ey > mapY + size) continue
+      mm.fillRect(ex - 1.5, ey - 1.5, 3, 3)
     }
 
     // Remote teammates as green dots
@@ -2040,34 +2118,46 @@ export class UIScene extends Phaser.Scene {
     if (this.endScreenShown) return
 
     // --- Low HP vignette (red pulse at screen edges when HP <= 20%) ---
+    // Draw shape ONCE on state enter, then pulse via setAlpha (1 prop write/frame).
     {
       const hpRatio = p.hp / (p.maxHp || 1)
       const v = this.vignetteGfx
       const vignetteVisible = !this.isPaused && hpRatio <= 0.2 && hpRatio > 0
-      if (vignetteVisible) {
+      if (vignetteVisible && !this._vignetteWasVisible) {
+        // Entering low-HP — draw shape once at peak intensity.
+        // UIScene camera may be zoomed (0.92 on mobile), so visible world bounds
+        // are larger than this.scale.width/height. Compute actual visible edges.
         v.clear()
-        const cam = this.cameras.main
-        const z = cam.zoom || 1
-        const vx = cam.scrollX + (cam.width / 2) - (cam.width / 2 / z)
-        const vy = cam.scrollY + (cam.height / 2) - (cam.height / 2 / z)
-        const vw = cam.width / z
-        const vh = cam.height / z
-        const intensity = 0.3 + 0.2 * Math.sin(this.time.now / 200)  // pulse
+        const z = this.cameras.main.zoom || 1
+        const sw_ = this.scale.width
+        const sh_ = this.scale.height
+        const ox = sw_ * (1 - 1 / z) / 2
+        const oy = sh_ * (1 - 1 / z) / 2
+        const vw = sw_ / z
+        const vh = sh_ / z
         const edgeW = 75
         const strips = 10
-        const sw = edgeW / strips
+        const stripW = edgeW / strips
         for (let i = 0; i < strips; i++) {
           const t = i / strips
-          const a = intensity * (1 - t) * (1 - t)
-          const pos = i * sw
+          const a = 0.5 * (1 - t) * (1 - t)
+          const pos = i * stripW
           v.fillStyle(0xff0000, a)
-          v.fillRect(vx + pos, vy, sw + 1, vh)
-          v.fillRect(vx + vw - pos - sw, vy, sw + 1, vh)
-          v.fillRect(vx, vy + pos, vw, sw + 1)
-          v.fillRect(vx, vy + vh - pos - sw, vw, sw + 1)
+          // Left edge
+          v.fillRect(ox + pos, oy, stripW + 1, vh)
+          // Right edge
+          v.fillRect(ox + vw - pos - stripW, oy, stripW + 1, vh)
+          // Top edge
+          v.fillRect(ox, oy + pos, vw, stripW + 1)
+          // Bottom edge
+          v.fillRect(ox, oy + vh - pos - stripW, vw, stripW + 1)
         }
+      }
+      if (vignetteVisible) {
+        v.setAlpha(0.6 + 0.4 * Math.sin(this.time.now / 200))
       } else if (this._vignetteWasVisible) {
         v.clear()
+        v.setAlpha(1)
       }
       this._vignetteWasVisible = vignetteVisible
     }
@@ -2124,6 +2214,8 @@ export class UIScene extends Phaser.Scene {
       curEnergy1 = p.windEnergy; curEnergy2 = p.sandEnergy
     } else if (p.heroType === 'amun' && p.hasQuakeStance) {
       curEnergy1 = p.groundEnergy; curEnergy2 = p.quakeEnergy
+    } else if (p.heroType === 'vael') {
+      curEnergy1 = p.orbsEnergy; curEnergy2 = p.drainEnergy
     }
 
     // Force redraw during flash or critical HP pulse
@@ -2201,11 +2293,13 @@ export class UIScene extends Phaser.Scene {
     const barX = lvlX + lvlSize + 4            // bars start after circle
     const ebW = Math.round(95 * scale), ebGap = 3
     const barW = ebW * 2 + ebGap               // HP bar = combined energy width
-    const hpBarH = Math.round(24 * scale), ebH = Math.round(12 * scale)
-    const totalH = hpBarH + 3 + ebH            // total height of bars block
-    const hpBarY = this.scale.height - totalH - 12  // anchor to bottom with 12px margin
-    const ebY = hpBarY + hpBarH + 3            // energy bars top
-    const lvlCY = hpBarY + (hpBarH + 3 + ebH) / 2  // vertically center with bars
+    const hpBarH = Math.round(22 * scale), ebH = Math.round(5 * scale)
+    const pipH = Math.round(7 * scale)
+    const blockBottomY = this.scale.height - (this.isMobile ? 12 : 36)
+    const hpBarY = blockBottomY - hpBarH       // HP on bottom
+    const ebY = hpBarY - ebH - 2               // thin energy bars just above HP
+    const pipY = ebY - pipH - 2                // mastery pips above energy
+    const lvlCY = hpBarY + hpBarH / 2          // vertically center with HP bar
 
     // === LVL CIRCLE (left of bars) ===
     g.fillStyle(0x0a0a1a, 0.8)
@@ -2225,16 +2319,20 @@ export class UIScene extends Phaser.Scene {
     else this._critPulse = 0
     const isFlashing = now < this._critFlashUntil || (isCritical && (Math.floor(this._critPulse / 8) % 2 === 0))
 
-    g.fillStyle(0x220808)
-    g.fillRoundedRect(barX, hpBarY, barW, hpBarH, 2)
+    const hpR = Math.round(hpBarH / 2)
+    g.fillStyle(0x180606, 0.92)
+    g.fillRoundedRect(barX, hpBarY, barW, hpBarH, hpR)
     const hpFillW = Math.floor(barW * hpRatio)
     if (hpFillW > 0) {
       const c = isFlashing ? 0xffffff : hpRatio > 0.5 ? 0xcc2222 : hpRatio > 0.25 ? 0xdd6622 : 0xff2222
       g.fillStyle(c)
-      g.fillRoundedRect(barX, hpBarY, hpFillW, hpBarH, 2)
+      g.fillRoundedRect(barX + 1, hpBarY + 1, Math.max(0, hpFillW - 2), hpBarH - 2, hpR - 1)
+      // Subtle top highlight
+      g.fillStyle(0xffffff, 0.12)
+      g.fillRoundedRect(barX + 2, hpBarY + 2, Math.max(0, hpFillW - 4), Math.floor(hpBarH * 0.35), hpR - 2)
     }
-    g.lineStyle(1, isFlashing ? 0xffffff : 0x551111)
-    g.strokeRoundedRect(barX, hpBarY, barW, hpBarH, 2)
+    g.lineStyle(1, isFlashing ? 0xffffff : 0x441010, 0.85)
+    g.strokeRoundedRect(barX, hpBarY, barW, hpBarH, hpR)
 
     this.hpText.setText(`${Math.ceil(p.hp)}/${p.maxHp}`)
     this.hpText.setPosition(barX + barW / 2, hpBarY + hpBarH / 2).setOrigin(0.5)
@@ -2243,33 +2341,34 @@ export class UIScene extends Phaser.Scene {
     this.drawXpShimmer(p)
 
     // === ENERGY BARS (directly below HP, aligned) ===
-    const hasEnergy = (p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance))
+    const hasEnergy = (p.heroType === 'sifra' || p.heroType === 'nazar' || p.heroType === 'huntress' || p.heroType === 'khashin' || (p.heroType === 'amun' && p.hasQuakeStance) || p.heroType === 'vael')
     if (hasEnergy) {
       const rightBarX = barX + ebW + ebGap
 
+      const ebR = Math.floor(ebH / 2)
       const drawDualBars = (
         leftRatio: number, leftActive: number, leftDim: number, leftBorder: number,
         rightRatio: number, rightActive: number, rightDim: number, rightBorder: number,
         leftIsActive: boolean, rightIsActive: boolean,
       ) => {
         // Left bar
-        g.fillStyle(0x0a0a0a)
-        g.fillRect(barX, ebY, ebW, ebH)
+        g.fillStyle(0x050510, 0.85)
+        g.fillRoundedRect(barX, ebY, ebW, ebH, ebR)
         if (leftRatio > 0) {
-          g.fillStyle(leftIsActive ? leftActive : leftDim)
-          g.fillRect(barX, ebY, ebW * leftRatio, ebH)
+          g.fillStyle(leftIsActive ? leftActive : leftDim, leftIsActive ? 1 : 0.55)
+          g.fillRoundedRect(barX + 1, ebY + 1, Math.max(0, (ebW - 2) * leftRatio), ebH - 2, Math.max(0, ebR - 1))
         }
-        g.lineStyle(1, leftBorder, 0.5)
-        g.strokeRect(barX, ebY, ebW, ebH)
+        g.lineStyle(1, leftBorder, leftIsActive ? 0.8 : 0.35)
+        g.strokeRoundedRect(barX, ebY, ebW, ebH, ebR)
         // Right bar
-        g.fillStyle(0x0a0a0a)
-        g.fillRect(rightBarX, ebY, ebW, ebH)
+        g.fillStyle(0x050510, 0.85)
+        g.fillRoundedRect(rightBarX, ebY, ebW, ebH, ebR)
         if (rightRatio > 0) {
-          g.fillStyle(rightIsActive ? rightActive : rightDim)
-          g.fillRect(rightBarX, ebY, ebW * rightRatio, ebH)
+          g.fillStyle(rightIsActive ? rightActive : rightDim, rightIsActive ? 1 : 0.55)
+          g.fillRoundedRect(rightBarX + 1, ebY + 1, Math.max(0, (ebW - 2) * rightRatio), ebH - 2, Math.max(0, ebR - 1))
         }
-        g.lineStyle(1, rightBorder, 0.5)
-        g.strokeRect(rightBarX, ebY, ebW, ebH)
+        g.lineStyle(1, rightBorder, rightIsActive ? 0.8 : 0.35)
+        g.strokeRoundedRect(rightBarX, ebY, ebW, ebH, ebR)
       }
 
       if (p.heroType === 'sifra')
@@ -2292,6 +2391,10 @@ export class UIScene extends Phaser.Scene {
         drawDualBars(p.groundEnergy / p.maxEnergy, 0xddaa22, 0x6e5511, 0x554411,
           p.quakeEnergy / p.maxEnergy, 0xff8833, 0x7a4419, 0x553311,
           p.amunStance === 'melee', p.amunStance === 'quake')
+      else if (p.heroType === 'vael')
+        drawDualBars(p.orbsEnergy / p.maxEnergy, 0xaaddff, 0x5577aa, 0x446688,
+          p.drainEnergy / p.maxEnergy, 0x44dd66, 0x227733, 0x115522,
+          p.vaelStance === 'orbs', p.vaelStance === 'drain')
     } else {
       // === MASTERY BAR for heroes without stances ===
       const masteryBranches: Record<string, string> = {
@@ -2332,24 +2435,39 @@ export class UIScene extends Phaser.Scene {
       }
     }
 
-    // === MASTERY STARS (row below energy/mastery bars) ===
+    // === MASTERY DIAMONDS (row above energy bars) ===
     {
-      const starY = ebY + ebH + 8
-      const starSize = Math.round(6 * scale)
+      const starY = pipY + pipH / 2
+      const dSize = Math.round(4 * scale)
+      const gap = Math.round(dSize * 2.2)
+
+      const drawDiamond = (cx: number, cy: number, size: number, filled: boolean, color: number) => {
+        if (filled) {
+          g.fillStyle(color, 1)
+          g.beginPath()
+          g.moveTo(cx, cy - size)
+          g.lineTo(cx + size, cy)
+          g.lineTo(cx, cy + size)
+          g.lineTo(cx - size, cy)
+          g.closePath()
+          g.fillPath()
+        } else {
+          g.lineStyle(1.2, color, 0.4)
+          g.beginPath()
+          g.moveTo(cx, cy - size)
+          g.lineTo(cx + size, cy)
+          g.lineTo(cx, cy + size)
+          g.lineTo(cx - size, cy)
+          g.closePath()
+          g.strokePath()
+        }
+      }
 
       const drawStars = (branch: string, startX: number, color: number) => {
         const level = p.getMasteryLevel(branch)
         for (let i = 0; i < 3; i++) {
-          const cx = startX + i * (starSize * 3)
-          if (i < level) {
-            // Filled star
-            g.fillStyle(color, 1)
-            this._drawStar(g, cx, starY, starSize, true)
-          } else {
-            // Empty star outline
-            g.lineStyle(1.5, color, 0.4)
-            this._drawStar(g, cx, starY, starSize, false)
-          }
+          const cx = startX + i * gap
+          drawDiamond(cx, starY, dSize, i < level, color)
         }
       }
 
@@ -2455,6 +2573,59 @@ export class UIScene extends Phaser.Scene {
       if (p.hasFlashpoint)
         drawBigBuff(20, 0xff8800, p.flashpointRemaining > 0 ? `${p.flashpointRemaining}` : undefined, p.flashpointRemaining > 0 ? 0.9 : 0.30)
 
+      // --- Infernal Cadence (Ignara Wildfire) — active timer OR cooldown sweep ---
+      if (p.hasInfernalCadence) {
+        if (now < p.infernalCadenceEndTime) {
+          // Active window
+          const remaining = (p.infernalCadenceEndTime - now) / 1000
+          const frac = (p.infernalCadenceEndTime - now) / p.infernalCadenceDuration
+          drawBigBuff(14, 0xff3300, `${Math.ceil(remaining)}`, 0.95, frac)
+        } else if (now < p.infernalCadenceCooldownUntil) {
+          // On cooldown
+          const cdRemaining = (p.infernalCadenceCooldownUntil - now) / 1000
+          const frac = (p.infernalCadenceCooldownUntil - now) / p.infernalCadenceCooldown
+          drawBigBuff(14, 0x661100, `${Math.ceil(cdRemaining)}`, 0.30, frac)
+        } else {
+          // Ready
+          drawBigBuff(14, 0xff3300, undefined, 0.80)
+        }
+      }
+
+      // --- Powder Keg (Ignara Wildfire) — show kills remaining until proc ---
+      if (p.hasPowderKeg) {
+        if (p.powderKegReady) {
+          drawBigBuff(21, 0xffaa00, 'READY', 0.95)
+        } else {
+          const killsLeft = p.powderKegThreshold - p.powderKegCounter
+          const frac = p.powderKegCounter / p.powderKegThreshold
+          drawBigBuff(21, 0xff6600, `${killsLeft}`, 0.65, 1 - frac)
+        }
+      }
+
+      // --- Ember Volley stacks (Ignara Wildfire) — CD reduction stacks ---
+      if (p.hasEmberVolley && p.emberVolleyStacks > 0)
+        drawBigBuff(17, 0xffcc44, `${p.emberVolleyStacks}`, 0.9)
+
+      // --- Ashen Veil stacks (Ignara Inferno) ---
+      if (p.hasAshenVeil && p.ashenVeilStacks > 0 && now < p.ashenVeilUntil) {
+        const frac = (p.ashenVeilUntil - now) / 2000
+        drawBigBuff(13, 0xcc6600, `${p.ashenVeilStacks}`, 0.9, frac)
+      }
+
+      // --- Soul Siphon stacks (Vael Pale Harvest) ---
+      if (p.hasSoulSiphon && p.soulStacks > 0) {
+        drawBigBuff(106, 0xaaddff, `${p.soulStacks}`, 0.95)
+      }
+
+      // --- Vanish CD (Nazar Shadow) ---
+      if (p.hasVanish) {
+        const now = this.gameScene.time.now
+        const onCD = now < p.vanishCooldownUntil
+        const cdFrac = onCD ? (p.vanishCooldownUntil - now) / 1500 : 0
+        const active = now < p.vanishUntil
+        drawBigBuff(35, active ? 0xcc44ff : 0x9955dd, undefined, active ? 0.95 : (onCD ? 0.35 : 0.8), onCD ? cdFrac : undefined)
+      }
+
     }
 
     // === TOP-RIGHT: Kills & Tier (panel above minimap) ===
@@ -2494,22 +2665,6 @@ export class UIScene extends Phaser.Scene {
     if (this._mmFrame === 0) this.drawMinimap()
   }
 
-  /** Draw a 5-point star (filled or outline) */
-  private _drawStar(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number, filled: boolean) {
-    const pts: number[] = []
-    for (let i = 0; i < 5; i++) {
-      const outerAngle = (i * 72 - 90) * Math.PI / 180
-      pts.push(cx + r * Math.cos(outerAngle), cy + r * Math.sin(outerAngle))
-      const innerAngle = ((i * 72) + 36 - 90) * Math.PI / 180
-      pts.push(cx + r * 0.4 * Math.cos(innerAngle), cy + r * 0.4 * Math.sin(innerAngle))
-    }
-    g.beginPath()
-    g.moveTo(pts[0], pts[1])
-    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1])
-    g.closePath()
-    if (filled) g.fillPath()
-    else g.strokePath()
-  }
 
   private _mmFrame = 0
   private _killMilestones = new Set<number>()
@@ -2762,25 +2917,22 @@ export class UIScene extends Phaser.Scene {
 
   /** Pause gameplay and show a bonus specialization picker for Bastion. */
   private _launchBastionBonusPicker(): void {
-    // Delay slightly so the toast shows first
     const tryLaunch = () => {
       if (this.endScreenShown) return
-      // Wait if LevelUpScene is already open (normal level-up in progress)
+      // Wait if LevelUpScene is open
       if (this.scene.isActive('LevelUpScene')) {
         this.time.delayedCall(500, tryLaunch)
         return
       }
-      if (!this.scene.isPaused(this.gameScene.scene.key)) {
-        this.scene.pause(this.gameScene.scene.key)
-      }
-      this.scene.launch('LevelUpScene', {
-        player: this.gameScene.localPlayer,
-        tracker: this.gameScene.upgradeTracker,
-        callerSceneKey: this.gameScene.scene.key,
-        bonusSpecialization: true,
+      const gs = this.gameScene
+      if (!gs.scene.isPaused()) gs.scene.pause()
+      gs.scene.launch('BastionPickScene', {
+        player: gs.localPlayer,
+        tracker: gs.upgradeTracker,
+        callerSceneKey: gs.scene.key,
       })
     }
-    this.time.delayedCall(1500, tryLaunch)
+    this.time.delayedCall(600, tryLaunch)
   }
 
   /** Brief non-blocking toast (bottom-center) for quest/unlock events. */
@@ -2836,7 +2988,7 @@ export class UIScene extends Phaser.Scene {
     this._bossBarGfx = this.add.graphics().setDepth(31).setScrollFactor(0)
 
     // Name label — small, inside the bar, right-aligned
-    this._bossNameText = this.add.text(bx + bw - 6, by + bh / 2, 'CLAWS', {
+    this._bossNameText = this.add.text(bx + bw - 6, by + bh / 2, 'THE ALL-SEEING EYE', {
       fontFamily: gameFont(), fontSize: '12px', color: '#ff6666',
       shadow: { offsetX: 0, offsetY: 1, color: '#000', blur: 3, fill: true },
     }).setOrigin(1, 0.5).setDepth(32).setScrollFactor(0).setAlpha(0)
@@ -2865,23 +3017,120 @@ export class UIScene extends Phaser.Scene {
     const bx = xpPad
     const by = xpTopY + xpTopH + 3
     const pct = Math.max(0, this._bossHp / this._bossMaxHp)
-    const fillColor = pct > 0.6 ? 0x44dd44 : pct > 0.3 ? 0xffaa00 : 0xff2222
+    const g = this._bossBarGfx
+    g.clear()
 
-    this._bossBarGfx.clear()
-    // Dark background strip
-    this._bossBarGfx.fillStyle(0x111111, 0.9)
-    this._bossBarGfx.fillRoundedRect(bx, by, bw, bh, 3)
-    // HP fill
+    // === Background panel ===
+    g.fillStyle(0x0a0000, 0.92)
+    g.fillRoundedRect(bx, by, bw, bh, 4)
+
+    // === Red HP fill — 3 gradient layers ===
     if (pct > 0) {
-      this._bossBarGfx.fillStyle(fillColor, 1)
-      this._bossBarGfx.fillRoundedRect(bx, by, bw * pct, bh, 3)
-      // Shimmer line
-      this._bossBarGfx.fillStyle(0xffffff, 0.15)
-      this._bossBarGfx.fillRect(bx + 2, by + 2, bw * pct - 4, 3)
+      const fw = bw * pct
+      // Deep red base
+      g.fillStyle(0x660000, 1)
+      g.fillRoundedRect(bx, by, fw, bh, 3)
+      // Mid red
+      g.fillStyle(0xcc1111, 1)
+      g.fillRoundedRect(bx + 1, by + 1, Math.max(0, fw - 2), bh - 2, 3)
+      // Bright top highlight
+      g.fillStyle(0xff3322, 0.85)
+      g.fillRect(bx + 2, by + 2, Math.max(0, fw - 4), Math.floor(bh * 0.35))
+      // Blood shimmer line
+      g.fillStyle(0xff8866, 0.3)
+      g.fillRect(bx + 2, by + 2, Math.max(0, fw - 4), 2)
     }
-    // Border
-    this._bossBarGfx.lineStyle(1, 0xffffff, 0.25)
-    this._bossBarGfx.strokeRoundedRect(bx, by, bw, bh, 3)
+
+    // === Segment dividers (tenths) ===
+    const segments = 10
+    for (let i = 1; i < segments; i++) {
+      const sx = bx + (bw * i) / segments
+      g.lineStyle(1, 0x000000, 0.85)
+      g.beginPath(); g.moveTo(sx, by + 2); g.lineTo(sx, by + bh - 2); g.strokePath()
+      g.lineStyle(1, 0x331111, 0.5)
+      g.beginPath(); g.moveTo(sx + 1, by + 2); g.lineTo(sx + 1, by + bh - 2); g.strokePath()
+    }
+
+    // === Ornate frame: vines + ropes + horns ===
+    const frameColor = 0x0a0a0a
+    const frameAccent = 0x1a0d0d
+
+    // Outer thick border
+    g.lineStyle(3, frameColor, 1)
+    g.strokeRoundedRect(bx - 2, by - 2, bw + 4, bh + 4, 5)
+    g.lineStyle(1, frameAccent, 0.8)
+    g.strokeRoundedRect(bx - 3, by - 3, bw + 6, bh + 6, 6)
+
+    // Horns — left side (curving upward)
+    const hornL_x = bx - 2
+    const hornL_y = by + bh / 2
+    g.lineStyle(2.5, frameColor, 1)
+    g.beginPath()
+    g.moveTo(hornL_x, hornL_y - 6)
+    g.lineTo(hornL_x - 6, hornL_y - 12)
+    g.lineTo(hornL_x - 10, hornL_y - 18)
+    g.lineTo(hornL_x - 8, hornL_y - 22)
+    g.strokePath()
+    g.beginPath()
+    g.moveTo(hornL_x, hornL_y + 6)
+    g.lineTo(hornL_x - 6, hornL_y + 12)
+    g.lineTo(hornL_x - 10, hornL_y + 18)
+    g.lineTo(hornL_x - 8, hornL_y + 22)
+    g.strokePath()
+
+    // Horns — right side (mirror)
+    const hornR_x = bx + bw + 2
+    const hornR_y = by + bh / 2
+    g.beginPath()
+    g.moveTo(hornR_x, hornR_y - 6)
+    g.lineTo(hornR_x + 6, hornR_y - 12)
+    g.lineTo(hornR_x + 10, hornR_y - 18)
+    g.lineTo(hornR_x + 8, hornR_y - 22)
+    g.strokePath()
+    g.beginPath()
+    g.moveTo(hornR_x, hornR_y + 6)
+    g.lineTo(hornR_x + 6, hornR_y + 12)
+    g.lineTo(hornR_x + 10, hornR_y + 18)
+    g.lineTo(hornR_x + 8, hornR_y + 22)
+    g.strokePath()
+
+    // Vines — top edge (curvy tendrils over the bar)
+    g.lineStyle(2, frameColor, 0.95)
+    const vineSpacing = 60
+    for (let vx = bx + 20; vx < bx + bw - 20; vx += vineSpacing) {
+      g.beginPath()
+      g.moveTo(vx, by - 2)
+      g.lineTo(vx + 4, by - 6)
+      g.lineTo(vx + 2, by - 10)
+      g.lineTo(vx + 6, by - 12)
+      g.strokePath()
+      // Small leaf node
+      g.fillStyle(frameColor, 1)
+      g.fillCircle(vx + 6, by - 12, 1.5)
+    }
+
+    // Vines — bottom edge
+    for (let vx = bx + 40; vx < bx + bw - 20; vx += vineSpacing) {
+      g.beginPath()
+      g.moveTo(vx, by + bh + 2)
+      g.lineTo(vx + 4, by + bh + 6)
+      g.lineTo(vx + 2, by + bh + 10)
+      g.lineTo(vx + 6, by + bh + 12)
+      g.strokePath()
+      g.fillStyle(frameColor, 1)
+      g.fillCircle(vx + 6, by + bh + 12, 1.5)
+    }
+
+    // Rope texture along the top/bottom (short diagonal slashes)
+    g.lineStyle(1, frameAccent, 0.6)
+    for (let rx = bx; rx < bx + bw; rx += 6) {
+      g.beginPath()
+      g.moveTo(rx, by - 1); g.lineTo(rx + 3, by - 3)
+      g.strokePath()
+      g.beginPath()
+      g.moveTo(rx, by + bh + 1); g.lineTo(rx + 3, by + bh + 3)
+      g.strokePath()
+    }
   }
 
   private _onBossPhase(phase: number) {

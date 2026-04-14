@@ -298,6 +298,14 @@ export class LoadingScene extends Phaser.Scene {
         ss('crystal_blue_0',     'assets/givi/crystal_blue_0.png',  54, 51)
         ss('crystal_blue_1',     'assets/givi/crystal_blue_1.png',  43, 27)
         break
+      case 'vael':
+        // Vael has no spritesheet — reuses sifra visuals (tinted purple)
+        ss('sifra_idle',    'assets/sifra/Idle.png',    231, 190)
+        ss('sifra_run',     'assets/sifra/Run.png',     231, 190)
+        ss('sifra_attack',  'assets/sifra/Attack1.png', 231, 190)
+        ss('sifra_hurt',    'assets/sifra/Hit.png',     231, 190)
+        ss('sifra_death',   'assets/sifra/Death.png',   231, 190)
+        break
     }
   }
 

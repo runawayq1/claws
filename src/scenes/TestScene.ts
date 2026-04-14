@@ -103,6 +103,16 @@ export class TestScene extends Phaser.Scene {
     // Boss demon slime (288x160 frames)
     this.load.spritesheet('boss_demon', 'assets/boss_demon/spritesheet.png', { frameWidth: 288, frameHeight: 160 })
 
+    // Vael — single combined sheet (160x128 per frame, 17 cols × 7 rows)
+    this.load.spritesheet('vael_sheet', 'assets/vael/sheet.png', { frameWidth: 160, frameHeight: 128 })
+
+    // Nightborne — separate per-animation sheets (240x240 frames)
+    this.load.spritesheet('nightborne_idle',   'assets/nightborne/idle.png',   { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_run',    'assets/nightborne/run.png',    { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_attack', 'assets/nightborne/attack.png', { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_hurt',   'assets/nightborne/hurt.png',   { frameWidth: 240, frameHeight: 240 })
+    this.load.spritesheet('nightborne_death',  'assets/nightborne/death.png',  { frameWidth: 240, frameHeight: 240 })
+
     // Rock images
     this.load.image('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
     this.load.image('rock1_2', 'assets/rocks/Rock1_2_no_shadow.png')
@@ -166,8 +176,8 @@ export class TestScene extends Phaser.Scene {
     // -----------------------------------------------------------------------
     // ROW 1: Heroes (y=150)
     // -----------------------------------------------------------------------
-    const heroTypes: HeroType[] = ['ignara', 'sifra', 'nazar', 'amun', 'huntress', 'khashin', 'muller']
-    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun', 'Lyra', 'Khashin', 'Givi']
+    const heroTypes: HeroType[] = ['ignara', 'sifra', 'nazar', 'amun', 'huntress', 'khashin', 'muller', 'vael', 'nightborne']
+    const heroNames = ['Ignara', 'Sifra', 'Nazar', 'Amun', 'Lyra', 'Khashin', 'Givi', 'Vael', 'Nightborne']
 
     const totalHeroes = heroTypes.length
     const heroSpacing = 150
@@ -191,6 +201,10 @@ export class TestScene extends Phaser.Scene {
       body.updateFromGameObject()
 
       const bw = body.width, bh = body.height
+      // Draw hitbox outline (green rect)
+      const hbX = body.x + bw / 2
+      const hbY = body.y + bh / 2
+      this.add.rectangle(hbX, hbY, bw, bh).setStrokeStyle(2, 0x00ff00, 0.9).setDepth(25)
       this.add.text(x, heroBottomY + 10, `${heroNames[i]}\n${Math.round(bw)}×${Math.round(bh)}`, {
         fontFamily: gameFont(), fontSize: '11px', color: '#ffffff',
         align: 'center',

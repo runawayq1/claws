@@ -6,8 +6,10 @@ import { spawnTrailCircle } from '../../utils/trailPool'
 function triggerFireboltExplosion(p: Player, cx: number, cy: number, angle: number, explodeRadius: number, effectiveDmg: number, enemies: Phaser.Physics.Arcade.Group) {
   const ANIM_DUR = 420
 
-  if (p.hasSlugRound || explodeRadius >= 60) {
-    // Pyre / Powder Keg: big air_burst explosion
+  const isPyre = p.hasSlugRound
+  const isPowderKeg = !isPyre && explodeRadius >= 60 && p.hasPowderKeg
+  if (isPyre || isPowderKeg) {
+    // Pyre / Powder Keg only: big air_burst explosion
     const bigScale = Math.max(1.2, explodeRadius / 30) * 1.3
     const outer = p.scene.add.sprite(cx, cy, 'vfx_air_burst')
       .setDepth(9).setScale(bigScale).setTint(0xff4400).setAlpha(0.9)
@@ -77,6 +79,67 @@ function spawnKegShrapnel(p: Player, cx: number, cy: number, angle: number, dmg:
   }
 }
 
+/** Molten Volley — burst of small slugs in a cone toward target */
+function fireMoltenVolley(p: Player, angle: number, enemies: Phaser.Physics.Arcade.Group) {
+  if (!p.hasMoltenVolley) return
+  const count = p.moltenVolleyCount
+  const spread = 0.5  // total cone width in radians
+  const slugDmg = p.damage * 0.4 * p.getMasteryDamageMult('fireball')
+  const slugRange = 100
+
+  for (let i = 0; i < count; i++) {
+    const offset = count === 1 ? 0 : (i / (count - 1) - 0.5) * spread
+    const sa = angle + offset
+    const sx = p.x, sy = p.y
+    const ex = sx + Math.cos(sa) * slugRange
+    const ey = sy + Math.sin(sa) * slugRange
+
+    const slug = p.scene.add.circle(sx, sy, 3, 0xff8800, 0.9).setDepth(9)
+    const glow = p.scene.add.circle(sx, sy, 6, 0xff4400, 0.3).setDepth(8)
+      .setBlendMode(Phaser.BlendModes.ADD)
+    const hitSet = new Set<Phaser.Physics.Arcade.Sprite>()
+
+    p.scene.tweens.add({
+      targets: [slug, glow], x: ex, y: ey, duration: 180,
+      onUpdate: () => {
+        for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e.active || hitSet.has(e)) continue
+          if (Phaser.Math.Distance.Between(slug.x, slug.y, e.x, e.y) > 16) continue
+          hitSet.add(e)
+          const be = e as BaseEnemy
+          be.takeDamage(slugDmg, 'fire')
+          applyBurnStack(p, be)
+          // Scorch: -20% armor for 4s
+          if (p.moltenVolleyScorch && hitSet.size >= 3) {
+            ;(be as any)._scorchUntil = p.scene.time.now + 4000
+          }
+        }
+      },
+      onComplete: () => {
+        slug.destroy(); glow.destroy()
+        // Burn patch at endpoint
+        const patch = p.scene.add.circle(ex, ey, 6, 0xff4400, 0.4).setDepth(3)
+        const patchDur = p.moltenVolleyCount >= 4 ? 2000 : 1000
+        let patchTicks = 0
+        const patchTimer = p.scene.time.addEvent({
+          delay: 500, repeat: Math.floor(patchDur / 500),
+          callback: () => {
+            patchTicks++
+            for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+              if (!e.active) continue
+              if (Phaser.Math.Distance.Between(ex, ey, e.x, e.y) <= 12) {
+                (e as BaseEnemy).takeDamage(slugDmg * 0.3, 'fire')
+              }
+            }
+            if (patchTicks >= Math.floor(patchDur / 500)) { patch.destroy(); patchTimer.destroy() }
+          },
+        })
+        p.scene.tweens.add({ targets: patch, alpha: 0, duration: patchDur })
+      },
+    })
+  }
+}
+
 /**
  * Ignara — Fireball projectile with AOE explosion.
  * Fires a fireball toward the target that explodes on arrival, dealing area damage.
@@ -102,6 +165,9 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
   if (p.hasMeltdown && p.hp < p.maxHp * 0.4) effectiveDmg = Math.ceil(effectiveDmg * 1.5)
 
   const fireAngle = Phaser.Math.Angle.Between(p.x, p.y, tx, ty)
+
+  // Molten Volley: fire slug cone alongside main attack
+  fireMoltenVolley(p, fireAngle, enemies)
 
   // ── INFERNO / HAVOC / FORTRESS / default: projectile fireball ──
   const dist = Phaser.Math.Distance.Between(p.x, p.y, tx, ty)
@@ -132,7 +198,7 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
   let exploded = false
 
   const trailTimer = p.scene.time.addEvent({
-    delay: 30, loop: true,
+    delay: 80, loop: true,
     callback: () => {
       const tp = spawnTrailCircle(p.scene,
         proj.x + Phaser.Math.Between(-4, 4),
@@ -141,23 +207,22 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
       p.scene.tweens.add({ targets: tp, alpha: 0, scale: 0, duration: 200,
         onComplete: () => { tp.setActive(false).setVisible(false) } })
 
-      // Wildfire: explode on first enemy contact
-      if (isFortress && !exploded) {
-        const children = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
-        for (let ci = 0; ci < children.length; ci++) {
-          const e = children[ci]
-          if (!e.active) continue
-          if (Phaser.Math.Distance.Between(proj.x, proj.y, e.x, e.y) > 20) continue
-          exploded = true
-          trailTimer.destroy()
-          const r = kegExplodeRadius || explodeRadius
-          triggerFireboltExplosion(p, proj.x, proj.y, fireAngle, r, effectiveDmg, enemies)
-          if (isPowderKegShot) spawnKegShrapnel(p, proj.x, proj.y, fireAngle, effectiveDmg, enemies)
-          p.scene.tweens.killTweensOf(trailTargets)
-          proj.destroy(); if (glowCircle) glowCircle.destroy()
-          p.isAttacking = false
-          break
-        }
+      // Wildfire: explode on first enemy contact — only scan when needed
+      if (!isFortress || exploded) return
+      const children = enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]
+      for (let ci = 0; ci < children.length; ci++) {
+        const e = children[ci]
+        if (!e.active) continue
+        if (Phaser.Math.Distance.Between(proj.x, proj.y, e.x, e.y) > 20) continue
+        exploded = true
+        trailTimer.destroy()
+        const r = kegExplodeRadius || explodeRadius
+        triggerFireboltExplosion(p, proj.x, proj.y, fireAngle, r, effectiveDmg, enemies)
+        if (isPowderKegShot) spawnKegShrapnel(p, proj.x, proj.y, fireAngle, effectiveDmg, enemies)
+        p.scene.tweens.killTweensOf(trailTargets)
+        proj.destroy(); if (glowCircle) glowCircle.destroy()
+        p.isAttacking = false
+        break
       }
     },
   })
@@ -167,8 +232,8 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
     onComplete: () => {
       trailTimer.destroy(); proj.destroy(); if (glowCircle) glowCircle.destroy()
 
-      // Wildfire without Powder Keg: no contact = just disappear
-      if (isFortress && !exploded && !isPowderKegShot) {
+      // Wildfire without Powder Keg: firebolt_explode on contact, otherwise disappear
+      if (isFortress && !isPowderKegShot) {
         p.isAttacking = false
         return
       }
@@ -237,7 +302,9 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
       // Camera shake
       if (p.isLocalPlayer) p.scene.cameras.main.shake(50, 0.003)
 
-      // Damage all enemies in explosion radius
+      // Damage all enemies in explosion radius — collect Wildfire secondaries for deferred processing
+      const wildfireDeferred: { x: number; y: number }[] = []
+      const wfDmg = p.damage * 0.4 * p.getMasteryDamageMult('fireball')
       for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
         if (Phaser.Math.Distance.Between(tx, ty, e.x, e.y) <= explodeRadius) {
@@ -250,19 +317,9 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
           const kbForce = p.hasBackdraft ? 300 : 120
           ;(e as BaseEnemy).applyKnockback(tx, ty, kbForce)
 
-          // Wildfire: kill triggers mini-explosion on nearby enemies
-          if (p.hasWildfire) {
-            if ((e as BaseEnemy).isDying) {
-              for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-                if (!e2.active || e2 === e) continue
-                if (Phaser.Math.Distance.Between(e.x, e.y, e2.x, e2.y) <= 50) {
-                  (e2 as BaseEnemy).takeDamage(p.damage * 0.4 * p.getMasteryDamageMult('fireball'), 'fire')
-                }
-              }
-              const miniBlast = p.scene.add.sprite(e.x, e.y, 'vfx_thunder_splash').setDepth(9).setScale(0.6).setTint(0xff5500).setBlendMode(Phaser.BlendModes.ADD)
-              miniBlast.play('thunder_splash')
-              miniBlast.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => miniBlast.destroy())
-            }
+          // Wildfire: defer secondary explosion to after primary loop
+          if (p.hasWildfire && (e as BaseEnemy).isDying) {
+            wildfireDeferred.push({ x: e.x, y: e.y })
           }
 
           // Pyromaniac heal handled in GameScene 'enemy-died' hook (not here to avoid double-heal)
@@ -281,6 +338,19 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
             })
           }
         }
+      }
+
+      // Wildfire: process deferred secondary explosions (avoids O(n²) inside primary loop)
+      for (const wf of wildfireDeferred) {
+        for (const e2 of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!e2.active) continue
+          if (Phaser.Math.Distance.Between(wf.x, wf.y, e2.x, e2.y) <= 50) {
+            (e2 as BaseEnemy).takeDamage(wfDmg, 'fire')
+          }
+        }
+        const miniBlast = p.scene.add.sprite(wf.x, wf.y, 'vfx_thunder_splash').setDepth(9).setScale(0.6).setTint(0xff5500).setBlendMode(Phaser.BlendModes.ADD)
+        miniBlast.play('thunder_splash')
+        miniBlast.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => miniBlast.destroy())
       }
 
       p.isAttacking = false

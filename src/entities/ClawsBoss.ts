@@ -44,16 +44,16 @@ export class ClawsBoss extends BaseEnemy {
     this.dmgTextSize = '18px'
     this.dmgTextYOffset = -40
 
-    // Visual setup
+    // Add to scene physics BEFORE body-dependent calls
+    scene.add.existing(this)
+    scene.physics.add.existing(this)
+
+    // Visual setup (body must exist before setBodySize/setOffset)
     this.setScale(3)
     this.setDepth(15)
     this.setBodySize(60, 50)
     this.setOffset(114, 70)
     this.setAlpha(0)
-
-    // Add to scene physics
-    scene.add.existing(this)
-    scene.physics.add.existing(this)
 
     // Shadow
     this.shadow = scene.add.ellipse(x, y, 80, 24, 0x000000, 0.35).setDepth(14)
@@ -73,10 +73,12 @@ export class ClawsBoss extends BaseEnemy {
     }
 
     // Spawn sequence: play reversed-death anim while fading in
+    console.log('[BOSS] ClawsBoss: playing boss_spawn animation')
     this.play('boss_spawn')
     scene.tweens.add({ targets: this, alpha: 1, duration: 600, ease: 'Linear' })
 
     this.once('animationcomplete', () => {
+      console.log('[BOSS] ClawsBoss: spawn animation complete, active=', this.active)
       if (!this.active) return
       this._bossSpawning = false
       this.speed = 80

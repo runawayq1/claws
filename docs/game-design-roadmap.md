@@ -1,6 +1,6 @@
 # CLAWS — Дизайн-документ та Дорожня карта розвитку
 
-> Версія: v0.4.3 | Дата: 2026-04-11 | Основа: Phaser 3 + Vite + TypeScript
+> Версія: v0.4.4 | Дата: 2026-04-13 | Основа: Phaser 3 + Vite + TypeScript
 
 ---
 
@@ -47,9 +47,9 @@
 
 ### Чого ще не вистачає у поточному циклі
 
-1. **Екран результатів із вагою** — в роботі (Run Summary Screen)
-2. **Run Events** — несподівані події кожні 2–3 хв (Темна Хмара, Чужинець тощо) — не реалізовано
-3. **Skill challenge / Tome of Trials** — немає місії-стимулу грати конкретним героєм
+1. **Run Events** — несподівані події кожні 2–3 хв (Темна Хмара, Чужинець тощо) — не реалізовано
+2. **Skill challenge / Tome of Trials** — немає місії-стимулу грати конкретним героєм
+3. **Lore Fragments** — не реалізовано
 
 ---
 
@@ -107,9 +107,9 @@
 - ✅ **Branch selection** — перший левел-ап = вибір гілки з трьох
 
 #### Вороги та боси
-- ✅ **5 типів ворогів** — Grunt, Zergling (Orc1), Skeleton (Orc2), Skeleton2 (Orc3), Scorpion (FlyingEye)
+- ✅ **5 типів ворогів** — Grunt, Orc1, Orc2, Orc3, FlyingEye
 - ✅ **SandGolem** — мінібос кожні 30 секунд, HP залежить від хвилі
-- ✅ **CLAWS** — фінальний бос на 10-й хвилині, 3 фази анімацій (idle/walk/cleave/death)
+- ✅ **CLAWS** — фінальний бос (ClawsBoss.ts), 4000 HP, 3 фази (Wrath 100–60% → Frenzy 60–30% → Desperation 30–0%), скіли: Cleave, Ground Slam, Void Dash, Void Burst, велика HP-полоска під XP баром, victory screen
 - ✅ **Зони 0–4** — щільність і склад хвиль змінюються з відстанню від центру
 
 #### Карта та рух
@@ -150,7 +150,7 @@
 ### Заплановано, не реалізовано
 
 #### Core features
-- ❌ **Детальний Run Summary Screen** — час, вбивства, топ скіли, gold earned, досягнення за забіг
+- ✅ **Run Summary Screen** — 6 stats (Time/Kills/Level/Gold/Minibosses/DmgTaken) + TOP SKILLS з мастері-точками + victory screen для вбитого CLAWS
 - ❌ **Lore Fragment System** — дроп Fragments із забігів, розблокування діалогів в Encyclopedia
 - ❌ **Run Events** — динамічні події кожні 2–3 хв (Темна Хмара, Чужинець, Кризова Точка)
 - ❌ **Elemental Combos** — Ice+Fire=Shatter, Wind+Fire=Firestorm, Lightning+Water=ChainShock
@@ -240,7 +240,7 @@ GLORY = (kills × 10) + (хвилини × 50) + (рівень × 30)
 
 | Фіча | Пріоритет | Scope | Статус |
 |---|---|---|---|
-| Детальний Run Summary Screen | HIGH | Малий | ❌ |
+| Детальний Run Summary Screen | HIGH | Малий | ✅ |
 | Run Events (динамічні події) | HIGH | Середній | ❌ |
 | Tutorial / HintFlags розширення | HIGH | Малий | ❌ |
 | Lore Fragment System | MEDIUM | Середній | ❌ |
@@ -277,6 +277,9 @@ GLORY = (kills × 10) + (хвилини × 50) + (рівень × 30)
 | LeaderboardScene + NameInputScene | v0.4.2 |
 | Perf pass: pools, deferred stop, throttling | v0.4.3 |
 | Font/UI cleanup: system font, textStyles.ts | v0.4.3 |
+| ClawsBoss з 3 фазами, HP бар, victory screen | v0.4.4 |
+| Run Summary Screen (stats grid + top skills) | v0.4.4 |
+| Perf round 3 (magnet zero-alloc, vignette pulse, pathfinding squared-dist, etc.) | v0.4.4 |
 
 ### Наступна хвиля — Wave 5 (v0.5.x)
 

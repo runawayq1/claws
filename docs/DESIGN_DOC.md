@@ -166,32 +166,6 @@ All heroes: `armor=0`, `hpRegen=0.25/s`, `splashRadius=0`, `xpMult=1`, `strikeCo
 
 ---
 
-### Ignara Icon Prompts
-
-**Wildfire branch — skills needing new icons:**
-
-**Sustained Burn**: A dark background with a single ember-orange flame stack rising into layered tongues, each layer glowing hotter than the last — fantasy RPG icon style with deep red and amber tones.
-
-**Powder Keg**: A centered dark iron barrel wrapped in glowing red-orange fire cracks on a black background, fuse burning bright — fantasy RPG icon style in volcanic ember palette.
-
-**Ember Volley**: A cascade of bright fire sparks erupting upward from a single central point on a dark background, suggesting rapid on-kill chain ignitions — fantasy RPG icon in deep orange and ember-gold.
-
-**Flashpoint**: A single incandescent muzzle flash or lightning-fast fire bolt frozen mid-frame on a black background, white-hot core fading to amber — fantasy RPG icon conveying instant trigger speed.
-
-**Infernal Cadence**: Three overlapping firebolt streaks radiating from a center point on a dark background, suggesting rapid sequential shots — fantasy RPG icon in blazing red-orange with motion-blur trails.
-
-**Pyre branch — skills needing new icons:**
-
-**Slug Round**: A single massive dark iron cannonball wreathed in fire on a black background, oversized and smoldering with a deep orange glow — fantasy RPG icon conveying weight and explosive impact.
-
-**Thick Skin**: A close-up of cracked obsidian-dark scales or armor plating with ember-red heat glowing through the fissures on a dark background — fantasy RPG icon in charcoal and fire tones.
-
-**Immolation**: A symmetrical circular fire aura radiating outward from a central point on a black background, suggesting a standing burn field — fantasy RPG icon in concentric orange and deep red rings.
-
-**Scorched Bastion**: A squat stone fortress tower engulfed in roaring flame on a dark background, walls glowing molten orange — fantasy RPG icon in volcanic fire palette suggesting immovable burning defense.
-
----
-
 ### Nazar — Plague Doctor / Samurai
 **File**: `src/entities/heroes/nazar.ts`
 
@@ -726,72 +700,267 @@ Vael raises a jagged spike of compressed soul-energy from the ground at the targ
 
 ---
 
+## Vael Stance Synergy
+
+Vael's two stances are two halves of the same loop: Orbs (Soul Bolt eruptions, bone drops, armor stacking) charges his aggressive side, while Drain (tendril lifesteal, passive AoE damage) is his recovery and attrition mode. Not every skill belongs equally to both sides — some deepen the loop, some belong entirely to one stance's identity, and a few are pure body upgrades that work regardless of what Vael is doing. Pale Harvest rewards the loop, with a few skills leaning hard into bolt-side burst or tendril-side attrition. Ossuary skills lean toward Drain — Thralls are fundamentally a tendril-economy tool — though they repay the Orbs side generously. Wasting Plague distributes evenly: Rot is earned by both stances, spent differently by each.
+
+---
+
 #### Branch 1: Pale Harvest
-*Theme: Soul drain, lifesteal, regeneration through killing. Every death feeds you.*
+*Theme: The loop feeds you. Every drain, every kill, every collected soul tips the scale back toward life.*
 
 Color: `0xaaddff` (pale icy blue)
 
-**Skill 1 — Hollow Touch** *(passive)*
-Each Soul Bolt drains a sliver of life force — Vael heals for 8% of damage dealt.
+Skill IDs: `ph1` through `ph5` (`ph5` is `isUltimate: true`).
+
+---
+
+**Skill 1 — Hollow Touch** *(passive — dual-stance lifesteal baseline)*
+`id: ph1`
+
+The act of wounding becomes the act of healing. Whether through bolt or tendril, Vael takes something back.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Hollow Touch` | `'A sliver returned\n◉ Orbs: Soul Bolt heals 8% of damage dealt on hit.\n✦ Drain: tendril ticks heal 4% of damage dealt per tick'` |
+| L2 | `Hollow Touch` | `'Hungry technique\n◉ Orbs: 14% heal on hit.\n✦ Drain: 7% heal per tendril tick. Armor stacks also restore 1 HP each when gained'` |
+| L3 | `Hollow Touch` | `'The body is just a vessel\n◉ Orbs: 20% heal on hit; overkill converts at half rate.\n✦ Drain: 10% heal per tick. Walking over a bone heals 3 HP in addition to granting armor'` |
+
 > *"I take only what the body no longer needs."*
 
-**Skill 2 — Soul Siphon** *(active upgrade)*
-On kill, a visible soul orb erupts from the corpse and curves toward Vael, healing 15 HP on contact. Orbs persist for 3s before dissipating.
+---
+
+**Skill 2 — Soul Siphon** *(passive — bone drop and soul collection)*
+`id: ph2`
+
+Death leaves something behind. Both stances harvest it differently.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Soul Siphon` | `'Harvest the moment\n◉ Orbs: kills have 35% chance to drop a bone on the ground.\n✦ Drain: enemies killed by tendrils always drop a bone'` |
+| L2 | `Soul Siphon` | `'Eager dead\n◉ Orbs: bone drop chance 50%; each bone collected heals 10 HP.\n✦ Drain: tendril-kills drop 2 bones. Armor stack cap +2'` |
+| L3 | `Soul Siphon` | `'The harvest never stops\n◉ Orbs: bones auto-collect within 60px.\n✦ Drain: each tendril tick on a bone-carrying enemy has 15% chance to drop an extra bone on kill. Armor stack cap +3'` |
+
 > *"They always look surprised. They shouldn't."*
 
-**Skill 3 — Wound Memory** *(synergy)*
-Enemies afflicted by the Soul Bolt root take +20% damage from all sources while rooted. The root duration increases to 0.7s.
+---
+
+**Skill 3 — Wound Memory** *(synergy — Orbs-only: rooted enemies take amplified damage)*
+`id: ph3`
+
+The memory of pain makes the body easier to unmake. The bolt writes the wound; the bolt reads it back.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Wound Memory` | `'The body remembers\n◉ Orbs: rooted enemies take +20% damage from all sources; root lasts 0.7s'` |
+| L2 | `Wound Memory` | `'Carved into bone\n◉ Orbs: +30% damage while rooted, root 0.9s. Rooting the same enemy twice in 4s grants 1 free armor stack'` |
+| L3 | `Wound Memory` | `'It will not forget\n◉ Orbs: +20% damage to enemies hit by Soul Bolt within the last 3s (tracked per enemy). Root extended to 1.1s; re-rooting refreshes the window'` |
+
 > *"I wrote this into your bones. You just haven't read it yet."*
 
-**Skill 4 — Exsanguination** *(ultimate, isUltimate: true)*
-Soul Bolt now fires a chain — hits primary target and arcs to up to 3 nearby enemies at 60% damage each. Each enemy in the chain feeds the heal. At L3, the chain triggers a second arc 0.5s later.
+---
+
+**Skill 4 — Exsanguination** *(active upgrade — chain and tendril reach)*
+`id: ph4`
+
+The reach of the harvest extends. What touches one, touches all.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Exsanguination` | `'Chain the harvest\n◉ Orbs: Soul Bolt chains to 2 nearby enemies at 60% damage, each heals at full rate.\n✦ Drain: tendril range +20px (130px total)'` |
+| L2 | `Exsanguination` | `'The chain grows hungry\n◉ Orbs: chains to 3 enemies at 65%, chain range +30px.\n✦ Drain: tendril range 150px; +10% tendril tick damage. Each chained-bolt target becomes a secondary tendril anchor for 1s'` |
+| L3 | `Exsanguination` | `'No waste. Only transfer.\n◉ Orbs: chains to 3 at 70%; 0.5s after chain completes, a second arc fires from the last target.\n✦ Drain: tendril range 160px; second arc treated as bolt for lifesteal'` |
+
 > *"There is no waste in the Pale Harvest. Only transfer."*
 
 ---
 
+**Skill 5 — Sanguine Ascendancy** *(ultimate, isUltimate: true — lifesteal crescendo)*
+`id: ph5`
+
+*Unlock condition: ph1, ph2, ph3, ph4 all at level 2+.*
+
+The boundary between Vael and his prey dissolves. For a brief window, both stances feed at extreme efficiency.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Sanguine Ascendancy` | `'The pale tide rises\nActivate (6s).\n◉ Orbs: kills restore 12% max HP.\n✦ Drain: 20% heal per tendril tick instead of 8%'` |
+| L2 | `Sanguine Ascendancy` | `'Convergence of the dead\nWindow 9s.\n◉ Orbs: kills restore 18% max HP; bones dropped during window auto-arc to Vael.\n✦ Drain: 28% heal/tick; tendril tick rate doubles'` |
+| L3 | `Sanguine Ascendancy` | `'I am the end of the cycle\nWindow 12s.\n◉ Orbs: 22% max HP/kill; if below 30% HP on activation, window also grants 40% DR.\n✦ Drain: 35% heal/tick, capped at 25 HP total across all targets per tick. Bones on ground pulse once, each granting 1 free armor stack'` |
+
+> *"For a moment I feel everything they were. Then I take it."*
+
+---
+
 #### Branch 2: Ossuary
-*Theme: Raise the fallen as temporary undead servants. The battlefield becomes your army.*
+*Theme: The fallen serve in both life and death. Your army feeds your rhythm; your rhythm feeds your army.*
 
 Color: `0xccbb88` (aged bone yellow)
 
-**Skill 1 — Risen** *(passive)*
-Enemies killed by Soul Bolt have a 25% chance to rise as a Bone Thrall — a fragile undead minion that attacks nearby enemies for 4s before collapsing.
+Skill IDs: `os1` through `os5` (`os5` is `isUltimate: true`).
+
+---
+
+**Skill 1 — Risen** *(passive — on-kill summon proc, both stances)*
+`id: os1`
+
+Death is just a reassignment. It doesn't matter what signed the papers.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Risen` | `'Death is just a reassignment\n◉ Orbs: 25% chance on Soul Bolt kill to spawn a Bone Thrall (4s, 30% dmg).\n✦ Drain: tendril-kills have 40% chance to spawn a Thrall'` |
+| L2 | `Risen` | `'The ranks grow\n◉ Orbs: 35% proc, Thralls last 6s, 35% dmg.\n✦ Drain: 55% proc; Thrall spawned from tendril-kill immediately targets nearest enemy'` |
+| L3 | `Risen` | `'No rest for the useful\n◉ Orbs: 45% proc, 8s, 40% dmg, max 3 Thralls.\n✦ Drain: 65% proc; tendril-spawned Thralls have +20% HP and orbit Vael when no enemy in range'` |
+
 > *"The Swarm taught me that death is not an ending. It's just a reassignment."*
 
-**Skill 2 — Grave Pact** *(active upgrade)*
-Increase Risen proc chance to 50%. Bone Thralls now persist for 8s and deal 40% of Vael's base damage per hit.
+---
+
+**Skill 2 — Grave Pact** *(active upgrade — thrall bond, Drain-only)*
+`id: os2`
+
+The pact deepens. The dead grow stronger, and in return they fuel the drain.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Grave Pact` | `'A deal well struck\n✦ Drain: Thralls gain +20% HP. Each active Thrall adds +1 flat damage per tendril tick. Each active Thrall reduces drainEnergy cost per tick by 5%'` |
+| L2 | `Grave Pact` | `'Binding contract\n✦ Drain: Thralls +40% HP. Thralls within tendril range extend tendril reach by 15px each. On Thrall death: 40px bone-shrapnel burst at 60% dmg'` |
+| L3 | `Grave Pact` | `'Until the last\n✦ Drain: Thralls +60% HP. Thralls act as tendril relay points — tendrils can jump through them to reach enemies 30px beyond normal range. Shrapnel on death applies 0.4s root'` |
+
 > *"Loyalty is so much cleaner when the other party has no choice."*
 
-**Skill 3 — Undying Labor** *(synergy)*
-Each active Bone Thrall passively boosts Vael's attack speed by 4% (stacks, max 3 Thralls active at once).
+---
+
+**Skill 3 — Undying Labor** *(synergy — Thrall-count stat scaling, neutral)*
+`id: os3`
+
+The more the dead work, the less Vael has to. Numbers are numbers regardless of which hand holds the scythe.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Undying Labor` | `'The more the dead work\n+5% attack speed per active Thrall (max +15%). +4% all damage per active Thrall'` |
+| L2 | `Undying Labor` | `'Efficient delegation\n+7% attack speed per Thrall (max +21%). +6% all damage per Thrall. Thrall lifespan +2s'` |
+| L3 | `Undying Labor` | `'Full employment\n+9% attack speed per Thrall (max +27%). +8% all damage per Thrall. With 2+ active Thralls: stance switch costs 15% less energy'` |
+
 > *"The more the dead work, the less I have to."*
 
-**Skill 4 — Charnel Tide** *(ultimate, isUltimate: true)*
-On activation, all corpses within 300px rise simultaneously as Bone Thralls (up to 6). Duration 10s. At L3, surviving Thralls explode on timeout — dealing 80% Vael's damage in a 60px radius each.
+---
+
+**Skill 4 — Charnel Tide** *(active upgrade — mass corpse raise)*
+`id: os4`
+
+The field belongs to Vael. Every corpse is merely a soldier on delayed deployment.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Charnel Tide` | `'You brought so many\nActivate: corpses within 250px rise as Thralls (up to 5, 8s). CD: 20s.\n◉ Orbs: each Thrall raised also drops 1 bone.\n✦ Drain: all raised Thralls immediately draw tendril fire'` |
+| L2 | `Charnel Tide` | `'The tide crests\nRadius 300px, up to 6 Thralls, 10s. CD: 18s.\n◉ Orbs: Thralls raised while in Orbs stance deal +15% damage.\n✦ Drain: raised Thralls extend tendril range by 10px for 4s after cast'` |
+| L3 | `Charnel Tide` | `'I was running low\nRadius 300px, 6 Thralls, 10s. CD: 16s. Surviving Thralls explode on timeout (80% dmg, 60px).\n◉ Orbs: explosions each drop 2 bones.\n✦ Drain: explosions apply 1 Rot stack to all enemies hit'` |
+
 > *"You brought so many with you. Good. I was running low."*
 
 ---
 
+**Skill 5 — Lich Dominion** *(ultimate, isUltimate: true — permanent undead general)*
+`id: os5`
+
+*Unlock condition: os1, os2, os3, os4 all at level 2+.*
+
+A single enduring will given form. The Revenant does not merely fight — it reshapes the battlefield around Vael's stances.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Lich Dominion` | `'A general, not a soldier\nSummon 1 Revenant (150% Vael HP, 80% dmg). Reforms in 20s.\n◉ Orbs: Revenant occasionally fires bone spikes that root on hit.\n✦ Drain: Revenant acts as a permanent tendril relay point'` |
+| L2 | `Lich Dominion` | `'Authority over the grave\nRevenant +40% HP; aura: nearby Thralls deal +20% dmg. Reform: 15s.\n◉ Orbs: Revenant aura causes bones dropped nearby to pulse, healing Vael 2 HP each.\n✦ Drain: Revenant aura boosts tendril tick rate by 10%'` |
+| L3 | `Lich Dominion` | `'The Pale Court\nRevenant aura slows enemies 15% in 120px. On Revenant death: nearby corpses rise (Charnel Tide, no CD). Reform: 12s. While Revenant lives, stance switch costs 10% less energy'` |
+
+> *"It doesn't take a king to rule the dead. It takes someone who understands the alternative."*
+
+---
+
 #### Branch 3: Wasting Plague
-*Theme: AoE disease, debuffs, spreading contagion. Attrition warfare through rot.*
+*Theme: Rot is a currency. Bolts mint it, tendrils spend it. Death pays compound interest.*
 
 Color: `0x88cc55` (sickly green)
 
-**Skill 1 — Festering Wound** *(passive)*
-Soul Bolt applies a Rot stack on hit. Enemies with 3+ Rot stacks take +15% damage from all sources.
+Skill IDs: `wp1` through `wp5` (`wp5` is `isUltimate: true`).
+
+---
+
+**Skill 1 — Festering Wound** *(passive — Rot stack application, both stances)*
+`id: wp1`
+
+The infection doesn't care how it enters.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Festering Wound` | `'It doesn\'t hurt at first\n◉ Orbs: Soul Bolt applies 1 Rot stack on hit; 3+ stacks: +15% damage taken.\n✦ Drain: each tendril tick applies 1 Rot stack every 2 ticks'` |
+| L2 | `Festering Wound` | `'Deeper in\n◉ Orbs: 3+ stacks: +20% dmg taken; stacks decay 1/3s.\n✦ Drain: tendril applies 1 Rot stack every tick; stacking faster than decay in sustained drain'` |
+| L3 | `Festering Wound` | `'Past the point of return\n◉ Orbs: applies 2 Rot stacks; 6+ stacks: also slow 15%.\n✦ Drain: each tendril tick on a 5+ stack enemy triggers a 10% dmg burst (once per tick per enemy)'` |
+
 > *"It doesn't hurt at first. That's the insidious part."*
 
-**Skill 2 — Virulent Spread** *(active upgrade)*
-On kill, Rot stacks transfer to all enemies within 80px of the corpse. Each transferred stack deals a burst of 10% Vael's damage.
+---
+
+**Skill 2 — Virulent Spread** *(active upgrade — death spreads rot to neighbors)*
+`id: wp2`
+
+Every corpse is a delivery mechanism.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Virulent Spread` | `'One carrier is all you need\nOn kill: all Rot stacks transfer to enemies within 80px; each transferred stack bursts for 10% dmg.\n◉ Orbs: bolt-kills spread stacks.\n✦ Drain: tendril-kills spread stacks AND re-anchor tendrils to nearest recipient'` |
+| L2 | `Virulent Spread` | `'Epidemic logic\nRadius: 110px; burst: 15% dmg/stack.\n◉ Orbs: bolt kills spread to 2 targets simultaneously.\n✦ Drain: tendril re-anchor lasts 1.5s — drain jumps to new host briefly before snapping back'` |
+| L3 | `Virulent Spread` | `'The math is inevitable\nRadius: 140px; burst: 15%/stack. Enemies receiving 4+ stacks stunned 0.5s.\n◉ Orbs: stunned enemies drop 1 bonus bone.\n✦ Drain: stun freezes tendril energy cost for 0.5s while stunned'` |
+
 > *"One carrier is all you need."*
 
-**Skill 3 — Necrotic Bloom** *(synergy)*
-Enemies who die with 5+ Rot stacks leave a Blight Pool on the ground — a 100px radius zone dealing 12% Vael's damage per second for 5s. Pools do not stack, but overlap in coverage.
+---
+
+**Skill 3 — Necrotic Bloom** *(synergy — Blight Pool terrain hazard, Drain-lean)*
+`id: wp3`
+
+Heavily rotted enemies leave the ground poisoned behind them. The pools belong to Drain — but a well-placed bolt can wake them.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Necrotic Bloom` | `'Even the ground remembers\nEnemies dying with 5+ Rot stacks leave a Blight Pool (100px, 12% dmg/s, 5s). Max 4 active Pools.\n✦ Drain: tendrils reaching into a Pool deal +20% dmg to enemies inside'` |
+| L2 | `Necrotic Bloom` | `'Spreading wound\nThreshold 4 stacks; Pools last 7s, 16% dmg/s. Max 4 active Pools.\n✦ Drain: enemies standing in a Pool have tendril tick rate doubled on them'` |
+| L3 | `Necrotic Bloom` | `'The ground is mine\nThreshold 3 stacks; Pools 8s, 20% dmg/s. Max 4 active Pools.\n◉ Orbs: Soul Bolt hitting a Pool detonates it for 30% bonus dmg and 0.3s root.\n✦ Drain: bones dropped inside Pools grant 2 armor stacks instead of 1'` |
+
 > *"Even the ground remembers what walked on it."*
 
-**Skill 4 — Pandemic** *(ultimate, isUltimate: true)*
-Vael exhales a cloud of corrupted miasma in a 200px ring around himself. All enemies in range immediately gain 5 Rot stacks. At L2, the cloud pulses a second time 2s later. At L3, enemies that die while in the cloud zone spread Blight Pools at double radius.
+---
+
+**Skill 4 — Pandemic** *(active upgrade — mass Rot application)*
+`id: wp4`
+
+Vael exhales corruption in a ring. Everything in range begins to rot immediately.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Pandemic` | `'The Rift does not discriminate\nActivate: 200px miasma ring — all enemies gain 5 Rot stacks instantly. CD: 18s.\n◉ Orbs: each enemy hit by miasma drops 1 bone on next death.\n✦ Drain: miasma ring boosts tendril range to 200px for 3s'` |
+| L2 | `Pandemic` | `'Second breath\nRadius: 240px; second pulse 2s later (+3 stacks). CD: 16s.\n◉ Orbs: bolt-kills during boost window have 100% bone drop rate.\n✦ Drain: range boost extends for both pulses (6s total), tick rate +15% during boost'` |
+| L3 | `Pandemic` | `'Neither do I\nRadius 280px; two pulses (+3 each). CD: 14s.\n◉ Orbs: Blight Pool detonations inside cloud zone detonate at double radius.\n✦ Drain: during Pandemic boost window, each tendril tick costs no drainEnergy'` |
+
 > *"The Rift does not discriminate. Neither do I."*
+
+---
+
+**Skill 5 — Carrion Crown** *(ultimate, isUltimate: true — permanent plague aura)*
+`id: wp5`
+
+*Unlock condition: wp1, wp2, wp3, wp4 all at level 2+.*
+
+Vael stops needing a weapon to spread rot. He is the plague now.
+
+| Level | label | desc |
+|-------|-------|------|
+| L1 | `Carrion Crown` | `'The source of all rot\nPassive aura 150px: enemies gain 1 Rot stack every 2s.\n◉ Orbs: aura-stacked enemies struck by Soul Bolt gain +1 bonus stack.\n✦ Drain: tendril ticks on aura-stacked enemies cost 10% less energy'` |
+| L2 | `Carrion Crown` | `'The crown spreads\nAura 200px, 1 stack/1.5s; enemies retain stacks after leaving.\n◉ Orbs: aura-stacked enemies take +10% damage from Soul Bolt.\n✦ Drain: tendril tick rate scales with target\'s Rot stacks (+5% per stack, cap 30%)'` |
+| L3 | `Carrion Crown` | `'Nothing leaves clean\nAura 240px, 1 stack/s; enemies in aura deal 10% less damage. On kill: aura pulses to 400px, applying 3 stacks.\n◉ Orbs: pulse detonates all active Blight Pools for 15% dmg each.\n✦ Drain: pulse grants 20 drainEnergy'` |
+
+> *"I stopped being the one carrying the plague a long time ago."*
 
 ---
 

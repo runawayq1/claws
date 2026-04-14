@@ -66,8 +66,11 @@ Ignara skills use **branch-colored frames** — Inferno (fire-red #CC3300), Wild
 #### White Fire (if3)
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a fireball with a white-hot core radiating outward to orange then dark-edged smoke, supernatural heat beyond normal flame. Bold silhouette, high contrast, limited palette 5-6 colors, slight white inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
 
+#### Ashen Veil (if4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a dark silhouette wrapped in a swirling cloak of ash and glowing cinders, embers drifting upward like inverse rain, a faint defensive shield outline visible through the ash haze. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
+
 #### Firestorm (if5) — ULTIMATE
-Unlocks when Wide Burn, Inferno Reach, and White Fire are all at level 2+.
+Unlocks when Wide Burn, Inferno Reach, White Fire, and Ashen Veil are all at level 2+.
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate fire-red pixel border frame with small flame-shaped studs in corners, fire-red #CC3300 outer edge, darker #882200 inner bevel. Inside the frame on a solid black background: a central fireball flanked by two smaller satellite fire orbs orbiting it, swirling flame arcs connecting all three. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the fire-red frame.
 
 ### Wildfire Branch
@@ -105,8 +108,11 @@ Pyre skills use **crimson frames** with small spike-shaped studs.
 #### Immolation (ih3)
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a warrior silhouette surrounded by a close circular burn aura, orange-red flames clinging to their outline with a clear radius ring marking the kill zone and enemy silhouettes igniting at the edge. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
 
+#### Molten Volley (ih4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: five small molten projectiles fanning outward in a tight cone arc, each glowing with liquid orange-red heat like drops of magma mid-flight with motion trails suggesting rapid burst fire. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
+
 #### Scorched Bastion (ih5) — ULTIMATE
-Unlocks when Slug Round, Thick Skin, and Immolation are all at level 2+.
+Unlocks when Slug Round, Thick Skin, Immolation, and Molten Volley are all at level 2+.
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate crimson pixel border frame with small spike-shaped studs in corners, crimson #FF4400 outer edge, darker #AA2200 inner bevel. Inside the frame on a solid black background: a fortress tower forged from dark scorched stone with a blazing burn aura ring pulsing outward at its base, orange-red fire rimming the battlements and a lifesteal ember spark looping inward. Bold silhouette, high contrast, limited palette 5-6 colors, slight orange inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the crimson frame.
 
 ---
@@ -426,6 +432,146 @@ Unlocks when Kill Stride, Caltrops, and Net Throw are all at level 2+.
 #### Earth Slam (hw5) — ULTIMATE
 Unlocks when Heavy Spear, Explosive Tips, and Splinter Shot are all at level 2+.
 > 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate bark-brown pixel border frame with small spear-tip studs in corners, bark-brown #886622 outer edge, darker #554411 inner bevel. Inside the frame on a solid black background: a spear slammed point-first into the earth sending a shockwave line forward, steel-blue with the impact point and a straight shockwave crack extending outward. Bold silhouette, high contrast, limited palette 5-6 colors, slight blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bark-brown frame.
+
+---
+
+## Vael Skills
+
+Vael is a death mage — soul drain, undead summons, spreading plague. Each branch has 4 regular skills + 1 ultimate (5 total).
+Vael skills use **branch-colored frames**: Pale Harvest (pale icy blue #AACCFF), Ossuary (aged bone yellow #CCBB88), Wasting Plague (sickly green #88CC55).
+
+### Pale Harvest Branch
+
+Pale Harvest is a lifesteal escalation path — draining souls, collecting orbs, amplifying kill-fed healing into a crescendo of regeneration.
+Pale Harvest skills use **pale icy blue frames** with small teardrop-shaped soul studs in corners.
+
+#### Hollow Touch (ph1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale icy blue pixel border frame with small teardrop soul studs in corners, pale icy blue #AACCFF outer edge, darker #6688BB inner bevel. Inside the frame on a solid black background: a spectral pale hand reaching through a cracked ribcage, drawing out a thin glowing wisp of soul-light — the wisp curling toward the fingertips. Bold silhouette, high contrast, limited palette 5-6 colors, slight icy blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale icy blue frame.
+
+#### Soul Siphon (ph2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale icy blue pixel border frame with small teardrop soul studs in corners, pale icy blue #AACCFF outer edge, darker #6688BB inner bevel. Inside the frame on a solid black background: a glowing pale blue soul orb erupting upward from a faint skull silhouette, arcing toward a waiting open hand with a faint curved trajectory line. Bold silhouette, high contrast, limited palette 5-6 colors, slight icy blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale icy blue frame.
+
+#### Wound Memory (ph3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale icy blue pixel border frame with small teardrop soul studs in corners, pale icy blue #AACCFF outer edge, darker #6688BB inner bevel. Inside the frame on a solid black background: a bone with a carved rune glowing in its marrow — the rune pulsing outward as a pale blue amplification ring, faint cracks in the bone lit from within. Bold silhouette, high contrast, limited palette 5-6 colors, slight icy blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale icy blue frame.
+
+#### Exsanguination (ph4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale icy blue pixel border frame with small teardrop soul studs in corners, pale icy blue #AACCFF outer edge, darker #6688BB inner bevel. Inside the frame on a solid black background: a pale energy bolt mid-chain — forking to three enemy silhouettes in a cascading arc pattern, icy blue lightning connecting them in a branching lifesteal circuit. Bold silhouette, high contrast, limited palette 5-6 colors, slight icy blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale icy blue frame.
+
+#### Sanguine Ascendancy (ph5) — ULTIMATE
+Unlocks when Hollow Touch, Soul Siphon, Wound Memory, and Exsanguination are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale icy blue pixel border frame with small teardrop soul studs in corners, pale icy blue #AACCFF outer edge, darker #6688BB inner bevel. Inside the frame on a solid black background: a robed figure with arms raised, surrounded by a spiraling vortex of soul wisps all converging inward — each wisp is a pale blue teardrop, the figure at the apex of a massive harvest. Bold silhouette, high contrast, limited palette 5-6 colors, slight icy blue inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale icy blue frame.
+
+### Ossuary Branch
+
+Ossuary is a summoner escalation path — raising Bone Thralls from corpses, making them stronger, and culminating in a permanent undead general.
+Ossuary skills use **aged bone yellow frames** with small vertebrae-shaped studs in corners.
+
+#### Risen (os1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate aged bone yellow pixel border frame with small vertebrae studs in corners, bone yellow #CCBB88 outer edge, darker #887744 inner bevel. Inside the frame on a solid black background: a skeletal hand erupting from the ground, clawing upward — cracked yellowed bone with pale grave-dirt clinging to the knuckles and a faint amber necromantic glow at the wrist. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bone yellow frame.
+
+#### Grave Pact (os2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate aged bone yellow pixel border frame with small vertebrae studs in corners, bone yellow #CCBB88 outer edge, darker #887744 inner bevel. Inside the frame on a solid black background: two skeletal hands clasping in a contract handshake — one wrapped in necromantic amber runes, the other bare bone, sealed by a ribbon of pale energy binding the wrists. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bone yellow frame.
+
+#### Undying Labor (os3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate aged bone yellow pixel border frame with small vertebrae studs in corners, bone yellow #CCBB88 outer edge, darker #887744 inner bevel. Inside the frame on a solid black background: three small bone thrall silhouettes marching in formation, each glowing with a faint amber halo, an upward attack-speed arrow curving above the group. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bone yellow frame.
+
+#### Charnel Tide (os4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate aged bone yellow pixel border frame with small vertebrae studs in corners, bone yellow #CCBB88 outer edge, darker #887744 inner bevel. Inside the frame on a solid black background: a tidal wave of rising skeletons — six skeletal forms erupting simultaneously from a flat field, bones catching amber-yellow necromantic light, a visible 300px radius ring marking the rise zone. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bone yellow frame.
+
+#### Lich Dominion (os5) — ULTIMATE
+Unlocks when Risen, Grave Pact, Undying Labor, and Charnel Tide are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate aged bone yellow pixel border frame with small vertebrae studs in corners, bone yellow #CCBB88 outer edge, darker #887744 inner bevel. Inside the frame on a solid black background: a tall crowned revenant silhouette — ancient armor plating over exposed ribcage, a cracked crown with amber gem inlays, surrounded by three smaller Bone Thrall silhouettes orbiting it like a court. Bold silhouette, high contrast, limited palette 5-6 colors, slight amber inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the bone yellow frame.
+
+### Wasting Plague Branch
+
+Wasting Plague is an attrition escalation path — stacking Rot debuffs, spreading them through death, turning the battlefield into a poisoned graveyard.
+Wasting Plague skills use **sickly green frames** with small spore-dot studs in corners.
+
+#### Festering Wound (wp1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sickly green pixel border frame with small spore-dot studs in corners, sickly green #88CC55 outer edge, darker #446622 inner bevel. Inside the frame on a solid black background: a wound splitting open with layered rot stacks — three glowing green marks etched into cracked dark flesh, each mark pulsing at a different intensity suggesting escalating infection. Bold silhouette, high contrast, limited palette 5-6 colors, slight sickly green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sickly green frame.
+
+#### Virulent Spread (wp2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sickly green pixel border frame with small spore-dot studs in corners, sickly green #88CC55 outer edge, darker #446622 inner bevel. Inside the frame on a solid black background: a fallen enemy silhouette at center with green rot tendrils radiating outward to three surrounding enemy silhouettes, each chain a spore-burst of sickly green with toxic particle dots. Bold silhouette, high contrast, limited palette 5-6 colors, slight sickly green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sickly green frame.
+
+#### Necrotic Bloom (wp3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sickly green pixel border frame with small spore-dot studs in corners, sickly green #88CC55 outer edge, darker #446622 inner bevel. Inside the frame on a solid black background: a dark diseased flower blooming from a corpse — petals made of blackened rot with sickly green veins, a visible toxic radius ring spreading from the stem like a Blight Pool. Bold silhouette, high contrast, limited palette 5-6 colors, slight sickly green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sickly green frame.
+
+#### Pandemic (wp4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sickly green pixel border frame with small spore-dot studs in corners, sickly green #88CC55 outer edge, darker #446622 inner bevel. Inside the frame on a solid black background: a robed figure exhaling a circular miasma cloud — a 360° ring of sickly green haze expanding outward from a central doctor silhouette, enemy shapes caught inside the ring gaining visible Rot tick marks. Bold silhouette, high contrast, limited palette 5-6 colors, slight sickly green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sickly green frame.
+
+#### Carrion Crown (wp5) — ULTIMATE
+Unlocks when Festering Wound, Virulent Spread, Necrotic Bloom, and Pandemic are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate sickly green pixel border frame with small spore-dot studs in corners, sickly green #88CC55 outer edge, darker #446622 inner bevel. Inside the frame on a solid black background: a thorn-and-bone crown hovering above a robed figure, the crown dripping a sickly green aura downward in a wide column — enemy silhouettes at the edges of the aura radius wilting and glowing with Rot marks. Bold silhouette, high contrast, limited palette 5-6 colors, slight sickly green inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the sickly green frame.
+
+---
+
+## Nightborne Skills
+
+Nightborne is a void blade — raw purple energy, spectral duplication, dimensional manipulation. Each branch has 4 regular skills + 1 ultimate (5 total).
+Nightborne skills use **branch-colored frames**: Void Blade (deep purple #9933FF), Phantom (pale lavender #CC66FF), Rift (dark violet #4400BB).
+
+### Void Blade Branch
+
+Void Blade is a raw offensive escalation — deepen the cut, widen the arc, detonate the void itself. The blade drinks harder, the crescent sweeps wider, the strike becomes a ring pulse.
+Void Blade skills use **deep purple frames** with small sharp crescent-shaped studs in corners.
+
+#### Void Edge (vb1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate deep purple pixel border frame with small sharp crescent studs in corners, deep purple #9933FF outer edge, darker #551199 inner bevel. Inside the frame on a solid black background: a single upright void blade with a razor-thin purple edge glowing white-hot along its cutting line, dark hilt and pommel, faint purple energy wisps rising from the blade tip. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the deep purple frame.
+
+#### Cleave (vb2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate deep purple pixel border frame with small sharp crescent studs in corners, deep purple #9933FF outer edge, darker #551199 inner bevel. Inside the frame on a solid black background: a wide curving crescent arc slash covering nearly 270 degrees around a central point, purple energy trail marking the sweep path with bright edge and fading inner glow. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the deep purple frame.
+
+#### Void Surge (vb3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate deep purple pixel border frame with small sharp crescent studs in corners, deep purple #9933FF outer edge, darker #551199 inner bevel. Inside the frame on a solid black background: an expanding concentric ring pulse with a number "4" sigil at the center — three progressively larger purple rings radiating outward, suggesting every fourth strike triggers an explosive void wave. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the deep purple frame.
+
+#### Dark Resonance (vb4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate deep purple pixel border frame with small sharp crescent studs in corners, deep purple #9933FF outer edge, darker #551199 inner bevel. Inside the frame on a solid black background: an enemy silhouette with two overlapping purple strike marks on its chest, void energy rippling outward from the second mark as a small detonation ring — the resonance of two hits within a time window. Bold silhouette, high contrast, limited palette 5-6 colors, slight purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the deep purple frame.
+
+#### Void Ascendant (vb5) — ULTIMATE
+Unlocks when Void Edge, Cleave, Void Surge, and Dark Resonance are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate deep purple pixel border frame with small sharp crescent studs in corners, deep purple #9933FF outer edge, darker #551199 inner bevel. Inside the frame on a solid black background: a robed swordsman silhouette engulfed in a vertical column of raw purple void energy, the blade held overhead radiating a white-hot core aura, cracks of light splitting the darkness around the figure. Bold silhouette, high contrast, limited palette 5-6 colors, slight white-purple inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the deep purple frame.
+
+### Phantom Branch
+
+Phantom is a duplication path — every slash becomes an echo, every kill becomes a phantom ally, every hard fight becomes four Nightbornes at once. Scales damage by replication rather than raw power.
+Phantom skills use **pale lavender frames** with small ghostly wisp studs in corners.
+
+#### Echo Strike (vp1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale lavender pixel border frame with small ghostly wisp studs in corners, pale lavender #CC66FF outer edge, darker #8833BB inner bevel. Inside the frame on a solid black background: a dark warrior silhouette with a semi-transparent pale lavender afterimage duplicate stepping out behind it, both figures mid-slash with overlapping crescent arcs suggesting the echo effect. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale lavender frame.
+
+#### Split Shade (vp2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale lavender pixel border frame with small ghostly wisp studs in corners, pale lavender #CC66FF outer edge, darker #8833BB inner bevel. Inside the frame on a solid black background: a single warrior splitting into two identical silhouettes — one solid dark shape, the other a pale lavender ghostly decoy fading into lavender mist at the edges, a short motion trail between them. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale lavender frame.
+
+#### Phantom Veil (vp3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale lavender pixel border frame with small ghostly wisp studs in corners, pale lavender #CC66FF outer edge, darker #8833BB inner bevel. Inside the frame on a solid black background: an enemy arrow or blade passing harmlessly through a translucent lavender warrior silhouette, the figure's body rendered as spectral film with visible stars behind it, lavender energy curling at the point of non-contact. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale lavender frame.
+
+#### Mirror Swarm (vp4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale lavender pixel border frame with small ghostly wisp studs in corners, pale lavender #CC66FF outer edge, darker #8833BB inner bevel. Inside the frame on a solid black background: three small phantom silhouettes radiating outward from a fallen enemy shape at center, each phantom mid-slash toward a different direction, all rendered in pale lavender with trailing wisps. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale lavender frame.
+
+#### Shade Legion (vp5) — ULTIMATE
+Unlocks when Echo Strike, Split Shade, Phantom Veil, and Mirror Swarm are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate pale lavender pixel border frame with small ghostly wisp studs in corners, pale lavender #CC66FF outer edge, darker #8833BB inner bevel. Inside the frame on a solid black background: four identical warrior silhouettes standing in a phalanx formation, the center figure solid dark and three surrounding duplicates rendered in ascending shades of translucent lavender, all blades drawn, a faint binding ring of lavender light tying them together. Bold silhouette, high contrast, limited palette 5-6 colors, slight lavender inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the pale lavender frame.
+
+### Rift Branch
+
+Rift is a dimensional manipulation path — teleport strikes, void zones, spatial anchors. The most tactically complex branch, rewarding positioning as a weapon.
+Rift skills use **dark violet frames** with small torn-edge rift studs in corners.
+
+#### Void Step (vr1)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark violet pixel border frame with small torn-edge rift studs in corners, dark violet #4400BB outer edge, darker #220077 inner bevel. Inside the frame on a solid black background: a warrior silhouette blinking forward through a tear in space — the origin point marked by a pale violet afterimage circle, a jagged violet crack splitting the air in between, the figure landing mid-slash. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark violet frame.
+
+#### Rift Anchor (vr2)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark violet pixel border frame with small torn-edge rift studs in corners, dark violet #4400BB outer edge, darker #220077 inner bevel. Inside the frame on a solid black background: a pulsing violet glyph anchored to the ground — a stylized runic circle with three crossed violet lines marking a fixed return point, faint ripple rings radiating upward from the anchor center. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark violet frame.
+
+#### Void Zone (vr3)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark violet pixel border frame with small torn-edge rift studs in corners, dark violet #4400BB outer edge, darker #220077 inner bevel. Inside the frame on a solid black background: a circular patch of dimensional distortion on the ground — warping violet energy field with visible slow-time swirls at the edges, small enemy silhouettes trapped inside moving sluggishly. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark violet frame.
+
+#### Spatial Tear (vr4)
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark violet pixel border frame with small torn-edge rift studs in corners, dark violet #4400BB outer edge, darker #220077 inner bevel. Inside the frame on a solid black background: a violent vertical tear splitting the air like a wound in reality — jagged violet lightning along the split edges, a burst of void energy erupting outward from a fixed point with enemy silhouettes flung away. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark violet frame.
+
+#### Rift Collapse (vr5) — ULTIMATE
+Unlocks when Void Step, Rift Anchor, Void Zone, and Spatial Tear are all at level 2+.
+> 128x128 pixel art RPG skill icon, 32-bit retro style. Ornate dark violet pixel border frame with small torn-edge rift studs in corners, dark violet #4400BB outer edge, darker #220077 inner bevel. Inside the frame on a solid black background: a massive collapsing rift at the center — a black singularity with concentric violet ring pulses being sucked inward, small enemy silhouettes pulled toward the central void point from all directions, jagged energy distortion lines radiating around the edge. Bold silhouette, high contrast, limited palette 5-6 colors, slight violet inner glow. Crisp hard pixel edges, no anti-aliasing, no gradients. Single centered object inside the dark violet frame.
 
 ---
 

@@ -8,23 +8,37 @@ import { SandGolem } from '../entities/SandGolem'
 import BaseEnemy from '../entities/BaseEnemy'
 import { Orc3 } from '../entities/Orc3'
 import { Orc0 } from '../entities/Grunt'
+import { Archer } from '../entities/Archer'
 
-type EnemyCtor = new (scene: Phaser.Scene, x: number, y: number, player: Player, tier: number) => Orc0 | Orc1 | Orc2 | Orc3 | FlyingEye
+type EnemyCtor = new (scene: Phaser.Scene, x: number, y: number, player: Player, tier: number) => Orc0 | Orc1 | Orc2 | Orc3 | FlyingEye | Archer
 
 interface SpawnEntry { factory: EnemyCtor; weight: number }
 
+// Archer unlocks from wave 5+ (after ~2min). Filtered out of the picker below that.
+const ARCHER_MIN_WAVE = 5
+
 // Cumulative weights are computed at runtime — weights are relative (not required to sum to 100)
 const ZONE_SPAWNS: Record<number, SpawnEntry[]> = {
-  // Zone 0 — Crossroads: Orc0 50%, Orc1 30%, Orc2 20%
-  0: [{ factory: Orc0 as unknown as EnemyCtor, weight: 50 }, { factory: Orc1 as unknown as EnemyCtor, weight: 30 }, { factory: Orc2 as unknown as EnemyCtor, weight: 20 }],
-  // Zone 1 — Meadow: Orc0 35%, Orc1 35%, Orc2 30%
-  1: [{ factory: Orc0 as unknown as EnemyCtor, weight: 35 }, { factory: Orc1 as unknown as EnemyCtor, weight: 35 }, { factory: Orc2 as unknown as EnemyCtor, weight: 30 }],
-  // Zone 2 — Ruins: Orc3 30%, FlyingEye 25%, Orc1 25%, Orc2 20%
-  2: [{ factory: Orc3 as unknown as EnemyCtor, weight: 30 }, { factory: FlyingEye as unknown as EnemyCtor, weight: 25 }, { factory: Orc1 as unknown as EnemyCtor, weight: 25 }, { factory: Orc2 as unknown as EnemyCtor, weight: 20 }],
-  // Zone 3 — Dark Forest: Orc3 35%, FlyingEye 25%, Orc1 25%, Orc2 15%
-  3: [{ factory: Orc3 as unknown as EnemyCtor, weight: 35 }, { factory: FlyingEye as unknown as EnemyCtor, weight: 25 }, { factory: Orc1 as unknown as EnemyCtor, weight: 25 }, { factory: Orc2 as unknown as EnemyCtor, weight: 15 }],
-  // Zone 4+ — Wastes: Orc3 40%, FlyingEye 30%, Orc1 20%, Orc2 10%
-  4: [{ factory: Orc3 as unknown as EnemyCtor, weight: 40 }, { factory: FlyingEye as unknown as EnemyCtor, weight: 30 }, { factory: Orc1 as unknown as EnemyCtor, weight: 20 }, { factory: Orc2 as unknown as EnemyCtor, weight: 10 }],
+  // Zone 0 — Crossroads: Orc0 52%, Orc1 29%, Orc2 16%, Archer 3%
+  0: [{ factory: Orc0 as unknown as EnemyCtor, weight: 52 }, { factory: Orc1 as unknown as EnemyCtor, weight: 29 }, { factory: Orc2 as unknown as EnemyCtor, weight: 16 }, { factory: Archer as unknown as EnemyCtor, weight: 3 }],
+  // Zone 1 — Meadow: Orc0 34%, Orc1 34%, Orc2 28%, Archer 4%
+  1: [{ factory: Orc0 as unknown as EnemyCtor, weight: 34 }, { factory: Orc1 as unknown as EnemyCtor, weight: 34 }, { factory: Orc2 as unknown as EnemyCtor, weight: 28 }, { factory: Archer as unknown as EnemyCtor, weight: 4 }],
+  // Zone 2 — Ruins: Orc3 29%, FlyingEye 23%, Orc1 23%, Orc2 21%, Archer 4%
+  2: [{ factory: Orc3 as unknown as EnemyCtor, weight: 29 }, { factory: FlyingEye as unknown as EnemyCtor, weight: 23 }, { factory: Orc1 as unknown as EnemyCtor, weight: 23 }, { factory: Orc2 as unknown as EnemyCtor, weight: 21 }, { factory: Archer as unknown as EnemyCtor, weight: 4 }],
+  // Zone 3 — Dark Forest: Orc3 34%, FlyingEye 23%, Orc1 23%, Orc2 15%, Archer 5%
+  3: [{ factory: Orc3 as unknown as EnemyCtor, weight: 34 }, { factory: FlyingEye as unknown as EnemyCtor, weight: 23 }, { factory: Orc1 as unknown as EnemyCtor, weight: 23 }, { factory: Orc2 as unknown as EnemyCtor, weight: 15 }, { factory: Archer as unknown as EnemyCtor, weight: 5 }],
+  // Zone 4+ — Wastes: Orc3 40%, FlyingEye 28%, Orc1 18%, Orc2 8%, Archer 6%
+  4: [{ factory: Orc3 as unknown as EnemyCtor, weight: 40 }, { factory: FlyingEye as unknown as EnemyCtor, weight: 28 }, { factory: Orc1 as unknown as EnemyCtor, weight: 18 }, { factory: Orc2 as unknown as EnemyCtor, weight: 8 }, { factory: Archer as unknown as EnemyCtor, weight: 6 }],
+}
+
+// Pre-filtered pools for early waves (no Archer). Built once at module load.
+const ZONE_SPAWNS_EARLY: Record<number, SpawnEntry[]> = {}
+for (const [zone, entries] of Object.entries(ZONE_SPAWNS)) {
+  ZONE_SPAWNS_EARLY[Number(zone)] = entries.filter(e => e.factory !== (Archer as unknown as EnemyCtor))
+}
+const ZONE_SPAWN_TOTALS_EARLY: Record<number, number> = {}
+for (const [zone, entries] of Object.entries(ZONE_SPAWNS_EARLY)) {
+  ZONE_SPAWN_TOTALS_EARLY[Number(zone)] = entries.reduce((s, e) => s + e.weight, 0)
 }
 
 const ZONE_SPAWN_TOTALS: Record<number, number> = {}
@@ -99,9 +113,11 @@ export class WaveManager {
     // CLAWS boss at 10 minutes
     if (this.elapsedMs >= CONFIG.RUN_DURATION && !this.bossSpawned) {
       this.bossSpawned = true
+      console.log(`[BOSS] WaveManager: elapsedMs=${this.elapsedMs} >= RUN_DURATION=${CONFIG.RUN_DURATION}, emitting claws-incoming`)
       this.scene.events.emit('claws-incoming')
       if (this.spawnTimer) this.spawnTimer.destroy()
       this.scene.time.delayedCall(3000, () => {
+        console.log('[BOSS] WaveManager: emitting claws-spawn')
         this.scene.events.emit('claws-spawn')
       })
     }
@@ -150,8 +166,15 @@ export class WaveManager {
     const tier = this.currentWave
 
     const zone: number = Math.min((this.scene as any).getZone(x, y) as number, 4)
-    const spawnTable = ZONE_SPAWNS[zone] ?? ZONE_SPAWNS[4]
-    const Factory = pickWeighted(spawnTable, ZONE_SPAWN_TOTALS[zone] ?? ZONE_SPAWN_TOTALS[4])
+    // Use pre-filtered pool (no Archer) until wave unlock
+    const useEarly = this.currentWave < ARCHER_MIN_WAVE
+    const spawnTable = useEarly
+      ? (ZONE_SPAWNS_EARLY[zone] ?? ZONE_SPAWNS_EARLY[4])
+      : (ZONE_SPAWNS[zone] ?? ZONE_SPAWNS[4])
+    const spawnTotal = useEarly
+      ? (ZONE_SPAWN_TOTALS_EARLY[zone] ?? ZONE_SPAWN_TOTALS_EARLY[4])
+      : (ZONE_SPAWN_TOTALS[zone] ?? ZONE_SPAWN_TOTALS[4])
+    const Factory = pickWeighted(spawnTable, spawnTotal)
     const mob = new Factory(this.scene, x, y, this.player, tier)
     mob.players = this.players
 
@@ -180,6 +203,9 @@ export class WaveManager {
     switch (type) {
       case 'orc1':
         mob = new Orc1(this.scene, x, y, this.player, tier)
+        break
+      case 'flyingeye':
+        mob = new FlyingEye(this.scene, x, y, this.player, tier, false)
         break
       default:
         mob = new Orc1(this.scene, x, y, this.player, tier)

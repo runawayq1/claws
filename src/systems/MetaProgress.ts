@@ -143,7 +143,7 @@ export const META_UPGRADES: MetaUpgradeDef[] = [
 // ============================================================
 // ACHIEVEMENT DEFINITIONS (25 total)
 // ============================================================
-const HEROES = ['ignara', 'nazar', 'sifra', 'amun', 'huntress', 'khashin', 'muller']
+const HEROES = ['ignara', 'nazar', 'sifra', 'amun', 'huntress', 'khashin', 'muller', 'vael']
 
 const ACHIEVEMENT_DEFS: AchievementDef[] = [
   // --- Kill milestones ---
@@ -212,7 +212,7 @@ export class MetaProgress {
       goldEarned: 0,
       metaUpgrades: {},
       // Tutorial / unlock defaults
-      unlockedHeroes: ['amun'],
+      unlockedHeroes: ['amun', 'vael', 'nightborne'],
       tutorialComplete: false,
       unlockedBranches: { amun: ['Wrath'] },
       branchProgress: {},
@@ -253,6 +253,9 @@ export class MetaProgress {
       if (!data.branchProgress) data.branchProgress = {}
       // Migrate old saves missing completedQuests
       if (!data.completedQuests) data.completedQuests = []
+      // Nightborne + Vael are default-unlocked
+      if (!data.unlockedHeroes.includes('nightborne')) data.unlockedHeroes.push('nightborne')
+      if (!data.unlockedHeroes.includes('vael')) data.unlockedHeroes.push('vael')
       // Back-compat: if tutorial is done but sifra not in unlockedHeroes, add it
       if (data.tutorialComplete && !data.unlockedHeroes.includes('sifra')) {
         data.unlockedHeroes.push('sifra')

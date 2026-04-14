@@ -4,7 +4,7 @@ import { getSteeringTarget } from '../systems/Pathfinding'
 import type { GameSceneContext } from '../types/scene-context'
 
 export type DamageType = 'fire' | 'ice' | 'lightning' | 'poison' | 'melee' | 'shockwave'
-  | 'fireball' | 'frost' | 'venom' | 'sword' | 'ground' | 'quake' | 'wind' | 'sand' | 'crystal'
+  | 'fireball' | 'frost' | 'venom' | 'sword' | 'ground' | 'quake' | 'wind' | 'sand' | 'crystal' | 'void'
 
 const DMG_COLORS: Record<string, string> = {
   fire: '#ff4444', fireball: '#ff4444',
@@ -42,6 +42,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public rootTimer: number = 0
   public burnStacks: number = 0
   public burnExpiry: number = 0
+  public rotStacks: number = 0
+  public rotExpiry: number = 0
   public player: PlayerLike
   public players: PlayerLike[] = []
   public hpDirty: boolean = true
@@ -92,6 +94,10 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   // -------------------------------------------------------------------------
   takeDamage(amount: number, type?: DamageType) {
     if (this.isDying) return
+    // Scorch debuff: +20% damage taken
+    if ((this as any)._scorchUntil && this.scene && this.scene.time.now < (this as any)._scorchUntil) {
+      amount *= 1.2
+    }
     this.lastDamageType = type ?? 'melee'
     this.hp -= amount
     this.hpDirty = true
@@ -187,6 +193,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     if (this.isDying || !this.scene) return
     this.isDying = true
     this.poisonTimer?.remove(); this.poisonTimer = undefined
+    const bt = (this as any)._burnTimer as Phaser.Time.TimerEvent | undefined
+    if (bt) { bt.remove(); (this as any)._burnTimer = undefined }
     this.setVelocity(0, 0)
     if (this.body) (this.body as Phaser.Physics.Arcade.Body).enable = false
 

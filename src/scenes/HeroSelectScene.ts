@@ -16,6 +16,7 @@ interface HeroDef {
   scale: number
   tint?: number
   frames: number
+  frameStart?: number
   yOff?: number
 }
 
@@ -34,6 +35,10 @@ export const HEROES: HeroDef[] = [
     asset: 'assets/khashin/Idle_cropped.png', fw: 48, fh: 42, scale: 1.36, frames: 8 },
   { type: 'muller', name: 'Givi', role: 'Crystal Gnome', color: 0x44aaff,
     asset: 'assets/givi/Idle_cropped.png', fw: 51, fh: 44, scale: 1.12, frames: 8, yOff: 10 },
+  { type: 'vael', name: 'Vael', role: 'Pale Doctor', color: 0x8866cc,
+    asset: 'assets/vael/sheet.png', fw: 160, fh: 128, scale: 1.33, frames: 13, frameStart: 34, yOff: -30 },
+  { type: 'nightborne', name: 'Nightborne', role: 'Void Blade', color: 0x9933FF,
+    asset: 'assets/nightborne/idle.png', fw: 240, fh: 240, scale: 0.55, frames: 9 },
 ]
 
 export const HERO_UNLOCK_HINTS: Partial<Record<HeroType, string>> = {
@@ -121,11 +126,11 @@ export class HeroSelectScene extends Phaser.Scene {
     if (isPortrait) {
       const gridW = cols * (circleRadius * 2) + (cols - 1) * gap
       startX = width / 2 - gridW / 2 + circleRadius
-      heroY = height * 0.28
+      heroY = height * 0.24
     } else {
       const totalW = HEROES.length * (circleRadius * 2) + (HEROES.length - 1) * gap
       startX = width / 2 - totalW / 2 + circleRadius
-      heroY = compact ? height * 0.48 : height * 0.46
+      heroY = compact ? height * 0.42 : height * 0.40
     }
 
     // Create idle animations for each hero
@@ -135,7 +140,7 @@ export class HeroSelectScene extends Phaser.Scene {
         const texKey = hero.asset.replace(/[^a-z0-9]/gi, '_')
         this.anims.create({
           key: animKey,
-          frames: this.anims.generateFrameNumbers(texKey, { start: 0, end: hero.frames - 1 }),
+          frames: this.anims.generateFrameNumbers(texKey, { start: hero.frameStart ?? 0, end: (hero.frameStart ?? 0) + hero.frames - 1 }),
           frameRate: 8,
           repeat: -1,
         })
@@ -172,7 +177,7 @@ export class HeroSelectScene extends Phaser.Scene {
       const texKey = hero.asset.replace(/[^a-z0-9]/gi, '_')
       const sprY = cy + (hero.yOff || 0)
       const sprite = this.add.sprite(cx, sprY, texKey, 0)
-        .setScale(hero.scale).setDepth(1)
+        .setScale(hero.scale * 0.85).setDepth(1)
       if (hero.tint) sprite.setTint(hero.tint)
       sprite.play(`start_idle_${hero.type}`)
 
@@ -249,7 +254,7 @@ export class HeroSelectScene extends Phaser.Scene {
         zone.on('pointerover', () => {
           if (this.selectedIndex !== i) {
             this.drawCircle(g, cx, cy, circleRadius, hero.color, true)
-            sprite.setScale(hero.scale * 1.15)
+            sprite.setScale(hero.scale * 0.85 * 1.15)
             nameText.setColor('#ffffff')
           }
         })
@@ -257,7 +262,7 @@ export class HeroSelectScene extends Phaser.Scene {
         zone.on('pointerout', () => {
           if (this.selectedIndex !== i) {
             this.drawCircle(g, cx, cy, circleRadius, hero.color, false)
-            sprite.setScale(hero.scale)
+            sprite.setScale(hero.scale * 0.85)
             nameText.setColor(colorHex)
           }
         })
@@ -281,7 +286,7 @@ export class HeroSelectScene extends Phaser.Scene {
 
           this.selectedIndex = i
           this.drawCircle(g, cx, cy, circleRadius, hero.color, true)
-          sprite.setScale(hero.scale * 1.15)
+          sprite.setScale(hero.scale * 0.85 * 1.15)
 
           // Enter fullscreen + lock landscape on mobile
           const isMob = isMobileDevice()

@@ -49,7 +49,7 @@ Each hero has 3 upgrade branches × 5 skills + 10 shared generic upgrades.
 | FlyingEye | `FlyingEye` | 150×150 side-view | Flies over rocks, poison immune |
 | SandGolem | `SandGolem` | 150×150 side-view | Ground slam AoE |
 | Vampire | `Vampire` | 32×32 | Lifesteal |
-| Boss (Klaus) | spawned inline | 288×160 | Spawns at 10min, instant kill on contact |
+| Boss (CLAWS) | `ClawsBoss` | 288×160 | Spawns at 10min, 4000 HP, 3 phases (Wrath/Frenzy/Desperation), skills: Cleave + Slam + Void Dash + Void Burst |
 
 All scale HP/speed/damage per wave tier (30s per tier).
 
@@ -98,6 +98,7 @@ All scale HP/speed/damage per wave tier (30s per tier).
 
 ## Recent Milestones
 
+- **v0.4.4** — Mortal CLAWS boss (3 phases, HP bar under XP bar), Run Summary Screen (stats grid + top skills + damage taken), perf round 3 (10 fixes: moveTo→setVelocity, vignette pulse, fireball trail throttle, burn timer cleanup, minimap batch, XP shimmer Graphics split, coop camera inline, pathfinding squared-dist, Wildfire deferred)
 - **v0.4.3** — Perf pass (20+ micro-freeze fixes), architect review (18 fixes), font/UI cleanup (system font, textStyles.ts), multiplayer stability fixes
 - **v0.4.2** — Multiplayer: server-authoritative movement, hero abilities online, enemy death anims, wave HUD, gold sync
 - **v0.4.1** — Online mode groundwork: LobbyScene, HeroSelectScene, NetworkGameAdapter, Colyseus integration
