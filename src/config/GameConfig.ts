@@ -23,9 +23,9 @@ export const CONFIG = {
   // Row 2 = facing down (toward camera) — best for top-down view
   SPRITE_DIR_ROW: 2,
 
-  // XP — linear growth: XP_BASE + XP_PER_LEVEL * (level - 1)
-  XP_BASE: 120,
-  XP_PER_LEVEL: 55,
+  // XP — easy early levels, quadratic ramp after level 5 (see Player.xpToNextLevel)
+  XP_BASE: 60,
+  XP_PER_LEVEL: 35,
 
   // Zergling / Orc
   ZERGLING_BASE_HP: 40,

@@ -213,4 +213,9 @@ export class BastionPickScene extends Phaser.Scene {
       this.scene.stop()
     })
   }
+
+  shutdown() {
+    // Kill all tweens so they don't fire on destroyed objects after scene stop
+    this.tweens.killAll()
+  }
 }

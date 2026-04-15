@@ -1530,8 +1530,16 @@ export class UpgradeTracker {
       Object.keys(this.skillLevels).filter(id => !this.pickedGeneric.has(id) && this.skillLevels[id] > 0).length
     const atSkillCap = totalDistinctSkills >= MAX_TOTAL_SKILLS
 
+    // Per-hero generic exclusions: Ignara gets +15% base range and shouldn't
+    // see Eagle Eye (range generic) in the upgrade pool.
+    const heroExcluded: Record<string, Set<string>> = {
+      ignara: new Set(['g3']),
+    }
+    const excluded = heroExcluded[heroType] || new Set<string>()
+
     // Generics not yet maxed: already-picked can level up; new ones only if under skill cap
     const availGenerics = GENERIC_POOL.filter(u => {
+      if (excluded.has(u.id)) return false
       const lvl = this.skillLevels[u.id] || 0
       if (lvl >= MAX_SKILL_LEVEL) return false          // maxed out
       if (this.pickedGeneric.has(u.id)) return true      // already picked — can level up
@@ -1567,31 +1575,36 @@ export class UpgradeTracker {
           pool.push({ ...ultimate, branch: chosenBranchDef.name, branchColor: chosenBranchDef.color })
         }
 
-        // Shuffle and pick up to 3
+        // Shuffle and pick up to 2 branch cards
         const shuffled = [...pool].sort(() => Math.random() - 0.5)
-        branchCards.push(...shuffled.slice(0, 3))
+        branchCards.push(...shuffled.slice(0, 2))
       }
     }
 
-    // ── Combine: 2-3 branch + 3-2 generic (random split), shuffled positions ──
-    const branchCount = Math.min(branchCards.length, Math.random() < 0.5 ? 2 : 3)
+    // ── Combine: 3 total cards — 1-2 branch + 1-2 generic ──
+    // Prefer 2 branch + 1 generic when both pools are healthy;
+    // fall back to 1 branch + 2 generic (or all generic) when pool is thin.
+    const wantBranch = branchCards.length >= 2 && shuffledGen.length >= 1
+      ? 2
+      : Math.min(branchCards.length, 1)
     const choices: Upgrade[] = []
-    choices.push(...branchCards.slice(0, branchCount))
+    choices.push(...branchCards.slice(0, wantBranch))
 
-    const genNeeded = Math.max(2, 5 - choices.length)
+    const genNeeded = 3 - choices.length
     for (let i = 0; i < genNeeded && i < shuffledGen.length; i++) {
       choices.push(shuffledGen[i])
     }
 
-    // Pad to 5 if still short (edge case: very few generics left)
-    while (choices.length < 5 && shuffledGen.length > choices.length - branchCount) {
+    // Pad to 3 if still short
+    while (choices.length < 3) {
       const next = shuffledGen.find(u => !choices.includes(u))
+         ?? branchCards.find(u => !choices.includes(u))
       if (next) choices.push(next)
       else break
     }
 
     // Shuffle positions so branch cards aren't always first
-    const result = choices.slice(0, 5)
+    const result = choices.slice(0, 3)
     for (let i = result.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[result[i], result[j]] = [result[j], result[i]]

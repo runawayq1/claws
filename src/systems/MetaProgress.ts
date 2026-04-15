@@ -268,6 +268,16 @@ export class MetaProgress {
         }
         data.unlockedBranches['amun'] = ab
       }
+      // Test account: "Ori" has all heroes + branches unlocked + tutorial complete
+      if (localStorage.getItem('claws_player_name') === 'Ori') {
+        data.tutorialComplete = true
+        const allHeroes = ['amun', 'sifra', 'ignara', 'nazar', 'khashin', 'huntress', 'muller', 'nightborne', 'vael']
+        for (const h of allHeroes) {
+          if (!data.unlockedHeroes.includes(h)) data.unlockedHeroes.push(h)
+        }
+        data.unlockedBranches['amun'] = ['Wrath', 'Bastion', 'Quake']
+        if (data.goldTotal < 10000) data.goldTotal = 10000
+      }
       return data
     } catch {
       return MetaProgress.defaultData()

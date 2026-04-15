@@ -73,7 +73,7 @@ const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
 }
 
 const HERO_DEFS: Record<HeroType, HeroDef> = {
-  ignara:    { hp: 80,  speed: 140, damage: 30, range: 200, cooldown: 700,  color: 0xe84118, attackType: 'fireball' },
+  ignara:    { hp: 80,  speed: 140, damage: 30, range: 230, cooldown: 700,  color: 0xe84118, attackType: 'fireball' },
   // khet removed from playable roster
   // khet:    { hp: 55,  speed: 220, damage: 35, range: 48,  cooldown: 600,  color: 0x4a0072, attackType: 'dash' },
   sifra:     { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
@@ -1117,9 +1117,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         const sy = this.y + Math.sin(ang) * 80
         const shade = this.scene.add.circle(sx, sy, 10, 0xCC66FF, 0.5).setDepth(9)
         const shadeDur = this.splitShadeLevel >= 2 ? (this.splitShadeLevel >= 3 ? 3000 : 2500) : 1500
-        this.scene.tweens.add({ targets: shade, alpha: 0.1, yoyo: true, repeat: -1, duration: 300 })
+        const shadeTween = this.scene.tweens.add({ targets: shade, alpha: 0.1, yoyo: true, repeat: -1, duration: 300 })
         // Echo slash on expiry (L2+)
         this.scene.time.delayedCall(shadeDur, () => {
+          shadeTween.stop(); shadeTween.remove()
           shade.destroy()
           if (this.splitShadeLevel >= 2) {
             const scene = this.scene as any
@@ -1449,7 +1450,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   xpToNextLevel(): number {
-    return CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * (this.level - 1)
+    // Early levels (1-5): easy ramp. Later levels: quadratic growth so final
+    // levels land around minute 6-7 of a 10-min run.
+    const n = this.level
+    if (n <= 5) {
+      return CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * (n - 1)
+    }
+    // n >= 6: base cost of level 5 + extra quadratic per level past 5
+    const baseAt5 = CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * 4
+    const over = n - 5
+    return Math.ceil(baseAt5 + CONFIG.XP_PER_LEVEL * over + over * over * 35)
   }
 
   tryAutoAttack(enemies: Phaser.Physics.Arcade.Group, time: number, delta: number) {

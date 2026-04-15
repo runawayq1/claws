@@ -1702,7 +1702,7 @@ export class UIScene extends Phaser.Scene {
       const map = gs.scene.key
       this.cleanup()
       const sm = this.game.scene
-      sm.stop('LevelUpScene'); sm.stop(map); sm.stop('UIScene')
+      sm.stop('LevelUpScene'); sm.stop('BastionPickScene'); sm.stop(map); sm.stop('UIScene')
       if ((gs as any)._online) {
         import('../systems/NetworkManager').then(({ networkManager }) => {
           networkManager.leave()
@@ -2569,42 +2569,39 @@ export class UIScene extends Phaser.Scene {
       if (p.hasPhoenixHeart)
         drawBigBuff(19, 0xff4400, '✦')
 
-      // --- Flashpoint charges (Ignara Rapid Fire) ---
+      // --- Flashpoint charges (Ignara Wildfire) — bh4 ---
       if (p.hasFlashpoint)
-        drawBigBuff(20, 0xff8800, p.flashpointRemaining > 0 ? `${p.flashpointRemaining}` : undefined, p.flashpointRemaining > 0 ? 0.9 : 0.30)
+        drawBigBuff(103, 0xff8800, p.flashpointRemaining > 0 ? `${p.flashpointRemaining}` : undefined, p.flashpointRemaining > 0 ? 0.9 : 0.30)
 
-      // --- Infernal Cadence (Ignara Wildfire) — active timer OR cooldown sweep ---
+      // --- Infernal Cadence (Ignara Wildfire) — bh5 — active timer OR cooldown sweep ---
       if (p.hasInfernalCadence) {
         if (now < p.infernalCadenceEndTime) {
-          // Active window
           const remaining = (p.infernalCadenceEndTime - now) / 1000
           const frac = (p.infernalCadenceEndTime - now) / p.infernalCadenceDuration
-          drawBigBuff(14, 0xff3300, `${Math.ceil(remaining)}`, 0.95, frac)
+          drawBigBuff(104, 0xff3300, `${Math.ceil(remaining)}s`, 0.95, frac)
         } else if (now < p.infernalCadenceCooldownUntil) {
-          // On cooldown
           const cdRemaining = (p.infernalCadenceCooldownUntil - now) / 1000
           const frac = (p.infernalCadenceCooldownUntil - now) / p.infernalCadenceCooldown
-          drawBigBuff(14, 0x661100, `${Math.ceil(cdRemaining)}`, 0.30, frac)
+          drawBigBuff(104, 0x661100, `${Math.ceil(cdRemaining)}s`, 0.30, frac)
         } else {
-          // Ready
-          drawBigBuff(14, 0xff3300, undefined, 0.80)
+          drawBigBuff(104, 0xff3300, 'RDY', 0.80)
         }
       }
 
-      // --- Powder Keg (Ignara Wildfire) — show kills remaining until proc ---
+      // --- Powder Keg (Ignara Wildfire) — bh2 — kills remaining until proc ---
       if (p.hasPowderKeg) {
         if (p.powderKegReady) {
-          drawBigBuff(21, 0xffaa00, 'READY', 0.95)
+          drawBigBuff(101, 0xffaa00, 'GO', 0.95)
         } else {
           const killsLeft = p.powderKegThreshold - p.powderKegCounter
           const frac = p.powderKegCounter / p.powderKegThreshold
-          drawBigBuff(21, 0xff6600, `${killsLeft}`, 0.65, 1 - frac)
+          drawBigBuff(101, 0xff6600, `${killsLeft}`, 0.65, 1 - frac)
         }
       }
 
-      // --- Ember Volley stacks (Ignara Wildfire) — CD reduction stacks ---
+      // --- Ember Volley stacks (Ignara Wildfire) — bh3 — CD reduction stacks ---
       if (p.hasEmberVolley && p.emberVolleyStacks > 0)
-        drawBigBuff(17, 0xffcc44, `${p.emberVolleyStacks}`, 0.9)
+        drawBigBuff(102, 0xffcc44, `${p.emberVolleyStacks}`, 0.9)
 
       // --- Ashen Veil stacks (Ignara Inferno) ---
       if (p.hasAshenVeil && p.ashenVeilStacks > 0 && now < p.ashenVeilUntil) {
