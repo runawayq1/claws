@@ -214,7 +214,15 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
 
     this.onDeathVfx(() => {
       if (this.scene) {
-        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue, this.goldValue, this.isMiniBoss, this.isLarge)
+        // Cache Vael state before the sprite is recycled — handler reads from payload
+        const vaelPayload = {
+          rotStacks: this.rotStacks ?? 0,
+          rotExpiry: this.rotExpiry ?? 0,
+          _vaelKillByDrain: (this as any)._vaelKillByDrain ?? false,
+          _vaelPandemicBoneMark: (this as any)._vaelPandemicBoneMark ?? false,
+          _vaelCarrionMark: (this as any)._vaelCarrionMark ?? 0,
+        }
+        this.scene.events.emit('enemy-died', this.x, this.y, this.xpValue, this.goldValue, this.isMiniBoss, this.isLarge, vaelPayload)
       }
       this.destroy()
     })
@@ -317,7 +325,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
         // Replay attack animation when it finishes (repeat:0 anims freeze on last frame)
         this.play(this.attackAnim)
       }
-      this.player.takeDamage(this.damagePerSecond * (delta / 1000))
+      const dmgMult = 1 - ((this as any).dmgReduction ?? 0)
+      this.player.takeDamage(this.damagePerSecond * dmgMult * (delta / 1000))
     } else {
       if (this.isAttacking) {
         this.isAttacking = false
