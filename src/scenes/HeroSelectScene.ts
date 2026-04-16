@@ -3,19 +3,11 @@ import { type HeroType, HERO_DEFS } from '../entities/Player'
 import { unlockHero } from './EncyclopediaScene'
 import { MetaProgress } from '../systems/MetaProgress'
 import { NotificationBell } from '../ui/NotificationBell'
+import { makeCircleButton } from '../ui/CircleButton'
 import { HERO_BRANCHES, getIconTexture, type BranchDef } from '../systems/UpgradeSystem'
 import { addDiagonalBg } from '../utils/bgScroll'
 import { isMobileDevice, gameFont } from '../utils/device'
 
-// Heroes with dual combat stances — shown in the popup so player knows what to expect
-const HERO_STANCES: Partial<Record<HeroType, { a: string; b: string; hint: string }>> = {
-  sifra:    { a: 'Ice Shards',   b: 'Lightning Beam', hint: 'Press Q to switch' },
-  nazar:    { a: 'Blade',        b: 'Venom',          hint: 'Press Q to switch' },
-  huntress: { a: 'Spear Throw',  b: 'Melee Combo',    hint: 'Press Q to switch' },
-  khashin:  { a: 'Sirocco',      b: 'Haboob',         hint: 'Press Q to switch' },
-  vael:     { a: 'Soul Orbs',    b: 'Life Drain',     hint: 'Press Q to switch' },
-  amun:     { a: 'Melee',        b: 'Quake',          hint: 'Quake branch unlocks 2nd stance · Q to switch' },
-}
 
 // Attack animation sheets for the popup portrait.
 // Heroes listed here play their attack anim once when a stance is selected.
@@ -273,11 +265,18 @@ export class HeroSelectScene extends Phaser.Scene {
     heroSelectTitle.setShadow(0, 1, '#000000', 2, true, true)
     addToBody(heroSelectTitle as any)
 
-    const subtitle = this.add.text(width / 2, compact ? 46 : height * 0.08 + 46, 'Survive the Swarm', {
+    const subtitleY = compact ? 46 : height * 0.08 + 60
+    const subtitle = this.add.text(width / 2, subtitleY, 'Survive the Swarm', {
       fontFamily: gameFont(), fontSize: compact ? '13px' : '16px',
       color: '#888888',
     }).setOrigin(0.5)
     addToBody(subtitle as any)
+
+    // Decorative gold horizontal rule below subtitle
+    const rule = this.add.graphics()
+    rule.lineStyle(1, 0xffd700, 0.4)
+    rule.lineBetween(width / 2 - 60, subtitleY + 22, width / 2 + 60, subtitleY + 22)
+    addToBody(rule as any)
 
     if (this.playerName) {
       const playerLabel = this.add.text(16, compact ? 8 : 16, `Playing as: ${this.playerName}`, {
@@ -287,22 +286,22 @@ export class HeroSelectScene extends Phaser.Scene {
       addToBody(playerLabel as any)
     }
 
-    const chooseText = this.add.text(width / 2, compact ? 64 : height * 0.18, 'Choose your Hero', {
-      fontFamily: gameFont(), fontSize: compact ? '13px' : '18px',
-      color: '#ffffff',
+    const chooseText = this.add.text(width / 2, compact ? 64 : height * 0.22, 'Choose your Hero', {
+      fontFamily: gameFont(), fontSize: compact ? '13px' : '14px',
+      color: '#999999',
     }).setOrigin(0.5)
     addToBody(chooseText as any)
 
-    // #8 Larger circles + 3×3 landscape grid
+    // #8 Grid: 5 cols landscape, 3 cols portrait
     const isPortrait = height > width
     const circleRadius = isPortrait
-      ? (compact ? 40 : 48)
-      : (compact ? 52 : 72)
+      ? (compact ? 34 : 42)
+      : (compact ? 44 : 56)
     const gap = isPortrait
-      ? (compact ? 14 : 20)
-      : (compact ? 20 : 28)
+      ? (compact ? 12 : 18)
+      : (compact ? 16 : 22)
 
-    const cols = isPortrait ? 2 : 3
+    const cols = isPortrait ? 3 : 5
     const rows = Math.ceil(HEROES.length / cols)
     // rowH includes space below circle for name + role pill
     const rowH = circleRadius * 2 + (compact ? 48 : 60)
@@ -336,8 +335,6 @@ export class HeroSelectScene extends Phaser.Scene {
       const bLocked = MetaProgress.isHeroUnlocked(b.type) ? 0 : 1
       return aLocked - bLocked
     })
-
-    const lastHero = MetaProgress.load().lastHero
 
     // Helper: grid cell → center position
     const cellPos = (idx: number) => {
@@ -494,28 +491,6 @@ export class HeroSelectScene extends Phaser.Scene {
       heroContainer.add(pillBg)
       heroContainer.add(pillLabel)
 
-      // #10 Last-played gold dot (top-right of circle)
-      if (!isLocked && lastHero === hero.type) {
-        const dotX = cx + Math.cos(-Math.PI / 4) * (circleRadius + 2)
-        const dotY = cy + Math.sin(-Math.PI / 4) * (circleRadius + 2)
-        const dot = this.add.graphics().setDepth(5)
-        dot.fillStyle(0xffd700, 1)
-        dot.fillCircle(dotX, dotY, 4)
-        dot.lineStyle(1, 0x000000, 0.7)
-        dot.strokeCircle(dotX, dotY, 4)
-        heroContainer.add(dot)
-        if (!reducedMotion) {
-          this.tweens.add({
-            targets: dot,
-            alpha: { from: 0.6, to: 1 },
-            duration: 900,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut',
-          })
-        }
-      }
-
       // #5 Idle breathe on circles (unlocked only)
       if (!isLocked && !reducedMotion) {
         this.tweens.add({
@@ -650,7 +625,7 @@ export class HeroSelectScene extends Phaser.Scene {
 
     // #4 Staggered entry animation
     // Title + subtitle + chooseText + playerLabel: fade in starting at 120ms
-    const headerTargets = [heroSelectTitle, subtitle, chooseText].filter(Boolean)
+    const headerTargets = [heroSelectTitle, subtitle, rule, chooseText].filter(Boolean)
     for (const o of headerTargets) (o as any).setAlpha(0)
     this.tweens.add({
       targets: headerTargets, alpha: 1,
@@ -664,44 +639,6 @@ export class HeroSelectScene extends Phaser.Scene {
       })
     })
 
-    // #7 BACK button — circular + chevron, matches popup close-X style
-    const backBtnRadius = compact ? 13 : 16
-    const backBtnX = compact ? 28 : 40
-    const backBtnY = compact ? height - 22 : height * 0.92
-    const backCircle = this.add.graphics().setDepth(10)
-    const drawBackCircle = (hovered: boolean) => {
-      backCircle.clear()
-      backCircle.fillStyle(hovered ? 0x3a1420 : 0x1a1a28, 0.9)
-      backCircle.fillCircle(backBtnX, backBtnY, backBtnRadius)
-      backCircle.lineStyle(1, hovered ? 0xff6677 : 0x555566, 1)
-      backCircle.strokeCircle(backBtnX, backBtnY, backBtnRadius)
-    }
-    drawBackCircle(false)
-    const backChevron = this.add.text(backBtnX - 1, backBtnY - 1, '‹', {
-      fontFamily: gameFont(), fontSize: compact ? '18px' : '22px', color: '#aaaabb',
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(11)
-    const backLabel = this.add.text(backBtnX + backBtnRadius + 8, backBtnY, 'BACK', {
-      fontFamily: gameFont(), fontSize: compact ? '10px' : '11px',
-      color: '#888899',
-    }).setOrigin(0, 0.5).setDepth(10)
-    const backZone = this.add.zone(backBtnX, backBtnY, backBtnRadius * 2 + 4, backBtnRadius * 2 + 4)
-      .setInteractive({ useHandCursor: true })
-    addToBody(backCircle as any)
-    addToBody(backChevron as any)
-    addToBody(backLabel as any)
-    addToBody(backZone as any)
-
-    // Back button fades in last at 600ms
-    for (const o of [backCircle, backChevron, backLabel]) (o as any).setAlpha(0)
-    this.tweens.add({
-      targets: [backCircle, backChevron, backLabel], alpha: 1,
-      duration: 220, delay: 600, ease: 'Sine.easeOut',
-    })
-
-    backZone.on('pointerover', () => { drawBackCircle(true); backChevron.setColor('#ffffff'); backLabel.setColor('#ffffff') })
-    backZone.on('pointerout', () => { drawBackCircle(false); backChevron.setColor('#aaaabb'); backLabel.setColor('#888899') })
-
     // #13 Exit transition — camera zoom-down + fade-out
     const exitToStart = () => {
       this.tweens.add({
@@ -713,9 +650,25 @@ export class HeroSelectScene extends Phaser.Scene {
       )
     }
 
-    backZone.on('pointerdown', () => {
-      if (this.popupRoot) { this.closeHeroPopup(); return }
-      exitToStart()
+    // #7 BACK button — circular + chevron, matches popup close-X style
+    const backBtn = makeCircleButton(this, {
+      x: compact ? 28 : 40,
+      y: compact ? height - 22 : height * 0.92,
+      radius: compact ? 13 : 16,
+      icon: '‹',
+      label: 'BACK',
+      onClick: () => {
+        if (this.popupRoot) { this.closeHeroPopup(); return }
+        exitToStart()
+      },
+    })
+
+    // Back button fades in last at 600ms
+    const backObjs = [backBtn.graphics, backBtn.iconText, backBtn.labelText].filter(Boolean)
+    for (const o of backObjs) (o as any).setAlpha(0)
+    this.tweens.add({
+      targets: backObjs, alpha: 1,
+      duration: 220, delay: 600, ease: 'Sine.easeOut',
     })
 
     // ESC = back (close popup if open, else back to start)
@@ -872,12 +825,13 @@ export class HeroSelectScene extends Phaser.Scene {
     root.add(dim)
     this.tweens.add({ targets: dim, fillAlpha: 0.72, duration: 180, ease: 'Sine.easeOut' })
 
-    // ── Panel dimensions — sized tight to content to avoid empty space ──
+    // ── Panel dimensions (wider, more breathing room between columns) ──
     const _portraitSize = compact ? 110 : 140
-    const _rightTarget = compact ? 260 : 310
-    const _idealInnerW = _portraitSize + (compact ? 10 : 14) + _rightTarget
-    const panelW = Math.min(width * 0.94, _idealInnerW + (compact ? 20 : 32))
-    const panelH = Math.min(height * 0.94, 500)
+    const _rightTarget = compact ? 280 : 340
+    const _colGapExtra = compact ? 20 : 36
+    const _idealInnerW = _portraitSize + _colGapExtra + _rightTarget
+    const panelW = Math.min(width * 0.94, _idealInnerW + (compact ? 24 : 36))
+    const panelH = Math.min(height * 0.94, 560)
     const panelX = Math.round(width / 2 - panelW / 2)
     const panelY = Math.round(height / 2 - panelH / 2)
 
@@ -929,9 +883,10 @@ export class HeroSelectScene extends Phaser.Scene {
     const headerH = compact ? 28 : 38
     const btnH = compact ? 28 : 34
     const bonusH = compact ? 42 : 52
-    const footerGap = compact ? 6 : 10
+    const footerGap = compact ? 10 : 16
     const contentY = panelY + headerH
-    const contentH = panelH - headerH - btnH - bonusH - footerGap * 2 - pad
+    // Pre-compute footer boundary so columns don't overflow into it
+    const footerTopY = panelY + panelH - pad - btnH - footerGap - bonusH - footerGap
 
     // Hero name + role header
     const nameText = this.add.text(panelX + pad, panelY + (compact ? 7 : 10), hero.name.toUpperCase(), {
@@ -979,9 +934,12 @@ export class HeroSelectScene extends Phaser.Scene {
 
     // ── Prev/Next hero arrows (left/right of panel) ──
     const hasOtherUnlocked = HEROES.some(h => h.type !== hero.type && MetaProgress.isHeroUnlocked(h.type))
-    const arrowSize = compact ? 26 : 32
+    const arrowSize = compact ? 32 : 40
+    const arrowGap = compact ? 14 : 20
     const makeArrow = (dir: 1 | -1) => {
-      const cx = dir === -1 ? panelX + 18 : panelX + panelW - 18
+      const cx = dir === -1
+        ? panelX - arrowGap - arrowSize / 2
+        : panelX + panelW + arrowGap + arrowSize / 2
       const cy = panelY + panelH / 2
       const abg = this.add.graphics()
       const drawArrowBg = (hovered: boolean) => {
@@ -1018,8 +976,7 @@ export class HeroSelectScene extends Phaser.Scene {
     makeArrow(1)
 
     // ── Two-column content layout ──
-    // Left column width matches the portrait exactly so no empty space bleeds through.
-    const colGap = compact ? 10 : 14
+    const colGap = _colGapExtra
     const innerW = panelW - pad * 2
     const portraitSize = _portraitSize
     const leftColW = portraitSize
@@ -1027,7 +984,6 @@ export class HeroSelectScene extends Phaser.Scene {
     const leftColX = panelX + pad
     const rightColX = leftColX + leftColW + colGap
     const colY = contentY + (compact ? 4 : 8)
-    const colH = contentH - (compact ? 6 : 12)
 
     // ── Left column: portrait + stats + desc + stance info ──
     const portraitX = leftColX
@@ -1252,48 +1208,62 @@ export class HeroSelectScene extends Phaser.Scene {
           }
         },
       })
-      // MAX tag when stat is maxed out — small faint label below the bar
+      // MAX state: tint the value gold instead of adding an overflowing label
       if (ratio >= 1) {
-        const maxTag = this.add.text(statsX + statsW, barY + 3, 'MAX', {
-          fontFamily: gameFont(), fontSize: '8px', color: '#fde68a',
-          fontStyle: 'bold',
-        }).setOrigin(1, 0).setAlpha(0)
-        body.add(maxTag)
-        this.tweens.add({
-          targets: maxTag, alpha: 0.9,
-          duration: 240, delay: 320 + idx * 70, ease: 'Sine.easeOut',
-        })
+        valTxt.setColor('#fde68a')
       }
     })
 
-    // Combat stance info (only for heroes with dual stances)
-    const stanceInfo = HERO_STANCES[hero.type]
-    if (stanceInfo) {
-      const siY = statsY + statRows.length * statRowH + (compact ? 8 : 12)
-      const siH = compact ? 46 : 56
-      const siBg = this.add.graphics()
-      siBg.fillStyle(hero.color, 0.08)
-      siBg.fillRoundedRect(leftColX, siY, leftColW, siH, 4)
-      siBg.lineStyle(1, hero.color, 0.35)
-      siBg.strokeRoundedRect(leftColX, siY, leftColW, siH, 4)
-      body.add(siBg)
-      const siLabel = this.add.text(leftColX + 6, siY + 4, 'COMBAT STANCES', {
-        fontFamily: gameFont(), fontSize: compact ? '8px' : '9px', color: '#888899',
+    // Per-hero run statistics (computed from MetaProgress)
+    let leftColumnBottomY = statsY + statRows.length * statRowH + (compact ? 8 : 12)
+    {
+      const meta = MetaProgress.load()
+      const runs = meta.heroRuns[hero.type] || 0
+      const totalKills = meta.heroKills[hero.type] || 0
+      const totalTimeMs = meta.heroTimeMs[hero.type] || 0
+      const totalMin = Math.floor(totalTimeMs / 60000)
+      const timeStr = totalMin >= 60
+        ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`
+        : `${totalMin}m`
+
+      // Hero stats — same visual style as the stat bars above, with a bold header
+      const hsY = statsY + statRows.length * statRowH + (compact ? 8 : 12)
+
+      // Bold section header
+      const hsLabel = this.add.text(portraitX, hsY, 'HERO STATS', {
+        fontFamily: gameFont(), fontSize: statFontSize, color: '#888899',
         fontStyle: 'bold',
       }).setOrigin(0, 0)
-      body.add(siLabel)
-      const firstY = siY + (compact ? 15 : 18)
-      const secondY = firstY + (compact ? 12 : 14)
-      const siStanceA = this.add.text(leftColX + 6, firstY, `• ${stanceInfo.a}`, {
-        fontFamily: gameFont(), fontSize: compact ? '9px' : '10px', color: colorHex,
-        fontStyle: 'bold',
-      }).setOrigin(0, 0)
-      const siStanceB = this.add.text(leftColX + 6, secondY, `• ${stanceInfo.b}`, {
-        fontFamily: gameFont(), fontSize: compact ? '9px' : '10px', color: colorHex,
-        fontStyle: 'bold',
-      }).setOrigin(0, 0)
-      body.add([siStanceA, siStanceB])
-      stagger([siBg, siLabel, siStanceA, siStanceB], 560, 240)
+      body.add(hsLabel)
+
+      // Thin separator line under header (same width as portrait)
+      const hsSep = this.add.graphics()
+      hsSep.lineStyle(1, hero.color, 0.3)
+      hsSep.lineBetween(portraitX, hsY + (compact ? 14 : 16), portraitX + portraitW, hsY + (compact ? 14 : 16))
+      body.add(hsSep)
+
+      const hsDataY = hsY + (compact ? 18 : 22)
+      const hsEntries: Array<[string, string]> = [
+        ['RUNS', `${runs}`],
+        ['KILLS', totalKills > 999 ? `${(totalKills / 1000).toFixed(1)}k` : `${totalKills}`],
+        ['TIME', timeStr],
+      ]
+      const hsTexts: Phaser.GameObjects.Text[] = []
+      hsEntries.forEach(([label, val], idx) => {
+        const ly = hsDataY + idx * statRowH
+        const l = this.add.text(statsX, ly, label, {
+          fontFamily: gameFont(), fontSize: statFontSize, color: '#8a8a9e',
+        }).setOrigin(0, 0)
+        const v = this.add.text(statsX + statsW, ly, val, {
+          fontFamily: gameFont(), fontSize: statFontSize, color: '#ffffff',
+          fontStyle: 'bold',
+        }).setOrigin(1, 0)
+        body.add([l, v])
+        hsTexts.push(l, v)
+      })
+      // Bottom edge for card alignment
+      leftColumnBottomY = Math.min(hsDataY + hsEntries.length * statRowH + (compact ? 4 : 6), footerTopY)
+      stagger([hsLabel, hsSep, ...hsTexts], 560, 240)
     }
 
     // ── Right column: 3 vertical stance cards ──
@@ -1304,7 +1274,8 @@ export class HeroSelectScene extends Phaser.Scene {
 
     const stanceGap = compact ? 6 : 9
     const cardW = rightColW
-    const cardH = Math.floor((colH - stanceGap * 2) / 3)
+    const stanceAreaH = Math.min(leftColumnBottomY, footerTopY) - colY
+    const cardH = Math.floor((stanceAreaH - stanceGap * 2) / 3)
 
     let chosenBranchName: string | null = null
     const cardGfx: Phaser.GameObjects.Graphics[] = []

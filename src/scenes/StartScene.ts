@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { MetaProgress } from '../systems/MetaProgress'
 import { NotificationCenter } from '../systems/NotificationCenter'
 import { NotificationBell } from '../ui/NotificationBell'
+import { makeCircleButton } from '../ui/CircleButton'
 import { addDiagonalBg } from '../utils/bgScroll'
 import { isMobileDevice, gameFont } from '../utils/device'
 
@@ -244,8 +245,10 @@ export class StartScene extends Phaser.Scene {
       soloBg.fillRoundedRect(soloCX - btnW / 2, btnCY - btnH / 2, btnW, btnH, 10)
       soloBg.lineStyle(2.5, 0xffd700, 1)
       soloBg.strokeRoundedRect(soloCX - btnW / 2, btnCY - btnH / 2, btnW, btnH, 10)
+      soloBg.lineStyle(1, 0xffd700, 0.6)
+      soloBg.strokeRoundedRect(soloCX - btnW / 2 - 3, btnCY - btnH / 2 - 3, btnW + 6, btnH + 6, 12)
       soloTitle.setColor('#ffffff')
-      this.tweens.add({ targets: [soloTitle, soloSub], scaleX: 1.06, scaleY: 1.06, duration: 80, ease: 'Sine.Out' })
+      this.tweens.add({ targets: [soloTitle, soloSub], scaleX: 1.12, scaleY: 1.12, duration: 120, ease: 'Sine.Out' })
     })
     soloZone.on('pointerout', () => {
       soloBg.clear()
@@ -254,7 +257,7 @@ export class StartScene extends Phaser.Scene {
       soloBg.lineStyle(2, 0xffd700, 0.8)
       soloBg.strokeRoundedRect(soloCX - btnW / 2, btnCY - btnH / 2, btnW, btnH, 10)
       soloTitle.setColor('#FFD700')
-      this.tweens.add({ targets: [soloTitle, soloSub], scaleX: 1, scaleY: 1, duration: 80, ease: 'Sine.Out' })
+      this.tweens.add({ targets: [soloTitle, soloSub], scaleX: 1, scaleY: 1, duration: 120, ease: 'Sine.Out' })
     })
     soloZone.on('pointerdown', () => {
       this.cameras.main.fadeOut(200)
@@ -282,8 +285,10 @@ export class StartScene extends Phaser.Scene {
       multiBg.fillRoundedRect(multiCX - btnW / 2, btnCY - btnH / 2, btnW, btnH, 10)
       multiBg.lineStyle(2.5, 0x88aaff, 1)
       multiBg.strokeRoundedRect(multiCX - btnW / 2, btnCY - btnH / 2, btnW, btnH, 10)
+      multiBg.lineStyle(1, 0xffd700, 0.6)
+      multiBg.strokeRoundedRect(multiCX - btnW / 2 - 3, btnCY - btnH / 2 - 3, btnW + 6, btnH + 6, 12)
       multiTitle.setColor('#ffffff')
-      this.tweens.add({ targets: [multiTitle, multiSub], scaleX: 1.06, scaleY: 1.06, duration: 80, ease: 'Sine.Out' })
+      this.tweens.add({ targets: [multiTitle, multiSub], scaleX: 1.12, scaleY: 1.12, duration: 120, ease: 'Sine.Out' })
     })
     multiZone.on('pointerout', () => {
       multiBg.clear()
@@ -292,7 +297,7 @@ export class StartScene extends Phaser.Scene {
       multiBg.lineStyle(2, 0x4488ff, 0.8)
       multiBg.strokeRoundedRect(multiCX - btnW / 2, btnCY - btnH / 2, btnW, btnH, 10)
       multiTitle.setColor('#88aaff')
-      this.tweens.add({ targets: [multiTitle, multiSub], scaleX: 1, scaleY: 1, duration: 80, ease: 'Sine.Out' })
+      this.tweens.add({ targets: [multiTitle, multiSub], scaleX: 1, scaleY: 1, duration: 120, ease: 'Sine.Out' })
     })
     multiZone.on('pointerdown', () => {
       // Show connecting state
@@ -323,37 +328,43 @@ export class StartScene extends Phaser.Scene {
       })
     })
 
-    // Bottom button row: PROFILE | SCORES | FORGE
-    const btnY = compact ? height - 14 : height * 0.92
-    const btnSpacing = compact ? 90 : isPortrait ? 80 : 130
-    const btnPadX = compact ? 10 : isPortrait ? 10 : 16
+    // Bottom button row: PROFILE | SCORES | FORGE — pill style
+    const pillW = 110
+    const pillH = 32
+    const pillR = 8
+    const pillGap = 20
+    const totalRowW = 3 * pillW + 2 * pillGap
+    const rowStartX = width / 2 - totalRowW / 2
+    const pillY = compact ? height - 14 : height * 0.92
 
-    const profileBtn = this.add.text(width / 2 - btnSpacing, btnY, 'PROFILE', {
-      fontFamily: gameFont(), fontSize: compact ? '11px' : '14px',
-      color: '#888888',
-      backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
-    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
-    profileBtn.on('pointerover', () => profileBtn.setColor('#FFD700'))
-    profileBtn.on('pointerout', () => profileBtn.setColor('#888888'))
-    profileBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('ProfileScene')) })
+    const makePill = (index: number, label: string, scene: string, idleTextColor: string) => {
+      const cx = rowStartX + pillW / 2 + index * (pillW + pillGap)
+      const bg = this.add.graphics().setDepth(5)
+      const drawPill = (hover: boolean) => {
+        bg.clear()
+        bg.fillStyle(0x1a1a28, 1)
+        bg.fillRoundedRect(cx - pillW / 2, pillY - pillH / 2, pillW, pillH, pillR)
+        bg.lineStyle(1, hover ? 0xffd700 : 0x555566, 1)
+        bg.strokeRoundedRect(cx - pillW / 2, pillY - pillH / 2, pillW, pillH, pillR)
+      }
+      drawPill(false)
+      const txt = this.add.text(cx, pillY, label, {
+        fontFamily: gameFont(), fontSize: '13px', fontStyle: 'bold',
+        color: idleTextColor,
+      }).setOrigin(0.5).setDepth(6)
+      const zone = this.add.zone(cx, pillY, pillW, pillH)
+        .setInteractive({ useHandCursor: true }).setDepth(7)
+      zone.on('pointerover', () => { drawPill(true); txt.setColor('#FFD700') })
+      zone.on('pointerout', () => { drawPill(false); txt.setColor(idleTextColor) })
+      zone.on('pointerdown', () => {
+        this.cameras.main.fadeOut(200)
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene))
+      })
+    }
 
-    const leaderboardBtn = this.add.text(width / 2, btnY, 'SCORES', {
-      fontFamily: gameFont(), fontSize: compact ? '11px' : '14px',
-      color: '#888888',
-      backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
-    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
-    leaderboardBtn.on('pointerover', () => leaderboardBtn.setColor('#FFD700'))
-    leaderboardBtn.on('pointerout', () => leaderboardBtn.setColor('#888888'))
-    leaderboardBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('LeaderboardScene')) })
-
-    const forgeBtn = this.add.text(width / 2 + btnSpacing, btnY, 'FORGE', {
-      fontFamily: gameFont(), fontSize: compact ? '11px' : '14px',
-      color: '#FFD700',
-      backgroundColor: '#1a1a2e', padding: { x: btnPadX, y: compact ? 4 : 8 },
-    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setInteractive({ useHandCursor: true })
-    forgeBtn.on('pointerover', () => forgeBtn.setColor('#ffffff'))
-    forgeBtn.on('pointerout', () => forgeBtn.setColor('#FFD700'))
-    forgeBtn.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('ForgeScene')) })
+    makePill(0, 'PROFILE', 'ProfileScene', '#888899')
+    makePill(1, 'SCORES', 'LeaderboardScene', '#888899')
+    makePill(2, 'FORGE', 'ForgeScene', '#888899')
 
     // DEV: TestScene shortcut (T key)
     if (import.meta.env.DEV) {
@@ -369,35 +380,19 @@ export class StartScene extends Phaser.Scene {
     const bellY = compact ? 20 : 26
     new NotificationBell(this, bellX, bellY)
 
-    // Logout button — top-right corner, procedural door+arrow icon
+    // Logout button — top-right corner, circular style matching other buttons
     if (this.playerName) {
-      const lbSize = compact ? 22 : 28
-      const lbX = width - (compact ? 16 : 22)
-      const lbY = compact ? 16 : 22
-      const lbHit = this.add.zone(lbX, lbY, lbSize + 12, lbSize + 12)
-        .setOrigin(0.5).setDepth(20).setInteractive({ useHandCursor: true })
-      const lbG = this.add.graphics().setDepth(20)
-      const drawLogout = (hover: boolean) => {
-        lbG.clear()
-        const col = hover ? 0xffffff : 0x888888
-        const a = hover ? 1 : 0.85
-        const half = lbSize / 2
-        lbG.lineStyle(2, col, a)
-        lbG.strokeRect(lbX - half, lbY - half, lbSize * 0.55, lbSize)
-        const ay = lbY
-        const ax0 = lbX - half + 3
-        const ax1 = lbX + half - 1
-        lbG.lineBetween(ax0, ay, ax1, ay)
-        lbG.lineBetween(ax1, ay, ax1 - 5, ay - 5)
-        lbG.lineBetween(ax1, ay, ax1 - 5, ay + 5)
-      }
-      drawLogout(false)
-      lbHit.on('pointerover', () => drawLogout(true))
-      lbHit.on('pointerout', () => drawLogout(false))
-      lbHit.on('pointerdown', () => {
-        localStorage.removeItem('claws_player_name')
-        this.cameras.main.fadeOut(200)
-        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('NameInputScene'))
+      makeCircleButton(this, {
+        x: width - (compact ? 18 : 24),
+        y: compact ? 18 : 24,
+        radius: compact ? 13 : 16,
+        icon: '⏻',
+        onClick: () => {
+          localStorage.removeItem('claws_player_name')
+          this.cameras.main.fadeOut(200)
+          this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('NameInputScene'))
+        },
+        depth: 20,
       })
     }
   }

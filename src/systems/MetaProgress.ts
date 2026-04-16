@@ -38,6 +38,8 @@ export interface MetaData {
   bestTime: number
   heroRuns: Record<string, number>
   heroWins: Record<string, number>
+  heroKills: Record<string, number>
+  heroTimeMs: Record<string, number>
   sessions: SessionRecord[]
   achievements: AchievementState[]
   goldTotal: number
@@ -207,7 +209,7 @@ export class MetaProgress {
     return {
       totalKills: 0, totalRuns: 0, totalTimeMs: 0, totalWins: 0,
       bestKills: 0, bestWave: 0, bestTime: 0,
-      heroRuns: {}, heroWins: {},
+      heroRuns: {}, heroWins: {}, heroKills: {}, heroTimeMs: {},
       sessions: [],
       achievements: ACHIEVEMENT_DEFS.map(a => ({ id: a.id, unlocked: false })),
       goldTotal: 0,
@@ -256,7 +258,9 @@ export class MetaProgress {
       if (!data.branchProgress) data.branchProgress = {}
       // Migrate old saves missing completedQuests
       if (!data.completedQuests) data.completedQuests = []
-      // Migrate old saves missing lastHero (optional field)
+      // Migrate old saves missing per-hero aggregate stats
+      if (!data.heroKills) data.heroKills = {}
+      if (!data.heroTimeMs) data.heroTimeMs = {}
       if (data.lastHero === undefined) data.lastHero = undefined
       // Nightborne + Vael are default-unlocked
       if (!data.unlockedHeroes.includes('nightborne')) data.unlockedHeroes.push('nightborne')
@@ -311,6 +315,8 @@ export class MetaProgress {
 
     // Hero stats
     meta.heroRuns[session.hero] = (meta.heroRuns[session.hero] || 0) + 1
+    meta.heroKills[session.hero] = (meta.heroKills[session.hero] || 0) + session.kills
+    meta.heroTimeMs[session.hero] = (meta.heroTimeMs[session.hero] || 0) + session.timeMs
     if (session.won) {
       meta.heroWins[session.hero] = (meta.heroWins[session.hero] || 0) + 1
     }

@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { supabase } from '../systems/SupabaseClient'
 import { gameFont } from '../utils/device'
+import { makeCircleButton } from '../ui/CircleButton'
 
 type TabKey = 'kills' | 'time' | 'wins'
 
@@ -24,8 +25,8 @@ const C = {
   MUTED: '#888888',
   LABEL: '#ccddee',
   DIM: '#555566',
-  WIN: '#88ff88',
-  LOSE: '#ff6666',
+  WIN: '#a6e3a1',
+  LOSE: '#f38ba8',
   LOCAL_TINT: '#ffe08a',
 }
 
@@ -67,15 +68,11 @@ export class LeaderboardScene extends Phaser.Scene {
     lbTitleTxt.setShadow(0, 1, '#000000', 2, true, true)
 
     // Back button
-    const backFontSize = compact ? '12px' : '14px'
-    const back = this.add.text(16, compact ? 12 : 16, '< BACK', {
-      fontFamily: gameFont(),
-      fontSize: backFontSize,
-      color: C.MUTED,
-    }).setInteractive({ useHandCursor: true })
-    back.on('pointerover', () => back.setColor('#ffffff'))
-    back.on('pointerout', () => back.setColor(C.MUTED))
-    back.on('pointerdown', () => this.goBack())
+    makeCircleButton(this, {
+      x: compact ? 24 : 28, y: compact ? 16 : 22,
+      radius: compact ? 13 : 16, icon: '‹', label: 'BACK',
+      onClick: () => this.goBack(),
+    })
 
     // ESC to go back
     this.input.keyboard!.on('keydown-ESC', () => this.goBack())
@@ -266,9 +263,9 @@ export class LeaderboardScene extends Phaser.Scene {
     const hWon = this.add.text(col.won, hdrY, 'W', hdrStyle).setOrigin(1, 0)
     this.contentGroup.push(hRank, hName, hHero, hKills, hLevel, hTime, hWon)
 
-    // Divider line
+    // Gold header separator
     const divG = this.add.graphics()
-    divG.lineStyle(1, C.BORDER)
+    divG.lineStyle(1, 0xffd700, 0.3)
     divG.lineBetween(panelX + pad, hdrY + 14, panelX + panelW - pad, hdrY + 14)
     this.contentGroup.push(divG)
 
@@ -282,6 +279,14 @@ export class LeaderboardScene extends Phaser.Scene {
       const isLocal = this.localPlayer && row.player_name === this.localPlayer
       const nameColor = isLocal ? C.LOCAL_TINT : C.LABEL
       const rowColor = isLocal ? C.LOCAL_TINT : C.LABEL
+
+      // Alternating row background on odd indices
+      if (i % 2 === 1) {
+        const stripG = this.add.graphics()
+        stripG.fillStyle(0x1a1a2e, 0.5)
+        stripG.fillRect(panelX + 2, ry - 2, panelW - 4, rowH)
+        this.contentGroup.push(stripG)
+      }
 
       // Highlight strip for local player
       if (isLocal) {

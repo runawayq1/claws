@@ -14,6 +14,8 @@ export class NotificationBell {
   private badge?: Phaser.GameObjects.Text
   private hitZone: Phaser.GameObjects.Zone
   private pulseT: Phaser.Time.TimerEvent | null = null
+  private haloGfx: Phaser.GameObjects.Graphics | null = null
+  private haloTween: Phaser.Tweens.Tween | null = null
 
   // Popup state
   private popupGroup: Phaser.GameObjects.Container | null = null
@@ -39,10 +41,10 @@ export class NotificationBell {
   private draw(hover: boolean) {
     const g = this.gfx
     g.clear()
-    const col = hover ? 0xffffff : 0xcccccc
+    const col = hover ? 0xffffff : 0xdddddd
     const a = hover ? 1 : 0.85
     // Bell body — rounded dome
-    g.lineStyle(2, col, a)
+    g.lineStyle(2.5, col, a)
     g.fillStyle(0x1a1a2e, 0.7)
     // Dome top
     g.beginPath()
@@ -56,7 +58,7 @@ export class NotificationBell {
     g.fillStyle(col, a)
     g.fillCircle(0, 8, 2)
     // Handle on top
-    g.lineStyle(2, col, a)
+    g.lineStyle(2.5, col, a)
     g.beginPath()
     g.moveTo(-3, -12)
     g.lineTo(3, -12)
@@ -68,14 +70,16 @@ export class NotificationBell {
     if (count === 0) {
       if (this.badge) { this.badge.destroy(); this.badge = undefined }
       if (this.pulseT) { this.pulseT.destroy(); this.pulseT = null }
+      if (this.haloTween) { this.haloTween.stop(); this.haloTween = null }
+      if (this.haloGfx) { this.haloGfx.destroy(); this.haloGfx = null }
       this.container.setScale(1)
       return
     }
     // Red circle badge top-right
     if (!this.badge) {
       this.badge = this.scene.add.text(10, -10, '', {
-        fontFamily: gameFont(), fontSize: '10px', color: '#ffffff',
-        backgroundColor: '#cc2222', padding: { x: 4, y: 1 },
+        fontFamily: gameFont(), fontSize: '10px', color: '#000000',
+        backgroundColor: '#FFD700', padding: { x: 4, y: 1 },
       } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setDepth(81)
       this.container.add(this.badge)
     }
@@ -87,6 +91,18 @@ export class NotificationBell {
         targets: this.container, scale: 1.12, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
       })
       this.pulseT = this.scene.time.addEvent({ delay: 0 }) as unknown as Phaser.Time.TimerEvent
+    }
+
+    // Gold halo behind bell when unread
+    if (!this.haloGfx) {
+      this.haloGfx = this.scene.add.graphics()
+      this.haloGfx.fillStyle(0xffd700, 0.15)
+      this.haloGfx.fillCircle(0, 0, 18)
+      this.container.addAt(this.haloGfx, 0) // behind everything
+      this.haloTween = this.scene.tweens.add({
+        targets: this.haloGfx, alpha: { from: 0.1, to: 0.25 },
+        duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      })
     }
   }
 

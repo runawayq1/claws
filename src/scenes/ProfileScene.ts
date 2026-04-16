@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { MetaProgress } from '../systems/MetaProgress'
 import { gameFont } from '../utils/device'
+import { makeCircleButton } from '../ui/CircleButton'
 
 const CAT_COLORS: Record<string, number> = {
   kills: 0xff4444,
@@ -37,14 +38,18 @@ export class ProfileScene extends Phaser.Scene {
     profileTitleTxt.setShadow(0, 1, '#000000', 2, true, true)
 
     // Back button
-    const back = this.add.text(20, 20, '< BACK', {
-      fontFamily: gameFont(), fontSize: '16px',
-      color: '#888888',
-    }).setInteractive({ useHandCursor: true })
-    back.on('pointerover', () => back.setColor('#ffffff'))
-    back.on('pointerout', () => back.setColor('#888888'))
-    back.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
-
+    const compact = this.scale.height < 500
+    makeCircleButton(this, {
+      x: compact ? 28 : 40,
+      y: compact ? 22 : 28,
+      radius: compact ? 13 : 16,
+      icon: '‹',
+      label: 'BACK',
+      onClick: () => {
+        this.cameras.main.fadeOut(200)
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene'))
+      },
+    })
     // ESC to go back
     this.input.keyboard!.on('keydown-ESC', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
 
