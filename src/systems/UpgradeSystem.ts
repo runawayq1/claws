@@ -97,7 +97,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'bh1', label: 'Sustained Burn', icon: 'bh1_sustained_burn',
-        desc: ['Hits apply Burn (4%/tick, max 5)\n-10% CD', 'Max stacks → 7\n-10% CD', 'Fully stacked: +20% dmg taken\n-10% CD'],
+        desc: ['Hits apply Burn (4%/tick, max 5)\n+10% Attack Speed', 'Max stacks → 7\n-10% CD', 'Fully stacked: +20% dmg taken\n-10% CD'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSustainedBurn = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
           else if (lvl === 2) { p.burnMaxStacks = 7; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
@@ -148,7 +148,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'ih1', label: 'Slug Round', icon: 'ih1_backdraft',
-        desc: ['Heavy shot\n×1.6 proj, 20px blast, +15% dmg', 'Bigger punch\n+15% dmg, blast → 30px', 'Piercing slug\n+15% dmg, pierces 1 enemy'],
+        desc: ['Heavy shot\n+60% projectile size, 2m blast, +15% dmg', 'Bigger punch\n+15% dmg, blast → 30px', 'Piercing slug\n+15% dmg, pierces 1 enemy'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSlugRound = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -992,68 +992,82 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
 // ============================================================
 const VAEL_BRANCHES: BranchDef[] = [
   {
-    name: 'Pale Harvest', color: 0xaaddff,
-    theme: 'Soul drain, lifesteal, regeneration through killing. Every death feeds you.',
+    name: 'Pale Harvest', color: 0xcbd5e1,
+    theme: 'Life through killing. Up to 20% lifesteal on hit, 10% per drain tick, 11 armor stacks (up to 11% less damage taken). Ultimate: 12s feeding window, 22% max HP per kill.',
     upgrades: [
       {
         id: 'ph1', label: 'Hollow Touch', icon: 'ph1_hollow_touch',
         desc: [
-          'A sliver returned\nHeal for 8% of Soul Bolt damage dealt',
-          'Hungry technique\nHeal for 14% of Soul Bolt damage dealt',
-          'The body is just a vessel\nHeal for 20% of Soul Bolt damage dealt. Overkill damage converts at half rate',
+          'Attacks heal you\nOrbs: 8% on hit · Drain: 4% per tick',
+          'Stronger lifesteal\nOrbs: heal 14% on hit\nDrain: heal 7% per tick\n+1 HP per armor stack gained',
+          'Maximum harvest\nOrbs: heal 20%, overkill heals at half rate\nDrain: heal 10% per tick\nCollecting a bone heals +3 HP',
         ],
         apply: (p, lvl) => {
           p.hasHollowTouch = true
           p.hollowTouchRate = [0.08, 0.14, 0.20][lvl - 1]
+          p.hollowTouchDrainRate = [0.04, 0.07, 0.10][lvl - 1]
+          p.hollowTouchArmorHeal = lvl >= 2
+          p.hollowTouchBoneHeal = lvl >= 3
+          p.hollowTouchOverkillHalf = lvl >= 3
         },
       },
       {
         id: 'ph2', label: 'Soul Siphon', icon: 'ph2_soul_siphon',
         desc: [
-          'Bones of the fallen\n10% kill → soul drops. +1 armor per soul (max 8)',
-          'Scavenger\n20% drop, max 14 soul stacks',
-          'Reaper\n30% drop, max 25 soul stacks',
+          'Kills drop bones — shield stacks\nEach stack absorbs 2 damage · Orbs: 35% · Drain: always',
+          'Stronger bones\nOrbs: 50% chance, +10 HP on pickup\nDrain: 2 bones per kill · Max stacks +2 (10)',
+          'Bone mastery\nOrbs: auto-collect within 1.5m\nDrain: 15% extra chance · Max stacks +3 (11)',
         ],
         apply: (p, lvl) => {
           p.hasSoulSiphon = true
-          p.soulSiphonDropChance = [0.10, 0.20, 0.30][lvl - 1]
-          p.soulSiphonMaxStacks = [8, 14, 25][lvl - 1]
+          p.soulSiphonDropChance = [0.35, 0.50, 0.50][lvl - 1]
+          p.soulSiphonMaxStacks = [8, 10, 11][lvl - 1]
+          p.soulSiphonDrainAlwaysDrop = true
+          p.soulSiphonDrainKillCount = lvl >= 2 ? 2 : 1
+          p.soulSiphonBoneHeal = lvl >= 2 ? 10 : 0
+          p.soulSiphonAutoCollectRadius = lvl >= 3 ? 60 : 0
+          p.soulSiphonExtraDropChance = lvl >= 3 ? 0.15 : 0
         },
       },
       {
         id: 'ph3', label: 'Wound Memory', icon: 'ph3_wound_memory',
         desc: [
-          'The body remembers\nRooted enemies take +20% damage from all sources. Root duration: 0.7s',
-          'Carved into bone\n+30% damage taken while rooted. Root duration: 0.9s',
-          'It will not forget\n+40% damage taken while rooted. Root duration: 1.1s. Re-rooting resets the debuff',
+          'Soul Bolts root enemies on hit\nRooted: +20% damage taken, 0.7s',
+          'Deeper roots\nRooted enemies take +30% damage, root 0.9s\nRe-rooting within 4s gives +1 free armor stack',
+          'Nothing escapes\nEnemies hit in last 3s take +20% bonus damage\nRoot duration 1.1s',
         ],
         apply: (p, lvl) => {
           p.hasWoundMemory = true
           p.woundMemoryBonus = [0.20, 0.30, 0.40][lvl - 1]
           p.woundMemoryRootDur = [700, 900, 1100][lvl - 1]
+          p.woundMemoryFreeArmorOnRepeat = lvl >= 2
+          p.woundMemoryRecentHitWindow = lvl >= 3 ? 3000 : 0
         },
       },
       {
         id: 'ph4', label: 'Exsanguination', icon: 'ph4_exsanguination',
         desc: [
-          'Chain the harvest\nSoul Bolt chains to 2 nearby enemies at 60% damage. Each chain hit heals at the standard rate',
-          'The chain grows hungry\nChains to 3 enemies at 65% damage. Chain range +30px',
-          'No waste. Only transfer.\nChains to 3 enemies at 70% damage. 0.5s after the chain completes, a second arc fires from the last target',
+          '◉ Soul Orbs: Soul Bolt chains to 2 nearby enemies (60% damage)\n✦ Lifedrain: tendril range +20%',
+          '◉ Soul Orbs: chains to 3 enemies (65% damage)\n✦ Lifedrain: tendril range +35%, +10% tick damage',
+          '◉ Soul Orbs: chains to 3 (70%); a second arc fires 0.5s later\n✦ Lifedrain: tendril range +45%; second arc also heals',
         ],
         apply: (p, lvl) => {
           p.hasExsanguination = true
           p.exsangChainCount = lvl >= 2 ? 3 : 2
           p.exsangDmgPct = [0.60, 0.65, 0.70][lvl - 1]
-          p.exsangRangeBonus = lvl >= 2 ? 30 : 0
+          p.exsangRangeBonus = [20, 40, 50][lvl - 1]
           p.exsangDoubleArc = lvl >= 3
+          p.exsangDrainTickDmgBonus = lvl >= 2 ? 0.10 : 0
+          // TODO(vael): exsangDrainChainAnchor stub — post-merge polish
+          p.exsangDrainSecondArcLifesteal = lvl >= 3
         },
       },
       {
         id: 'ph5', label: 'Sanguine Ascendancy', icon: 'ph5_sanguine_ascendancy', isUltimate: true,
         desc: [
-          'The pale tide rises\nActivate: for 6s, kills restore 12% of max HP. Soul Bolt heal rate doubled during window',
-          'Convergence of the dead\nWindow extends to 9s. Kills restore 18% max HP. Soul orbs spawned during window arc instantly',
-          'I am the end of the cycle\nWindow: 12s. Kills restore 22% max HP. If Vael is below 30% HP when activated, the window also grants 40% damage reduction',
+          'Auto-cast every 25s: opens a 6s feeding window\n◉ Soul Orbs: kills restore 12% max HP\n✦ Lifedrain: 20% heal per tick',
+          'Window extends to 9s\n◉ Soul Orbs: kills restore 18% max HP; bones auto-arc to Vael\n✦ Lifedrain: 28% heal; tick rate doubles',
+          '12s window\n◉ Soul Orbs: kills restore 22% max HP; 40% damage reduction if below 30% HP\n✦ Lifedrain: 35% heal per tick (capped at 25 HP total)',
         ],
         apply: (p, lvl) => {
           p.hasSanguineAscendancy = true
@@ -1061,66 +1075,79 @@ const VAEL_BRANCHES: BranchDef[] = [
           p.sanguineHealPct = [0.12, 0.18, 0.22][lvl - 1]
           p.sanguineInstantOrbs = lvl >= 2
           p.sanguineLowHpDR = lvl >= 3
+          p.sanguineDrainTickPct = [0.20, 0.28, 0.35][lvl - 1]
+          p.sanguineDrainTickRateDouble = lvl >= 2
+          p.sanguineDrainHealCapPerTick = lvl >= 3 ? 25 : 0
+          p.sanguineBonesAutoArc = lvl >= 2
+          // TODO(vael): sanguineBonesPulseArmor stub — post-merge polish
         },
       },
     ],
   },
   {
-    name: 'Ossuary', color: 0xccbb88,
-    theme: 'Raise the fallen as temporary undead servants. The battlefield becomes your army.',
+    name: 'Ossuary', color: 0xfde68a,
+    theme: 'Raise the dead. Command up to 5 Zombies that buff your attack speed and damage. The horde grows with every kill.',
     upgrades: [
       {
         id: 'os1', label: 'Risen', icon: 'os1_risen',
         desc: [
-          "Death is just a reassignment\n25% chance on Soul Bolt kill: spawn a Bone Thrall (lasts 4s, 30% of Vael's damage/hit)",
-          "The ranks grow\n35% proc chance. Thralls last 6s and deal 35% of Vael's damage/hit",
-          "No rest for the useful\n45% proc chance. Thralls last 8s and deal 40% of Vael's damage/hit. Max 3 Thralls active at once",
+          'Kills raise Zombies that fight for you\nOrbs: 25% chance, 4s · Drain: 40% chance',
+          'Stronger zombies\nOrbs: 35% chance, 6s lifetime, 35% of your damage\nDrain: 55% chance, zombies auto-target enemies',
+          'Zombie army\nOrbs: 45% chance, 8s lifetime, 40% damage, max 3\nDrain: 65% chance, zombies gain +20% HP',
         ],
         apply: (p, lvl) => {
           p.hasRisen = true
           p.risenProcChance = [0.25, 0.35, 0.45][lvl - 1]
+          p.risenDrainProcChance = [0.40, 0.55, 0.65][lvl - 1]
           p.risenDuration = [4000, 6000, 8000][lvl - 1]
           p.risenDmgPct = [0.30, 0.35, 0.40][lvl - 1]
           p.risenMaxThralls = lvl >= 3 ? 3 : 999
+          p.risenDrainAutoTarget = lvl >= 2
+          p.risenDrainHPBonus = lvl >= 3 ? 0.20 : 0
+          // TODO(vael): risenDrainOrbit stub — post-merge polish
         },
       },
       {
         id: 'os2', label: 'Grave Pact', icon: 'os2_grave_pact',
         desc: [
-          "A deal well struck\nThralls gain +20% HP and deal 50% of Vael's damage/hit (overrides Risen base)",
-          "Binding contract\nThralls gain +40% HP. On death, each Thrall releases a 40px bone-shrapnel burst dealing 60% of Vael's damage",
-          "Until the last\nThralls gain +60% HP. Shrapnel burst radius +20px. Shrapnel applies the Soul Bolt root (0.4s)",
+          '✦ Lifedrain: Zombies gain +20% HP\n+1 flat damage per tick per active Zombie\nEach Zombie reduces drain cost by 5%',
+          '✦ Lifedrain: Zombies gain +40% HP\nEach nearby Zombie extends tendril reach\nZombies burst on death (1m radius, 60% damage)',
+          '✦ Lifedrain: Zombies gain +60% HP\nZombies act as relay points, extending tendril reach further\nDeath burst also roots enemies 0.4s',
         ],
         apply: (p, lvl) => {
           p.hasGravePact = true
           p.gravePactHPBonus = [0.20, 0.40, 0.60][lvl - 1]
-          p.risenDmgPct = 0.50
+          p.gravePactDrainFlatDmg = true
+          p.gravePactDrainEnergyReduc = 0.05
+          p.gravePactDrainReachPerThrall = lvl >= 2 ? 15 : 0
           p.gravePactDeathBurst = lvl >= 2
           p.gravePactBurstDmgPct = 0.60
           p.gravePactBurstRadiusBonus = lvl >= 3 ? 20 : 0
           p.gravePactDeathRoot = lvl >= 3
+          p.gravePactDrainRelayBonus = lvl >= 3 ? 30 : 0
         },
       },
       {
         id: 'os3', label: 'Undying Labor', icon: 'os3_undying_labor',
         desc: [
-          '+5% attack speed per active Bone Thrall (stacks, max 3 Thralls = +15%)',
-          'Efficient delegation\n+7% attack speed per active Thrall (max +21%). Thrall lifespan +2s',
-          'Full employment\n+9% attack speed per active Thrall (max +27%). Thralls also grant +3% damage each while active',
+          '+5% attack speed per active Zombie (max +15%)\n+4% damage per Zombie',
+          '+7% attack speed per Zombie (max +21%)\n+6% damage per Zombie\nZombies last 2s longer',
+          '+9% attack speed per Zombie (max +27%)\n+8% damage per Zombie',
         ],
         apply: (p, lvl) => {
           p.hasUndyingLabor = true
           p.undyingLaborAtkSpeedPct = [0.05, 0.07, 0.09][lvl - 1]
+          p.undyingLaborDmgBonus = [0.04, 0.06, 0.08][lvl - 1]
           if (lvl >= 2) p.risenDuration += 2000
-          p.undyingLaborDmgBonus = lvl >= 3 ? 0.03 : 0
+          p.undyingLaborStanceSwitchDiscount = lvl >= 3 ? 0.15 : 0
         },
       },
       {
         id: 'os4', label: 'Charnel Tide', icon: 'os4_charnel_tide',
         desc: [
-          'You brought so many\nActivate: all corpses within 250px rise as Bone Thralls (up to 5). Duration 8s. CD: 20s',
-          'The tide crests\nRadius 300px, up to 6 Thralls, duration 10s. CD: 18s',
-          "I was running low\nRadius 300px, up to 6 Thralls, duration 10s. Surviving Thralls explode on timeout (80% Vael's damage, 60px radius each). CD: 16s",
+          'Auto-cast: raise up to 5 corpses within 6m as Zombies (8s lifetime, 20s cooldown)\n◉ Soul Orbs: each raised Zombie also drops a bone\n✦ Lifedrain: raised Zombies instantly draw tendril fire',
+          '7.5m radius, up to 6 Zombies, 10s lifetime (18s cooldown)\n◉ Soul Orbs: raised Zombies deal +15% damage\n✦ Lifedrain: tendril range boosted 4s after cast',
+          '7.5m, 6 Zombies, 10s (16s cooldown)\nSurviving Zombies explode on expiry (80% damage, 1.5m radius)\n◉ Soul Orbs: explosions drop 2 bones each\n✦ Lifedrain: explosions apply 1 Rot stack',
         ],
         apply: (p, lvl) => {
           p.hasCharnelTide = true
@@ -1129,35 +1156,44 @@ const VAEL_BRANCHES: BranchDef[] = [
           p.charnelTideDuration = lvl >= 2 ? 10000 : 8000
           p.charnelTideCooldown = [20000, 18000, 16000][lvl - 1]
           p.charnelTideExplode = lvl >= 3
+          p.charnelTideOrbsBoneDrop = true
+          p.charnelTideOrbsDmgBonus = lvl >= 2 ? 0.15 : 0
+          p.charnelTideDrainRangeBoost = lvl >= 2 ? 10 : 0
+          p.charnelTideExplodeBoneDrop = lvl >= 3 ? 2 : 0
+          p.charnelTideExplodeRot = lvl >= 3
         },
       },
       {
-        id: 'os5', label: 'Lich Dominion', icon: 'os5_lich_dominion', isUltimate: true,
+        id: 'os5', label: 'Undying Horde', icon: 'os5_lich_dominion', isUltimate: true,
         desc: [
-          "A general, not a soldier\nSummon 1 Revenant (150% Vael's HP, 80% dmg/hit). It persists until destroyed then reforms in 20s",
-          "Authority over the grave\nRevenant gains +40% HP and aura: nearby Bone Thralls deal +20% damage. Reform cooldown: 15s",
-          "The Pale Court\nRevenant aura now also reduces enemy move speed by 15% within 120px. On Revenant death: all nearby corpses instantly rise (Charnel Tide effect, no CD consumed). Reform: 12s",
+          'Zombies become permanent\nMax 4 Zombies. On death: reform after 8s',
+          'Max 5 Zombies, +30% zombie damage\nNearby zombies heal Vael 1 HP/s',
+          'On zombie death: explosion + free Charnel Tide\nZombies gain +50% HP',
         ],
         apply: (p, lvl) => {
-          p.hasLichDominion = true
-          p.revenantHPBonus = [0, 0.40, 0.40][lvl - 1]
-          p.revenantDmgPct = 0.80
-          p.revenantSlowAura = lvl >= 3
-          p.lichRevenantCharnelOnDeath = lvl >= 3
+          p.hasUndyingHorde = true
+          p.risenDuration = 999999
+          p.risenMaxThralls = lvl >= 2 ? 5 : 4
+          p.undyingHordeReformTime = [8000, 8000, 8000][lvl - 1]
+          p.undyingHordeDmgBonus = lvl >= 2 ? 0.30 : 0
+          p.undyingHordeHealPerSec = lvl >= 2 ? 1 : 0
+          p.undyingHordeDeathExplosion = lvl >= 3
+          p.undyingHordeCharnelOnDeath = lvl >= 3
+          p.undyingHordeHPBonus = lvl >= 3 ? 0.50 : 0
         },
       },
     ],
   },
   {
-    name: 'Wasting Plague', color: 0x88cc55,
-    theme: 'AoE disease, debuffs, spreading contagion. Attrition warfare through rot.',
+    name: 'Wasting Plague', color: 0x84cc16,
+    theme: 'Rot stacks make enemies take up to 25% more damage. Blight Pools (max 4) deal 20% damage per second. Permanent 6m aura weakens enemies 10%.',
     upgrades: [
       {
         id: 'wp1', label: 'Festering Wound', icon: 'wp1_festering_wound',
         desc: [
-          "It doesn't hurt at first\nSoul Bolt applies 1 Rot stack. Enemies with 3+ stacks take +15% damage from all sources",
-          'Deeper in\nSoul Bolt applies 1 Rot stack. 3+ stacks: +20% damage taken. Rot stacks decay 1 per 3s (slower decay)',
-          'Past the point of return\nSoul Bolt applies 2 Rot stacks. 3+ stacks: +25% damage taken. 6+ stacks: also slow enemy movement 15%',
+          'Attacks apply Rot stacks to enemies\n3+ Rot: +15% damage taken · Drain applies every 2 ticks',
+          'Rot spreads deeper\nOrbs: 3+ stacks take +20% damage, Rot decays 1 per 3s\nDrain: applies 1 Rot every tick',
+          'Plague carrier\nOrbs: 2 Rot per hit, 6+ stacks slow enemies 15%\nDrain: 5+ stacks trigger 10% damage burst per tick',
         ],
         apply: (p, lvl) => {
           p.hasFesteringWound = true
@@ -1165,43 +1201,53 @@ const VAEL_BRANCHES: BranchDef[] = [
           p.festeringWoundDmgBonus = [0.15, 0.20, 0.25][lvl - 1]
           p.rotSlowDecay = lvl >= 2
           p.rotSlow = lvl >= 3
+          p.festeringDrainEveryNTicks = lvl >= 2 ? 1 : 2
+          p.festeringDrainBurstOnHigh = lvl >= 3
         },
       },
       {
         id: 'wp2', label: 'Virulent Spread', icon: 'wp2_virulent_spread',
         desc: [
-          'One carrier is all you need\nOn kill: all Rot stacks transfer to enemies within 80px. Each transferred stack deals 10% of Vael\'s damage as a burst',
-          'Epidemic logic\nTransfer radius: 110px. Burst damage per stack: 15% of Vael\'s damage',
-          'The math is inevitable\nTransfer radius: 140px. Burst: 15% per stack. Enemies receiving 4+ stacks from a single transfer are briefly stunned (0.5s)',
+          'On kill: Rot stacks transfer to enemies within 2m (10% damage per stack burst)\n✦ Lifedrain: tendril-kills also re-anchor drain to nearest recipient',
+          'Transfer radius 2.75m, 15% damage per stack\n◉ Soul Orbs: bolt-kills spread to 2 targets simultaneously\n✦ Lifedrain: re-anchor lasts 1.5s',
+          'Transfer radius 3.5m, 15% per stack; 4+ stacks stun enemies 0.5s\n◉ Soul Orbs: stunned enemies drop a bonus bone',
         ],
         apply: (p, lvl) => {
           p.hasVirulentSpread = true
           p.virulentSpreadRadius = [80, 110, 140][lvl - 1]
           p.virulentDmgPerStack = [0.10, 0.15, 0.15][lvl - 1]
           p.virulentStunAt = lvl >= 3 ? 4 : 999
+          p.virulentOrbsMultiTarget = lvl >= 2
+          // TODO(vael): virulentDrainReAnchor / virulentDrainReAnchorLong / virulentStunFreezeCost stubs — post-merge polish
+          p.virulentStunBonusBone = lvl >= 3
         },
       },
       {
         id: 'wp3', label: 'Necrotic Bloom', icon: 'wp3_necrotic_bloom',
         desc: [
-          "Even the ground remembers\nEnemies dying with 5+ Rot stacks leave a Blight Pool (100px radius, 12% Vael's dmg/s, lasts 5s)",
-          "Spreading wound\nBlight threshold reduced to 4 stacks. Pools last 7s and deal 16% dmg/s",
-          "The ground is mine\nThreshold: 3 stacks. Pools last 8s, 20% dmg/s. Enemies standing in a Pool gain 1 Rot stack/s",
+          'Enemies dying with 5+ Rot stacks leave a Blight Pool (2.5m radius, 12% damage per second, 5s, max 4 active)\n✦ Lifedrain: tendrils in a Pool deal +20% damage',
+          'Threshold 4 stacks; Pools last 7s, 16% damage per second\n✦ Lifedrain: enemies in Pools take doubled tendril tick rate',
+          'Threshold 3 stacks; Pools last 8s, 20% damage per second\n◉ Soul Orbs: Soul Bolt hitting a Pool detonates it (+30% damage, 0.3s root)\n✦ Lifedrain: bones dropped in Pools grant 2 armor instead of 1',
         ],
         apply: (p, lvl) => {
           p.hasNecroticBloom = true
           p.necroticBloomThreshold = [5, 4, 3][lvl - 1]
           p.necroticBloomDuration = [5000, 7000, 8000][lvl - 1]
           p.necroticBloomDmgPct = [0.12, 0.16, 0.20][lvl - 1]
-          p.necroticBloomAddRot = lvl >= 3
+          p.necroticBloomAddRot = false
+          p.necroticBloomMaxPools = 4
+          p.necroticBloomDrainDmgBonus = 0.20
+          p.necroticBloomDrainDoubleTick = lvl >= 2
+          p.necroticBloomOrbsDetonate = lvl >= 3
+          p.necroticBloomDrainBoneArmor = lvl >= 3
         },
       },
       {
         id: 'wp4', label: 'Pandemic', icon: 'wp4_pandemic',
         desc: [
-          'The Rift does not discriminate\nActivate: 200px miasma ring — all enemies gain 5 Rot stacks instantly. CD: 18s',
-          'Second breath\nRing radius: 240px. Cloud pulses a second time 2s after cast (adds 3 more stacks). CD: 16s',
-          'Neither do I\nRadius 280px. Two pulses (+3 stacks each). Enemies that die while inside the cloud zone spread Blight Pools at double radius. CD: 14s',
+          'Auto-cast: 5m miasma ring applies 5 Rot stacks (18s cooldown)\n◉ Soul Orbs: hit enemies drop a bone on next death\n✦ Lifedrain: tendril range boosted for 3s after cast',
+          '6m radius; second pulse 2s later adds +3 Rot (16s cooldown)\n◉ Soul Orbs: 100% bone drop during boost window\n✦ Lifedrain: boost window lasts 6s, +15% tick rate',
+          '7m radius (14s cooldown)\n◉ Soul Orbs: pool detonations inside cloud cover double radius\n✦ Lifedrain: drain costs no energy during boost window',
         ],
         apply: (p, lvl) => {
           p.hasVaelPandemic = true
@@ -1209,14 +1255,19 @@ const VAEL_BRANCHES: BranchDef[] = [
           p.pandemicCooldown = [18000, 16000, 14000][lvl - 1]
           p.pandemicDoublePulse = lvl >= 2
           p.pandemicDoubleRadiusBlight = lvl >= 3
+          p.pandemicRangeBoostDuration = lvl >= 2 ? 6000 : 3000
+          p.pandemicOrbsBoneOnNextDeath = true
+          p.pandemicOrbsBoneOnKill = lvl >= 2
+          p.pandemicTendrilTickRateBoost = lvl >= 2 ? 0.15 : 0
+          p.pandemicDrainFreeCost = lvl >= 3
         },
       },
       {
         id: 'wp5', label: 'Carrion Crown', icon: 'wp5_carrion_crown', isUltimate: true,
         desc: [
-          'The source of all rot\nPassive aura (150px): enemies inside gain 1 Rot stack every 2s. Stacks accumulate alongside Soul Bolt stacks',
-          'The crown spreads\nAura radius: 200px. Rot application: 1 stack every 1.5s. Enemies that exit the aura retain stacks',
-          'Nothing leaves clean\nAura: 240px, 1 stack/s. Enemies in the aura also deal 10% less damage (weakened by rot). On Vael kill: aura pulses once at 400px, applying 3 stacks to all enemies reached',
+          'Passive aura 3.75m: enemies gain 1 Rot stack every 2s\n◉ Soul Orbs: aura-marked enemies gain +1 bonus stack on bolt hit\n✦ Lifedrain: −10% drain cost on aura-marked enemies',
+          'Aura 5m, 1 stack per 1.5s; stacks persist after leaving\n◉ Soul Orbs: aura-marked enemies take +10% bolt damage\n✦ Lifedrain: tendril tick rate +5% per Rot stack (max +30%)',
+          'Aura 6m, 1 stack per second\nAura enemies deal 10% less damage\nOn kill: 10m pulse applies 3 Rot stacks\n◉ Soul Orbs: pulse detonates all active Pools (15% damage)\n✦ Lifedrain: pulse grants +20 drain energy',
         ],
         apply: (p, lvl) => {
           p.hasCarrionCrown = true
@@ -1224,6 +1275,13 @@ const VAEL_BRANCHES: BranchDef[] = [
           p.carrionAuraInterval = [2000, 1500, 1000][lvl - 1]
           p.carrionWeaken = lvl >= 3
           p.carrionKillPulse = lvl >= 3
+          // carrionRetainStacks: stacks already persist naturally (rot decay-based), flag not needed
+          p.carrionOrbsBonusStack = true
+          p.carrionDrainCostReduc = 0.10
+          p.carrionOrbsDmgBonus = lvl >= 2 ? 0.10 : 0
+          // TODO(vael): carrionDrainScaleWithStacks stub — post-merge polish
+          p.carrionOrbsKillPulseBlight = lvl >= 3
+          p.carrionDrainKillPulseEnergy = lvl >= 3
         },
       },
     ],
@@ -1530,8 +1588,16 @@ export class UpgradeTracker {
       Object.keys(this.skillLevels).filter(id => !this.pickedGeneric.has(id) && this.skillLevels[id] > 0).length
     const atSkillCap = totalDistinctSkills >= MAX_TOTAL_SKILLS
 
+    // Per-hero generic exclusions: Ignara gets +15% base range and native AoE,
+    // so Eagle Eye (g3, range) and Cleave (g7, splash) are redundant.
+    const heroExcluded: Record<string, Set<string>> = {
+      ignara: new Set(['g3', 'g7']),
+    }
+    const excluded = heroExcluded[heroType] || new Set<string>()
+
     // Generics not yet maxed: already-picked can level up; new ones only if under skill cap
     const availGenerics = GENERIC_POOL.filter(u => {
+      if (excluded.has(u.id)) return false
       const lvl = this.skillLevels[u.id] || 0
       if (lvl >= MAX_SKILL_LEVEL) return false          // maxed out
       if (this.pickedGeneric.has(u.id)) return true      // already picked — can level up
@@ -1567,31 +1633,36 @@ export class UpgradeTracker {
           pool.push({ ...ultimate, branch: chosenBranchDef.name, branchColor: chosenBranchDef.color })
         }
 
-        // Shuffle and pick up to 3
+        // Shuffle and pick up to 2 branch cards
         const shuffled = [...pool].sort(() => Math.random() - 0.5)
-        branchCards.push(...shuffled.slice(0, 3))
+        branchCards.push(...shuffled.slice(0, 2))
       }
     }
 
-    // ── Combine: 2-3 branch + 3-2 generic (random split), shuffled positions ──
-    const branchCount = Math.min(branchCards.length, Math.random() < 0.5 ? 2 : 3)
+    // ── Combine: 3 total cards — 1-2 branch + 1-2 generic ──
+    // Prefer 2 branch + 1 generic when both pools are healthy;
+    // fall back to 1 branch + 2 generic (or all generic) when pool is thin.
+    const wantBranch = branchCards.length >= 2 && shuffledGen.length >= 1
+      ? 2
+      : Math.min(branchCards.length, 1)
     const choices: Upgrade[] = []
-    choices.push(...branchCards.slice(0, branchCount))
+    choices.push(...branchCards.slice(0, wantBranch))
 
-    const genNeeded = Math.max(2, 5 - choices.length)
+    const genNeeded = 3 - choices.length
     for (let i = 0; i < genNeeded && i < shuffledGen.length; i++) {
       choices.push(shuffledGen[i])
     }
 
-    // Pad to 5 if still short (edge case: very few generics left)
-    while (choices.length < 5 && shuffledGen.length > choices.length - branchCount) {
+    // Pad to 3 if still short
+    while (choices.length < 3) {
       const next = shuffledGen.find(u => !choices.includes(u))
+         ?? branchCards.find(u => !choices.includes(u))
       if (next) choices.push(next)
       else break
     }
 
     // Shuffle positions so branch cards aren't always first
-    const result = choices.slice(0, 5)
+    const result = choices.slice(0, 3)
     for (let i = result.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[result[i], result[j]] = [result[j], result[i]]

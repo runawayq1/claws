@@ -72,18 +72,17 @@ const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
   },
 }
 
-const HERO_DEFS: Record<HeroType, HeroDef> = {
-  ignara:    { hp: 80,  speed: 140, damage: 30, range: 200, cooldown: 700,  color: 0xe84118, attackType: 'fireball' },
-  // khet removed from playable roster
-  // khet:    { hp: 55,  speed: 220, damage: 35, range: 48,  cooldown: 600,  color: 0x4a0072, attackType: 'dash' },
-  sifra:     { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
-  amun:      { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800,  color: 0xfff200, attackType: 'shockwave' },
-  nazar:     { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
-  huntress:  { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
-  khashin:   { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
-  muller:    { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
-  nightborne: { hp: 110, speed: 150, damage: 28, range: 90,  cooldown: 850,  color: 0x9933FF, attackType: 'voidslash' },
-  vael:       { hp: 85,  speed: 130, damage: 22, range: 220, cooldown: 700,  color: 0x8866cc, attackType: 'soulbolt' },
+// Hero colors use Tailwind-inspired palette (matches HEROES in HeroSelectScene)
+export const HERO_DEFS: Record<HeroType, HeroDef> = {
+  ignara:    { hp: 80,  speed: 140, damage: 30, range: 230, cooldown: 700,  color: 0xf97316, attackType: 'fireball' },
+  sifra:     { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x38bdf8, attackType: 'iceshard' },
+  amun:      { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800,  color: 0xfbbf24, attackType: 'shockwave' },
+  nazar:     { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xf43f5e, attackType: 'melee' },
+  huntress:  { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x10b981, attackType: 'spear' },
+  khashin:   { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x67e8f9, attackType: 'windslash' },
+  muller:    { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x60a5fa, attackType: 'crystalwave' },
+  nightborne: { hp: 110, speed: 150, damage: 28, range: 90,  cooldown: 850,  color: 0xa855f7, attackType: 'voidslash' },
+  vael:       { hp: 85,  speed: 130, damage: 22, range: 220, cooldown: 700,  color: 0xa78bfa, attackType: 'soulbolt' },
 }
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -439,76 +438,127 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // Pale Harvest branch
   hasHollowTouch = false
   hollowTouchRate = 0.08
+  hollowTouchDrainRate = 0.04
+  hollowTouchArmorHeal = false
+  hollowTouchBoneHeal = false
+  hollowTouchOverkillHalf = false
   hasSoulSiphon = false
   soulSiphonDropChance = 0.10
   soulSiphonMaxStacks = 8
   soulStacks = 0   // current armor stacks from collected souls
+  soulSiphonDrainAlwaysDrop = false
+  soulSiphonDrainKillCount = 1
+  soulSiphonBoneHeal = 0
+  soulSiphonAutoCollectRadius = 0
+  soulSiphonExtraDropChance = 0
   hasWoundMemory = false
   woundMemoryBonus = 0.20
   woundMemoryRootDur = 400
+  woundMemoryFreeArmorOnRepeat = false
+  woundMemoryRecentHitWindow = 0
   hasExsanguination = false
   exsangChainCount = 2
   exsangDmgPct = 0.60
   exsangRangeBonus = 0
   exsangDoubleArc = false
+  exsangDrainTickDmgBonus = 0
+  exsangDrainSecondArcLifesteal = false
   hasSanguineAscendancy = false
   sanguineWindowDuration = 6000
   sanguineHealPct = 0.12
   sanguineInstantOrbs = false
   sanguineLowHpDR = false
+  sanguineDrainTickPct = 0.20
+  sanguineDrainTickRateDouble = false
+  sanguineDrainHealCapPerTick = 0
+  sanguineBonesAutoArc = false
   // Ossuary branch
   hasRisen = false
   risenProcChance = 0.25
+  risenDrainProcChance = 0.40
   risenDuration = 4000
   risenDmgPct = 0.30
   risenMaxThralls = 999
+  risenDrainAutoTarget = false
+  risenDrainHPBonus = 0
   hasGravePact = false
   gravePactHPBonus = 0
   gravePactDeathBurst = false
   gravePactDeathRoot = false
   gravePactBurstDmgPct = 0.60
   gravePactBurstRadiusBonus = 0
+  gravePactDrainFlatDmg = false
+  gravePactDrainEnergyReduc = 0
+  gravePactDrainReachPerThrall = 0
+  gravePactDrainRelayBonus = 0
   hasUndyingLabor = false
   undyingLaborAtkSpeedPct = 0.05
   undyingLaborDmgBonus = 0
+  undyingLaborStanceSwitchDiscount = 0
   hasCharnelTide = false
   charnelTideRadius = 250
   charnelTideMax = 5
   charnelTideDuration = 8000
   charnelTideCooldown = 20000
   charnelTideExplode = false
-  hasLichDominion = false
-  revenantDmgPct = 0.80
-  revenantHPBonus = 0
-  revenantSlowAura = false
-  lichRevenantCharnelOnDeath = false
+  charnelTideOrbsBoneDrop = false
+  charnelTideOrbsDmgBonus = 0
+  charnelTideDrainRangeBoost = 0
+  charnelTideExplodeBoneDrop = 0
+  charnelTideExplodeRot = false
+  hasUndyingHorde = false
+  undyingHordeReformTime = 8000
+  undyingHordeDmgBonus = 0
+  undyingHordeHealPerSec = 0
+  undyingHordeDeathExplosion = false
+  undyingHordeCharnelOnDeath = false
+  undyingHordeHPBonus = 0
   // Wasting Plague branch
   hasFesteringWound = false
   festeringWoundStacks = 1
   festeringWoundDmgBonus = 0.15
   rotSlowDecay = false
   rotSlow = false
+  festeringDrainEveryNTicks = 2
+  festeringDrainBurstOnHigh = false
   hasVirulentSpread = false
   virulentSpreadRadius = 80
   virulentDmgPerStack = 0.10
   virulentStunAt = 999
+  virulentOrbsMultiTarget = false
+  virulentStunBonusBone = false
   hasNecroticBloom = false
   necroticBloomThreshold = 5
   necroticBloomRadius = 100
   necroticBloomDuration = 5000
   necroticBloomDmgPct = 0.12
   necroticBloomAddRot = false
+  necroticBloomMaxPools = 4
+  necroticBloomDrainDmgBonus = 0
+  necroticBloomDrainDoubleTick = false
+  necroticBloomOrbsDetonate = false
+  necroticBloomDrainBoneArmor = false
   hasVaelPandemic = false
   pandemicRadius = 200
   pandemicStacks = 5
   pandemicCooldown = 18000
   pandemicDoublePulse = false
   pandemicDoubleRadiusBlight = false
+  pandemicRangeBoostDuration = 3000
+  pandemicOrbsBoneOnNextDeath = false
+  pandemicOrbsBoneOnKill = false
+  pandemicTendrilTickRateBoost = 0
+  pandemicDrainFreeCost = false
   hasCarrionCrown = false
   carrionAuraRadius = 150
   carrionAuraInterval = 2000
   carrionWeaken = false
   carrionKillPulse = false
+  carrionOrbsBonusStack = false
+  carrionDrainCostReduc = 0
+  carrionOrbsDmgBonus = 0
+  carrionOrbsKillPulseBlight = false
+  carrionDrainKillPulseEnergy = false
 
   stance: 'ice' | 'lightning' = 'ice'
   iceEnergy = 100
@@ -731,6 +781,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   toggleVaelStance() {
     if (this.heroType !== 'vael') return
+    // Stance switch is free; Undying Labor L3 / Lich Dominion L3 discount flags
+    // are currently cosmetic (no base cost to discount from — reserved for future tuning).
     this.vaelStance = this.vaelStance === 'orbs' ? 'drain' : 'orbs'
     this.scene.events.emit('vael-stance-changed', this.vaelStance)
   }
@@ -1060,9 +1112,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Ashen Veil DR
     const ashenDR = (this.hasAshenVeil && this.ashenVeilStacks > 0 && this.scene.time.now < this.ashenVeilUntil)
       ? this.ashenVeilDR * this.ashenVeilStacks : 0
-    // Soul Siphon armor stacks: +1% DR per soul
-    const soulDR = this.hasSoulSiphon ? this.soulStacks * 0.01 : 0
-    let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR + ashenDR + soulDR))
+    // Soul Siphon: stacks act as a shield, not DR — handled below
+    const soulDR = 0
+    // Sanguine Ascendancy L3 DR window (set by vael activation when HP < 30%)
+    const sanguineDR = ((this as any)._vaelState?.sanguineDR && this.scene.time.now < ((this as any)._vaelState?.sanguineUntil ?? 0)) ? 0.40 : 0
+    let reduced = amount * (1 - Math.min(0.85, this.armor + stoneSkinDR + ashenDR + soulDR + sanguineDR))
+
+    // Soul Siphon (Vael): bone stacks absorb damage like a shield
+    // Each stack absorbs 5 damage, stacks are consumed on hit
+    if (this.hasSoulSiphon && this.soulStacks > 0 && reduced > 0) {
+      const absorbPerStack = 2
+      const totalAbsorb = this.soulStacks * absorbPerStack
+      const absorbed = Math.min(reduced, totalAbsorb)
+      const stacksLost = Math.ceil(absorbed / absorbPerStack)
+      this.soulStacks = Math.max(0, this.soulStacks - stacksLost)
+      reduced -= absorbed
+      if (absorbed > 0) {
+        const fx = this.scene.add.circle(this.x, this.y, 14, 0xaaddff, 0.5).setDepth(10)
+        this.scene.tweens.add({ targets: fx, scale: 2.5, alpha: 0, duration: 250, onComplete: () => fx.destroy() })
+      }
+    }
 
     // Sand Armor (Khashin): absorb shield
     if (this.hasSandArmor && this._sandArmorHP > 0) {
@@ -1117,9 +1186,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         const sy = this.y + Math.sin(ang) * 80
         const shade = this.scene.add.circle(sx, sy, 10, 0xCC66FF, 0.5).setDepth(9)
         const shadeDur = this.splitShadeLevel >= 2 ? (this.splitShadeLevel >= 3 ? 3000 : 2500) : 1500
-        this.scene.tweens.add({ targets: shade, alpha: 0.1, yoyo: true, repeat: -1, duration: 300 })
+        const shadeTween = this.scene.tweens.add({ targets: shade, alpha: 0.1, yoyo: true, repeat: -1, duration: 300 })
         // Echo slash on expiry (L2+)
         this.scene.time.delayedCall(shadeDur, () => {
+          shadeTween.stop(); shadeTween.remove()
           shade.destroy()
           if (this.splitShadeLevel >= 2) {
             const scene = this.scene as any
@@ -1449,7 +1519,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   xpToNextLevel(): number {
-    return CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * (this.level - 1)
+    // Early levels (1-5): easy ramp. Later levels: quadratic growth so final
+    // levels land around minute 6-7 of a 10-min run.
+    const n = this.level
+    if (n <= 5) {
+      return CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * (n - 1)
+    }
+    // n >= 6: base cost of level 5 + extra quadratic per level past 5
+    const baseAt5 = CONFIG.XP_BASE + CONFIG.XP_PER_LEVEL * 4
+    const over = n - 5
+    return Math.ceil(baseAt5 + CONFIG.XP_PER_LEVEL * over + over * over * 35)
   }
 
   tryAutoAttack(enemies: Phaser.Physics.Arcade.Group, time: number, delta: number) {
@@ -1491,6 +1570,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let closestDist = Infinity
     for (const enemy of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!enemy.active) continue
+      // Ignara overkill prevention: skip enemies that already have a fireball in-flight
+      if (this.heroType === 'ignara' && (enemy as any)._fireballIncoming > 0) continue
       const dist = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y)
       if (dist < searchRange && dist < closestDist) {
         closestDist = dist
@@ -1859,7 +1940,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Speed buff expiry
     if (this.speedBuffUntil > 0 && this.scene.time.now > this.speedBuffUntil) {
       this.speedBuffUntil = 0
-      // Restore speed from cache instead of dividing (avoids floating-point drift / compounding)
+      this.speed = this.baseSpeedCache
+    }
+    // Kill Stride expiry — revert to baseSpeedCache
+    if (this.killStrideUntil > 0 && this.scene.time.now > this.killStrideUntil) {
+      this.killStrideUntil = 0
       this.speed = this.baseSpeedCache
     }
 

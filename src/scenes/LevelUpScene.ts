@@ -5,28 +5,131 @@ import { unlockUpgrade, unlockBranch } from './EncyclopediaScene'
 import { shouldShowHint } from '../systems/HintFlags'
 import { isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
 
-/** Render desc text with number tokens highlighted in gold. Returns single text object (no overlay). */
+/**
+ * Render desc with per-line colored backgrounds + word-level coloring.
+ * - Lines starting with ◉ → light blue background (Orbs stance), extra top gap
+ * - Lines starting with ✦ → green background (Drain stance), extra top gap
+ * - Stance icons (◉/✦) and number tokens rendered in yellow
+ * - Each stance line starts on its own visual row with spacing
+ * Returns a Container with a .height property for overflow detection.
+ */
 function addHighlightedDesc(
   scene: Phaser.Scene, x: number, y: number, text: string,
   style: Phaser.Types.GameObjects.Text.TextStyle,
-): Phaser.GameObjects.Text {
-  // Split text into segments: plain and number tokens
-  const re = /[+×]?\d+\.?\d*[%ms]?/g
-  let last = 0
-  let richText = ''
-  let m
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) richText += text.slice(last, m.index)
-    richText += `[color=#FFD700]${m[0]}[/color]`
-    last = m.index + m[0].length
-  }
-  if (last < text.length) richText += text.slice(last)
+): Phaser.GameObjects.Container & { height: number } {
+  const container = scene.add.container(x, y) as Phaser.GameObjects.Container & { height: number }
+  const wrapWidth = (style.wordWrap && typeof style.wordWrap === 'object' && 'width' in style.wordWrap)
+    ? (style.wordWrap as any).width as number
+    : 180
+  const lines = text.split('\n')
+  const baseColor = (style.color as string) ?? '#ddd'
+  const yellow = '#FFD700'
+  const numberRe = /^[+×−-]?\d+\.?\d*[%ms]?$/
+  const lineGap = 3
+  const stanceGap = 8  // extra space before/after a stance-marked line
+  let curY = 0
 
-  // Phaser doesn't support inline color tags in plain Text, so just render
-  // the whole thing in base color — numbers are visually distinct enough
-  // with the bold/size treatment. Return single text, no broken overlay.
-  const label = scene.add.text(x, y, text, { ...style }).setOrigin(0.5, 0)
-  return label
+  for (let li = 0; li < lines.length; li++) {
+    const rawLine = lines[li]
+    const trimmed = rawLine.trimStart()
+    let bgColor: number | null = null
+    if (trimmed.startsWith('◉')) bgColor = 0x4488cc
+    else if (trimmed.startsWith('✦')) bgColor = 0x66cc44
+
+    // Extra top gap before stance lines
+    if (bgColor !== null && li > 0) curY += stanceGap
+
+    // Tokenize the line into words; place them with word-level color + wrapping
+    const words = rawLine.split(/(\s+)/).filter(w => w.length > 0)
+    // For stance lines: mark all words up to and including the colon-terminated label
+    // ("Soul Orbs:" or "Lifedrain:") as bold-yellow. Rest of the line uses number/base coloring.
+    let labelEndIdx = -1
+    if (bgColor !== null) {
+      for (let wi = 0; wi < words.length; wi++) {
+        if (words[wi].endsWith(':')) { labelEndIdx = wi; break }
+      }
+    }
+    type Word = { text: string; color: string; bold: boolean }
+    const measured: Word[] = words.map((w, wi) => {
+      const inLabel = labelEndIdx >= 0 && wi <= labelEndIdx
+      const isNum = numberRe.test(w)
+      return {
+        text: w,
+        color: (inLabel || isNum) ? yellow : baseColor,
+        bold: inLabel,
+      }
+    })
+    // Greedy wrap into rows
+    const rows: Word[][] = []
+    let curRow: Word[] = []
+    let curRowW = 0
+    const measurer = scene.add.text(0, 0, '', { ...style, wordWrap: undefined }).setVisible(false)
+    for (const w of measured) {
+      measurer.setStyle({ ...style, wordWrap: undefined, fontStyle: w.bold ? 'bold' : (style.fontStyle ?? 'normal') })
+      measurer.setText(w.text)
+      const ww = measurer.width
+      if (curRowW + ww > wrapWidth && curRow.length > 0 && w.text.trim().length > 0) {
+        rows.push(curRow)
+        curRow = []
+        curRowW = 0
+        // Skip leading whitespace on new row
+        if (w.text.trim().length === 0) continue
+      }
+      curRow.push(w)
+      curRowW += ww
+    }
+    if (curRow.length > 0) rows.push(curRow)
+    measurer.destroy()
+
+    // Measure line height
+    const probe = scene.add.text(0, 0, 'Ag', { ...style, wordWrap: undefined }).setVisible(false)
+    const lineH = probe.height
+    probe.destroy()
+
+    // Background rect spanning all wrapped rows of this logical line
+    const rowsH = rows.length * lineH + (rows.length - 1) * lineGap
+    if (bgColor !== null) {
+      const bg = scene.add.graphics()
+      bg.fillStyle(bgColor, 0.28)
+      bg.fillRoundedRect(-wrapWidth / 2 - 3, curY - 2, wrapWidth + 6, rowsH + 4, 4)
+      container.add(bg)
+    }
+
+    // Render each row: center-aligned, concatenated colored Text objects
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r]
+      // Compute total row width (ignoring trailing whitespace)
+      let totalW = 0
+      const widths: number[] = []
+      const m = scene.add.text(0, 0, '', { ...style, wordWrap: undefined }).setVisible(false)
+      for (const w of row) {
+        m.setStyle({ ...style, wordWrap: undefined, fontStyle: w.bold ? 'bold' : (style.fontStyle ?? 'normal') })
+        m.setText(w.text)
+        widths.push(m.width)
+        totalW += m.width
+      }
+      m.destroy()
+      let xCur = -totalW / 2
+      const rowY = curY + r * (lineH + lineGap)
+      for (let wi = 0; wi < row.length; wi++) {
+        const w = row[wi]
+        const segStyle = {
+          ...style,
+          wordWrap: undefined,
+          color: w.color,
+          fontStyle: w.bold ? 'bold' : (style.fontStyle ?? 'normal'),
+        }
+        const seg = scene.add.text(xCur, rowY, w.text, segStyle).setOrigin(0, 0)
+        container.add(seg)
+        xCur += widths[wi]
+      }
+    }
+    curY += rowsH + lineGap
+    // Extra bottom gap after stance lines
+    if (bgColor !== null) curY += stanceGap / 2
+  }
+  container.height = curY
+  return container
 }
 
 // Compact 5-card layout
@@ -340,48 +443,21 @@ export class LevelUpScene extends Phaser.Scene {
     }).setOrigin(0.5)
     container.add(brNameLabel)
 
-    // First skill description — value line (gold) + effect line (gray)
+    // First skill description — uses shared stance-aware renderer
     const descText = Array.isArray(upgrade.desc) ? upgrade.desc[0] : upgrade.desc
     if (descText) {
       const nameBottom = iconY + brIconSize / 2 + 20 + (_mob ? 22 : 18)
       const descY = nameBottom + 12
-
-      // Split on \n if present, otherwise extract number token as first line
-      let line1: string
-      let line2: string
-      if (descText.includes('\n')) {
-        const parts = descText.split('\n')
-        line1 = parts[0]
-        line2 = parts.slice(1).join(' ')
-      } else {
-        const valMatch = descText.match(/[+×]?\d+\.?\d*[%ms]*\s*\S*/)
-        line1 = valMatch ? valMatch[0].trim() : descText
-        line2 = valMatch ? descText.slice((valMatch.index || 0) + valMatch[0].length).trim() : ''
-      }
-
-      // Gold value line
-      const valLabel = this.add.text(0, descY, line1, {
+      const descStyle: Phaser.Types.GameObjects.Text.TextStyle = {
         fontFamily: gameFont(),
-        fontSize: _mob ? '28px' : '14px',
-        color: '#FFD700',
-        fontStyle: _mob ? 'bold' : 'normal',
+        fontSize: _mob ? '22px' : '13px',
+        color: '#dddddd',
         wordWrap: { width: cw - 20 },
         align: 'center',
-      }).setOrigin(0.5, 0)
-      container.add(valLabel)
-
-      // Effect line below
-      if (line2) {
-        const effectLabel = this.add.text(0, descY + valLabel.height + 4, line2, {
-          fontFamily: gameFont(),
-          fontSize: _mob ? '26px' : '13px',
-          color: '#cccccc',
-          wordWrap: { width: cw - 20 },
-          align: 'center',
-          lineSpacing: 3,
-        }).setOrigin(0.5, 0)
-        container.add(effectLabel)
+        lineSpacing: 2,
       }
+      const descLabel = addHighlightedDesc(this, 0, descY, descText as string, descStyle)
+      container.add(descLabel)
     }
 
     // SELECT button
@@ -422,7 +498,38 @@ export class LevelUpScene extends Phaser.Scene {
           this.tweens.add({
             targets: container, scaleX: cardScale, duration: 250, ease: 'Back.easeOut',
           })
-          // Dramatic reveal burst (pooled)
+          // Skill icon bounce-in
+          if (icon) {
+            icon.setScale(0)
+            this.tweens.add({
+              targets: icon, scale: brIconSize / Math.max(icon.width, icon.height, 1),
+              duration: 400, delay: 100, ease: 'Back.easeOut',
+            })
+          }
+          // Shine sweep
+          const shine = this.add.graphics()
+          container.add(shine)
+          const shProxy = { t: -0.3 }
+          const shW = 30
+          this.tweens.add({
+            targets: shProxy, t: 1.2, duration: 500, delay: 50, ease: 'Sine.easeOut',
+            onUpdate: () => {
+              shine.clear()
+              const px = lx + shProxy.t * (cw + shW * 2) - shW
+              for (let k = 0; k < 3; k++) {
+                shine.fillStyle(0xffffff, [0.22, 0.16, 0.09][k])
+                shine.beginPath()
+                shine.moveTo(px + k * 5, ly)
+                shine.lineTo(px + shW + k * 5, ly)
+                shine.lineTo(px + shW - ch * 0.35 + k * 5, ly + ch)
+                shine.lineTo(px - ch * 0.35 + k * 5, ly + ch)
+                shine.closePath()
+                shine.fillPath()
+              }
+            },
+            onComplete: () => shine.destroy(),
+          })
+          // Dramatic reveal burst
           const cx0 = container.x, cy0 = container.y
           this._burstSparks(cx0, cy0, 12, 100, 4, 8, borderColor)
           this._flashRect(cx0, cy0, cw, ch, borderColor, 0.5, 12, 350)
@@ -587,10 +694,10 @@ export class LevelUpScene extends Phaser.Scene {
 
     // ── Icon (fixed Y for all cards so icons align across the row) ─────
     const iconOffsetY = ly + STRIP_H + 18 + 18 + ICON_SIZE / 2 + 4
-    if (isPersonal) {
+    {
       const glowG = this.add.graphics()
-      glowG.fillStyle(borderColor, 0.15)
-      glowG.fillCircle(0, iconOffsetY, 36)
+      glowG.fillStyle(borderColor, 0.2)
+      glowG.fillCircle(0, iconOffsetY, ICON_SIZE / 2 + 4)
       container.add(glowG)
     }
     const it2 = getIconTexture(upgrade.icon, this)
@@ -623,7 +730,11 @@ export class LevelUpScene extends Phaser.Scene {
     }
     const descLabel = addHighlightedDesc(this, 0, descStartY, nextDesc, descStyle)
     if (descLabel.height > descAvail) {
-      descLabel.setCrop(0, 0, descLabel.width, descAvail)
+      // Overflow: clip via rectangular geometry mask
+      const maskGfx = this.make.graphics({}, false)
+      maskGfx.fillStyle(0xffffff)
+      maskGfx.fillRect(ly - CARD_W, descStartY, CARD_W * 2, descAvail)
+      descLabel.setMask(maskGfx.createGeometryMask())
     }
     container.add(descLabel)
 
@@ -665,12 +776,10 @@ export class LevelUpScene extends Phaser.Scene {
     const doFlip = () => {
       if (flipped) return
       flipped = true
-      // Flip animation: squeeze → swap content → expand (25% slower)
       this.tweens.add({
         targets: container, scaleX: 0, duration: 150, ease: 'Sine.easeIn',
         onComplete: () => {
           cardBack.setVisible(false)
-          // Reveal face
           const faceObjs = container.list.filter(
             (o: any) => o !== cardBack && o !== zone
           )
@@ -678,7 +787,38 @@ export class LevelUpScene extends Phaser.Scene {
           this.tweens.add({
             targets: container, scaleX: cardScale, duration: 225, ease: 'Back.easeOut',
           })
-          // Special reveal VFX for personal cards
+          // Skill icon bounce-in
+          if (icon) {
+            icon.setScale(0)
+            this.tweens.add({
+              targets: icon, scale: ICON_SIZE / Math.max(icon.width, icon.height, 1),
+              duration: 350, delay: 100, ease: 'Back.easeOut',
+            })
+          }
+          // Shine sweep across revealed card
+          const shine = this.add.graphics()
+          container.add(shine)
+          const shProxy = { t: -0.3 }
+          const shW = 24
+          this.tweens.add({
+            targets: shProxy, t: 1.2, duration: 450, delay: 50, ease: 'Sine.easeOut',
+            onUpdate: () => {
+              shine.clear()
+              const px = lx + shProxy.t * (CARD_W + shW * 2) - shW
+              for (let k = 0; k < 3; k++) {
+                shine.fillStyle(0xffffff, [0.2, 0.15, 0.08][k])
+                shine.beginPath()
+                shine.moveTo(px + k * 5, ly)
+                shine.lineTo(px + shW + k * 5, ly)
+                shine.lineTo(px + shW - CARD_H * 0.35 + k * 5, ly + CARD_H)
+                shine.lineTo(px - CARD_H * 0.35 + k * 5, ly + CARD_H)
+                shine.closePath()
+                shine.fillPath()
+              }
+            },
+            onComplete: () => shine.destroy(),
+          })
+          // Burst VFX for personal cards
           if (isPersonal) {
             const cx0 = container.x, cy0 = container.y
             this._burstSparks(cx0, cy0, 8, 60, 3, 6, borderColor)
@@ -736,18 +876,18 @@ export class LevelUpScene extends Phaser.Scene {
     // Register keyboard trigger for this card index
     this.cardTriggers[index] = triggerCard
 
-    // Entrance animation — scale container for mobile fit
+    // Entrance animation — scale from 0.85→1 with stagger
     const scw = CARD_W * cardScale, sch = CARD_H * cardScale
-    container.setScale(cardScale)
-    const startY = targetY + sch / 2 + 30
-    container.setPosition(x + scw / 2, startY)
+    container.setScale(cardScale * 0.85)
+    container.setPosition(x + scw / 2, targetY + sch / 2)
     container.setAlpha(0)
     this.tweens.add({
       targets: container,
-      y: targetY + sch / 2,
-      alpha: 1, duration: 260,
-      ease: 'Quad.easeOut',
-      delay: index * 50,
+      scaleX: cardScale,
+      scaleY: cardScale,
+      alpha: 1, duration: 300,
+      ease: 'Back.easeOut',
+      delay: index * 80,
     })
   }
 
@@ -886,6 +1026,12 @@ export class LevelUpScene extends Phaser.Scene {
     this.picked = true
     this.input.enabled = false
     if (this.confettiTimer) { this.confettiTimer.destroy(); this.confettiTimer = undefined }
+
+    // White flash overlay on the picked card
+    const flashOverlay = this.add.graphics().setDepth(22)
+    flashOverlay.fillStyle(0xffffff, 0.4)
+    flashOverlay.fillRoundedRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, flashRoundness)
+    this.tweens.add({ targets: flashOverlay, alpha: 0, duration: 200, onComplete: () => flashOverlay.destroy() })
 
     const nextLevel = (this.tracker.getLevel(upgrade.id) || 0) + 1
     upgrade.apply(this.player, nextLevel)
@@ -1042,14 +1188,37 @@ export class LevelUpScene extends Phaser.Scene {
 
   // ── Graphics helpers ────────────────────────────────────────────────────
 
-  private drawCardNormal(g: Phaser.GameObjects.Graphics, _lx: number, _ly: number, _borderColor: number, _isPersonal: boolean) {
+  private drawCardNormal(g: Phaser.GameObjects.Graphics, lx: number, ly: number, borderColor: number, _isPersonal: boolean) {
     g.clear()
+    // Branch-color gradient bg: bottom = branch color bleed, top = dark overlay
+    g.fillStyle(borderColor, 0.15)
+    g.fillRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    g.fillStyle(0x0c0c1a, 0.95)
+    g.fillRoundedRect(lx + 2, ly + 2, CARD_W - 4, CARD_H - 4, 7)
+    // Gold bevel border: outer 2px
+    g.lineStyle(2, 0xffd700, 0.7)
+    g.strokeRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    // Gold bevel border: inner 1px (2px gap inward)
+    g.lineStyle(1, 0xffd700, 0.3)
+    g.strokeRoundedRect(lx + 4, ly + 4, CARD_W - 8, CARD_H - 8, 6)
   }
 
-  private drawCardHover(g: Phaser.GameObjects.Graphics, lx: number, ly: number, _borderColor: number, _isPersonal: boolean) {
+  private drawCardHover(g: Phaser.GameObjects.Graphics, lx: number, ly: number, borderColor: number, _isPersonal: boolean) {
     g.clear()
+    // Branch-color gradient bg
+    g.fillStyle(borderColor, 0.15)
+    g.fillRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    g.fillStyle(0x0c0c1a, 0.95)
+    g.fillRoundedRect(lx + 2, ly + 2, CARD_W - 4, CARD_H - 4, 7)
+    // Hover brightening
     g.fillStyle(0xffffff, 0.06)
     g.fillRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    // Gold bevel border: outer 2px (brighter on hover)
+    g.lineStyle(2, 0xffd700, 0.9)
+    g.strokeRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    // Gold bevel border: inner 1px
+    g.lineStyle(1, 0xffd700, 0.5)
+    g.strokeRoundedRect(lx + 4, ly + 4, CARD_W - 8, CARD_H - 8, 6)
   }
 
   // ── Stance tutorial dialog (Amun Quake branch) ──────────────────────────

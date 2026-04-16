@@ -38,6 +38,8 @@ export interface MetaData {
   bestTime: number
   heroRuns: Record<string, number>
   heroWins: Record<string, number>
+  heroKills: Record<string, number>
+  heroTimeMs: Record<string, number>
   sessions: SessionRecord[]
   achievements: AchievementState[]
   goldTotal: number
@@ -56,6 +58,8 @@ export interface MetaData {
   branchProgress: Partial<Record<string, Partial<Record<string, number>>>>
   // Persistently completed quest IDs (survive across runs/deaths).
   completedQuests: string[]
+  // Most recently selected hero for a run — shown as a "last played" dot in HeroSelect.
+  lastHero?: string
 }
 
 // ── Quest system ──────────────────────────────────────────────
@@ -205,7 +209,7 @@ export class MetaProgress {
     return {
       totalKills: 0, totalRuns: 0, totalTimeMs: 0, totalWins: 0,
       bestKills: 0, bestWave: 0, bestTime: 0,
-      heroRuns: {}, heroWins: {},
+      heroRuns: {}, heroWins: {}, heroKills: {}, heroTimeMs: {},
       sessions: [],
       achievements: ACHIEVEMENT_DEFS.map(a => ({ id: a.id, unlocked: false })),
       goldTotal: 0,
@@ -217,6 +221,7 @@ export class MetaProgress {
       unlockedBranches: { amun: ['Wrath'] },
       branchProgress: {},
       completedQuests: [],
+      lastHero: undefined,
     }
   }
 
@@ -253,6 +258,10 @@ export class MetaProgress {
       if (!data.branchProgress) data.branchProgress = {}
       // Migrate old saves missing completedQuests
       if (!data.completedQuests) data.completedQuests = []
+      // Migrate old saves missing per-hero aggregate stats
+      if (!data.heroKills) data.heroKills = {}
+      if (!data.heroTimeMs) data.heroTimeMs = {}
+      if (data.lastHero === undefined) data.lastHero = undefined
       // Nightborne + Vael are default-unlocked
       if (!data.unlockedHeroes.includes('nightborne')) data.unlockedHeroes.push('nightborne')
       if (!data.unlockedHeroes.includes('vael')) data.unlockedHeroes.push('vael')
@@ -267,6 +276,16 @@ export class MetaProgress {
           if (!ab.includes(b)) ab.push(b)
         }
         data.unlockedBranches['amun'] = ab
+      }
+      // Test account: "Ori" has all heroes + branches unlocked + tutorial complete
+      if (localStorage.getItem('claws_player_name') === 'Ori') {
+        data.tutorialComplete = true
+        const allHeroes = ['amun', 'sifra', 'ignara', 'nazar', 'khashin', 'huntress', 'muller', 'nightborne', 'vael']
+        for (const h of allHeroes) {
+          if (!data.unlockedHeroes.includes(h)) data.unlockedHeroes.push(h)
+        }
+        data.unlockedBranches['amun'] = ['Wrath', 'Bastion', 'Quake']
+        if (data.goldTotal < 10000) data.goldTotal = 10000
       }
       return data
     } catch {
@@ -296,6 +315,8 @@ export class MetaProgress {
 
     // Hero stats
     meta.heroRuns[session.hero] = (meta.heroRuns[session.hero] || 0) + 1
+    meta.heroKills[session.hero] = (meta.heroKills[session.hero] || 0) + session.kills
+    meta.heroTimeMs[session.hero] = (meta.heroTimeMs[session.hero] || 0) + session.timeMs
     if (session.won) {
       meta.heroWins[session.hero] = (meta.heroWins[session.hero] || 0) + 1
     }
@@ -364,6 +385,13 @@ export class MetaProgress {
     }
   }
 
+  /** Records the most recent hero the player started a run with (for HeroSelect "last played" indicator). */
+  static setLastHero(heroType: string): void {
+    const meta = MetaProgress.load()
+    meta.lastHero = heroType
+    MetaProgress.save(meta)
+  }
+
   /**
    * Check post-run hero unlock conditions (ignara, nazar, khashin).
    * Must be called AFTER recordSession() so meta totals are up-to-date.
@@ -386,8 +414,8 @@ export class MetaProgress {
     // Nazar: win at least 1 run (any hero)
     tryUnlock('nazar', meta.totalWins >= 1)
 
-    // Khashin: survive 8 minutes as Sifra
-    tryUnlock('khashin', session.hero === 'sifra' && session.timeMs >= 480_000)
+    // Khashin: survive 8 minutes as Ignara
+    tryUnlock('khashin', session.hero === 'ignara' && session.timeMs >= 480_000)
 
     if (newlyUnlocked.length > 0) {
       MetaProgress.save(meta)
@@ -466,6 +494,8 @@ export class MetaProgress {
     MetaProgress._runTimeMs = 0
     MetaProgress._runEnded = false
     MetaProgress._sifraFound = false
+    // Tag most-recent hero for HeroSelect "last played" indicator
+    MetaProgress.setLastHero(heroType)
     // Seed from persistent completed quests so already-done quests don't re-fire
     const meta = MetaProgress.load()
     MetaProgress._runMeta = meta

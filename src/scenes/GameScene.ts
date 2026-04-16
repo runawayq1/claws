@@ -11,7 +11,7 @@ import type { BaseEnemy } from '../entities/BaseEnemy'
 import { EyeBoss } from '../entities/EyeBoss'
 import { WaveManager } from '../systems/WaveManager'
 import { XPSystem, GoldSystem } from '../systems/XPSystem'
-import { UpgradeTracker } from '../systems/UpgradeSystem'
+import { UpgradeTracker, HERO_BRANCHES } from '../systems/UpgradeSystem'
 import { Pickup } from '../entities/Pickup'
 import { Chest } from '../entities/Chest'
 import { ChunkManager } from '../systems/ChunkManager'
@@ -77,16 +77,18 @@ export class GameScene extends Phaser.Scene {
   _networkAdapter: NetworkGameAdapter | null = null
   private _playerSlots: Array<{ id: string; name: string; heroType: string; isHost: boolean }> = []
   private _seed = 0
+  private _startingBranch: string | null = null
 
   constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
     super(config ?? { key: 'GameScene' })
   }
 
-  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean; online?: boolean; seed?: number; playerSlots?: Array<{ id: string; name: string; heroType: string; isHost: boolean }> }) {
+  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean; online?: boolean; seed?: number; playerSlots?: Array<{ id: string; name: string; heroType: string; isHost: boolean }>; startingBranch?: string }) {
     this.selectedHero = data?.hero || 'ignara'
     this._online = data?.online ?? false
     this._seed = data?.seed ?? 0
     this._playerSlots = data?.playerSlots ?? []
+    this._startingBranch = data?.startingBranch ?? null
     this._localCoop = data?.localCoop ?? (!this._online && new URL(location.href).searchParams.has('coop'))
     if (this._localCoop) {
       const HERO_LIST: HeroType[] = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
@@ -279,8 +281,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(data?: { hero?: HeroType }) {
+    // Reset stale state from previous run
     this.gameOver = false
     this.gameTime = 0
+    this.graves = []
+    this._pendingLevelUps = []
+    this._revealObjects = []
+    this._rockPlaced = []
+    this._decoPlaced = []
+    this._cameraTarget = null
+    this._nameplates = []
     if (data?.hero) this.selectedHero = data.hero
     // Initialise quest tracking for this run
     MetaProgress.initRun(this.selectedHero)
@@ -346,7 +356,7 @@ export class GameScene extends Phaser.Scene {
       this.physics.world.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
       this.rocks = this.physics.add.staticGroup()
       this.terrainRT = this.add.renderTexture(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT).setOrigin(0).setDepth(0)
-      this.terrainRT.fill(0x305426)
+      this.terrainRT.fill(0x1e3518)
       this.localPlayer = new Player(this, CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, this.selectedHero)
       this.players = [this.localPlayer]
       this.cameras.main.setBounds(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT)
@@ -441,7 +451,12 @@ export class GameScene extends Phaser.Scene {
     this.setupTouchControls()
 
     // Events
-    this.events.on('enemy-died', (x: number, y: number, xpValue: number, goldValue: number = 0, isMiniBoss: boolean = false, isLarge: boolean = false) => {
+    this.events.on('enemy-died', (
+      x: number, y: number,
+      xpValue: number, goldValue: number = 0,
+      isMiniBoss: boolean = false, isLarge: boolean = false,
+      vaelPayload?: { rotStacks: number; rotExpiry: number; _vaelKillByDrain: boolean; _vaelPandemicBoneMark: boolean; _vaelCarrionMark: number },
+    ) => {
       // Mini-bosses always drop large purple orb; large mobs 25% chance
       if (isMiniBoss || (isLarge && Math.random() < 0.25)) {
         this.xpSystem.spawnLargeOrb(x, y, xpValue)
@@ -472,12 +487,11 @@ export class GameScene extends Phaser.Scene {
         if (this.player.hasBattleFrenzy) {
           this.player.battleFrenzyUntil = now + 5000
         }
-        // Kill Stride: +20% speed for 3s
-        if (this.player.hasKillStride && this.player.killStrideUntil <= now) {
-          this.player.speed = Math.ceil(this.player.speed * 1.2)
-          this.player.killStrideUntil = now + 3000
-        } else if (this.player.hasKillStride) {
-          // Refresh timer
+        // Kill Stride: +20% speed for 3s (uses baseSpeedCache to avoid permanent compounding)
+        if (this.player.hasKillStride) {
+          if (this.player.killStrideUntil <= now) {
+            this.player.speed = Math.ceil(this.player.baseSpeedCache * 1.2)
+          }
           this.player.killStrideUntil = now + 3000
         }
         // Camouflage: invisible for 2s
@@ -531,8 +545,15 @@ export class GameScene extends Phaser.Scene {
 
       // Vael kill-triggered mechanics (soul orbs, risen, virulent spread, necrotic bloom)
       if (this.player.heroType === 'vael') {
-        // Find the enemy object that just died to pass rot stacks
-        const deadEnemy = { x, y, rotStacks: 0, rotExpiry: 0 } as any
+        // Real rot state + stance marker comes from the vaelPayload emitted by BaseEnemy
+        const deadEnemy = {
+          x, y,
+          rotStacks: vaelPayload?.rotStacks ?? 0,
+          rotExpiry: vaelPayload?.rotExpiry ?? 0,
+          _vaelKillByDrain: vaelPayload?._vaelKillByDrain ?? false,
+          _vaelPandemicBoneMark: vaelPayload?._vaelPandemicBoneMark ?? false,
+          _vaelCarrionMark: vaelPayload?._vaelCarrionMark ?? 0,
+        } as any
         vaelHero.onVaelKill(this.player, deadEnemy, this.enemies)
       }
 
@@ -591,6 +612,21 @@ export class GameScene extends Phaser.Scene {
 
     this.upgradeTracker = new UpgradeTracker()
 
+    // Pre-seed chosen stance from HeroSelectScene so the first level-up
+    // shows normal upgrade cards instead of the branch picker.
+    if (this._startingBranch && !this._online) {
+      const branches = HERO_BRANCHES[this.localPlayer.heroType] || []
+      const branchDef = branches.find(b => b.name === this._startingBranch)
+      if (branchDef) {
+        const firstSkill = branchDef.upgrades[0]
+        if (firstSkill) {
+          firstSkill.apply(this.localPlayer, 1)
+          this.upgradeTracker.pick({ ...firstSkill, branch: branchDef.name, branchColor: branchDef.color })
+          this.localPlayer.chosenBranch = branchDef.name
+        }
+      }
+    }
+
     this.events.on('player-levelup', (levelingPlayer?: Player) => {
       if (this._online) {
         const lvlPlayer = levelingPlayer ?? this.localPlayer
@@ -608,16 +644,31 @@ export class GameScene extends Phaser.Scene {
       const lvlPlayer = levelingPlayer ?? this.localPlayer
       // Kill nearby enemies so player can safely choose upgrades
       // Skip bosses and mini-bosses — they don't get cleared on level up
-      const CLEAR_RADIUS = 150
+      // Scaling: lvl 1-5 full clear, lvl 6-10 shrinking radius, lvl 11+ only 3 nearest
       const px = lvlPlayer.cx
       const py = lvlPlayer.cy
-      for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!enemy.active) continue
-        const ae = enemy as any
-        if (ae.isBoss || ae.isMiniBoss) continue
-        const dist = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y)
-        if (dist < CLEAR_RADIUS && typeof ae.die === 'function') {
-          ae.die()
+      const lvl = lvlPlayer.level
+      if (lvl <= 10) {
+        const radius = lvl <= 5 ? 150 : 150 - (lvl - 5) * 20  // 150 → 50
+        for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!enemy.active) continue
+          const ae = enemy as any
+          if (ae.isBoss || ae.isMiniBoss) continue
+          if (Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y) < radius && typeof ae.die === 'function') {
+            ae.die()
+          }
+        }
+      } else {
+        const nearby: { e: any; d: number }[] = []
+        for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!enemy.active) continue
+          const ae = enemy as any
+          if (ae.isBoss || ae.isMiniBoss) continue
+          nearby.push({ e: ae, d: Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y) })
+        }
+        nearby.sort((a, b) => a.d - b.d)
+        for (let i = 0; i < Math.min(3, nearby.length); i++) {
+          if (typeof nearby[i].e.die === 'function') nearby[i].e.die()
         }
       }
       // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter.
@@ -1114,9 +1165,9 @@ export class GameScene extends Phaser.Scene {
         const grassFrame = GRASS_FRAMES[Math.floor(rand * GRASS_FRAMES.length)]
         tmpTile.setFrame(grassFrame).setPosition(px, py)
 
-        if (zone === 3) tmpTile.setTint(0x8f9f8f)
-        else if (zone === 4) tmpTile.setTint(0x7e8f7e)
-        else tmpTile.setTint(0xb1c1b1)
+        if (zone === 3) tmpTile.setTint(0x6e7a6e)
+        else if (zone === 4) tmpTile.setTint(0x5e6a5e)
+        else tmpTile.setTint(0x8e9e8e)
 
         this.terrainRT.draw(tmpTile)
       }
@@ -1896,6 +1947,10 @@ export class GameScene extends Phaser.Scene {
     this._networkAdapter = null
     this.chunkManager?.destroy()
     this.chunkManager = undefined
+    // Cleanup Vael graphics/tweens (blight pool repeat:-1 tween, drain gfx, aura, etc.)
+    for (const p of this.players) {
+      if (p && (p as any).heroType === 'vael') vaelHero.cleanupVaelState(p)
+    }
     for (const p of this.players) {
       p?.destroy()
     }

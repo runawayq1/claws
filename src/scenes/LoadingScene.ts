@@ -9,6 +9,7 @@ export class LoadingScene extends Phaser.Scene {
   private online = false
   private seed = 0
   private playerSlots: any[] = []
+  private startingBranch: string | null = null
   private barFill!: Phaser.GameObjects.Graphics
   private barX = 0
   private barY = 0
@@ -20,13 +21,14 @@ export class LoadingScene extends Phaser.Scene {
     super({ key: 'LoadingScene' })
   }
 
-  init(data: { hero: HeroType; map: string; playerName?: string; online?: boolean; seed?: number; playerSlots?: any[] }) {
+  init(data: { hero: HeroType; map: string; playerName?: string; online?: boolean; seed?: number; playerSlots?: any[]; startingBranch?: string }) {
     this.hero = data.hero || 'ignara'
     this.map = data.map || 'GameScene'
     this.playerName = data.playerName || ''
     this.online = data.online ?? false
     this.seed = data.seed ?? 0
     this.playerSlots = data.playerSlots ?? []
+    this.startingBranch = data.startingBranch ?? null
   }
 
   preload() {
@@ -305,6 +307,10 @@ export class LoadingScene extends Phaser.Scene {
         ss('sifra_attack',  'assets/sifra/Attack1.png', 231, 190)
         ss('sifra_hurt',    'assets/sifra/Hit.png',     231, 190)
         ss('sifra_death',   'assets/sifra/Death.png',   231, 190)
+        // Bone pickup sprites (variety for soul orbs on ground)
+        for (const k of ['vael_bone_skull_1', 'vael_bone_pile_1', 'vael_bone_single_1', 'vael_bone_skull_2', 'vael_skull_small']) {
+          if (!this.textures.exists(k)) this.load.image(k, `assets/vael/bones/${k.replace('vael_', '')}.png`)
+        }
         break
     }
   }
@@ -317,6 +323,7 @@ export class LoadingScene extends Phaser.Scene {
       online: this.online,
       seed: this.seed,
       playerSlots: this.playerSlots,
+      startingBranch: this.startingBranch,
     })
     this.scene.bringToTop(this.scene.key)
 

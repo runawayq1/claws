@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { gameFont } from '../utils/device'
+import { makeCircleButton } from '../ui/CircleButton'
 import { MetaProgress, META_UPGRADES, type MetaUpgradeDef, type MetaData } from '../systems/MetaProgress'
 import { getIconFrame } from '../systems/UpgradeSystem'
 import { type HeroType } from '../entities/Player'
@@ -89,25 +90,72 @@ export class ForgeScene extends Phaser.Scene {
     const cardsTopY = goldY + (compact ? 30 : 40)
     this.drawAllCards(cardsTopY, compact)
 
+    // ── Gold tracer around the cards panel ──────────────────────────
+    {
+      const count = META_UPGRADES.length
+      const cardRows = compact ? Math.ceil(count / 3) : 1
+      const cardH = compact ? 80 : 240
+      const gap = compact ? 8 : 14
+      const pad = 6
+      const rx = (compact ? 10 : 20) - pad
+      const ry = cardsTopY - pad
+      const rw = width - rx * 2
+      const rh = cardRows * (cardH + gap) - gap + pad * 2
+      const perimeter = 2 * (rw + rh)
+      const tracerLen = Math.max(16, Math.floor(perimeter * 0.06))
+      const tracerGfx = this.add.graphics()
+      const tracerState = { t: 0 }
+      const perimeterPoint = (d: number) => {
+        const dd = ((d % perimeter) + perimeter) % perimeter
+        if (dd < rw)            return { x: rx + dd,          y: ry }
+        if (dd < rw + rh)       return { x: rx + rw,          y: ry + (dd - rw) }
+        if (dd < rw * 2 + rh)   return { x: rx + rw - (dd - rw - rh), y: ry + rh }
+        return { x: rx, y: ry + rh - (dd - rw * 2 - rh) }
+      }
+      const drawTracer = () => {
+        if (!tracerGfx.active) return
+        tracerGfx.clear()
+        const headDist = tracerState.t * perimeter
+        const segments = 10
+        for (let s = segments - 1; s >= 0; s--) {
+          const f = s / segments
+          const dist = (headDist - tracerLen * f + perimeter) % perimeter
+          const next = (dist + tracerLen / segments) % perimeter
+          const p1 = perimeterPoint(dist)
+          const p2 = perimeterPoint(next)
+          const alpha = 0.1 + (1 - f) * 0.6
+          tracerGfx.lineStyle(1.5, 0xffd700, alpha)
+          tracerGfx.lineBetween(p1.x, p1.y, p2.x, p2.y)
+        }
+      }
+      this.tweens.add({
+        targets: tracerState, t: 1,
+        duration: 3500, repeat: -1, ease: 'Linear',
+        onUpdate: drawTracer,
+      })
+    }
+
     // Recruit section below meta-upgrades (only if tutorial is complete)
     if (this.meta.tutorialComplete) {
-      const cardRows = compact ? Math.ceil(META_UPGRADES.length / 2) : 1
-      const cardH = compact ? 90 : 240
-      const gap = compact ? 10 : 14
+      const cardRows = compact ? Math.ceil(META_UPGRADES.length / 3) : 1
+      const cardH = compact ? 80 : 240
+      const gap = compact ? 8 : 14
       const recruitTopY = cardsTopY + cardRows * (cardH + gap) + (compact ? 10 : 20)
       this.drawRecruitSection(recruitTopY, compact)
     }
 
-    const back = this.add.text(20, 20, '< BACK', {
-      fontFamily: gameFont(), fontSize: compact ? '14px' : '16px',
-      color: C.MUTED,
-    }).setInteractive({ useHandCursor: true })
-    back.on('pointerover', () => back.setColor('#ffffff'))
-    back.on('pointerout', () => back.setColor(C.MUTED))
-    back.on('pointerdown', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
+    const goBack = () => {
+      this.cameras.main.fadeOut(200)
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene'))
+    }
+    makeCircleButton(this, {
+      x: compact ? 24 : 28, y: compact ? 20 : 24,
+      radius: compact ? 13 : 16, icon: '‹', label: 'BACK',
+      onClick: goBack,
+    })
 
     // ESC to go back
-    this.input.keyboard!.on('keydown-ESC', () => { this.cameras.main.fadeOut(200); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('StartScene')) })
+    this.input.keyboard!.on('keydown-ESC', goBack)
   }
 
   /** Redraw both upgrade cards and recruit section with current gold values */
@@ -118,9 +166,9 @@ export class ForgeScene extends Phaser.Scene {
     const cardsTopY = goldY + (compact ? 30 : 40)
     this.drawAllCards(cardsTopY, compact)
     if (this.meta.tutorialComplete) {
-      const cardRows = compact ? Math.ceil(META_UPGRADES.length / 2) : 1
-      const cardH = compact ? 90 : 240
-      const gap = compact ? 10 : 14
+      const cardRows = compact ? Math.ceil(META_UPGRADES.length / 3) : 1
+      const cardH = compact ? 80 : 240
+      const gap = compact ? 8 : 14
       const recruitTopY = cardsTopY + cardRows * (cardH + gap) + (compact ? 10 : 20)
       this.drawRecruitSection(recruitTopY, compact)
     }
@@ -133,11 +181,11 @@ export class ForgeScene extends Phaser.Scene {
     const count = META_UPGRADES.length
 
     if (compact) {
-      // 2-column grid on mobile to avoid vertical overflow
-      const cols = 2
-      const gap = 10
+      // 3-column grid on mobile for tighter layout
+      const cols = 3
+      const gap = 8
       const cardW = Math.floor((width - 20 - gap * (cols - 1)) / cols)
-      const cardH = 90
+      const cardH = 80
       for (let i = 0; i < count; i++) {
         const col = i % cols
         const row = Math.floor(i / cols)
@@ -163,6 +211,11 @@ export class ForgeScene extends Phaser.Scene {
     const canAfford = !maxed && this.meta.goldTotal >= cost
     const pad = 12, midX = x + w / 2
 
+    // Glow layer (drawn behind card, shown on hover)
+    const glow = this.add.graphics()
+    glow.setVisible(false)
+    objects.push(glow)
+
     const g = this.add.graphics()
     objects.push(g)
     this.renderCardBg(g, x, y, w, h, maxed ? C.BORDER_GOLD : C.BORDER)
@@ -180,25 +233,27 @@ export class ForgeScene extends Phaser.Scene {
     const hasIcon = iconName && this.textures.exists('skill_icons')
 
     if (compact) {
-      // Mobile layout: small icon left of label
-      const iconSize = 28
-      const iconX = x + pad + iconSize / 2
-      const iconY = y + 10 + iconSize / 2
+      // Mobile layout: small icon above label (3-col friendly)
+      const iconSize = 22
+      const iconY = y + 6 + iconSize / 2
       if (hasIcon) {
-        const ic = this.add.image(iconX, iconY, 'skill_icons', getIconFrame(iconName!))
+        const ic = this.add.image(midX, iconY, 'skill_icons', getIconFrame(iconName!))
         ic.setDisplaySize(iconSize, iconSize)
         if (maxed) ic.setAlpha(0.85)
         objects.push(ic)
       }
-      const textX = x + pad + iconSize + 8
-      const labelY = y + 10, descY = labelY + 18, pipY = descY + 18
-      objects.push(this.add.text(textX, labelY, def.label, { fontFamily: gameFont(), fontSize: '13px', color: C.LABEL }))
-      objects.push(this.add.text(textX, descY, def.desc, { fontFamily: gameFont(), fontSize: '11px', color: C.DESC }))
-      addPips(textX, pipY, 10, 4)
-      const costX = x + w - pad, costY = y + h / 2 - 8
+      const labelY = iconY + iconSize / 2 + 4
+      const descY = labelY + 14
+      const pipY = descY + 14
+      objects.push(this.add.text(midX, labelY, def.label, { fontFamily: gameFont(), fontSize: '10px', color: C.LABEL, align: 'center', wordWrap: { width: w - pad * 2 } }).setOrigin(0.5, 0))
+      objects.push(this.add.text(midX, descY, def.desc, { fontFamily: gameFont(), fontSize: '8px', color: C.DESC, align: 'center', wordWrap: { width: w - pad * 2 } }).setOrigin(0.5, 0))
+      const pipSize = 8, pipGap = 3
+      const pipsW = def.maxTier * pipSize + (def.maxTier - 1) * pipGap
+      addPips(midX - pipsW / 2, pipY, pipSize, pipGap)
+      const costY2 = y + h - 14
       objects.push(maxed
-        ? this.add.text(costX, costY, 'MAXED', { fontFamily: gameFont(), fontSize: '12px', color: C.GOLD }).setOrigin(1, 0.5)
-        : this.add.text(costX, costY, `✦ ${cost}`, { fontFamily: gameFont(), fontSize: '13px', color: canAfford ? C.GOLD : C.MUTED }).setOrigin(1, 0.5)
+        ? this.add.text(midX, costY2, 'MAXED', { fontFamily: gameFont(), fontSize: '9px', color: C.GOLD }).setOrigin(0.5)
+        : this.add.text(midX, costY2, `✦ ${cost}`, { fontFamily: gameFont(), fontSize: '10px', color: canAfford ? C.GOLD : C.MUTED }).setOrigin(0.5)
       )
     } else {
       // Desktop layout: large icon centered above label
@@ -225,9 +280,35 @@ export class ForgeScene extends Phaser.Scene {
 
     const zone = this.add.zone(x, y, w, h).setOrigin(0).setInteractive({ useHandCursor: !maxed })
     objects.push(zone)
-    zone.on('pointerover', () => { if (!maxed) this.renderCardBg(g, x, y, w, h, C.BORDER_GOLD) })
-    zone.on('pointerout', () => { this.renderCardBg(g, x, y, w, h, maxed ? C.BORDER_GOLD : C.BORDER) })
+
+    let pressed = false
+    const showGlow = () => {
+      glow.clear()
+      glow.fillStyle(0xffd700, 0.08)
+      glow.fillRoundedRect(x - 6, y - 6, w + 12, h + 12, 14)
+      glow.fillStyle(0xffd700, 0.14)
+      glow.fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 11)
+      glow.setVisible(true)
+    }
+    const hideGlow = () => { glow.clear(); glow.setVisible(false) }
+    const shiftObjects = (dy: number) => {
+      for (const obj of objects) {
+        if (obj === zone) continue // keep hit area stable
+        if ('y' in obj) (obj as { y: number }).y += dy
+      }
+    }
+
+    zone.on('pointerover', () => {
+      if (!maxed) { this.renderCardBg(g, x, y, w, h, C.BORDER_GOLD); showGlow() }
+    })
+    zone.on('pointerout', () => {
+      this.renderCardBg(g, x, y, w, h, maxed ? C.BORDER_GOLD : C.BORDER)
+      hideGlow()
+      if (pressed) { shiftObjects(-2); pressed = false }
+    })
+    zone.on('pointerup', () => { if (pressed) { shiftObjects(-2); pressed = false } })
     zone.on('pointerdown', () => {
+      if (!maxed && !pressed) { shiftObjects(2); pressed = true }
       if (maxed) return
       // Live gold check — canAfford closure may be stale after other purchases
       if (this.meta.goldTotal < cost) {
@@ -261,8 +342,16 @@ export class ForgeScene extends Phaser.Scene {
     this.recruitObjects = []
     const { width } = this.scale
 
+    // Gold divider line above recruit section
+    const pad = compact ? 10 : 20
+    const divY = topY - 6
+    const divG = this.add.graphics()
+    divG.lineStyle(1, 0xffd700, 0.35)
+    divG.lineBetween(pad, divY, width - pad, divY)
+    this.recruitObjects.push(divG)
+
     // Section label
-    const labelY = topY
+    const labelY = topY + 4
     const label = this.add.text(width / 2, labelY, '— RECRUIT HEROES —', {
       fontFamily: gameFont(), fontSize: compact ? '14px' : '16px',
       color: C.GOLD,
