@@ -414,8 +414,8 @@ export class MetaProgress {
     // Nazar: win at least 1 run (any hero)
     tryUnlock('nazar', meta.totalWins >= 1)
 
-    // Khashin: survive 8 minutes as Sifra
-    tryUnlock('khashin', session.hero === 'sifra' && session.timeMs >= 480_000)
+    // Khashin: survive 8 minutes as Ignara
+    tryUnlock('khashin', session.hero === 'ignara' && session.timeMs >= 480_000)
 
     if (newlyUnlocked.length > 0) {
       MetaProgress.save(meta)

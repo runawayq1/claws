@@ -498,7 +498,38 @@ export class LevelUpScene extends Phaser.Scene {
           this.tweens.add({
             targets: container, scaleX: cardScale, duration: 250, ease: 'Back.easeOut',
           })
-          // Dramatic reveal burst (pooled)
+          // Skill icon bounce-in
+          if (icon) {
+            icon.setScale(0)
+            this.tweens.add({
+              targets: icon, scale: brIconSize / Math.max(icon.width, icon.height, 1),
+              duration: 400, delay: 100, ease: 'Back.easeOut',
+            })
+          }
+          // Shine sweep
+          const shine = this.add.graphics()
+          container.add(shine)
+          const shProxy = { t: -0.3 }
+          const shW = 30
+          this.tweens.add({
+            targets: shProxy, t: 1.2, duration: 500, delay: 50, ease: 'Sine.easeOut',
+            onUpdate: () => {
+              shine.clear()
+              const px = lx + shProxy.t * (cw + shW * 2) - shW
+              for (let k = 0; k < 3; k++) {
+                shine.fillStyle(0xffffff, [0.22, 0.16, 0.09][k])
+                shine.beginPath()
+                shine.moveTo(px + k * 5, ly)
+                shine.lineTo(px + shW + k * 5, ly)
+                shine.lineTo(px + shW - ch * 0.35 + k * 5, ly + ch)
+                shine.lineTo(px - ch * 0.35 + k * 5, ly + ch)
+                shine.closePath()
+                shine.fillPath()
+              }
+            },
+            onComplete: () => shine.destroy(),
+          })
+          // Dramatic reveal burst
           const cx0 = container.x, cy0 = container.y
           this._burstSparks(cx0, cy0, 12, 100, 4, 8, borderColor)
           this._flashRect(cx0, cy0, cw, ch, borderColor, 0.5, 12, 350)
@@ -663,10 +694,10 @@ export class LevelUpScene extends Phaser.Scene {
 
     // ── Icon (fixed Y for all cards so icons align across the row) ─────
     const iconOffsetY = ly + STRIP_H + 18 + 18 + ICON_SIZE / 2 + 4
-    if (isPersonal) {
+    {
       const glowG = this.add.graphics()
-      glowG.fillStyle(borderColor, 0.15)
-      glowG.fillCircle(0, iconOffsetY, 36)
+      glowG.fillStyle(borderColor, 0.2)
+      glowG.fillCircle(0, iconOffsetY, ICON_SIZE / 2 + 4)
       container.add(glowG)
     }
     const it2 = getIconTexture(upgrade.icon, this)
@@ -745,12 +776,10 @@ export class LevelUpScene extends Phaser.Scene {
     const doFlip = () => {
       if (flipped) return
       flipped = true
-      // Flip animation: squeeze → swap content → expand (25% slower)
       this.tweens.add({
         targets: container, scaleX: 0, duration: 150, ease: 'Sine.easeIn',
         onComplete: () => {
           cardBack.setVisible(false)
-          // Reveal face
           const faceObjs = container.list.filter(
             (o: any) => o !== cardBack && o !== zone
           )
@@ -758,7 +787,38 @@ export class LevelUpScene extends Phaser.Scene {
           this.tweens.add({
             targets: container, scaleX: cardScale, duration: 225, ease: 'Back.easeOut',
           })
-          // Special reveal VFX for personal cards
+          // Skill icon bounce-in
+          if (icon) {
+            icon.setScale(0)
+            this.tweens.add({
+              targets: icon, scale: ICON_SIZE / Math.max(icon.width, icon.height, 1),
+              duration: 350, delay: 100, ease: 'Back.easeOut',
+            })
+          }
+          // Shine sweep across revealed card
+          const shine = this.add.graphics()
+          container.add(shine)
+          const shProxy = { t: -0.3 }
+          const shW = 24
+          this.tweens.add({
+            targets: shProxy, t: 1.2, duration: 450, delay: 50, ease: 'Sine.easeOut',
+            onUpdate: () => {
+              shine.clear()
+              const px = lx + shProxy.t * (CARD_W + shW * 2) - shW
+              for (let k = 0; k < 3; k++) {
+                shine.fillStyle(0xffffff, [0.2, 0.15, 0.08][k])
+                shine.beginPath()
+                shine.moveTo(px + k * 5, ly)
+                shine.lineTo(px + shW + k * 5, ly)
+                shine.lineTo(px + shW - CARD_H * 0.35 + k * 5, ly + CARD_H)
+                shine.lineTo(px - CARD_H * 0.35 + k * 5, ly + CARD_H)
+                shine.closePath()
+                shine.fillPath()
+              }
+            },
+            onComplete: () => shine.destroy(),
+          })
+          // Burst VFX for personal cards
           if (isPersonal) {
             const cx0 = container.x, cy0 = container.y
             this._burstSparks(cx0, cy0, 8, 60, 3, 6, borderColor)
@@ -816,18 +876,18 @@ export class LevelUpScene extends Phaser.Scene {
     // Register keyboard trigger for this card index
     this.cardTriggers[index] = triggerCard
 
-    // Entrance animation — scale container for mobile fit
+    // Entrance animation — scale from 0.85→1 with stagger
     const scw = CARD_W * cardScale, sch = CARD_H * cardScale
-    container.setScale(cardScale)
-    const startY = targetY + sch / 2 + 30
-    container.setPosition(x + scw / 2, startY)
+    container.setScale(cardScale * 0.85)
+    container.setPosition(x + scw / 2, targetY + sch / 2)
     container.setAlpha(0)
     this.tweens.add({
       targets: container,
-      y: targetY + sch / 2,
-      alpha: 1, duration: 260,
-      ease: 'Quad.easeOut',
-      delay: index * 50,
+      scaleX: cardScale,
+      scaleY: cardScale,
+      alpha: 1, duration: 300,
+      ease: 'Back.easeOut',
+      delay: index * 80,
     })
   }
 
@@ -966,6 +1026,12 @@ export class LevelUpScene extends Phaser.Scene {
     this.picked = true
     this.input.enabled = false
     if (this.confettiTimer) { this.confettiTimer.destroy(); this.confettiTimer = undefined }
+
+    // White flash overlay on the picked card
+    const flashOverlay = this.add.graphics().setDepth(22)
+    flashOverlay.fillStyle(0xffffff, 0.4)
+    flashOverlay.fillRoundedRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, flashRoundness)
+    this.tweens.add({ targets: flashOverlay, alpha: 0, duration: 200, onComplete: () => flashOverlay.destroy() })
 
     const nextLevel = (this.tracker.getLevel(upgrade.id) || 0) + 1
     upgrade.apply(this.player, nextLevel)
@@ -1122,14 +1188,37 @@ export class LevelUpScene extends Phaser.Scene {
 
   // ── Graphics helpers ────────────────────────────────────────────────────
 
-  private drawCardNormal(g: Phaser.GameObjects.Graphics, _lx: number, _ly: number, _borderColor: number, _isPersonal: boolean) {
+  private drawCardNormal(g: Phaser.GameObjects.Graphics, lx: number, ly: number, borderColor: number, _isPersonal: boolean) {
     g.clear()
+    // Branch-color gradient bg: bottom = branch color bleed, top = dark overlay
+    g.fillStyle(borderColor, 0.15)
+    g.fillRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    g.fillStyle(0x0c0c1a, 0.95)
+    g.fillRoundedRect(lx + 2, ly + 2, CARD_W - 4, CARD_H - 4, 7)
+    // Gold bevel border: outer 2px
+    g.lineStyle(2, 0xffd700, 0.7)
+    g.strokeRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    // Gold bevel border: inner 1px (2px gap inward)
+    g.lineStyle(1, 0xffd700, 0.3)
+    g.strokeRoundedRect(lx + 4, ly + 4, CARD_W - 8, CARD_H - 8, 6)
   }
 
-  private drawCardHover(g: Phaser.GameObjects.Graphics, lx: number, ly: number, _borderColor: number, _isPersonal: boolean) {
+  private drawCardHover(g: Phaser.GameObjects.Graphics, lx: number, ly: number, borderColor: number, _isPersonal: boolean) {
     g.clear()
+    // Branch-color gradient bg
+    g.fillStyle(borderColor, 0.15)
+    g.fillRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    g.fillStyle(0x0c0c1a, 0.95)
+    g.fillRoundedRect(lx + 2, ly + 2, CARD_W - 4, CARD_H - 4, 7)
+    // Hover brightening
     g.fillStyle(0xffffff, 0.06)
     g.fillRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    // Gold bevel border: outer 2px (brighter on hover)
+    g.lineStyle(2, 0xffd700, 0.9)
+    g.strokeRoundedRect(lx, ly, CARD_W, CARD_H, 8)
+    // Gold bevel border: inner 1px
+    g.lineStyle(1, 0xffd700, 0.5)
+    g.strokeRoundedRect(lx + 4, ly + 4, CARD_W - 8, CARD_H - 8, 6)
   }
 
   // ── Stance tutorial dialog (Amun Quake branch) ──────────────────────────

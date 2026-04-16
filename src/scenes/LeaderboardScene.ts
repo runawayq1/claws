@@ -234,6 +234,44 @@ export class LeaderboardScene extends Phaser.Scene {
     panelG.strokeRoundedRect(panelX, tableY, panelW, panelH, 6)
     this.contentGroup.push(panelG)
 
+    // Gold tracer around panel
+    {
+      const rx = panelX, ry = tableY, rw = panelW, rh = panelH
+      const perimeter = 2 * (rw + rh)
+      const tracerLen = Math.max(16, Math.floor(perimeter * 0.06))
+      const tracerGfx = this.add.graphics()
+      this.contentGroup.push(tracerGfx)
+      const tracerState = { t: 0 }
+      const perimeterPoint = (d: number) => {
+        const dd = ((d % perimeter) + perimeter) % perimeter
+        if (dd < rw)            return { x: rx + dd,          y: ry }
+        if (dd < rw + rh)       return { x: rx + rw,          y: ry + (dd - rw) }
+        if (dd < rw * 2 + rh)   return { x: rx + rw - (dd - rw - rh), y: ry + rh }
+        return { x: rx, y: ry + rh - (dd - rw * 2 - rh) }
+      }
+      const drawTracer = () => {
+        if (!tracerGfx.active) return
+        tracerGfx.clear()
+        const headDist = tracerState.t * perimeter
+        const segments = 10
+        for (let s = segments - 1; s >= 0; s--) {
+          const f = s / segments
+          const dist = (headDist - tracerLen * f + perimeter) % perimeter
+          const next = (dist + tracerLen / segments) % perimeter
+          const p1 = perimeterPoint(dist)
+          const p2 = perimeterPoint(next)
+          const alpha = 0.1 + (1 - f) * 0.6
+          tracerGfx.lineStyle(1.5, 0xffd700, alpha)
+          tracerGfx.lineBetween(p1.x, p1.y, p2.x, p2.y)
+        }
+      }
+      this.tweens.add({
+        targets: tracerState, t: 1,
+        duration: 4000, repeat: -1, ease: 'Linear',
+        onUpdate: drawTracer,
+      })
+    }
+
     // Column layout — adapt for portrait vs landscape and compact
     const pad = isPortrait ? 6 : 12
     const fontSize = compact ? '10px' : isPortrait ? '11px' : '12px'

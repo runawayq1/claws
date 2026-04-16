@@ -62,21 +62,21 @@ const HERO_POPUP_SCALE: Partial<Record<HeroType, number>> = {
 // Keyed by the BranchDef.name from UpgradeSystem.
 const BRANCH_SUMMARY: Record<string, string> = {
   // Ignara
-  'Inferno':        '+55% fireball damage · wider blast · scorched earth',
-  'Wildfire':       '+60% damage reduction · chain-kill explosions',
-  'Pyre':           'Burn aura 25%/s · +45% damage · molten volley',
+  'Inferno':        'Massive fireball aoe · wider blast · scorched earth',
+  'Wildfire':       'Attack speed · Chain-kill explosions',
+  'Pyre':           'Burn aura · Short range · Huge damage',
   // Nazar
   'Way of the Blade':  '+35% crit chance · dual-strike combos',
   'Way of Venom':      'Poison DoT · area denial · +30% damage',
   'Way of Shadow':     'Stealth · +100% execution damage',
   // Sifra
-  'Frost':          'Freeze enemies · +40% ice damage',
-  'Shatter':        'Ice shards split · chain shatter',
+  'Frost':          'Freeze enemies · Ice armor',
+  'Shatter':        'Ice shards splits · chain shatter',
   'Lightning':      'Chain beam · +50% attack speed',
   // Amun
   'Wrath':          'Damage aura · thorns · consecration',
-  'Bastion':        '+80% damage reduction · undying',
-  'Quake':          'Knockback AoE · unlocks Quake stance',
+  'Bastion':        '+50% damage reduction · undying',
+  'Quake':          'Knockback AoE ·  Ranged stance ',
   // Khashin
   'Gale':           '+50% attack speed · cyclone pulls',
   'Dune':           '+40% damage reduction · sand armor',
@@ -91,7 +91,7 @@ const BRANCH_SUMMARY: Record<string, string> = {
   'Warden':         'Orbiting spears · spear wall AoE',
   // Vael (Necra)
   'Pale Harvest':   'Life drain · +50% attack speed',
-  'Ossuary':        '+40% damage · raise undead allies',
+  'Ossuary':        'Zombie army · +27% attack speed · +24% damage per zombie',
   'Wasting Plague': 'Plague spread · necrotic bloom DoT',
   // Nightborne
   'Void Blade':     '+50% damage · void surge cleave',
@@ -141,8 +141,8 @@ export const HERO_UNLOCK_HINTS: Partial<Record<HeroType, string>> = {
   sifra:    "Find her in the Ruin. (Complete Amun's tutorial)",
   ignara:   'Complete 3 runs to unlock.',
   nazar:    'Win a run to unlock.',
-  huntress: 'Purchase at the Forge for 300 gold.',
-  khashin:  'Survive 8 minutes as Sifra to unlock.',
+  huntress: 'Purchase at the Forge for 1000 gold.',
+  khashin:  'Survive 8 minutes as Ignara to unlock.',
   muller:   'Someone is working in the deep crystal...',
 }
 
@@ -353,18 +353,6 @@ export class HeroSelectScene extends Phaser.Scene {
       return { cx, cy }
     }
 
-    // #11 Locked separator — find first locked index in sorted array
-    const firstLockedIdx = sortedHeroes.findIndex(h => !MetaProgress.isHeroUnlocked(h.type))
-    if (firstLockedIdx > 0) {
-      const lockedLabelPos = cellPos(firstLockedIdx)
-      const labelY = lockedLabelPos.cy - circleRadius - (compact ? 14 : 18)
-      const lockedLabel = this.add.text(width / 2, labelY, '— LOCKED —', {
-        fontFamily: gameFont(), fontSize: compact ? '9px' : '10px',
-        color: '#555566',
-        fontStyle: 'bold',
-      }).setOrigin(0.5).setAlpha(0.7)
-      addToBody(lockedLabel as any)
-    }
 
     // Track all hero elements for staggered entry
     const heroEntryTargets: Phaser.GameObjects.GameObject[] = []
@@ -890,7 +878,7 @@ export class HeroSelectScene extends Phaser.Scene {
     const pad = compact ? 10 : 16
     const headerH = compact ? 28 : 38
     const btnH = compact ? 28 : 34
-    const bonusH = compact ? 42 : 52
+    const bonusH = compact ? 50 : 62
     const footerGap = compact ? 10 : 16
     const contentY = panelY + headerH
     // Pre-compute footer boundary so columns don't overflow into it
@@ -1329,7 +1317,7 @@ export class HeroSelectScene extends Phaser.Scene {
       }
       const first = b.upgrades[0]
       if (!first) return
-      const firstLine = (first.desc[0] || '').split('\n').join(' — ')
+      const firstLine = first.desc[0] || ''
       previewSkill.setText(first.label.toUpperCase())
       previewSkill.setColor(`#${b.color.toString(16).padStart(6, '0')}`)
       previewDesc.setText(firstLine)
@@ -1863,6 +1851,13 @@ export class HeroSelectScene extends Phaser.Scene {
 
     g.fillStyle(highlighted ? 0x222244 : 0x111122)
     g.fillCircle(cx, cy, r)
+
+    // Hero-color radial aura rings inside the circle (matches popup portrait)
+    const auraR = r * 0.7
+    for (let i = 5; i >= 1; i--) {
+      g.fillStyle(color, 0.03 + (6 - i) * 0.01)
+      g.fillCircle(cx, cy, (auraR * i) / 5)
+    }
 
     g.lineStyle(highlighted ? 3 : 2, color, highlighted ? 1 : 0.6)
     g.strokeCircle(cx, cy, r)

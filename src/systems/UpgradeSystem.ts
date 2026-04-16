@@ -97,7 +97,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'bh1', label: 'Sustained Burn', icon: 'bh1_sustained_burn',
-        desc: ['Hits apply Burn (4%/tick, max 5)\n-10% CD', 'Max stacks → 7\n-10% CD', 'Fully stacked: +20% dmg taken\n-10% CD'],
+        desc: ['Hits apply Burn (4%/tick, max 5)\n+10% Attack Speed', 'Max stacks → 7\n-10% CD', 'Fully stacked: +20% dmg taken\n-10% CD'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSustainedBurn = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
           else if (lvl === 2) { p.burnMaxStacks = 7; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
@@ -148,7 +148,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
     upgrades: [
       {
         id: 'ih1', label: 'Slug Round', icon: 'ih1_backdraft',
-        desc: ['Heavy shot\n×1.6 proj, 20px blast, +15% dmg', 'Bigger punch\n+15% dmg, blast → 30px', 'Piercing slug\n+15% dmg, pierces 1 enemy'],
+        desc: ['Heavy shot\n+60% projectile size, 2m blast, +15% dmg', 'Bigger punch\n+15% dmg, blast → 30px', 'Piercing slug\n+15% dmg, pierces 1 enemy'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSlugRound = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -998,9 +998,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'ph1', label: 'Hollow Touch', icon: 'ph1_hollow_touch',
         desc: [
-          '◉ Soul Orbs: heal for 8% of damage dealt on hit\n✦ Lifedrain: heal for 4% of damage per tick',
-          '◉ Soul Orbs: heal for 14% of damage on hit\n✦ Lifedrain: heal for 7% per tick\n+1 HP per armor stack gained',
-          '◉ Soul Orbs: heal for 20%; overkill heals at half rate\n✦ Lifedrain: heal for 10% per tick\nCollecting a bone heals +3 HP',
+          'Attacks heal you\nOrbs: 8% on hit · Drain: 4% per tick',
+          'Stronger lifesteal\nOrbs: heal 14% on hit\nDrain: heal 7% per tick\n+1 HP per armor stack gained',
+          'Maximum harvest\nOrbs: heal 20%, overkill heals at half rate\nDrain: heal 10% per tick\nCollecting a bone heals +3 HP',
         ],
         apply: (p, lvl) => {
           p.hasHollowTouch = true
@@ -1014,9 +1014,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'ph2', label: 'Soul Siphon', icon: 'ph2_soul_siphon',
         desc: [
-          '◉ Soul Orbs: 35% chance on kill to drop a bone\n✦ Lifedrain: always drops a bone on kill',
-          '◉ Soul Orbs: 50% drop chance; bones heal +10 HP on pickup\n✦ Lifedrain: drops 2 bones per kill\n+2 max armor stacks',
-          '◉ Soul Orbs: bones auto-collect within 1.5m\n✦ Lifedrain: 15% chance to drop an extra bone\n+3 max armor stacks',
+          'Kills drop bones — shield stacks\nEach stack absorbs 2 damage · Orbs: 35% · Drain: always',
+          'Stronger bones\nOrbs: 50% chance, +10 HP on pickup\nDrain: 2 bones per kill · Max stacks +2 (10)',
+          'Bone mastery\nOrbs: auto-collect within 1.5m\nDrain: 15% extra chance · Max stacks +3 (11)',
         ],
         apply: (p, lvl) => {
           p.hasSoulSiphon = true
@@ -1032,9 +1032,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'ph3', label: 'Wound Memory', icon: 'ph3_wound_memory',
         desc: [
-          '◉ Soul Orbs: rooted enemies take +20% damage\nRoot duration 0.7s',
-          '◉ Soul Orbs: rooted enemies take +30% damage (root 0.9s)\nRe-rooting within 4s grants +1 free armor stack',
-          '◉ Soul Orbs: enemies hit within the last 3s take +20% damage\nRoot duration 1.1s',
+          'Soul Bolts root enemies on hit\nRooted: +20% damage taken, 0.7s',
+          'Deeper roots\nRooted enemies take +30% damage, root 0.9s\nRe-rooting within 4s gives +1 free armor stack',
+          'Nothing escapes\nEnemies hit in last 3s take +20% bonus damage\nRoot duration 1.1s',
         ],
         apply: (p, lvl) => {
           p.hasWoundMemory = true
@@ -1086,14 +1086,14 @@ const VAEL_BRANCHES: BranchDef[] = [
   },
   {
     name: 'Ossuary', color: 0xfde68a,
-    theme: 'Command up to 3 Zombies + 1 Lich. Zombies grant up to +27% attack speed and +24% damage. Lich: 150% HP, 80% damage, permanent champion.',
+    theme: 'Raise the dead. Command up to 5 Zombies that buff your attack speed and damage. The horde grows with every kill.',
     upgrades: [
       {
         id: 'os1', label: 'Risen', icon: 'os1_risen',
         desc: [
-          '◉ Soul Orbs: 25% chance on kill to summon a Zombie (4s, 30% damage)\n✦ Lifedrain: 40% chance on kill to summon a Zombie',
-          '◉ Soul Orbs: 35% chance, Zombies last 6s (35% damage)\n✦ Lifedrain: 55% chance; Zombies target nearest enemy instantly',
-          '◉ Soul Orbs: 45% chance, 8s lifetime (40% damage), max 3 Zombies\n✦ Lifedrain: 65% chance; Zombies gain +20% HP and orbit Vael when idle',
+          'Kills raise Zombies that fight for you\nOrbs: 25% chance, 4s · Drain: 40% chance',
+          'Stronger zombies\nOrbs: 35% chance, 6s lifetime, 35% of your damage\nDrain: 55% chance, zombies auto-target enemies',
+          'Zombie army\nOrbs: 45% chance, 8s lifetime, 40% damage, max 3\nDrain: 65% chance, zombies gain +20% HP',
         ],
         apply: (p, lvl) => {
           p.hasRisen = true
@@ -1164,23 +1164,22 @@ const VAEL_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'os5', label: 'Lich Dominion', icon: 'os5_lich_dominion', isUltimate: true,
+        id: 'os5', label: 'Undying Horde', icon: 'os5_lich_dominion', isUltimate: true,
         desc: [
-          'Summon a Lich: 150% HP, 80% damage, reforms 20s after death\n◉ Soul Orbs: Lich fires bone spikes that root on hit (0.6s)\n✦ Lifedrain: Lich acts as a permanent tendril relay',
-          'Lich gains +40% HP, reforms in 15s\nAura: nearby Zombies deal +20% damage\n◉ Soul Orbs: bones dropped near Lich pulse, healing +2 HP each\n✦ Lifedrain: tendril tick rate +10%',
-          'Aura slows enemies 15% within 3m\nReforms in 12s\nOn Lich death: triggers a free Charnel Tide',
+          'Zombies become permanent\nMax 4 Zombies. On death: reform after 8s',
+          'Max 5 Zombies, +30% zombie damage\nNearby zombies heal Vael 1 HP/s',
+          'On zombie death: explosion + free Charnel Tide\nZombies gain +50% HP',
         ],
         apply: (p, lvl) => {
-          p.hasLichDominion = true
-          p.revenantHPBonus = [0, 0.40, 0.40][lvl - 1]
-          p.revenantDmgPct = 0.80
-          p.revenantSlowAura = lvl >= 3
-          p.lichRevenantCharnelOnDeath = lvl >= 3
-          p.lichRevenantBoneSpike = true
-          p.lichRevenantTendrilRelay = true
-          p.lichRevenantBonePulseHeal = lvl >= 2
-          p.lichRevenantTendrilTickRate = lvl >= 2 ? 0.10 : 0
-          p.lichRevenantStanceDiscount = lvl >= 3 ? 0.10 : 0
+          p.hasUndyingHorde = true
+          p.risenDuration = 999999
+          p.risenMaxThralls = lvl >= 2 ? 5 : 4
+          p.undyingHordeReformTime = [8000, 8000, 8000][lvl - 1]
+          p.undyingHordeDmgBonus = lvl >= 2 ? 0.30 : 0
+          p.undyingHordeHealPerSec = lvl >= 2 ? 1 : 0
+          p.undyingHordeDeathExplosion = lvl >= 3
+          p.undyingHordeCharnelOnDeath = lvl >= 3
+          p.undyingHordeHPBonus = lvl >= 3 ? 0.50 : 0
         },
       },
     ],
@@ -1192,9 +1191,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'wp1', label: 'Festering Wound', icon: 'wp1_festering_wound',
         desc: [
-          '◉ Soul Orbs: Soul Bolt applies 1 Rot stack; 3+ stacks take +15% damage\n✦ Lifedrain: applies 1 Rot stack every 2 ticks',
-          '◉ Soul Orbs: 3+ stacks take +20% damage; Rot decays 1 per 3s\n✦ Lifedrain: applies 1 Rot stack every tick',
-          '◉ Soul Orbs: applies 2 Rot per hit; 6+ stacks slow enemies 15%\n✦ Lifedrain: tendril tick on 5+ stacks triggers a 10% damage burst',
+          'Attacks apply Rot stacks to enemies\n3+ Rot: +15% damage taken · Drain applies every 2 ticks',
+          'Rot spreads deeper\nOrbs: 3+ stacks take +20% damage, Rot decays 1 per 3s\nDrain: applies 1 Rot every tick',
+          'Plague carrier\nOrbs: 2 Rot per hit, 6+ stacks slow enemies 15%\nDrain: 5+ stacks trigger 10% damage burst per tick',
         ],
         apply: (p, lvl) => {
           p.hasFesteringWound = true

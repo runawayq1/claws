@@ -645,16 +645,31 @@ export class GameScene extends Phaser.Scene {
       const lvlPlayer = levelingPlayer ?? this.localPlayer
       // Kill nearby enemies so player can safely choose upgrades
       // Skip bosses and mini-bosses — they don't get cleared on level up
-      const CLEAR_RADIUS = 150
+      // Scaling: lvl 1-5 full clear, lvl 6-10 shrinking radius, lvl 11+ only 3 nearest
       const px = lvlPlayer.cx
       const py = lvlPlayer.cy
-      for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
-        if (!enemy.active) continue
-        const ae = enemy as any
-        if (ae.isBoss || ae.isMiniBoss) continue
-        const dist = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y)
-        if (dist < CLEAR_RADIUS && typeof ae.die === 'function') {
-          ae.die()
+      const lvl = lvlPlayer.level
+      if (lvl <= 10) {
+        const radius = lvl <= 5 ? 150 : 150 - (lvl - 5) * 20  // 150 → 50
+        for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!enemy.active) continue
+          const ae = enemy as any
+          if (ae.isBoss || ae.isMiniBoss) continue
+          if (Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y) < radius && typeof ae.die === 'function') {
+            ae.die()
+          }
+        }
+      } else {
+        const nearby: { e: any; d: number }[] = []
+        for (const enemy of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+          if (!enemy.active) continue
+          const ae = enemy as any
+          if (ae.isBoss || ae.isMiniBoss) continue
+          nearby.push({ e: ae, d: Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y) })
+        }
+        nearby.sort((a, b) => a.d - b.d)
+        for (let i = 0; i < Math.min(3, nearby.length); i++) {
+          if (typeof nearby[i].e.die === 'function') nearby[i].e.die()
         }
       }
       // Clear 50% of drops (XP orbs, gold, pickups) to reduce clutter.

@@ -379,29 +379,33 @@ export function updateVaelPassives(p: Player, delta: number) {
   for (const thrall of st.boneThralls) {
     if (now > thrall.expireAt || thrall.hp <= 0) {
       // Grave Pact L2+: death burst
-      if (thrall.deathBurst && !thrall.isRevenant) {
+      if (thrall.deathBurst) {
         spawnThrallDeathBurst(p, thrall, enemies)
       }
-      // Lich Dominion L3: Revenant death → free Charnel Tide (no CD consumed)
-      if (thrall.isRevenant) {
-        if ((p as any).hasLichDominion && (p as any).lichRevenantCharnelOnDeath && enemies) {
-          const radius = (p as any).charnelTideRadius ?? 300
-          const maxRise = (p as any).charnelTideMax ?? 6
-          let count = 0
-          for (const e of enemyArr) {
-            if (!e.active || count >= maxRise) break
-            if (Phaser.Math.Distance.Between(thrall.x, thrall.y, e.x, e.y) < radius) {
-              spawnBoneThrall(p, e.x + Phaser.Math.Between(-20, 20), e.y + Phaser.Math.Between(-20, 20))
-              count++
-            }
+      // Undying Horde L3: death explosion + free Charnel Tide
+      if ((p as any).hasUndyingHorde && (p as any).undyingHordeDeathExplosion) {
+        spawnThrallDeathBurst(p, thrall, enemies)
+      }
+      if ((p as any).hasUndyingHorde && (p as any).undyingHordeCharnelOnDeath && enemies) {
+        const radius = (p as any).charnelTideRadius ?? 300
+        const maxRise = (p as any).charnelTideMax ?? 6
+        let count = 0
+        for (const e of enemyArr) {
+          if (!e.active || count >= maxRise) break
+          if (Phaser.Math.Distance.Between(thrall.x, thrall.y, e.x, e.y) < radius) {
+            spawnBoneThrall(p, e.x + Phaser.Math.Between(-20, 20), e.y + Phaser.Math.Between(-20, 20))
+            count++
           }
         }
-        // Start reform timer (L1: 20s, L2: 15s, L3: 12s — use charnelOnDeath L3 flag as L3 marker)
-        const reformMs = (p as any).lichRevenantCharnelOnDeath
-          ? 12000
-          : ((p as any).revenantHPBonus > 0 ? 15000 : 20000)
-        st.revenantReformAt = now + reformMs
-        st.revenant = null
+      }
+      // Undying Horde: reform zombie after delay
+      if ((p as any).hasUndyingHorde) {
+        const reformMs = (p as any).undyingHordeReformTime ?? 8000
+        p.scene.time.delayedCall(reformMs, () => {
+          if (st.boneThralls.length < ((p as any).risenMaxThralls ?? 5)) {
+            spawnBoneThrall(p, p.x + Phaser.Math.Between(-30, 30), p.y + Phaser.Math.Between(-30, 30))
+          }
+        })
       }
       thrall.sprite?.destroy()
       thrall.gfx.destroy()
@@ -434,38 +438,24 @@ export function updateVaelPassives(p: Player, delta: number) {
             }
           }
           if (thrall.attackTimer <= 0) {
-            thrall.attackTimer = thrall.isRevenant ? 800 : 1000
-            const baseDmg = thrall.isRevenant
-              ? p.damage * ((p as any).revenantDmgPct ?? 0.80)
-              : p.damage * thrallDmgPct * (1 + thrallDmgBonus)
+            thrall.attackTimer = 1000
+            const hordeDmgBonus = (p as any).hasUndyingHorde ? ((p as any).undyingHordeDmgBonus ?? 0) : 0
+            const baseDmg = p.damage * thrallDmgPct * (1 + thrallDmgBonus + hordeDmgBonus)
             ;(nearest as unknown as BaseEnemy).takeDamage(baseDmg, 'melee')
           }
         } else {
           // Move toward target
-          const speed = thrall.isRevenant ? 90 : 70
+          const speed = 70
           const angle = Phaser.Math.Angle.Between(thrall.x, thrall.y, nearest.x, nearest.y)
           thrall.x += Math.cos(angle) * speed * (delta / 1000)
           thrall.y += Math.sin(angle) * speed * (delta / 1000)
           if (thrall.sprite) thrall.sprite.setFlipX(nearest.x < thrall.x)
         }
 
-        // Revenant aura: slow nearby enemies
-        if (thrall.isRevenant && (p as any).revenantSlowAura) {
-          for (const e of enemyArr) {
-            if (!e.active) continue
-            if (Phaser.Math.Distance.Between(thrall.x, thrall.y, e.x, e.y) < 120) {
-              const be = e as unknown as BaseEnemy
-              if (be.baseSpeed) be.speed = Math.max(20, be.baseSpeed * 0.85)
-            }
-          }
-        }
-
-        // Lich Dominion L1 orbs: Revenant fires bone spike projectiles that root on hit
-        if (thrall.isRevenant && (p as any).lichRevenantBoneSpike) {
-          st.revenantSpikeTimer -= delta
-          if (st.revenantSpikeTimer <= 0) {
-            st.revenantSpikeTimer = 1800  // every 1.8s
-            fireBoneSpike(p, thrall.x, thrall.y, nearest.x, nearest.y)
+        // Undying Horde: heal Vael from nearby zombies
+        if ((p as any).hasUndyingHorde && (p as any).undyingHordeHealPerSec > 0) {
+          if (nearDist < 120) {
+            p.hp = Math.min(p.maxHp, p.hp + (p as any).undyingHordeHealPerSec * delta / 1000)
           }
         }
       }
@@ -481,7 +471,7 @@ export function updateVaelPassives(p: Player, delta: number) {
     thrall.gfx.y = thrall.y
     if (!thrall.sprite) {
       // Fallback procedural draw if sprite missing
-      const color = thrall.isRevenant ? 0xddbb44 : 0xccbb88
+      const color = 0xccbb88
       thrall.gfx.fillStyle(color, 0.9)
       thrall.gfx.fillRect(-5, -14, 10, 14)
       thrall.gfx.fillCircle(0, -18, 5)
@@ -503,10 +493,7 @@ export function updateVaelPassives(p: Player, delta: number) {
     ;(p as any)._vaelAttackCDMult = Math.max(0.3, 1 - bonus)
   }
 
-  // ── Revenant reform ────────────────────────────────────────────────────────
-  if (!st.revenant && (p as any).hasLichDominion && now > st.revenantReformAt && st.revenantReformAt > 0) {
-    spawnRevenant(p)
-  }
+  // Undying Horde reform is handled via delayedCall in zombie death block above
 
   // ── Auto-cast abilities on cooldown (Vampire Survivors style) ─────────────
   if (enemies) {
@@ -642,7 +629,7 @@ export function updateVaelPassives(p: Player, delta: number) {
     // Pandemic L2: +15% tick rate during boost window
     const pandemicTickBoost = pandemicBoostActive ? ((p as any).pandemicTendrilTickRateBoost ?? 0) : 0
     // Lich Dominion L2: +10% tick rate while Revenant alive
-    const revenantTickBoost = (st.revenant && (p as any).lichRevenantTendrilTickRate) ? (p as any).lichRevenantTendrilTickRate : 0
+    const revenantTickBoost = (st.revenant && (p as any).undyingHordeHealPerSec) ? (p as any).undyingHordeHealPerSec : 0
     const tickRateMult = (sanguineDoubleTick ? 2 : 1) * (1 + pandemicTickBoost + revenantTickBoost)
     const TICK_MS = Math.max(50, Math.floor(300 / tickRateMult))
     // Exsanguination L2: +10% tendril tick dmg bonus
@@ -1175,31 +1162,6 @@ export function onVaelKill(
     scene.tweens.add({ targets: pFx2, scaleX: pulseRadius / 10, scaleY: pulseRadius / 10, alpha: 0, duration: 450, onComplete: () => pFx2.destroy() })
   }
 
-  // Revenant on-death: trigger charnel tide if has L3 lich dominion
-  if ((p as any).hasLichDominion && (p as any).lichRevenantCharnelOnDeath) {
-    // Handled in Revenant death code
-  }
-}
-
-// ─── Bone spike projectile (Lich Revenant L1 orbs) ───────────────────────────
-function fireBoneSpike(p: Player, fromX: number, fromY: number, toX: number, toY: number) {
-  const scene = p.scene
-  const st = getState(p)
-  const angle = Math.atan2(toY - fromY, toX - fromX)
-  const speed = 420
-  const gfx = scene.add.graphics().setDepth(11)
-  // Muzzle flash at spawn
-  const flash = scene.add.graphics().setDepth(12)
-  flash.fillStyle(0xffeecc, 0.8)
-  flash.fillCircle(fromX, fromY, 8)
-  scene.tweens.add({ targets: flash, alpha: 0, scale: 2.5, duration: 200, onComplete: () => flash.destroy() })
-  st.boneSpikes.push({
-    gfx, x: fromX, y: fromY,
-    vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-    life: 900,
-    dmg: p.damage * 0.60,
-    angle,
-  })
 }
 
 // ─── Spawn helpers ────────────────────────────────────────────────────────────
@@ -1259,31 +1221,6 @@ function ensureThrallAnim(scene: Phaser.Scene) {
   }
 }
 
-function spawnRevenant(p: Player) {
-  const scene = p.scene
-  const st = getState(p)
-
-  ensureThrallAnim(scene)
-  const hpMult = 1 + ((p as any).revenantHPBonus ?? 0)
-  const revenantMaxHp = p.maxHp * 1.5 * hpMult
-  const gfx = scene.add.graphics().setDepth(9)
-  const sprite = scene.textures.exists('thrall_walk')
-    ? scene.add.sprite(p.x + 30, p.y, 'thrall_walk', 0).setDepth(9).setScale(2.0).setTint(0xddbb44)
-    : undefined
-  if (sprite) sprite.play('thrall_walk_anim')
-
-  st.revenant = {
-    gfx, sprite, hp: revenantMaxHp, maxHp: revenantMaxHp,
-    expireAt: Infinity, x: p.x + 30, y: p.y, attackTimer: 0,
-    isRevenant: true,
-  }
-  st.boneThralls.push(st.revenant)
-
-  const spawnFx = scene.add.graphics().setDepth(10)
-  spawnFx.lineStyle(2, 0xddbb44, 0.9)
-  spawnFx.strokeCircle(p.x, p.y, 15)
-  scene.tweens.add({ targets: spawnFx, scale: 3, alpha: 0, duration: 500, onComplete: () => spawnFx.destroy() })
-}
 
 function spawnSoulOrb(p: Player, x: number, y: number) {
   const st = getState(p)
@@ -1295,16 +1232,6 @@ function spawnSoulOrb(p: Player, x: number, y: number) {
     .setStrokeStyle(1, 0xaaddff, 0.8)
   st.soulOrbs.push({ gfx: orb, expireAt: now + 30000, homeSpeed: 0, autoCollect: false, healAmount: 0 })
 
-  // Lich Dominion L2: bone near Revenant → pulse + heal 2 HP
-  if (st.revenant && (p as any).lichRevenantBonePulseHeal) {
-    if (Phaser.Math.Distance.Between(st.revenant.x, st.revenant.y, x, y) < 160) {
-      p.hp = Math.min(p.maxHp, p.hp + 2)
-      const pulse = scene.add.graphics().setDepth(11)
-      pulse.lineStyle(2, 0xddbb44, 0.8)
-      pulse.strokeCircle(x, y, 6)
-      scene.tweens.add({ targets: pulse, scale: 3, alpha: 0, duration: 400, onComplete: () => pulse.destroy() })
-    }
-  }
 }
 
 function spawnBlightPool(p: Player, x: number, y: number, doubleRadius = false) {

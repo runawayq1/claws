@@ -98,6 +98,7 @@ export class UIScene extends Phaser.Scene {
   private _lastElapsedSec = -1
   private _critFlashUntil = 0   // timestamp — HP bar white flash on damage
   private _critPulse = 0        // continuous pulse counter at low HP
+  private _hpFlashUntil = 0     // timestamp — glass shimmer flash on HP decrease
   private _mmMaskDirty = true
   private _isPortrait = false
   private _masteryLabel: Phaser.GameObjects.Text | null = null
@@ -1454,9 +1455,15 @@ export class UIScene extends Phaser.Scene {
     const _ow = width / _z
     const _oh = height / _z
     this.overlay.clear()
-    this.overlay.fillStyle(0x000000, 0.75)
+    this.overlay.fillStyle(0x000000, 1)
     this.overlay.fillRect(_ox, _oy, _ow, _oh)
-    this.overlay.setAlpha(1)
+    this.overlay.setAlpha(0)
+    this.tweens.add({
+      targets: this.overlay,
+      alpha: 0.8,
+      duration: 800,
+      ease: 'Sine.easeIn',
+    })
 
     const survived = gs.gameTime
     const mins = Math.floor(survived / 60000)
@@ -1600,11 +1607,15 @@ export class UIScene extends Phaser.Scene {
     const topY = Math.max(height * 0.05, (height - totalH) / 2)
     let cy2 = topY  // running Y cursor
 
-    // ── Title ──────────────────────────────────────────────────────────
+    // ── Title (animated entrance) ─────────────────────────────────────
     const t1 = this.add.text(cx, cy2 + titleH / 2, title, {
       fontFamily: gameFont(), fontSize: mob ? '26px' : '32px', color: titleColor,
-    }).setOrigin(0.5).setDepth(31)
+    }).setOrigin(0.5).setDepth(31).setAlpha(0).setScale(0.5)
     t1.setShadow(0, 1, '#000000', 2, true, true)
+    this.tweens.add({
+      targets: t1, alpha: 1, scale: 1,
+      duration: 400, ease: 'Back.easeOut', delay: 300,
+    })
     cy2 += titleH + subGap
 
     // ── Hero + wave sub-label ──────────────────────────────────────────
@@ -1612,10 +1623,14 @@ export class UIScene extends Phaser.Scene {
     const wave = gs._online ? (gs._networkAdapter?.serverWave || 1) : (gs.waveManager?.currentWave || 1)
     const subLabel = this.add.text(cx, cy2 + subH / 2, `${heroName}  ·  WAVE ${wave}`, {
       fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#8899aa',
-    }).setOrigin(0.5).setDepth(32)
+    }).setOrigin(0.5).setDepth(32).setAlpha(0)
+    this.tweens.add({
+      targets: subLabel, alpha: 1,
+      duration: 300, delay: 500,
+    })
     cy2 += subH + afterSubGap
 
-    // ── Stats panel — 2-column grid ────────────────────────────────────
+    // ── Stats panel — 2-column grid (cascade entrance) ───────────────
     const py = cy2
     const col1 = px + 16, col2 = cx + 8
     const panelG = this.add.graphics().setDepth(31)
@@ -1623,6 +1638,8 @@ export class UIScene extends Phaser.Scene {
     panelG.fillRoundedRect(px, py, pw, ph, 10)
     panelG.lineStyle(1, 0x444466)
     panelG.strokeRoundedRect(px, py, pw, ph, 10)
+    panelG.setAlpha(0)
+    this.tweens.add({ targets: panelG, alpha: 1, duration: 300, delay: 600 })
 
     const labelStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: gameFont(), fontSize: mob ? '9px' : '10px', color: '#556677',
@@ -1632,36 +1649,44 @@ export class UIScene extends Phaser.Scene {
     }
 
     const statTexts: Phaser.GameObjects.Text[] = []
+    const statBaseDelay = 700  // ms after showEndScreen starts
     panelRows.forEach(([ll, lv, lc, rl, rv, rc], i) => {
       const ry = py + 10 + i * rowH
-      statTexts.push(
-        this.add.text(col1, ry, ll, labelStyle).setOrigin(0, 0).setDepth(32),
-        this.add.text(col1, ry + 10, lv, { ...valStyle, color: lc }).setOrigin(0, 0).setDepth(32),
-        this.add.text(col2, ry, rl, labelStyle).setOrigin(0, 0).setDepth(32),
-        this.add.text(col2, ry + 10, rv, { ...valStyle, color: rc }).setOrigin(0, 0).setDepth(32),
+      const rowDelay = statBaseDelay + i * 120
+      const t_ll = this.add.text(col1, ry, ll, labelStyle).setOrigin(0, 0).setDepth(32).setAlpha(0)
+      const t_lv = this.add.text(col1, ry + 10, lv, { ...valStyle, color: lc }).setOrigin(0, 0).setDepth(32).setAlpha(0)
+      const t_rl = this.add.text(col2, ry, rl, labelStyle).setOrigin(0, 0).setDepth(32).setAlpha(0)
+      const t_rv = this.add.text(col2, ry + 10, rv, { ...valStyle, color: rc }).setOrigin(0, 0).setDepth(32).setAlpha(0)
+      this.tweens.add({ targets: [t_ll, t_lv, t_rl, t_rv], alpha: 1, duration: 200, delay: rowDelay })
+      statTexts.push(t_ll, t_lv, t_rl, t_rv,
       )
     })
     cy2 += ph + afterStatsGap
 
     // ── Hero skills section — top skills by level ──────────────────────
     const skillTexts: Phaser.GameObjects.Text[] = []
+    const lastStatDelay = statBaseDelay + (panelRows.length - 1) * 120 + 200
+    let lastContentDelay = lastStatDelay
     if (topSkills.length > 0) {
       const skillHeader = this.add.text(cx, cy2 + 2, 'TOP SKILLS', {
         fontFamily: gameFont(), fontSize: mob ? '9px' : '10px', color: '#556677',
-      }).setOrigin(0.5, 0).setDepth(32)
+      }).setOrigin(0.5, 0).setDepth(32).setAlpha(0)
+      this.tweens.add({ targets: skillHeader, alpha: 1, duration: 200, delay: lastStatDelay + 120 })
       skillTexts.push(skillHeader)
 
       const dots = ['○○○', '●○○', '●●○', '●●●']
       topSkills.forEach((sk, i) => {
         const sy = cy2 + 16 + i * skillRowH
-        skillTexts.push(
-          this.add.text(col1, sy, sk.label, {
-            fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#ccddee',
-          }).setOrigin(0, 0.5).setDepth(32),
-          this.add.text(cx + pw / 2 - 16, sy, dots[Math.min(sk.level, 3)], {
-            fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color: sk.level >= 3 ? '#ffcc44' : '#88aacc',
-          }).setOrigin(1, 0.5).setDepth(32),
-        )
+        const skDelay = lastStatDelay + 240 + i * 120
+        const skL = this.add.text(col1, sy, sk.label, {
+          fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#ccddee',
+        }).setOrigin(0, 0.5).setDepth(32).setAlpha(0)
+        const skD = this.add.text(cx + pw / 2 - 16, sy, dots[Math.min(sk.level, 3)], {
+          fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color: sk.level >= 3 ? '#ffcc44' : '#88aacc',
+        }).setOrigin(1, 0.5).setDepth(32).setAlpha(0)
+        this.tweens.add({ targets: [skL, skD], alpha: 1, duration: 200, delay: skDelay })
+        skillTexts.push(skL, skD)
+        lastContentDelay = skDelay + 200
       })
       cy2 += skillSectionH + afterSkillGap
     }
@@ -1674,28 +1699,34 @@ export class UIScene extends Phaser.Scene {
     lbG.fillRoundedRect(lbX, lbY, lbW, lbH, 8)
     lbG.lineStyle(1, 0x333355)
     lbG.strokeRoundedRect(lbX, lbY, lbW, lbH, 8)
+    lbG.setAlpha(0)
+    this.tweens.add({ targets: lbG, alpha: 1, duration: 300, delay: lastContentDelay + 200 })
 
     const lbTitle = this.add.text(cx, lbY + 12, 'TOP KILLS', {
       fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#FFD700',
-    }).setOrigin(0.5).setDepth(32)
+    }).setOrigin(0.5).setDepth(32).setAlpha(0)
+    this.tweens.add({ targets: lbTitle, alpha: 1, duration: 200, delay: lastContentDelay + 300 })
 
     const lbEntries: Phaser.GameObjects.Text[] = [lbTitle]
     const lbLoading = this.add.text(cx, lbY + lbH / 2 + 4, 'Loading...', {
       fontFamily: gameFont(), fontSize: mob ? '11px' : '12px', color: '#666677',
-    }).setOrigin(0.5).setDepth(32)
+    }).setOrigin(0.5).setDepth(32).setAlpha(0)
+    this.tweens.add({ targets: lbLoading, alpha: 1, duration: 200, delay: lastContentDelay + 400 })
     lbEntries.push(lbLoading)
 
     this._populateEndLeaderboard(cx, lbY, lbLoading, lbEntries, lbRows, lbRowH)
     cy2 += lbH + afterLbGap
 
-    // ── Buttons ────────────────────────────────────────────────────────
+    // ── Buttons (fade in last, 600ms after last content) ─────────────
+    const btnDelay = lastContentDelay + 600
     const btnStyle = {
       fontFamily: gameFont(), fontSize: mob ? '16px' : '18px', color: '#FFD700',
       backgroundColor: '#2a2a4e', padding: { x: mob ? 16 : 20, y: mob ? 7 : 10 },
     }
 
     const t5 = this.add.text(cx, cy2 + btnH1 / 2, 'Try Again', btnStyle as Phaser.Types.GameObjects.Text.TextStyle)
-      .setOrigin(0.5).setInteractive().setDepth(32)
+      .setOrigin(0.5).setInteractive().setDepth(32).setAlpha(0).setScale(0.9)
+    this.tweens.add({ targets: t5, alpha: 1, scale: 1, duration: 300, delay: btnDelay })
     t5.on('pointerover', () => t5.setColor('#ffffff'))
     t5.on('pointerout', () => t5.setColor('#FFD700'))
     t5.on('pointerdown', () => {
@@ -1718,7 +1749,8 @@ export class UIScene extends Phaser.Scene {
     const t6 = this.add.text(cx, cy2 + btnH2 / 2, 'Choose Hero', {
       ...btnStyle, fontSize: mob ? '13px' : '14px', color: '#aaaaaa',
     } as Phaser.Types.GameObjects.Text.TextStyle)
-      .setOrigin(0.5).setInteractive().setDepth(32)
+      .setOrigin(0.5).setInteractive().setDepth(32).setAlpha(0).setScale(0.9)
+    this.tweens.add({ targets: t6, alpha: 1, scale: 1, duration: 300, delay: btnDelay + 80 })
     t6.on('pointerover', () => t6.setColor('#ffffff'))
     t6.on('pointerout', () => t6.setColor('#aaaaaa'))
     t6.on('pointerdown', () => {
@@ -1749,7 +1781,8 @@ export class UIScene extends Phaser.Scene {
       ...btnStyle, fontSize: mob ? '13px' : '14px', color: '#FFD700',
       backgroundColor: showForgeHint ? '#3a2a05' : '#1a1a0a',
     } as Phaser.Types.GameObjects.Text.TextStyle)
-      .setOrigin(0.5).setInteractive().setDepth(32)
+      .setOrigin(0.5).setInteractive().setDepth(32).setAlpha(0).setScale(0.9)
+    this.tweens.add({ targets: t7, alpha: 1, scale: 1, duration: 300, delay: btnDelay + 160 })
     t7.on('pointerover', () => t7.setColor('#ffffff'))
     t7.on('pointerout', () => t7.setColor('#FFD700'))
     t7.on('pointerdown', () => {
@@ -2236,6 +2269,7 @@ export class UIScene extends Phaser.Scene {
       p.hasPhoenixHeart     !== this._lastPhoenixHeart        ||
       p.firestormOrbCount   !== this._lastFirestormOrbCount   ||
       this.time.now < this._critFlashUntil ||
+      this.time.now < this._hpFlashUntil ||
       hpCritNow
 
     if (!dirty) {
@@ -2321,7 +2355,7 @@ export class UIScene extends Phaser.Scene {
     const isFlashing = now < this._critFlashUntil || (isCritical && (Math.floor(this._critPulse / 8) % 2 === 0))
 
     const hpR = Math.round(hpBarH / 2)
-    g.fillStyle(0x180606, 0.92)
+    g.fillStyle(0x111122, 0.6)
     g.fillRoundedRect(barX, hpBarY, barW, hpBarH, hpR)
     const hpFillW = Math.floor(barW * hpRatio)
     if (hpFillW > 0) {
@@ -2332,8 +2366,20 @@ export class UIScene extends Phaser.Scene {
       g.fillStyle(0xffffff, 0.12)
       g.fillRoundedRect(barX + 2, hpBarY + 2, Math.max(0, hpFillW - 4), Math.floor(hpBarH * 0.35), hpR - 2)
     }
-    g.lineStyle(1, isFlashing ? 0xffffff : 0x441010, 0.85)
+    // Glass gold border
+    g.lineStyle(1, 0xffd700, 0.25)
     g.strokeRoundedRect(barX, hpBarY, barW, hpBarH, hpR)
+    // HP shimmer on damage
+    if (tookDamage && this.time.now > (this._hpFlashUntil ?? 0)) {
+      this._hpFlashUntil = this.time.now + 150
+    }
+    if (this.time.now < (this._hpFlashUntil ?? 0)) {
+      const flashAlpha = 0.3 * (1 - (this.time.now - ((this._hpFlashUntil ?? 0) - 150)) / 150)
+      if (flashAlpha > 0) {
+        g.fillStyle(0xffffff, flashAlpha)
+        g.fillRoundedRect(barX, hpBarY, barW, hpBarH, hpR)
+      }
+    }
 
     this.hpText.setText(`${Math.ceil(p.hp)}/${p.maxHp}`)
     this.hpText.setPosition(barX + barW / 2, hpBarY + hpBarH / 2).setOrigin(0.5)
@@ -2348,27 +2394,27 @@ export class UIScene extends Phaser.Scene {
 
       const ebR = Math.floor(ebH / 2)
       const drawDualBars = (
-        leftRatio: number, leftActive: number, leftDim: number, leftBorder: number,
-        rightRatio: number, rightActive: number, rightDim: number, rightBorder: number,
+        leftRatio: number, leftActive: number, leftDim: number, _leftBorder: number,
+        rightRatio: number, rightActive: number, rightDim: number, _rightBorder: number,
         leftIsActive: boolean, rightIsActive: boolean,
       ) => {
         // Left bar
-        g.fillStyle(0x050510, 0.85)
+        g.fillStyle(0x111122, 0.6)
         g.fillRoundedRect(barX, ebY, ebW, ebH, ebR)
         if (leftRatio > 0) {
           g.fillStyle(leftIsActive ? leftActive : leftDim, leftIsActive ? 1 : 0.55)
           g.fillRoundedRect(barX + 1, ebY + 1, Math.max(0, (ebW - 2) * leftRatio), ebH - 2, Math.max(0, ebR - 1))
         }
-        g.lineStyle(1, leftBorder, leftIsActive ? 0.8 : 0.35)
+        g.lineStyle(1, 0xffd700, 0.25)
         g.strokeRoundedRect(barX, ebY, ebW, ebH, ebR)
         // Right bar
-        g.fillStyle(0x050510, 0.85)
+        g.fillStyle(0x111122, 0.6)
         g.fillRoundedRect(rightBarX, ebY, ebW, ebH, ebR)
         if (rightRatio > 0) {
           g.fillStyle(rightIsActive ? rightActive : rightDim, rightIsActive ? 1 : 0.55)
           g.fillRoundedRect(rightBarX + 1, ebY + 1, Math.max(0, (ebW - 2) * rightRatio), ebH - 2, Math.max(0, ebR - 1))
         }
-        g.lineStyle(1, rightBorder, rightIsActive ? 0.8 : 0.35)
+        g.lineStyle(1, 0xffd700, 0.25)
         g.strokeRoundedRect(rightBarX, ebY, ebW, ebH, ebR)
       }
 
@@ -2416,15 +2462,16 @@ export class UIScene extends Phaser.Scene {
         const filledW = Math.floor(barW * progress)
 
         // Background
-        g.fillStyle(0x0a0a0a)
-        g.fillRect(barX, ebY, barW, ebH)
+        const mR = Math.floor(ebH / 2)
+        g.fillStyle(0x111122, 0.6)
+        g.fillRoundedRect(barX, ebY, barW, ebH, mR)
         // Fill
         if (filledW > 0) {
           g.fillStyle(color, 0.7)
-          g.fillRect(barX, ebY, filledW, ebH)
+          g.fillRoundedRect(barX, ebY, filledW, ebH, mR)
         }
-        g.lineStyle(1, color, 0.4)
-        g.strokeRect(barX, ebY, barW, ebH)
+        g.lineStyle(1, 0xffd700, 0.25)
+        g.strokeRoundedRect(barX, ebY, barW, ebH, mR)
 
         // XP label
         const xpLabel = level >= 3 ? 'MAX' : `${Math.floor(xp)}/${nextThreshold}`

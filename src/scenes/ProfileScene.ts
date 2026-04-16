@@ -4,12 +4,12 @@ import { gameFont } from '../utils/device'
 import { makeCircleButton } from '../ui/CircleButton'
 
 const CAT_COLORS: Record<string, number> = {
-  kills: 0xff4444,
-  survival: 0x44cc44,
-  hero: 0xffaa22,
-  progression: 0x44aaff,
-  wave: 0xdddd44,
-  secret: 0xcc55ff,
+  kills: 0xef4444,
+  survival: 0x10b981,
+  hero: 0xfbbf24,
+  progression: 0x3b82f6,
+  wave: 0xeab308,
+  secret: 0xa855f7,
 }
 
 export class ProfileScene extends Phaser.Scene {
@@ -135,9 +135,22 @@ export class ProfileScene extends Phaser.Scene {
 
     // === ACHIEVEMENTS ===
     const achH = Math.min(height - y - 160, 280)
-    this.drawPanel(panelX, y, panelW, achH, `ACHIEVEMENTS (${unlocked}/${total})`)
+    this.drawPanel(panelX, y, panelW, achH, '')
 
-    const achStartY = y + 28
+    // Unlocked count badge header
+    const badgeY = y + 8
+    const badgeText = this.add.text(panelX + 12, badgeY, `ACHIEVEMENTS`, {
+      fontFamily: gameFont(), fontSize: '12px', color: '#FFD700',
+    })
+    const countText = this.add.text(panelX + 12 + badgeText.width + 8, badgeY, `${unlocked} / ${total}`, {
+      fontFamily: gameFont(), fontSize: '12px', color: '#FFD700', fontStyle: 'bold',
+    })
+    // Gold underline
+    const underG = this.add.graphics()
+    underG.lineStyle(1, 0xffd700, 0.5)
+    underG.lineBetween(panelX + 12, badgeY + 18, panelX + 12 + badgeText.width + 8 + countText.width, badgeY + 18)
+
+    const achStartY = y + 30
     const achColW = Math.floor((panelW - 40) / 2)
     let achIdx = 0
 
@@ -147,27 +160,48 @@ export class ProfileScene extends Phaser.Scene {
       const col = achIdx % 2
       const row = Math.floor(achIdx / 2)
       const ax = panelX + 20 + col * achColW
-      const ay = achStartY + row * 22
+      const ay = achStartY + row * 32
 
-      if (ay > y + achH - 10) break // overflow guard
+      if (ay + 28 > y + achH - 4) break // overflow guard
 
       const catColor = CAT_COLORS[def.category] || 0xaaaaaa
-      // Category dot
-      const g = this.add.graphics()
-      g.fillStyle(isUnlocked ? catColor : 0x333333)
-      g.fillCircle(ax + 6, ay + 6, 4)
+      const medalG = this.add.graphics()
 
-      // Checkmark or lock
-      const mark = isUnlocked ? 'V' : 'x'
-      const markColor = isUnlocked ? '#88ff88' : '#444444'
-      this.add.text(ax + 14, ay, mark, {
-        fontFamily: gameFont(), fontSize: '11px', color: markColor,
-      })
+      // Category color dot (3px, left of medal)
+      medalG.fillStyle(catColor, isUnlocked ? 1 : 0.3)
+      medalG.fillCircle(ax, ay + 14, 3)
 
-      // Name
-      this.add.text(ax + 26, ay, def.name, {
+      // Medal circle
+      const medalX = ax + 14
+      const medalY = ay + 14
+      if (isUnlocked) {
+        // Gold gradient: outer ring
+        medalG.fillStyle(0xffd700, 0.9)
+        medalG.fillCircle(medalX, medalY, 14)
+        // Inner highlight
+        medalG.fillStyle(0xffed4a, 0.7)
+        medalG.fillCircle(medalX, medalY, 11)
+      } else {
+        // Dark locked medal
+        medalG.fillStyle(0x222233, 1)
+        medalG.fillCircle(medalX, medalY, 14)
+        medalG.lineStyle(1.5, 0x444455, 1)
+        medalG.strokeCircle(medalX, medalY, 14)
+      }
+
+      // Medal inner text
+      const medalChar = isUnlocked ? '\u2713' : '?'
+      const medalCharColor = isUnlocked ? '#1a1a28' : '#555566'
+      this.add.text(medalX, medalY, medalChar, {
+        fontFamily: gameFont(), fontSize: '12px', color: medalCharColor,
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+
+      // Achievement name
+      this.add.text(ax + 32, ay + 7, def.name, {
         fontFamily: gameFont(), fontSize: '11px',
-        color: isUnlocked ? '#dddddd' : '#555555',
+        color: isUnlocked ? '#ffffff' : '#666677',
+        fontStyle: isUnlocked ? 'bold' : 'normal',
       })
 
       achIdx++

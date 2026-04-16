@@ -506,16 +506,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   charnelTideDrainRangeBoost = 0
   charnelTideExplodeBoneDrop = 0
   charnelTideExplodeRot = false
-  hasLichDominion = false
-  revenantDmgPct = 0.80
-  revenantHPBonus = 0
-  revenantSlowAura = false
-  lichRevenantCharnelOnDeath = false
-  lichRevenantBoneSpike = false
-  lichRevenantTendrilRelay = false
-  lichRevenantBonePulseHeal = false
-  lichRevenantTendrilTickRate = 0
-  lichRevenantStanceDiscount = 0
+  hasUndyingHorde = false
+  undyingHordeReformTime = 8000
+  undyingHordeDmgBonus = 0
+  undyingHordeHealPerSec = 0
+  undyingHordeDeathExplosion = false
+  undyingHordeCharnelOnDeath = false
+  undyingHordeHPBonus = 0
   // Wasting Plague branch
   hasFesteringWound = false
   festeringWoundStacks = 1
@@ -1115,11 +1112,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Ashen Veil DR
     const ashenDR = (this.hasAshenVeil && this.ashenVeilStacks > 0 && this.scene.time.now < this.ashenVeilUntil)
       ? this.ashenVeilDR * this.ashenVeilStacks : 0
-    // Soul Siphon armor stacks: +1% DR per soul
-    const soulDR = this.hasSoulSiphon ? this.soulStacks * 0.01 : 0
+    // Soul Siphon: stacks act as a shield, not DR — handled below
+    const soulDR = 0
     // Sanguine Ascendancy L3 DR window (set by vael activation when HP < 30%)
     const sanguineDR = ((this as any)._vaelState?.sanguineDR && this.scene.time.now < ((this as any)._vaelState?.sanguineUntil ?? 0)) ? 0.40 : 0
     let reduced = amount * (1 - Math.min(0.85, this.armor + stoneSkinDR + ashenDR + soulDR + sanguineDR))
+
+    // Soul Siphon (Vael): bone stacks absorb damage like a shield
+    // Each stack absorbs 5 damage, stacks are consumed on hit
+    if (this.hasSoulSiphon && this.soulStacks > 0 && reduced > 0) {
+      const absorbPerStack = 2
+      const totalAbsorb = this.soulStacks * absorbPerStack
+      const absorbed = Math.min(reduced, totalAbsorb)
+      const stacksLost = Math.ceil(absorbed / absorbPerStack)
+      this.soulStacks = Math.max(0, this.soulStacks - stacksLost)
+      reduced -= absorbed
+      if (absorbed > 0) {
+        const fx = this.scene.add.circle(this.x, this.y, 14, 0xaaddff, 0.5).setDepth(10)
+        this.scene.tweens.add({ targets: fx, scale: 2.5, alpha: 0, duration: 250, onComplete: () => fx.destroy() })
+      }
+    }
 
     // Sand Armor (Khashin): absorb shield
     if (this.hasSandArmor && this._sandArmorHP > 0) {
