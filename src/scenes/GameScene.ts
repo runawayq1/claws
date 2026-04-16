@@ -7,6 +7,8 @@ import { Orc2 } from '../entities/Orc2'
 import { Orc1 } from '../entities/Orc1'
 import { Orc3 } from '../entities/Orc3'
 import { Archer } from '../entities/Archer'
+import { DarkBat } from '../entities/DarkBat'
+import { FlyingDemon } from '../entities/FlyingDemon'
 import type { BaseEnemy } from '../entities/BaseEnemy'
 import { EyeBoss } from '../entities/EyeBoss'
 import { WaveManager } from '../systems/WaveManager'
@@ -134,6 +136,20 @@ export class GameScene extends Phaser.Scene {
     ss('archer_idle_run', 'assets/archer/idle_run.png', 64, 64)
     ss('archer_attack',   'assets/archer/attack.png',   64, 64)
     ss('archer_death',    'assets/archer/death.png',    64, 64)
+
+    // Dark Bat (64x64)
+    ss('darkbat_idle',   'assets/dark_bat/idle.png',   64, 64)
+    ss('darkbat_attack', 'assets/dark_bat/attack.png', 64, 64)
+    ss('darkbat_hurt',   'assets/dark_bat/hurt.png',   64, 64)
+    ss('darkbat_death',  'assets/dark_bat/death.png',  64, 64)
+
+    // Flying Demon (79x69)
+    ss('fdemon_idle',       'assets/flying_demon/idle.png',       79, 69)
+    ss('fdemon_attack',     'assets/flying_demon/attack.png',     79, 69)
+    ss('fdemon_hurt',       'assets/flying_demon/hurt.png',       79, 69)
+    ss('fdemon_death',      'assets/flying_demon/death.png',      79, 69)
+    ss('fdemon_flying',     'assets/flying_demon/flying.png',     79, 69)
+    ss('fdemon_projectile', 'assets/flying_demon/projectile.png', 16, 32)
 
     // Boss demon (288x160)
     ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
@@ -320,6 +336,8 @@ export class GameScene extends Phaser.Scene {
     Orc2.createAnimations(this)
     Orc3.createAnimations(this)
     Archer.createAnimations(this)
+    DarkBat.createAnimations(this)
+    FlyingDemon.createAnimations(this)
     Player.createAnimations(this)
 
     // Pre-warm all VFX sprite animations — prevents first-frame GPU upload stutter.
