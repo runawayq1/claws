@@ -101,6 +101,10 @@ export class FlyingDemon extends BaseEnemy {
   protected onUpdate(_time: number, delta: number): void {
     if (this.isDying) return
 
+    // Sprite faces left by default — invert BaseEnemy's flip
+    const dx = this.player.x - this.x
+    if (Math.abs(dx) > 4) this.setFlipX(dx > 0)
+
     const dist = Phaser.Math.Distance.Between(this.x, this.y, this.player.x, this.player.y)
     this._shootCd = Math.max(0, this._shootCd - delta)
 
@@ -176,31 +180,9 @@ export class FlyingDemon extends BaseEnemy {
       fireball.on('destroy', () => { if (rockOverlap) rockOverlap.destroy() })
     }
 
-    // Glow — orange halo behind the fireball, additive
-    const glow = scene.add.ellipse(this.x, this.y, 28, 10, 0xff6633, 0.55)
+    // Glow — static orange halo (no infinite tween to avoid leak)
+    const glow = scene.add.ellipse(this.x, this.y, 28, 10, 0xff6633, 0.45)
       .setDepth(6).setRotation(angle).setBlendMode(Phaser.BlendModes.ADD)
-    scene.tweens.add({
-      targets: glow,
-      scaleX: { from: 1, to: 1.25 },
-      alpha: { from: 0.55, to: 0.35 },
-      duration: 180,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
-
-    // Fireball tip spark — small bright core that pulses
-    const tip = scene.add.circle(this.x, this.y, 3, 0xffaa44, 0.9)
-      .setDepth(8).setBlendMode(Phaser.BlendModes.ADD)
-    scene.tweens.add({
-      targets: tip,
-      scale: { from: 1, to: 1.6 },
-      alpha: { from: 0.9, to: 0.5 },
-      duration: 120,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
 
     const spawnTime = scene.time.now
     const maxLifetime = 2400
@@ -214,23 +196,16 @@ export class FlyingDemon extends BaseEnemy {
         fireball.destroy()
         return
       }
-      // Sync glow + tip to fireball position
+      // Sync glow to fireball position
       glow.setPosition(fireball.x, fireball.y)
-      tip.setPosition(
-        fireball.x + Math.cos(angle) * 11,
-        fireball.y + Math.sin(angle) * 11
-      )
-      // Spawn fading trail segment every 40ms
-      if (scene.time.now - lastTrailTime > 40) {
+      // Trail: one segment every 80ms (throttled to reduce object count)
+      if (scene.time.now - lastTrailTime > 80) {
         lastTrailTime = scene.time.now
-        const trail = scene.add.ellipse(fireball.x, fireball.y, 14, 4, 0xff6633, 0.6)
+        const trail = scene.add.ellipse(fireball.x, fireball.y, 12, 4, 0xff6633, 0.5)
           .setDepth(5).setRotation(angle).setBlendMode(Phaser.BlendModes.ADD)
         scene.tweens.add({
-          targets: trail,
-          alpha: 0,
-          scaleX: 0.4,
-          duration: 260,
-          onComplete: () => trail.destroy(),
+          targets: trail, alpha: 0, scaleX: 0.3,
+          duration: 200, onComplete: () => trail.destroy(),
         })
       }
       // Hit check against all alive players
@@ -256,7 +231,6 @@ export class FlyingDemon extends BaseEnemy {
     fireball.on('destroy', () => {
       scene.events.off('update', updateListener)
       if (glow.active) glow.destroy()
-      if (tip.active) tip.destroy()
     })
   }
 

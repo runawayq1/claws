@@ -1862,21 +1862,26 @@ export class UIScene extends Phaser.Scene {
     ]
 
     if (showForgeHint) {
-      const glow = this.add.graphics().setDepth(31)
+      const glow = this.add.graphics().setDepth(31).setAlpha(0)
       const drawGlow = (alpha: number) => {
         glow.clear()
         glow.lineStyle(2, 0xffd700, alpha)
         glow.strokeRoundedRect(cx - btnW / 2 - 3, forgeY - 19, btnW + 6, 38, 10)
       }
-      drawGlow(0.6)
-      this.tweens.add({
-        targets: { v: 0.3 }, v: 0.9,
-        duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-        onUpdate: (tw) => drawGlow(tw.getValue() ?? 0.6),
-      })
       const hint = this.add.text(cx, forgeY + 30, '★ Spend gold on upgrades!', {
         fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color: '#FFD700',
-      }).setOrigin(0.5).setDepth(32)
+      }).setOrigin(0.5).setDepth(32).setAlpha(0)
+      // Delay glow + hint to appear after the FORGE button has faded in
+      this.time.delayedCall(btnDelay + 400, () => {
+        glow.setAlpha(1)
+        drawGlow(0.6)
+        this.tweens.add({
+          targets: { v: 0.3 }, v: 0.9,
+          duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          onUpdate: (tw) => drawGlow(tw.getValue() ?? 0.6),
+        })
+        this.tweens.add({ targets: hint, alpha: 1, duration: 300 })
+      })
       allEndObjs.push(glow as any, hint)
     }
 
@@ -2043,13 +2048,12 @@ export class UIScene extends Phaser.Scene {
 
   private cleanup() {
     this.clearPause()
-    // Kill any active tweens targeting end-screen objects before destroying
-    // them — the forge-hint glow tween and t7 scale pulse run onUpdate callbacks
-    // that otherwise fire on freed targets and throw.
-    this.endTexts.forEach((t) => this.tweens.killTweensOf(t))
-    this.endTexts.forEach((t) => t.destroy())
+    // Kill ALL tweens/timers on this UIScene to prevent stale callbacks on restart
+    this.tweens.killAll()
+    this.time.removeAllEvents()
+    this.endTexts.forEach((t) => { if (t?.active) t.destroy() })
     this.endTexts = []
-    this.overlay.setAlpha(0)
+    if (this.overlay?.active) this.overlay.setAlpha(0)
   }
 
   /** Redraws gleam sweeps on the dedicated gleam graphics layer (runs every 50ms independent of HUD). */

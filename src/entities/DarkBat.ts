@@ -72,6 +72,12 @@ export class DarkBat extends BaseEnemy {
     }
   }
 
+  protected onUpdate(_time: number, _delta: number): void {
+    // Sprite faces left by default — invert BaseEnemy's flip
+    const dx = this.player.x - this.x
+    if (Math.abs(dx) > 4) this.setFlipX(dx > 0)
+  }
+
   protected onDeathVfx(onComplete: () => void): void {
     this.scene.tweens.add({
       targets: this,

@@ -493,9 +493,8 @@ export function updateSifraPassives(p: Player, delta: number) {
 
   // Sifra Blizzard Aura — slow nearby enemies passively
   if (p.hasBlizzardAura) {
-    // Min radius is fixed (level-1 contracted size) so upgrades only widen the
-    // max swing — the aura never visually shrinks below where it started.
-    const minRadius = 60
+    // Both min and max grow with upgrades (+20m per level via splashRadius)
+    const minRadius = 60 + p.splashRadius * 0.6
     const maxRadius = 120 + p.splashRadius * 0.6
     const t = p.scene.time.now / 1000
     const breathe = (Math.sin(t * 2.1) + 1) / 2  // 0..1
