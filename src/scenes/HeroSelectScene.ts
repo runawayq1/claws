@@ -1409,11 +1409,14 @@ export class HeroSelectScene extends Phaser.Scene {
     }
     drawPlayBg(false, false)
     const playLabel = this.add.text(playX + playW / 2, playY + playH / 2, 'PLAY', {
-      fontFamily: gameFont(), fontSize: compact ? '14px' : '17px', color: '#4a6b55',
+      fontFamily: gameFont(), fontSize: compact ? '14px' : '17px', color: '#6a9b75',
       fontStyle: 'bold',
     }).setOrigin(0.5)
+    // Ensure PLAY label + zone render above the glow pulse ring
+    playBg.setDepth(1)
+    playLabel.setDepth(2)
     const playZone = this.add.zone(playX + playW / 2, playY + playH / 2, playW, playH)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({ useHandCursor: true }).setDepth(3)
     playZone.on('pointerover', () => { if (chosenBranchName) drawPlayBg(true, true) })
     playZone.on('pointerout',  () => { if (chosenBranchName) drawPlayBg(true, false) })
     playZone.on('pointerdown', () => {
@@ -1485,7 +1488,7 @@ export class HeroSelectScene extends Phaser.Scene {
       this.closeHeroPopup()
     })
     body.add([backBg, backLabel, backZone])
-    stagger([playBg, playLabel, backBg, backLabel], 640, 240)
+    // Buttons always visible (no stagger — avoids alpha conflicts during hero cycling)
 
     // ── Stance card redraw (horizontal cards, stacked vertically in right column) ──
     const redrawCard = (i: number, hovered: boolean) => {

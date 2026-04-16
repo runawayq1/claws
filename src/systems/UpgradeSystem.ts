@@ -864,7 +864,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
     theme: 'First you mark them. Then you hunt them.',
     upgrades: [
       {
-        id: 'hp1', label: 'Critical Strike', icon: 'g1_sharp_edge',
+        id: 'hp1', label: 'Critical Strike', icon: 'hp1_critical_strike',
         desc: ['20% chance to deal 2× dmg, +10% dmg', '+10% dmg, crit chance rises to 30%', '+10% dmg + Headhunter: auto-execute below 15% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCriticalStrike = true; p.damage = Math.ceil(p.damage * 1.1) }
@@ -873,7 +873,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hp2', label: 'Marked Target', icon: 'g3_eagle_eye',
+        id: 'hp2', label: 'Marked Target', icon: 'hp2_marked_target',
         desc: ['Hit marks enemy 5s; marked take +25% dmg, +3 dmg', '+3 dmg, mark lasts 8s, +25% dmg vs marked', '+4 dmg, marks spread to adjacent enemies on kill'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasMarkedTarget = true; p.damage += 3 }
@@ -882,7 +882,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hp3', label: 'Battle Frenzy', icon: 'g4_quick_hands',
+        id: 'hp3', label: 'Battle Frenzy', icon: 'hp3_battle_frenzy',
         desc: ['On kill: +10% attack speed for 5s, +3 dmg', '+3 dmg, frenzy duration 8s', '+4 dmg + Headhunter: auto-execute enemies below 15% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasBattleFrenzy = true; p.damage += 3 }
@@ -891,7 +891,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hp5', label: 'Volley', icon: 'g9_multistrike', isUltimate: true,
+        id: 'hp5', label: 'Volley', icon: 'hp5_volley', isUltimate: true,
         desc: ['Every 5th spear: fires 3 at once (extra 60% dmg), +10% dmg', '+10% dmg, volley fires 4 spears instead of 3', '+10% dmg, volley threshold drops to every 4th spear'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasVolley = true; p.damage = Math.ceil(p.damage * 1.1) }
@@ -906,7 +906,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
     theme: 'The desert teaches patience. Lyra has plenty.',
     upgrades: [
       {
-        id: 'hs1', label: 'Kill Stride', icon: 'g2_swift_feet',
+        id: 'hs1', label: 'Kill Stride', icon: 'hs1_kill_stride',
         desc: ['On kill: +20% speed for 3s, +10 speed', '+10 speed, stride duration 5s', '+10 speed + Camouflage: invisible 2s after kill'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasKillStride = true; p.speed += 10 }
@@ -915,7 +915,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hs2', label: 'Caltrops', icon: 'ns3_smoke_bomb',
+        id: 'hs2', label: 'Caltrops', icon: 'hs2_caltrops',
         desc: ['Moving: drop 2m spike zone every 800ms, 15% dmg/tick, +3 dmg', '+3 dmg, zones last 1s longer', '+4 dmg + Net Throw: every 8th spear roots enemies 1.5s'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCaltrops = true; p.damage += 3 }
@@ -924,7 +924,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hs3', label: 'Net Throw', icon: 'nv1_toxic_slash',
+        id: 'hs3', label: 'Net Throw', icon: 'hs3_net_throw',
         desc: ['Every 8th spear roots enemies 1.5s, +3 dmg', '+3 dmg, root duration 2.5s', '+4 dmg + Camouflage: invisible 2s after kill'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasNetThrow = true; p.damage += 3 }
@@ -933,7 +933,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hs5', label: 'Leap', icon: 'ns2_phantom_trail', isUltimate: true,
+        id: 'hs5', label: 'Leap', icon: 'hs5_leap', isUltimate: true,
         desc: ['Auto-leap 12m away when 4+ enemies within 5m, 4s CD, +15 speed', '+15 speed, leap CD 2.5s', '+15 speed, leap knocks away nearby enemies on landing'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasLeap = true; p.speed += 15 }
@@ -948,7 +948,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
     theme: 'One spear. One line through the horde.',
     upgrades: [
       {
-        id: 'hw1', label: 'Heavy Spear', icon: 'sc3_mirror_ice',
+        id: 'hw1', label: 'Heavy Spear', icon: 'hw1_heavy_spear',
         desc: ['Spears +40% dmg and knock enemies back, +5 dmg', '+5 dmg, knockback distance doubles', '+5 dmg + Explosive Tips: spears explode on pierce'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasHeavySpear = true; p.damage = Math.ceil(p.damage * 1.4) }
@@ -957,7 +957,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hw2', label: 'Explosive Tips', icon: 'if1_wide_burn',
+        id: 'hw2', label: 'Explosive Tips', icon: 'hw2_explosive_tips',
         desc: ['On first spear pierce: AoE 35% dmg in 4m, +15 splash', '+15 splash, AoE dmg increases to 50%', '+15 splash + Splinter Shot: miss spawns 3 shards 30% dmg'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasExplosiveTips = true; p.splashRadius += 15 }
@@ -966,7 +966,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hw3', label: 'Splinter Shot', icon: 'ss2_shatter',
+        id: 'hw3', label: 'Splinter Shot', icon: 'hw3_splinter_shot',
         desc: ['Spear miss: spawns 3 shards 30% dmg in 8m, +4 dmg', '+4 dmg, shards home toward nearest enemy', '+5 dmg + Spear Wall: 3 orbiting spears 20% dmg/s each'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSplinterShot = true; p.damage += 4 }
@@ -975,7 +975,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
         },
       },
       {
-        id: 'hw5', label: 'Earth Slam', icon: 'aq2_earthquake', isUltimate: true,
+        id: 'hw5', label: 'Earth Slam', icon: 'hw5_earth_slam', isUltimate: true,
         desc: ['Melee: shockwave line 15m, 60% dmg, +20% dmg', '+15% dmg, shockwave width doubles', '+15% dmg, shockwave ricochets off walls once'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasEarthSlam = true; p.damage = Math.ceil(p.damage * 1.2) }
@@ -1728,9 +1728,14 @@ const ICON_FRAME_MAP: Record<string, number> = {
   'ab1_fortify': 60, 'ab2_aura_of_might': 61, 'ab3_iron_will': 62, 'ab5_undying': 63,
   'aq1_titans_pulse': 65, 'aq2_earthquake': 66, 'aq3_colossus': 67, 'aq5_cataclysm': 68,
   'kw1_razor_wind': 70, 'kw2_gust_strike': 71, 'kw3_dust_devil': 72, 'kw4_cyclone_surge': 73, 'kw5_eye_of_the_storm': 74,
-  'kd1_choking_sand': 75, 'kd2_sand_armor': 76, 'kd3_abrasion': 77, 'kd4_scarab_tide': 78, 'kd5_sandstorm_wall': 79,
-  'km1_tailwind': 80, 'km2_phantom_step': 81, 'km3_mirage': 82, 'km4_drift': 83, 'km5_desert_wind': 84,
-  'cm1_coarse_cut': 85, 'cm2_deep_vein': 86, 'cm3_shardstorm': 87, 'cm4_crystal_shrapnel': 88, 'cm5_tectonic_fury': 89,
+  // Khashin Dune/Mirage — temporarily use generic placeholders (original slots given to Huntress art)
+  'kd1_choking_sand': 0, 'kd2_sand_armor': 1, 'kd3_abrasion': 2, 'kd4_scarab_tide': 3, 'kd5_sandstorm_wall': 4,
+  'km1_tailwind': 5, 'km2_phantom_step': 6, 'km3_mirage': 7, 'km4_drift': 8, 'km5_desert_wind': 9,
+  // Huntress (Lyra) — frames 75-86
+  'hp1_critical_strike': 75, 'hp2_marked_target': 76, 'hp3_battle_frenzy': 77, 'hp5_volley': 78,
+  'hs1_kill_stride': 79, 'hs2_caltrops': 80, 'hs3_net_throw': 81, 'hs5_leap': 82,
+  'hw1_heavy_spear': 83, 'hw2_explosive_tips': 84, 'hw3_splinter_shot': 85, 'hw5_earth_slam': 86,
+  'cm1_coarse_cut': 87, 'cm2_deep_vein': 88, 'cm3_shardstorm': 89, 'cm4_crystal_shrapnel': 90, 'cm5_tectonic_fury': 91,
   'cr1_stone_skin': 90, 'cr2_geode_shell': 91, 'cr3_crystal_wall': 92, 'cr4_resonance_armor': 93, 'cr5_living_geode': 94,
   'cf1_planted_shard': 95, 'cf2_crystal_pillar': 96, 'cf3_fault_line': 97, 'cf4_resonance_field': 98, 'cf5_mother_lode': 99,
   'bh1_sustained_burn': 100, 'bh2_powder_keg': 101, 'bh3_ember_volley': 102, 'bh4_flashpoint': 103, 'bh5_infernal_cadence': 104,

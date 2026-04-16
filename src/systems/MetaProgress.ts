@@ -216,7 +216,7 @@ export class MetaProgress {
       goldEarned: 0,
       metaUpgrades: {},
       // Tutorial / unlock defaults
-      unlockedHeroes: ['amun', 'vael', 'nightborne'],
+      unlockedHeroes: ['amun', 'sifra', 'ignara', 'nazar', 'huntress', 'vael', 'nightborne'],
       tutorialComplete: false,
       unlockedBranches: { amun: ['Wrath'] },
       branchProgress: {},
@@ -262,12 +262,9 @@ export class MetaProgress {
       if (!data.heroKills) data.heroKills = {}
       if (!data.heroTimeMs) data.heroTimeMs = {}
       if (data.lastHero === undefined) data.lastHero = undefined
-      // Nightborne + Vael are default-unlocked
-      if (!data.unlockedHeroes.includes('nightborne')) data.unlockedHeroes.push('nightborne')
-      if (!data.unlockedHeroes.includes('vael')) data.unlockedHeroes.push('vael')
-      // Back-compat: if tutorial is done but sifra not in unlockedHeroes, add it
-      if (data.tutorialComplete && !data.unlockedHeroes.includes('sifra')) {
-        data.unlockedHeroes.push('sifra')
+      // All heroes except Khashin/Muller are default-unlocked
+      for (const h of ['amun', 'sifra', 'ignara', 'nazar', 'huntress', 'vael', 'nightborne']) {
+        if (!data.unlockedHeroes.includes(h)) data.unlockedHeroes.push(h)
       }
       // Back-compat: if tutorial is done but Amun branches incomplete, add them all
       if (data.tutorialComplete) {
@@ -435,8 +432,9 @@ export class MetaProgress {
       if (meta.tutorialComplete) return ['Wrath', 'Bastion', 'Quake']
       return meta.unlockedBranches['amun'] || ['Wrath']
     }
-    // All other heroes: all branches free (future gating can be added here)
-    return meta.unlockedBranches[heroType] || ['__all__']
+    // All other heroes: all branches free until branch-quest system is implemented.
+    // Ignore any partial unlockedBranches entries from prior saves.
+    return ['__all__']
   }
 
   static isBranchUnlocked(heroType: string, branchName: string): boolean {
