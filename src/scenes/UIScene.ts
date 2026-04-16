@@ -149,6 +149,19 @@ export class UIScene extends Phaser.Scene {
     // not be reused across runs (stale refs cause setColor/drawImage crash on restart)
     this._masteryLabel = null
     this._bigBuffObjs = []
+    this.pauseTexts = []
+    this.pauseTabObjs = []
+    this.pauseBtn = null
+    this.stanceBtn = null
+    this.stanceIcon = null
+    this.mobileStanceBtn = null
+    this.mobileStanceLbl = null
+    this.mobileStancePill = null
+    this._questPanelIds = []
+    this._questTitleTexts = []
+    this._questProgressTexts = []
+    this._questProgressBars = []
+    this.endScreenShown = false
     this.isMobile = isMobileUserAgent()
     this._isPortrait = isPortrait()
 

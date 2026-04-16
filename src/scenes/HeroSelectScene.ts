@@ -196,6 +196,14 @@ export class HeroSelectScene extends Phaser.Scene {
   }
 
   create(data?: { playerName?: string; mode?: 'solo' | 'multiplayer' }) {
+    // Reset popup state from previous scene lifecycle
+    if (this.popupSwipeDownHandler) { this.input.off('pointerdown', this.popupSwipeDownHandler); this.popupSwipeDownHandler = null }
+    if (this.popupSwipeUpHandler) { this.input.off('pointerup', this.popupSwipeUpHandler); this.popupSwipeUpHandler = null }
+    if (this.popupKeyboardHandler) { this.input.keyboard?.off('keydown', this.popupKeyboardHandler); this.popupKeyboardHandler = null }
+    if (this.popupTracerTween) { this.popupTracerTween.stop(); this.popupTracerTween = null }
+    if (this.popupPlayTracerTween) { this.popupPlayTracerTween.stop(); this.popupPlayTracerTween = null }
+    this.popupRoot = null
+
     this.cameras.main.fadeIn(200)
     const { width, height } = this.scale
     const compact = height < 500

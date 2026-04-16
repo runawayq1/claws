@@ -281,8 +281,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(data?: { hero?: HeroType }) {
+    // Reset stale state from previous run
     this.gameOver = false
     this.gameTime = 0
+    this.graves = []
+    this._pendingLevelUps = []
+    this._revealObjects = []
+    this._rockPlaced = []
+    this._decoPlaced = []
+    this._cameraTarget = null
+    this._nameplates = []
     if (data?.hero) this.selectedHero = data.hero
     // Initialise quest tracking for this run
     MetaProgress.initRun(this.selectedHero)
