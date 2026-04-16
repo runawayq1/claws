@@ -441,7 +441,12 @@ export class GameScene extends Phaser.Scene {
     this.setupTouchControls()
 
     // Events
-    this.events.on('enemy-died', (x: number, y: number, xpValue: number, goldValue: number = 0, isMiniBoss: boolean = false, isLarge: boolean = false) => {
+    this.events.on('enemy-died', (
+      x: number, y: number,
+      xpValue: number, goldValue: number = 0,
+      isMiniBoss: boolean = false, isLarge: boolean = false,
+      vaelPayload?: { rotStacks: number; rotExpiry: number; _vaelKillByDrain: boolean; _vaelPandemicBoneMark: boolean; _vaelCarrionMark: number },
+    ) => {
       // Mini-bosses always drop large purple orb; large mobs 25% chance
       if (isMiniBoss || (isLarge && Math.random() < 0.25)) {
         this.xpSystem.spawnLargeOrb(x, y, xpValue)
@@ -531,8 +536,15 @@ export class GameScene extends Phaser.Scene {
 
       // Vael kill-triggered mechanics (soul orbs, risen, virulent spread, necrotic bloom)
       if (this.player.heroType === 'vael') {
-        // Find the enemy object that just died to pass rot stacks
-        const deadEnemy = { x, y, rotStacks: 0, rotExpiry: 0 } as any
+        // Real rot state + stance marker comes from the vaelPayload emitted by BaseEnemy
+        const deadEnemy = {
+          x, y,
+          rotStacks: vaelPayload?.rotStacks ?? 0,
+          rotExpiry: vaelPayload?.rotExpiry ?? 0,
+          _vaelKillByDrain: vaelPayload?._vaelKillByDrain ?? false,
+          _vaelPandemicBoneMark: vaelPayload?._vaelPandemicBoneMark ?? false,
+          _vaelCarrionMark: vaelPayload?._vaelCarrionMark ?? 0,
+        } as any
         vaelHero.onVaelKill(this.player, deadEnemy, this.enemies)
       }
 
@@ -1896,6 +1908,10 @@ export class GameScene extends Phaser.Scene {
     this._networkAdapter = null
     this.chunkManager?.destroy()
     this.chunkManager = undefined
+    // Cleanup Vael graphics/tweens (blight pool repeat:-1 tween, drain gfx, aura, etc.)
+    for (const p of this.players) {
+      if (p && (p as any).heroType === 'vael') vaelHero.cleanupVaelState(p)
+    }
     for (const p of this.players) {
       p?.destroy()
     }

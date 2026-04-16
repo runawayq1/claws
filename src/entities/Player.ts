@@ -439,76 +439,130 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // Pale Harvest branch
   hasHollowTouch = false
   hollowTouchRate = 0.08
+  hollowTouchDrainRate = 0.04
+  hollowTouchArmorHeal = false
+  hollowTouchBoneHeal = false
+  hollowTouchOverkillHalf = false
   hasSoulSiphon = false
   soulSiphonDropChance = 0.10
   soulSiphonMaxStacks = 8
   soulStacks = 0   // current armor stacks from collected souls
+  soulSiphonDrainAlwaysDrop = false
+  soulSiphonDrainKillCount = 1
+  soulSiphonBoneHeal = 0
+  soulSiphonAutoCollectRadius = 0
+  soulSiphonExtraDropChance = 0
   hasWoundMemory = false
   woundMemoryBonus = 0.20
   woundMemoryRootDur = 400
+  woundMemoryFreeArmorOnRepeat = false
+  woundMemoryRecentHitWindow = 0
   hasExsanguination = false
   exsangChainCount = 2
   exsangDmgPct = 0.60
   exsangRangeBonus = 0
   exsangDoubleArc = false
+  exsangDrainTickDmgBonus = 0
+  exsangDrainSecondArcLifesteal = false
   hasSanguineAscendancy = false
   sanguineWindowDuration = 6000
   sanguineHealPct = 0.12
   sanguineInstantOrbs = false
   sanguineLowHpDR = false
+  sanguineDrainTickPct = 0.20
+  sanguineDrainTickRateDouble = false
+  sanguineDrainHealCapPerTick = 0
+  sanguineBonesAutoArc = false
   // Ossuary branch
   hasRisen = false
   risenProcChance = 0.25
+  risenDrainProcChance = 0.40
   risenDuration = 4000
   risenDmgPct = 0.30
   risenMaxThralls = 999
+  risenDrainAutoTarget = false
+  risenDrainHPBonus = 0
   hasGravePact = false
   gravePactHPBonus = 0
   gravePactDeathBurst = false
   gravePactDeathRoot = false
   gravePactBurstDmgPct = 0.60
   gravePactBurstRadiusBonus = 0
+  gravePactDrainFlatDmg = false
+  gravePactDrainEnergyReduc = 0
+  gravePactDrainReachPerThrall = 0
+  gravePactDrainRelayBonus = 0
   hasUndyingLabor = false
   undyingLaborAtkSpeedPct = 0.05
   undyingLaborDmgBonus = 0
+  undyingLaborStanceSwitchDiscount = 0
   hasCharnelTide = false
   charnelTideRadius = 250
   charnelTideMax = 5
   charnelTideDuration = 8000
   charnelTideCooldown = 20000
   charnelTideExplode = false
+  charnelTideOrbsBoneDrop = false
+  charnelTideOrbsDmgBonus = 0
+  charnelTideDrainRangeBoost = 0
+  charnelTideExplodeBoneDrop = 0
+  charnelTideExplodeRot = false
   hasLichDominion = false
   revenantDmgPct = 0.80
   revenantHPBonus = 0
   revenantSlowAura = false
   lichRevenantCharnelOnDeath = false
+  lichRevenantBoneSpike = false
+  lichRevenantTendrilRelay = false
+  lichRevenantBonePulseHeal = false
+  lichRevenantTendrilTickRate = 0
+  lichRevenantStanceDiscount = 0
   // Wasting Plague branch
   hasFesteringWound = false
   festeringWoundStacks = 1
   festeringWoundDmgBonus = 0.15
   rotSlowDecay = false
   rotSlow = false
+  festeringDrainEveryNTicks = 2
+  festeringDrainBurstOnHigh = false
   hasVirulentSpread = false
   virulentSpreadRadius = 80
   virulentDmgPerStack = 0.10
   virulentStunAt = 999
+  virulentOrbsMultiTarget = false
+  virulentStunBonusBone = false
   hasNecroticBloom = false
   necroticBloomThreshold = 5
   necroticBloomRadius = 100
   necroticBloomDuration = 5000
   necroticBloomDmgPct = 0.12
   necroticBloomAddRot = false
+  necroticBloomMaxPools = 4
+  necroticBloomDrainDmgBonus = 0
+  necroticBloomDrainDoubleTick = false
+  necroticBloomOrbsDetonate = false
+  necroticBloomDrainBoneArmor = false
   hasVaelPandemic = false
   pandemicRadius = 200
   pandemicStacks = 5
   pandemicCooldown = 18000
   pandemicDoublePulse = false
   pandemicDoubleRadiusBlight = false
+  pandemicRangeBoostDuration = 3000
+  pandemicOrbsBoneOnNextDeath = false
+  pandemicOrbsBoneOnKill = false
+  pandemicTendrilTickRateBoost = 0
+  pandemicDrainFreeCost = false
   hasCarrionCrown = false
   carrionAuraRadius = 150
   carrionAuraInterval = 2000
   carrionWeaken = false
   carrionKillPulse = false
+  carrionOrbsBonusStack = false
+  carrionDrainCostReduc = 0
+  carrionOrbsDmgBonus = 0
+  carrionOrbsKillPulseBlight = false
+  carrionDrainKillPulseEnergy = false
 
   stance: 'ice' | 'lightning' = 'ice'
   iceEnergy = 100
@@ -731,6 +785,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   toggleVaelStance() {
     if (this.heroType !== 'vael') return
+    // Stance switch is free; Undying Labor L3 / Lich Dominion L3 discount flags
+    // are currently cosmetic (no base cost to discount from — reserved for future tuning).
     this.vaelStance = this.vaelStance === 'orbs' ? 'drain' : 'orbs'
     this.scene.events.emit('vael-stance-changed', this.vaelStance)
   }
@@ -1062,7 +1118,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       ? this.ashenVeilDR * this.ashenVeilStacks : 0
     // Soul Siphon armor stacks: +1% DR per soul
     const soulDR = this.hasSoulSiphon ? this.soulStacks * 0.01 : 0
-    let reduced = amount * (1 - Math.min(0.7, this.armor + stoneSkinDR + ashenDR + soulDR))
+    // Sanguine Ascendancy L3 DR window (set by vael activation when HP < 30%)
+    const sanguineDR = ((this as any)._vaelState?.sanguineDR && this.scene.time.now < ((this as any)._vaelState?.sanguineUntil ?? 0)) ? 0.40 : 0
+    let reduced = amount * (1 - Math.min(0.85, this.armor + stoneSkinDR + ashenDR + soulDR + sanguineDR))
 
     // Sand Armor (Khashin): absorb shield
     if (this.hasSandArmor && this._sandArmorHP > 0) {
