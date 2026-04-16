@@ -38,20 +38,24 @@ Each hero has 3 upgrade branches × 4-5 skills + 10 shared generic upgrades. All
 
 ## Maps (2)
 
-- **Grasslands** (`GameScene`) — infinite chunk-based map, 5 radial biome zones, rocks, trees
-- **Undead** (`UndeadMapScene`) — extends GameScene, 9 stone islands + 16 bridges over void
+- **Grasslands** (`GameScene`) — infinite chunk-based map, 5 radial biome zones, rocks, trees, grass tufts
+- **Undead** (`UndeadMapScene`) — infinite chunk-based map (same ChunkManager, `mapStyle: 'undead'`), stone floor tiles with purple zone tints, undead decorations (ruins, crystals, dead trees, bones, skulls, graves), DarkBat+FlyingDemon enemies, map toggle button (☠) on HeroSelectScene
 
-## Enemies (6 types + boss)
+## Enemies (8 types + boss)
 
-| Enemy | Class | Style | Notes |
-|-------|-------|-------|-------|
-| Orc1 | `Orc1` | 64×64 top-down | Fast, weak |
-| Orc2 | `Orc2` | 64×64 top-down | Medium |
-| Orc3 | `Orc3` | 64×64 top-down | Tanky |
-| FlyingEye | `FlyingEye` | 150×150 side-view | Flies over rocks, poison immune |
-| SandGolem | `SandGolem` | 150×150 side-view | Ground slam AoE |
-| Vampire | `Vampire` | 32×32 | Lifesteal |
-| Boss (CLAWS) | `ClawsBoss` | 288×160 | 10min, 4000 HP, 3 phases |
+| Enemy | Class | Style | Map | Notes |
+|-------|-------|-------|-----|-------|
+| Orc1 | `Orc1` | 64×64 top-down | Both | Fast, weak |
+| Orc2 | `Orc2` | 64×64 top-down | Both | Medium |
+| Orc3 | `Orc3` | 64×64 top-down | Both | Tanky |
+| FlyingEye | `FlyingEye` | 150×150 side-view | Grass | Flies over rocks, poison immune |
+| SandGolem | `SandGolem` | 150×150 side-view | Both | Ground slam AoE |
+| DarkBat | `DarkBat` | 64×64 side-view | Undead | Fast melee flyer, replaces FlyingEye |
+| FlyingDemon | `FlyingDemon` | 79×69 side-view | Undead | Ranged fireball, from wave 2 |
+| Archer | `Archer` | 64×64 side-view | Both | Ranged arrows, from wave 5 (grass) / wave 2 (undead) |
+| Boss (CLAWS) | `ClawsBoss` | 288×160 | Both | 10min, 4000 HP, 3 phases |
+
+Ranged cap: max 5 Archer+FlyingDemon within 500px of player.
 
 ## Scenes (13 registered)
 
@@ -114,7 +118,8 @@ Clicking a hero in the grid opens a modal popup with:
 
 ## Recent Milestones
 
-- **v0.5.1** — Hero select popup overhaul (portrait/stats/stances/attack anims/particles/gold tracer), hero grid 5×3/3×3, scene overhaul (gold halos, idle breathe, staggered entry, hover tooltips, circular back buttons), Tailwind color palette across all heroes + 27 branches, ~85 upgrade desc rewrites (px→m, dmg→damage, cd→cooldown), per-hero stats in popup (heroKills/heroTimeMs backend), NotificationCenter per-seedId delivery, CircleButton component, cross-scene visual polish (StartScene pills, ForgeScene card glow/divider, LeaderboardScene table polish), stale-state re-entry fixes (HeroSelect/GameScene/UIScene)
+- **v0.5.2** — Undead map infinite (ChunkManager mapStyle), DarkBat+FlyingDemon enemies, stone floor tiles, map toggle, Lyra melee fix, crash fixes (shutdown cleanup, try-again restart), ranged enemy cap, frost aura scaling, Huntress Lyra icons, bone pickup sprites for Vael, Ossuary Lich→Undying Horde, soul siphon shield mechanic, premium UI wave (collectible cards, medals, gold tracers, glass HUD, cinematic end screen)
+- **v0.5.1** — Hero select popup overhaul (portrait/stats/stances/attack anims/particles/gold tracer), hero grid 5×3/3×3, scene overhaul (gold halos, idle breathe, staggered entry, hover tooltips, circular back buttons), Tailwind color palette across all heroes + 27 branches, ~85 upgrade desc rewrites, per-hero stats in popup, NotificationCenter per-seedId delivery, CircleButton component, cross-scene visual polish, stale-state re-entry fixes
 - **v0.5.0** — Vael (Pale Doctor) + Nightborne (Void Blade) heroes, dual-stance Vael rewrite (15 skills), notification bell/inbox, balance pass (Sifra/Nazar/Amun/Huntress/Ignara), HP/energy HUD redesign, mastery diamonds, boss HP bar frame
 - **v0.4.4** — Mortal CLAWS boss (3 phases), Run Summary Screen, perf round 3
 - **v0.4.3** — Perf pass (20+ fixes), architect review, font/UI cleanup, multiplayer stability
@@ -131,36 +136,50 @@ Clicking a hero in the grid opens a modal popup with:
 | 3 | debug: true in Phaser config | Low | `main.ts` — should disable for production |
 | 4 | Khashin/Givi combat skills partially implemented | Medium | Branch upgrades defined, many skill effects need tuning |
 
-## Tomorrow's Plan (2026-04-17)
+## Planned Features
 
-1. **Tune Khashin** — balance wind slash / sand skills, test all 3 branches
-2. **Tune Givi** — crystal wave mechanics, shardfall/geode/deep seam branches
-3. **Tune Huntress** — predator/stalker/warden balance pass
-4. **Tune Nightborne** — void blade/phantom/rift balance pass
-5. **Full Vael test** — all 3 branches end-to-end, dual-stance flow, bone thralls
-6. **Redesign ProfileScene** — achievements visual overhaul, match popup aesthetic
-7. **New map + new mobs** — begin design/prototyping for 3rd map
+### Branch Unlock Quests (designed, not implemented)
+Each hero starts with 1 branch unlocked. Other 2 unlock via per-hero quests:
+- Ignara: Wildfire (survive 5min), Pyre (300 kills in one run)
+- Sifra: Shatter (reach level 5), Lightning (200 kills)
+- Nazar: Way of Venom (survive 4min), Way of Shadow (win a run)
+- Huntress: Stalker (150 kills), Warden (survive 5min)
+- Vael: Ossuary (200 kills), Wasting Plague (survive 6min)
+- Nightborne: Phantom (150 kills), Rift (reach level 6)
+- Amun: existing tutorial quests (unchanged)
+
+### Mastery Rework (designed, not implemented)
+- Mastery cap = number of unlocked branches (1 branch = max mastery 1, 3 = max 3)
+- Currently: all 3 mastery levels always available
+
+### ProfileScene Redesign
+- Achievement medals already done (gold circles, category dots)
+- Need: hero gallery with animated portraits, run history, per-hero stats dashboard
 
 ## Ideas / Roadmap
 
 | # | Idea | Category | Status |
 |---|------|----------|--------|
 | 1 | LoadingScene with progress bar | Performance | ✅ Done |
-| 2 | Khashin combat tuning | Gameplay | 🔜 Tomorrow |
-| 3 | Givi combat tuning | Gameplay | 🔜 Tomorrow |
-| 4 | Generate icons for all heroes | Art | Medium |
+| 2 | Khashin combat tuning | Gameplay | 🔜 Next |
+| 3 | Givi combat tuning | Gameplay | 🔜 Next |
+| 4 | Generate icons for all heroes | Art | In progress (Lyra done) |
 | 5 | Meta-progression currency (Forge) | Systems | ✅ Done |
 | 6 | Skill levels — upgrades scale with picks | Systems | ✅ Done |
-| 7 | 3rd map — dungeon/cave theme | Content | 🔜 Tomorrow (start) |
+| 7 | 3rd map — dungeon/cave theme | Content | Medium |
 | 8 | Sound effects + music | Polish | Medium |
 | 9 | Mobile touch controls | Platform | Low |
 | 10 | Leaderboard (Supabase) | Social | ✅ Done |
 | 11 | Minimap enemy dots / boss indicator | UX | ✅ Done |
-| 12 | Achievements visual polish | Polish | 🔜 Tomorrow |
+| 12 | Achievements visual polish | Polish | ✅ Done (medals) |
 | 13 | **Mini-bosses every minute** | Gameplay | High |
 | 14 | Notification inbox system | Social | ✅ Done |
 | 15 | Hero select popup + stance pre-selection | UX | ✅ Done |
 | 16 | Cross-scene visual consistency | Polish | ✅ Done |
+| 17 | Undead map (infinite + new mobs) | Content | ✅ Done |
+| 18 | Branch unlock quests | Systems | 📋 Designed |
+| 19 | Mastery rework (cap = unlocked branches) | Systems | 📋 Designed |
+| 20 | ProfileScene hero gallery + stats | Polish | 🔜 Next |
 
 ## Doc Index
 
