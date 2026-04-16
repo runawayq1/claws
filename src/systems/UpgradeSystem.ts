@@ -17,7 +17,7 @@ export interface Upgrade {
 // GENERIC POOL (G1–G10) — available to all heroes, 3 levels each
 // ============================================================
 export const GENERIC_POOL: Upgrade[] = [
-  { id: 'g1',  label: 'Sharp Edge',   desc: ['+12% dmg to all attacks', '+6% dmg (total ~19%)', '+6% dmg (total ~26%)'],              icon: 'g1_sharp_edge',   apply: (p, lvl) => { const m = [1.12, 1.06, 1.06][lvl - 1]; p.damage = Math.ceil(p.damage * m) } },
+  { id: 'g1',  label: 'Sharp Edge',   desc: ['+12% damage to all attacks', '+6% damage (total ~19%)', '+6% damage (total ~26%)'],              icon: 'g1_sharp_edge',   apply: (p, lvl) => { const m = [1.12, 1.06, 1.06][lvl - 1]; p.damage = Math.ceil(p.damage * m) } },
   { id: 'g2',  label: 'Swift Feet',   desc: ['+9% move speed permanently', '+6% more speed', '+6% more speed'],                       icon: 'g2_swift_feet',   apply: (p, lvl) => { const m = [1.09, 1.06, 1.06][lvl - 1]; p.speed = Math.ceil(p.speed * m) } },
   { id: 'g3',  label: 'Eagle Eye',    desc: ['+12% attack range permanently', '+9% more range', '+9% more range'],                    icon: 'g3_eagle_eye',    apply: (p, lvl) => { const m = [1.12, 1.09, 1.09][lvl - 1]; p.range = Math.ceil(p.range * m) } },
   { id: 'g4',  label: 'Quick Hands',  desc: ['+12% attack speed (min 200ms)', '+6% attack speed', '+6% attack speed'],                icon: 'g4_quick_hands',  apply: (p, lvl) => { const m = [0.88, 0.94, 0.94][lvl - 1]; p.attackCooldown = Math.max(200, Math.floor(p.attackCooldown * m)) } },
@@ -25,8 +25,8 @@ export const GENERIC_POOL: Upgrade[] = [
   { id: 'g6',  label: 'Regeneration', desc: ['+1 HP/s passive regen', '+1 HP/s more regen', '+2 HP/s more regen'],                    icon: 'g6_regeneration', apply: (p, lvl) => { p.hpRegen += [1, 1, 2][lvl - 1] } },
   { id: 'g7',  label: 'Cleave',       desc: ['AoE: attacks splash in 4m radius', 'Splash radius +2m', 'Splash radius +2.5m'],         icon: 'g7_cleave',       apply: (p, lvl) => { if (lvl === 1) { p.splashRadius = Math.max(p.splashRadius, 40) } else { p.splashRadius += lvl === 2 ? 20 : 25 } } },
   { id: 'g8',  label: 'Wisdom',       desc: ['+15% XP from all sources', '+9% more XP', '+9% more XP'],                               icon: 'g8_wisdom',       apply: (p, lvl) => { p.xpMult += [0.15, 0.09, 0.09][lvl - 1] } },
-  { id: 'g9',  label: 'Multistrike',  desc: ['+1 target for ranged, +1 strike for melee', '+5% dmg to all attacks', '+1 more target/strike'],             icon: 'g9_multistrike',  apply: (p, lvl) => { if (lvl === 1 || lvl === 3) { p.strikeCount += 1 } else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.05) } } },
-  { id: 'g10', label: 'Iron Skin',    desc: ['+10% armor (reduces dmg taken)', '+10% more armor', '+10% more armor'],                 icon: 'g10_iron_skin',   apply: (p, _lvl) => { p.armor = Math.min(0.7, p.armor + 0.10) } },
+  { id: 'g9',  label: 'Multistrike',  desc: ['+1 target for ranged, +1 strike for melee', '+5% damage to all attacks', '+1 more target/strike'],             icon: 'g9_multistrike',  apply: (p, lvl) => { if (lvl === 1 || lvl === 3) { p.strikeCount += 1 } else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.05) } } },
+  { id: 'g10', label: 'Iron Skin',    desc: ['+10% armor (reduces damage taken)', '+10% more armor', '+10% more armor'],                 icon: 'g10_iron_skin',   apply: (p, _lvl) => { p.armor = Math.min(0.7, p.armor + 0.10) } },
 ]
 
 // ============================================================
@@ -41,7 +41,7 @@ export interface BranchDef {
 
 const IGNARA_BRANCHES: BranchDef[] = [
   {
-    name: 'Inferno', color: 0xff6600,
+    name: 'Inferno', color: 0xf97316,
     theme: 'The flame grows. The field burns. Nothing leaves the circle.',
     upgrades: [
       {
@@ -55,7 +55,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'if2', label: 'Inferno Reach', icon: 'if2_inferno_reach',
-        desc: ['Longer arc\nFireball range +3m', 'Hotter throw\n+2m range, +10% dmg', 'Sun-cast\n+2m range, +15% dmg'],
+        desc: ['Longer arc\nFireball range +3m', 'Hotter throw\n+2m range, +10% damage', 'Sun-cast\n+2m range, +15% damage'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.range += 30 }
           else if (lvl === 2) { p.range += 20; p.damage = Math.ceil(p.damage * 1.1) }
@@ -64,7 +64,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'if3', label: 'White Fire', icon: 'if3_white_fire',
-        desc: ['Heat beyond flame\n+30% fireball dmg', 'Forge-white\n+15% dmg', 'Contagion of flame\n+15% dmg. Kills trigger Wildfire chain blast'],
+        desc: ['Heat beyond flame\n+30% fireball damage', 'Forge-white\n+15% damage', 'Contagion of flame\n+15% damage. Kills trigger Wildfire chain blast'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.damage = Math.ceil(p.damage * 1.3) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -82,7 +82,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'if5', label: 'Firestorm', icon: 'if5_firestorm', isUltimate: true,
-        desc: ['Twin suns orbit\n2 mini-fireballs strike nearby foes (50% dmg). +15% dmg', 'Third companion\n+1 orbiting fireball, +10% dmg', 'Consecrated ground\nMini-fireballs leave Scorched Earth on impact'],
+        desc: ['Twin suns orbit\n2 mini-fireballs strike nearby foes (50% damage). +15% damage', 'Third companion\n+1 orbiting fireball, +10% damage', 'Consecrated ground\nMini-fireballs leave Scorched Earth on impact'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasFirestorm = true; p.firestormOrbCount = 2; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.firestormOrbCount = 3; p.damage = Math.ceil(p.damage * 1.1) }
@@ -92,12 +92,12 @@ const IGNARA_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Wildfire', color: 0xff3300,
+    name: 'Wildfire', color: 0xdc2626,
     theme: 'Relentless. Burning. It never stops.',
     upgrades: [
       {
         id: 'bh1', label: 'Sustained Burn', icon: 'bh1_sustained_burn',
-        desc: ['Hits apply Burn (4%/tick, max 5)\n-10% CD', 'Max stacks → 7\n-10% CD', 'Fully stacked: +20% dmg taken\n-10% CD'],
+        desc: ['Hits apply Burn (4%/tick, max 5)\n-10% cooldown', 'Max stacks → 7\n-10% cooldown', 'Fully stacked: +20% damage taken\n-10% cooldown'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSustainedBurn = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
           else if (lvl === 2) { p.burnMaxStacks = 7; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.9)) }
@@ -115,7 +115,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'bh3', label: 'Ember Volley', icon: 'bh3_ember_volley',
-        desc: ['-12% CD. On kill: -2% CD (max 20%)', '-12% CD. Cap → 30%', '-12% CD, +10% dmg. Burns nearby also reduce CD'],
+        desc: ['-12% cooldown. On kill: -2% cooldown (max 20%)', '-12% cooldown. Cap → 30%', '-12% cooldown, +10% damage. Burns nearby also reduce cooldown'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasEmberVolley = true; p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)) }
           else if (lvl === 2) { p.attackCooldown = Math.max(200, Math.ceil(p.attackCooldown * 0.88)); p.emberVolleyCap = 0.3 }
@@ -124,7 +124,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'bh4', label: 'Flashpoint', icon: 'bh4_flashpoint',
-        desc: ['On kill: next shot instant', 'On kill: 2 instant shots', '2 instant shots + 10% dmg burst'],
+        desc: ['On kill: next shot instant', 'On kill: 2 instant shots', '2 instant shots + 10% damage burst'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasFlashpoint = true; p.flashpointCharges = 1 }
           else if (lvl === 2) { p.flashpointCharges = 2 }
@@ -133,7 +133,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'bh5', label: 'Infernal Cadence', icon: 'bh5_infernal_cadence', isUltimate: true,
-        desc: ['6s ×3 speed. Burns apply ×2. +15% dmg', '8s duration. Full-stack kills explode', '10s. Explosion radius ×1.5, +10% dmg'],
+        desc: ['6s ×3 speed. Burns apply ×2. +15% damage', '8s duration. Full-stack kills explode', '10s. Explosion radius +50%, +10% damage'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasInfernalCadence = true; p.infernalCadenceDuration = 6000; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.infernalCadenceDuration = 8000 }
@@ -143,12 +143,12 @@ const IGNARA_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Pyre', color: 0xff8800,
+    name: 'Pyre', color: 0xeab308,
     theme: 'Get close. Hit hard. Walk away burning.',
     upgrades: [
       {
         id: 'ih1', label: 'Slug Round', icon: 'ih1_backdraft',
-        desc: ['Heavy shot\n×1.6 proj, 20px blast, +15% dmg', 'Bigger punch\n+15% dmg, blast → 30px', 'Piercing slug\n+15% dmg, pierces 1 enemy'],
+        desc: ['Heavy shot\n+60% projectile size, 2m blast, +15% damage', 'Bigger punch\n+15% damage, blast radius 3m', 'Piercing slug\n+15% damage, pierces 1 enemy'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSlugRound = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -166,7 +166,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ih3', label: 'Immolation', icon: 'ih3_lava_trail',
-        desc: ['Burn aura 70px, 12% dmg/s', 'Aura grows\n85px, 16% dmg/s', 'Consecrated pyre\n20% dmg/s. Kills drop Scorched Earth'],
+        desc: ['Burn aura 7m, 12% damage/s', 'Aura grows\n8.5m, 16% damage/s', 'Consecrated pyre\n20% damage/s. Kills drop Scorched Earth'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasImmolation = true; p.immolationRadius = 70; p.immolationDmgPct = 0.12 }
           else if (lvl === 2) { p.immolationRadius = 85; p.immolationDmgPct = 0.16 }
@@ -175,7 +175,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ih4', label: 'Molten Volley', icon: 'io4_ember_veil',
-        desc: ['3 slugs (40% dmg) in cone, burn 1s', '4 slugs, burn 2s. ×2 tick with aura', '5 slugs. 3+ hits = Scorch: -20% armor 4s'],
+        desc: ['3 slugs (40% damage) in cone, burn 1s', '4 slugs, burn 2s. ×2 tick with aura', '5 slugs. 3+ hits = Scorch: -20% armor 4s'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasMoltenVolley = true; p.moltenVolleyCount = 3 }
           else if (lvl === 2) { p.moltenVolleyCount = 4 }
@@ -184,7 +184,7 @@ const IGNARA_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ih5', label: 'Scorched Bastion', icon: 'ih5_meltdown', isUltimate: true,
-        desc: ['+15 HP. Aura radius → 100px', '+10 HP. Aura dmg ×1.3', '+10 HP. Aura lifesteal 2%'],
+        desc: ['+15 HP. Aura radius → 10m', '+10 HP. Aura damage +30%', '+10 HP. Aura lifesteal 2%'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasScorchedBastion = true; p.maxHp += 15; p.hp += 15; p.immolationRadius = 100 }
           else if (lvl === 2) { p.maxHp += 10; p.hp += 10; p.immolationDmgPct *= 1.3 }
@@ -197,12 +197,12 @@ const IGNARA_BRANCHES: BranchDef[] = [
 
 const NAZAR_BRANCHES: BranchDef[] = [
   {
-    name: 'Way of the Blade', color: 0xccccdd,
+    name: 'Way of the Blade', color: 0xe2e8f0,
     theme: 'One cut. One kill. Repeat until the Rift is silent.',
     upgrades: [
       {
         id: 'nb1', label: 'Shadow Step', icon: 'nb1_shadow_step',
-        desc: ['Blink 3m toward enemy before melee, +10 range', '+15 range, blink distance +1.5m', '+15 range, blink ignores collision for 0.3s'],
+        desc: ['Blink 3m toward enemy before melee, +1m range', '+1.5m range, blink distance +1.5m', '+1.5m range, blink ignores collision for 0.3s'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasShadowStep = true; p.range += 10 }
           else if (lvl === 2) { p.range += 15 }
@@ -220,7 +220,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'nb3', label: 'Blade Surge', icon: 'nb3_chain_dash',
-        desc: ['Lunge 1.5× range, hit 70% dmg line, +5 dmg', '+8 dmg, lunge hits twice', '+8 dmg + Assassinate: 2× dmg if alone, 1.5× vs few'],
+        desc: ['Lunge 1.5× range, hit 70% damage line, +5 damage', '+8 damage, lunge hits twice', '+8 damage + Assassinate: 2× damage if alone, 1.5× vs few'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasChainDash = true; p.damage += 5 }
           else if (lvl === 2) { p.damage += 8 }
@@ -229,7 +229,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'nb5', label: 'Assassinate', icon: 'nb5_assassinate', isUltimate: true,
-        desc: ['1.5× dmg vs lone/few enemies (2× if truly alone), +15% dmg', '+10% more dmg, execute targets below 10% HP', '+15% dmg, execute range doubled'],
+        desc: ['1.5× damage vs lone/few enemies (2× if truly alone), +15% damage', '+10% more damage, execute targets below 10% HP', '+15% damage, execute range doubled'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasAssassinate = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1); p.hasBloodScent = true }
@@ -239,12 +239,12 @@ const NAZAR_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Way of Venom', color: 0x44cc44,
+    name: 'Way of Venom', color: 0x84cc16,
     theme: 'The desert already wants them dead. Help it along.',
     upgrades: [
       {
         id: 'nv1', label: 'Toxic Slash', icon: 'nv1_toxic_slash',
-        desc: ['On hit: DOT puddle 30% dmg/tick 3s, +3 dmg', '+4 dmg, puddle lasts 5s', '+5 dmg, puddles stack (max 3)'],
+        desc: ['On hit: DOT puddle 30% damage/tick 3s, +3 damage', '+4 damage, puddle lasts 5s', '+5 damage, puddles stack (max 3)'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasToxicSlash = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 4 }
@@ -253,7 +253,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'nv2', label: 'Virulent Strain', icon: 'nv2_virulent_strain',
-        desc: ['Puddles +80% radius, 5s duration, +15 splash', 'Puddles also slow enemies 25%', 'Puddles slow 40% + Weakness: poisoned take +30% dmg'],
+        desc: ['Puddles +80% radius, 5s duration, +1.5m splash', 'Puddles also slow enemies 25%', 'Puddles slow 40% + Weakness: poisoned take +30% damage'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasVirulentStrain = true; p.splashRadius += 15 }
           else if (lvl === 2) { p.splashRadius += 15 }
@@ -262,7 +262,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'nv3', label: 'Pandemic', icon: 'nv3_pandemic',
-        desc: ['On kill: spread mini-cloud 50% radius, 50% dmg, +3 dmg', '+4 dmg, cloud lingers 1s longer', '+5 dmg + Necrosis: poison ramps +20%/tick'],
+        desc: ['On kill: spread mini-cloud 50% radius, 50% damage, +3 damage', '+4 damage, cloud lingers 1s longer', '+5 damage + Necrosis: poison ramps +20%/tick'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasPandemic = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 4 }
@@ -271,7 +271,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'nv5', label: 'Necrosis', icon: 'nv5_necrosis', isUltimate: true,
-        desc: ['Poison dmg ramps +20%/tick, +15% dmg', '+10% more dmg, ramp resets slower', '+15% dmg, ramp reaches up to 3× on last tick'],
+        desc: ['Poison damage ramps +20%/tick, +15% damage', '+10% more damage, ramp resets slower', '+15% damage, ramp reaches up to 3× on last tick'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasNecrosis = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -281,7 +281,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Way of Shadow', color: 0x9955dd,
+    name: 'Way of Shadow', color: 0x7c3aed,
     theme: 'Be the thing they don\'t see coming. Be it twice.',
     upgrades: [
       {
@@ -295,7 +295,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ns2', label: 'Phantom Trail', icon: 'ns2_phantom_trail',
-        desc: ['Moving: shadow trail 15% dmg/tick in 1.5m, +10 speed', '+10 speed, trail width doubles', '+10 speed, trail also slows enemies 30%'],
+        desc: ['Moving: shadow trail 15% damage/tick in 1.5m, +10 speed', '+10 speed, trail width doubles', '+10 speed, trail also slows enemies 30%'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasPhantomTrail = true; p.speed += 10 }
           else if (lvl === 2) { p.speed += 10 }
@@ -304,7 +304,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ns3', label: 'Smoke Bomb', icon: 'ns3_smoke_bomb',
-        desc: ['On melee: slow enemies 60% in 5m, +15 splash', '+20 splash, slow lasts 0.5s longer', '+20 splash + Blood Scent: execute below 20% HP'],
+        desc: ['On melee: slow enemies 60% in 5m, +1.5m splash', '+2m splash, slow lasts 0.5s longer', '+2m splash + Blood Scent: execute below 20% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSmokeBomb = true; p.splashRadius += 15 }
           else if (lvl === 2) { p.splashRadius += 20 }
@@ -313,7 +313,7 @@ const NAZAR_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ns5', label: 'Death Mark', icon: 'ns5_death_mark', isUltimate: true,
-        desc: ['1st hit marks; 2nd hit deals +40% dmg, +15% dmg', '+10% dmg, mark lasts 2s longer', '+15% dmg, marked enemy reveals nearby hidden targets'],
+        desc: ['1st hit marks; 2nd hit deals +40% damage, +15% damage', '+10% damage, mark lasts 2s longer', '+15% damage, marked enemy reveals nearby hidden targets'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasDeathMark = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -327,12 +327,12 @@ const NAZAR_BRANCHES: BranchDef[] = [
 // Ice path branches
 const SIFRA_ICE_BRANCHES: BranchDef[] = [
   {
-    name: 'Frost', color: 0x55aaff,
+    name: 'Frost', color: 0x67e8f9,
     theme: 'The cold preserves. The cold also kills.',
     upgrades: [
       {
         id: 'sf1', label: 'Deep Freeze', icon: 'sf1_deep_freeze',
-        desc: ['+30% enemy slow, +10% dmg', '+10% dmg, frozen enemies shatter for +20% bonus dmg', '+10% dmg, shatter AoE in 3m radius'],
+        desc: ['+30% enemy slow, +10% damage', '+10% damage, frozen enemies shatter for +20% bonus damage', '+10% damage, shatter AoE in 3m radius'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasDeepFreeze = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -359,7 +359,7 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'sf5', label: 'Eternal Winter', icon: 'sf5_eternal_winter', isUltimate: true,
-        desc: ['Frost field: 20% dmg/s + 60% slow in 6m, +15% dmg', 'Field radius +3m, dmg rate +10%/s', '+20% dmg, field also freezes enemies for 0.5s/tick'],
+        desc: ['Frost field: 20% damage/s + 60% slow in 6m, +15% damage', 'Field radius +3m, damage rate +10%/s', '+20% damage, field also freezes enemies for 0.5s/tick'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasEternalWinter = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -369,12 +369,12 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Shatter', color: 0x88ddff,
+    name: 'Shatter', color: 0x38bdf8,
     theme: 'Frozen things break beautifully.',
     upgrades: [
       {
         id: 'ss1', label: 'Permafrost', icon: 'ss1_permafrost',
-        desc: ['+40% dmg vs slowed enemies, +10% dmg', '+10% more dmg, bonus vs slowed increases to 60%', '+10% dmg, bonus vs frozen is 100% (double dmg)'],
+        desc: ['+40% damage vs slowed enemies, +10% damage', '+10% more damage, bonus vs slowed increases to 60%', '+10% damage, bonus vs frozen is 100% (double damage)'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasPermafrost = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -392,7 +392,7 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ss3', label: 'Ice Spear', icon: 'ss3_ice_spear',
-        desc: ['+8 dmg, +2m range', '+8 dmg, +2m range, shards pierce +1 target', '+10 dmg, +2m range + Mirror Ice: shards pierce +2 more'],
+        desc: ['+8 damage, +2m range', '+8 damage, +2m range, shards pierce +1 target', '+10 damage, +2m range + Mirror Ice: shards pierce +2 more'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.damage += 8; p.range += 20 }
           else if (lvl === 2) { p.damage += 8; p.range += 20; p.pierceCount += 1 }
@@ -401,7 +401,7 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ss5', label: 'Avalanche', icon: 'ss5_avalanche', isUltimate: true,
-        desc: ['+3 shatter shards per hit, +20% dmg', '+3 more shards, +10% dmg', '+4 shards, +15% dmg, shards home more aggressively'],
+        desc: ['+3 shatter shards per hit, +20% damage', '+3 more shards, +10% damage', '+4 shards, +15% damage, shards home more aggressively'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.shatterPieces += 3; p.damage = Math.ceil(p.damage * 1.2) }
           else if (lvl === 2) { p.shatterPieces += 3; p.damage = Math.ceil(p.damage * 1.1) }
@@ -414,12 +414,12 @@ const SIFRA_ICE_BRANCHES: BranchDef[] = [
 
 // Lightning path branch
 const SIFRA_LIGHTNING_BRANCH: BranchDef = {
-  name: 'Lightning', color: 0x9966ff,
+  name: 'Lightning', color: 0x818cf8,
   theme: 'The Bramauthroba gave her this. She intends to return it.',
   upgrades: [
     {
       id: 'sl1', label: 'Spark Initiate', icon: 'sl1_spark_initiate',
-      desc: ['Cone: chain to 1 nearby foe within 8m at 60% dmg, +15% dmg', '+10% dmg, chain hits 2 targets', '+15% dmg, chain at 80% dmg instead'],
+      desc: ['Cone: chain to 1 nearby foe within 8m at 60% damage, +15% damage', '+10% damage, chain hits 2 targets', '+15% damage, chain at 80% damage instead'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasSparkInitiate = true; p.damage = Math.ceil(p.damage * 1.15) }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -428,7 +428,7 @@ const SIFRA_LIGHTNING_BRANCH: BranchDef = {
     },
     {
       id: 'sl2', label: 'Arc Reach', icon: 'sl2_arc_reach',
-      desc: ['Cone +50% wider, side-arc 40% dmg, +15 range', '+15 range, arc dmg increases to 60%', '+15 range, arc fires on both sides'],
+      desc: ['Cone +50% wider, side-arc 40% damage, +1.5m range', '+1.5m range, arc damage increases to 60%', '+1.5m range, arc fires on both sides'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasArcReach = true; p.range += 15 }
         else if (lvl === 2) { p.range += 15 }
@@ -437,7 +437,7 @@ const SIFRA_LIGHTNING_BRANCH: BranchDef = {
     },
     {
       id: 'sl3', label: 'Overcharge', icon: 'sl3_overcharge',
-      desc: ['~8% chance/frame: cone deals 3× dmg burst, +15% dmg', '+10% dmg, proc chance doubles', '+15% dmg + Ball Lightning orbit (zap 30% dmg/s)'],
+      desc: ['~8% chance/frame: cone deals 3× damage burst, +15% damage', '+10% damage, proc chance doubles', '+15% damage + Ball Lightning orbit (zap 30% damage/s)'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasOvercharge = true; p.damage = Math.ceil(p.damage * 1.15) }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -446,7 +446,7 @@ const SIFRA_LIGHTNING_BRANCH: BranchDef = {
     },
     {
       id: 'sl5', label: 'Storm Lord', icon: 'sl5_storm_lord', isUltimate: true,
-      desc: ['Every 2s: random enemy struck for 2× dmg, +20% dmg', '+15% dmg, strikes 2 enemies at once', '+15% dmg, strike interval reduced to 1.5s'],
+      desc: ['Every 2s: random enemy struck for 2× damage, +20% damage', '+15% damage, strikes 2 enemies at once', '+15% damage, strike interval reduced to 1.5s'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasStormLord = true; p.damage = Math.ceil(p.damage * 1.2) }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -464,12 +464,12 @@ const SIFRA_BRANCHES: BranchDef[] = [
 
 const AMUN_BRANCHES: BranchDef[] = [
   {
-    name: 'Wrath', color: 0xff6633,
+    name: 'Wrath', color: 0xf59e0b,
     theme: 'A thousand years of patience, ended.',
     upgrades: [
       {
         id: 'aw1', label: 'Thorns', icon: 'aw1_thorns',
-        desc: ['4 orbiting swords slash nearby foes', '+2 swords, +5% sword dmg', '+2 swords, +10% sword dmg'],
+        desc: ['4 orbiting swords slash nearby foes', '+2 swords, +5% sword damage', '+2 swords, +10% sword damage'],
         apply: (p, lvl) => {
           p.hasThorns = true
           p.thornsLevel = lvl
@@ -479,7 +479,7 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'aw2', label: 'Wrath', icon: 'aw2_wrath',
-        desc: ['When hit: AoE burst 60% dmg in 10m, +5% dmg', '+10% dmg, AoE radius +2m', '+10% dmg + Living Fortress: aura scales with HP%'],
+        desc: ['When hit: AoE burst 60% damage in 10m, +5% damage', '+10% damage, AoE radius +2m', '+10% damage + Living Fortress: aura scales with HP%'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasWrath = true; p.damage = Math.ceil(p.damage * 1.05) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1); p.splashRadius += 20 }
@@ -488,7 +488,7 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'aw3', label: 'Consecration', icon: 'aw3_consecration',
-        desc: ['Aura: pulse 40% dmg in 12m every 1.5s, +25 splash, +3 dmg', '+4 dmg, pulse rate increases to 1.2s', '+5 dmg, splash +20 + gains +30 max HP'],
+        desc: ['Aura: pulse 40% damage in 12m every 1.5s, +2.5m splash, +3 damage', '+4 damage, pulse rate increases to 1.2s', '+5 damage, splash +2m + gains +30 max HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.splashRadius += 25; p.damage += 3; p.dmgAuraActive = true }
           else if (lvl === 2) { p.damage += 4 }
@@ -497,7 +497,7 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'aw5', label: 'Divine Judgment', icon: 'aw5_divine_judgment', isUltimate: true,
-        desc: ['Auto-execute enemies below 15% HP in 12m range, +10% dmg', '+5% dmg, execute range doubled', '+15% dmg, execute threshold rises to 20% HP'],
+        desc: ['Auto-execute enemies below 15% HP in 12m range, +10% damage', '+5% damage, execute range doubled', '+15% damage, execute threshold rises to 20% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasDivineJudgment = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.05) }
@@ -507,12 +507,12 @@ const AMUN_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Bastion', color: 0x4488ff,
+    name: 'Bastion', color: 0x3b82f6,
     theme: 'The golem was built to endure. You\'ll see why.',
     upgrades: [
       {
         id: 'ab1', label: 'Fortify', icon: 'ab1_fortify',
-        desc: ['+15% armor (cap 60%)\nreduce dmg taken and activate defense aura', '+15% more armor\nstacks with previous, stronger aura', '+10% armor\nIron Will: cap incoming hit at 10% maxHP'],
+        desc: ['+15% armor (cap 60%)\nreduce damage taken and activate defense aura', '+15% more armor\nstacks with previous, stronger aura', '+10% armor\nIron Will: cap incoming hit at 10% maxHP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.armor = Math.min(0.6, p.armor + 0.15); p.defenseAuraActive = true }
           else if (lvl === 2) { p.armor = Math.min(0.6, p.armor + 0.1) }
@@ -521,7 +521,7 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'ab2', label: 'Aura of Might', icon: 'ab2_aura_of_might',
-        desc: ['Orbiting shield deflects arrows, +3 dmg', '+3 dmg, +1 shield (2 total)', '+4 dmg, +2 shields (3 total) + low HP regen ×3'],
+        desc: ['Orbiting shield deflects arrows, +3 damage', '+3 damage, +1 shield (2 total)', '+4 damage, +2 shields (3 total) + low HP regen ×3'],
         apply: (p, lvl) => {
           p.hasPassiveAura = true
           p.passiveAuraLevel = lvl
@@ -551,12 +551,12 @@ const AMUN_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Quake', color: 0xffcc44,
+    name: 'Quake', color: 0xfacc15,
     theme: 'The Amunat wastes remember every earthquake. Make more.',
     upgrades: [
       {
         id: 'aq1', label: "Titan's Pulse", icon: 'aq1_titans_pulse',
-        desc: ["Unlock stance toggle (Q): melee / quake. Boulder 30m, +5 dmg", '+5 dmg, shockwave boulder splits into 2', '+5 dmg, boulder AoE splash +20'],
+        desc: ["Unlock stance toggle (Q): melee / quake. Boulder 30m, +5 damage", '+5 damage, shockwave boulder splits into 2', '+5 damage, boulder AoE splash +2m'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasQuakeStance = true; p.hasTitansPulse = true; p.damage += 5; p.splashRadius += 15 }
           else if (lvl === 2) { p.damage += 5 }
@@ -565,7 +565,7 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'aq2', label: 'Earthquake', icon: 'aq2_earthquake',
-        desc: ['Shockwave hit: stun enemies 0.8s, +10% dmg', '+10% dmg, stun duration 1.2s', '+10% dmg + Gravity Well: pull enemies every 2s'],
+        desc: ['Shockwave hit: stun enemies 0.8s, +10% damage', '+10% damage, stun duration 1.2s', '+10% damage + Gravity Well: pull enemies every 2s'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasEarthquake = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -574,7 +574,7 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'aq3', label: 'Colossus', icon: 'aq3_colossus',
-        desc: ['Shockwave knockback 50m (vs 20m), +5 dmg', '+5 dmg, knockback pulls enemies in after rebound', '+5 dmg + Gravity Well: pull every 2s in 12m range'],
+        desc: ['Shockwave knockback 50m (vs 20m), +5 damage', '+5 damage, knockback pulls enemies in after rebound', '+5 damage + Gravity Well: pull every 2s in 12m range'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasColossus = true; p.damage += 5 }
           else if (lvl === 2) { p.damage += 5 }
@@ -583,7 +583,7 @@ const AMUN_BRANCHES: BranchDef[] = [
       },
       {
         id: 'aq5', label: 'Cataclysm', icon: 'aq5_cataclysm', isUltimate: true,
-        desc: ['2nd shockwave 60% dmg at 350ms delay, +15% dmg', '+10% dmg, 3rd shockwave 40% dmg at 700ms', '+15% dmg, all shockwaves 15% wider AoE'],
+        desc: ['2nd shockwave 60% damage at 350ms delay, +15% damage', '+10% damage, 3rd shockwave 40% damage at 700ms', '+15% damage, all shockwaves 15% wider AoE'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCataclysm = true; p.damage = Math.ceil(p.damage * 1.15) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -595,12 +595,12 @@ const AMUN_BRANCHES: BranchDef[] = [
 ]
 
 const KHASHIN_GALE_BRANCH: BranchDef = {
-  name: 'Gale', color: 0x88DDFF,
+  name: 'Gale', color: 0x67e8f9,
   theme: 'Cut them apart before they know you were there.',
   upgrades: [
     {
       id: 'kw1', label: 'Razor Wind', icon: 'kw1_razor_wind',
-      desc: ['Wind slash +25% dmg, pierces +1 target', '+15% dmg, slash width +20%', '+15% dmg, slash fires two waves per attack'],
+      desc: ['Wind slash +25% damage, pierces +1 target', '+15% damage, slash width +20%', '+15% damage, slash fires two waves per attack'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.damage = Math.ceil(p.damage * 1.25); p.windSlashPierce += 1 }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -609,7 +609,7 @@ const KHASHIN_GALE_BRANCH: BranchDef = {
     },
     {
       id: 'kw2', label: 'Gust Strike', icon: 'kw2_gust_strike',
-      desc: ['Wind slash knocks back enemies 15m', 'Knockback stays at 15m, hit targets take +15% dmg', '+15% dmg + Cyclone Surge: Dust Devils +50% bigger'],
+      desc: ['Wind slash knocks back enemies 15m', 'Knockback stays at 15m, hit targets take +15% damage', '+15% damage + Cyclone Surge: Dust Devils +50% bigger'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasGustStrike = true }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -618,7 +618,7 @@ const KHASHIN_GALE_BRANCH: BranchDef = {
     },
     {
       id: 'kw3', label: 'Dust Devil', icon: 'kw3_dust_devil',
-      desc: ['Every 5th attack spawns a drifting tornado', 'Tornadoes last 1s longer, +10% dmg', '+10% dmg + Cyclone Surge: bigger + Eye of the Storm anchored tornado'],
+      desc: ['Every 5th attack spawns a drifting tornado', 'Tornadoes last 1s longer, +10% damage', '+10% damage + Cyclone Surge: bigger + Eye of the Storm anchored tornado'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasDustDevil = true }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -627,7 +627,7 @@ const KHASHIN_GALE_BRANCH: BranchDef = {
     },
     {
       id: 'kw5', label: 'Eye of the Storm', icon: 'kw5_eye_of_the_storm', isUltimate: true,
-      desc: ['Anchored tornado every 8s; +20% dmg', '+15% dmg, tornado lasts 2s longer', '+15% dmg, spawn 2 anchored tornadoes at once'],
+      desc: ['Anchored tornado every 8s; +20% damage', '+15% damage, tornado lasts 2s longer', '+15% damage, spawn 2 anchored tornadoes at once'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasEyeOfTheStorm = true; p.damage = Math.ceil(p.damage * 1.2) }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -638,12 +638,12 @@ const KHASHIN_GALE_BRANCH: BranchDef = {
 }
 
 const KHASHIN_DUNE_BRANCH: BranchDef = {
-  name: 'Dune', color: 0xE8A040,
+  name: 'Dune', color: 0xfbbf24,
   theme: 'The Pishane is a weapon. Use it.',
   upgrades: [
     {
       id: 'kd1', label: 'Choking Sand', icon: 'kd1_choking_sand',
-      desc: ['Blinded enemies take +35% dmg', '+15% more dmg vs blinded, blind lasts 0.5s longer', '+10% dmg + Abrasion: blinded enemies -20% armor'],
+      desc: ['Blinded enemies take +35% damage', '+15% more damage vs blinded, blind lasts 0.5s longer', '+10% damage + Abrasion: blinded enemies -20% armor'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasChokingSand = true }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -661,7 +661,7 @@ const KHASHIN_DUNE_BRANCH: BranchDef = {
     },
     {
       id: 'kd3', label: 'Abrasion', icon: 'kd3_abrasion',
-      desc: ['Blinded enemies -20% armor; +3 dmg', '+4 dmg, armor reduction deepens to -35%', '+5 dmg + Scarab Tide: on kill 4 seeking blind scarabs'],
+      desc: ['Blinded enemies -20% armor; +3 damage', '+4 damage, armor reduction deepens to -35%', '+5 damage + Scarab Tide: on kill 4 seeking blind scarabs'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasAbrasion = true; p.damage += 3 }
         else if (lvl === 2) { p.damage += 4 }
@@ -670,7 +670,7 @@ const KHASHIN_DUNE_BRANCH: BranchDef = {
     },
     {
       id: 'kd5', label: 'Sandstorm Wall', icon: 'kd5_sandstorm_wall', isUltimate: true,
-      desc: ['Haboob arcs spawn lingering sand clouds', 'Clouds linger 2s longer, +10% dmg', '+15% dmg, clouds apply Blind to all who enter'],
+      desc: ['Haboob arcs spawn lingering sand clouds', 'Clouds linger 2s longer, +10% damage', '+15% damage, clouds apply Blind to all who enter'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasSandstormWall = true }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -681,7 +681,7 @@ const KHASHIN_DUNE_BRANCH: BranchDef = {
 }
 
 const KHASHIN_MIRAGE_BRANCH: BranchDef = {
-  name: 'Mirage', color: 0xCCAAFF,
+  name: 'Mirage', color: 0xc4b5fd,
   theme: 'Be somewhere else. Always somewhere else.',
   upgrades: [
     {
@@ -695,7 +695,7 @@ const KHASHIN_MIRAGE_BRANCH: BranchDef = {
     },
     {
       id: 'km2', label: 'Phantom Step', icon: 'km2_phantom_step',
-      desc: ['Auto-dash 10m away every 6s', 'Dash CD reduced to 4s, +15 speed', '+10 speed + Mirage: dash leaves a decoy for 2s'],
+      desc: ['Auto-dash 10m away every 6s', 'Dash cooldown reduced to 4s, +15 speed', '+10 speed + Mirage: dash leaves a decoy for 2s'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasPhantomStep = true }
         else if (lvl === 2) { p.speed += 15 }
@@ -704,7 +704,7 @@ const KHASHIN_MIRAGE_BRANCH: BranchDef = {
     },
     {
       id: 'km3', label: 'Mirage', icon: 'km3_mirage',
-      desc: ['Phantom Step leaves a decoy for 2s', 'Decoy lasts 3s, attacks enemies for 30% dmg', 'Decoy lasts 4s + Desert Wind burst every 10s'],
+      desc: ['Phantom Step leaves a decoy for 2s', 'Decoy lasts 3s, attacks enemies for 30% damage', 'Decoy lasts 4s + Desert Wind burst every 10s'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasMirage = true }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -713,7 +713,7 @@ const KHASHIN_MIRAGE_BRANCH: BranchDef = {
     },
     {
       id: 'km5', label: 'Desert Wind', icon: 'km5_desert_wind', isUltimate: true,
-      desc: ['Every 10s: 18m wind burst + 3s DR', 'Burst radius +5m, DR extends to 5s', '+15% dmg, burst knocks back all enemies 20m'],
+      desc: ['Every 10s: 18m wind burst + 3s damage reduction', 'Burst radius +5m, damage reduction extends to 5s', '+15% damage, burst knocks back all enemies 20m'],
       apply: (p, lvl) => {
         if (lvl === 1) { p.hasDesertWind = true }
         else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -731,12 +731,12 @@ const KHASHIN_BRANCHES: BranchDef[] = [
 
 const MULLER_BRANCHES: BranchDef[] = [
   {
-    name: 'Shardfall', color: 0x44AAFF,
+    name: 'Shardfall', color: 0x60a5fa,
     theme: 'Hit the ground hard enough. Everything shatters.',
     upgrades: [
       {
         id: 'cm1', label: 'Coarse Cut', icon: 'cm1_coarse_cut',
-        desc: ['Crystal wave cone +15° wider', 'Cone +15° wider (total +30°), +5% dmg', '+5% dmg, cone waves pierce through walls'],
+        desc: ['Crystal wave cone +15° wider', 'Cone +15° wider (total +30°), +5% damage', '+5% damage, cone waves pierce through walls'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.crystalWaveConeAngle += 15 }
           else if (lvl === 2) { p.crystalWaveConeAngle += 15; p.damage = Math.ceil(p.damage * 1.05) }
@@ -745,7 +745,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cm2', label: 'Deep Vein', icon: 'cm2_deep_vein',
-        desc: ['Spikes +30% dmg at max range', '+15% dmg at all ranges', '+15% dmg + Crystal Shrapnel: spikes spray 3 shards on death'],
+        desc: ['Spikes +30% damage at max range', '+15% damage at all ranges', '+15% damage + Crystal Shrapnel: spikes spray 3 shards on death'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasDeepVein = true }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -754,7 +754,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cm3', label: 'Shardstorm', icon: 'cm3_shardstorm',
-        desc: ['Double wave per slam', '+10% dmg, waves stagger by 0.15s', '+10% dmg + Crystal Shrapnel: spikes spray shards on death'],
+        desc: ['Double wave per slam', '+10% damage, waves stagger by 0.15s', '+10% damage + Crystal Shrapnel: spikes spray shards on death'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasShardstorm = true }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -763,7 +763,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cm5', label: 'Tectonic Fury', icon: 'cm5_tectonic_fury', isUltimate: true,
-        desc: ['Every 5th slam: crystal eruption ring', 'Eruption ring radius +3m, +15% dmg', '+15% dmg, eruption chains to 2 nearby enemies'],
+        desc: ['Every 5th slam: crystal eruption ring', 'Eruption ring radius +3m, +15% damage', '+15% damage, eruption chains to 2 nearby enemies'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasTectonicFury = true }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -773,7 +773,7 @@ const MULLER_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Geode Shell', color: 0x99DDCC,
+    name: 'Geode Shell', color: 0x6ee7b7,
     theme: 'Dense. Close to the ground. Hard to kill.',
     upgrades: [
       {
@@ -787,7 +787,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cr2', label: 'Geode Shell', icon: 'cr2_geode_shell',
-        desc: ['Below 50% HP: absorb next hit, 20s CD', 'CD reduced to 14s', 'CD 14s + Resonance Armor: wave impact grants 0.5s invuln'],
+        desc: ['Below 50% HP: absorb next hit, 20s cooldown', 'Cooldown reduced to 14s', 'Cooldown 14s + Resonance Armor: wave impact grants 0.5s invuln'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasGeodeShell = true }
           else if (lvl === 2) { /* shorter CD handled at runtime */ }
@@ -796,7 +796,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cr3', label: 'Crystal Wall', icon: 'cr3_crystal_wall',
-        desc: ['Barrier every 8s blocking enemies', 'Barrier every 6s, wall lasts longer', 'Barrier every 5s + Living Geode: +25 HP, melee reflect 15 dmg'],
+        desc: ['Barrier every 8s blocking enemies', 'Barrier every 6s, wall lasts longer', 'Barrier every 5s + Living Geode: +25 HP, melee reflect 15 damage'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCrystalWall = true }
           else if (lvl === 2) { /* shorter CD handled at runtime */ }
@@ -805,7 +805,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cr5', label: 'Living Geode', icon: 'cr5_living_geode', isUltimate: true,
-        desc: ['+25 HP, melee reflect 15 dmg', '+25 HP, reflect increases to 25 dmg', '+30 HP, reflect 25 dmg + wall reflects projectiles'],
+        desc: ['+25 HP, melee reflect 15 damage', '+25 HP, reflect increases to 25 damage', '+30 HP, reflect 25 damage + wall reflects projectiles'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasLivingGeode = true; p.maxHp += 25; p.hp += 25 }
           else if (lvl === 2) { p.maxHp += 25; p.hp += 25 }
@@ -815,12 +815,12 @@ const MULLER_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Deep Seam', color: 0xCC99FF,
+    name: 'Deep Seam', color: 0xa78bfa,
     theme: 'Every inch of ground becomes a hazard. Welcome to the mine.',
     upgrades: [
       {
         id: 'cf1', label: 'Planted Shard', icon: 'cf1_planted_shard',
-        desc: ['Slams leave crystal mines', 'Mines deal +30% more dmg', '+20% mine dmg + Fault Line: slams carve 4s ground hazard'],
+        desc: ['Slams leave crystal mines', 'Mines deal +30% more damage', '+20% mine damage + Fault Line: slams carve 4s ground hazard'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasPlantedShard = true }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -829,7 +829,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cf2', label: 'Crystal Pillar', icon: 'cf2_crystal_pillar',
-        desc: ['Auto pillar every 12s', 'Pillar CD reduced to 8s', 'Pillar CD 8s + Resonance Field: structures slow enemies 20%'],
+        desc: ['Auto pillar every 12s', 'Pillar cooldown reduced to 8s', 'Pillar cooldown 8s + Resonance Field: structures slow enemies 20%'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCrystalPillar = true }
           else if (lvl === 2) { /* shorter CD handled at runtime */ }
@@ -838,7 +838,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cf3', label: 'Fault Line', icon: 'cf3_fault_line',
-        desc: ['Wave carves 4s ground hazard', 'Hazard lasts 6s, +10% dmg', '+10% dmg + Resonance Field: structures slow enemies 20%'],
+        desc: ['Wave carves 4s ground hazard', 'Hazard lasts 6s, +10% damage', '+10% damage + Resonance Field: structures slow enemies 20%'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasFaultLine = true }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -847,7 +847,7 @@ const MULLER_BRANCHES: BranchDef[] = [
       },
       {
         id: 'cf5', label: 'The Mother Lode', icon: 'cf5_mother_lode', isUltimate: true,
-        desc: ['Massive crystal eruption every 12s', '+15% dmg, eruption interval 10s', '+15% dmg, eruption spawns 3 Planted Shards'],
+        desc: ['Massive crystal eruption every 12s', '+15% damage, eruption interval 10s', '+15% damage, eruption spawns 3 Planted Shards'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasMotherLode = true }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -860,12 +860,12 @@ const MULLER_BRANCHES: BranchDef[] = [
 
 const HUNTRESS_BRANCHES: BranchDef[] = [
   {
-    name: 'Predator', color: 0xff4444,
+    name: 'Predator', color: 0xef4444,
     theme: 'First you mark them. Then you hunt them.',
     upgrades: [
       {
         id: 'hp1', label: 'Critical Strike', icon: 'g1_sharp_edge',
-        desc: ['20% chance to deal 2× dmg, +10% dmg', '+10% dmg, crit chance rises to 30%', '+10% dmg + Headhunter: auto-execute below 15% HP'],
+        desc: ['20% chance to deal 2× damage, +10% damage', '+10% damage, crit chance rises to 30%', '+10% damage + Headhunter: auto-execute below 15% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCriticalStrike = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -874,7 +874,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hp2', label: 'Marked Target', icon: 'g3_eagle_eye',
-        desc: ['Hit marks enemy 5s; marked take +25% dmg, +3 dmg', '+3 dmg, mark lasts 8s, +25% dmg vs marked', '+4 dmg, marks spread to adjacent enemies on kill'],
+        desc: ['Hit marks enemy 5s; marked take +25% damage, +3 damage', '+3 damage, mark lasts 8s, +25% damage vs marked', '+4 damage, marks spread to adjacent enemies on kill'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasMarkedTarget = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 3 }
@@ -883,7 +883,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hp3', label: 'Battle Frenzy', icon: 'g4_quick_hands',
-        desc: ['On kill: +10% attack speed for 5s, +3 dmg', '+3 dmg, frenzy duration 8s', '+4 dmg + Headhunter: auto-execute enemies below 15% HP'],
+        desc: ['On kill: +10% attack speed for 5s, +3 damage', '+3 damage, frenzy duration 8s', '+4 damage + Headhunter: auto-execute enemies below 15% HP'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasBattleFrenzy = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 3 }
@@ -892,7 +892,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hp5', label: 'Volley', icon: 'g9_multistrike', isUltimate: true,
-        desc: ['Every 5th spear: fires 3 at once (extra 60% dmg), +10% dmg', '+10% dmg, volley fires 4 spears instead of 3', '+10% dmg, volley threshold drops to every 4th spear'],
+        desc: ['Every 5th spear: fires 3 at once (extra 60% damage), +10% damage', '+10% damage, volley fires 4 spears instead of 3', '+10% damage, volley threshold drops to every 4th spear'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasVolley = true; p.damage = Math.ceil(p.damage * 1.1) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.1) }
@@ -902,7 +902,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Stalker', color: 0x44cc44,
+    name: 'Stalker', color: 0x10b981,
     theme: 'The desert teaches patience. Lyra has plenty.',
     upgrades: [
       {
@@ -916,7 +916,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hs2', label: 'Caltrops', icon: 'ns3_smoke_bomb',
-        desc: ['Moving: drop 2m spike zone every 800ms, 15% dmg/tick, +3 dmg', '+3 dmg, zones last 1s longer', '+4 dmg + Net Throw: every 8th spear roots enemies 1.5s'],
+        desc: ['Moving: drop 2m spike zone every 800ms, 15% damage/tick, +3 damage', '+3 damage, zones last 1s longer', '+4 damage + Net Throw: every 8th spear roots enemies 1.5s'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasCaltrops = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 3 }
@@ -925,7 +925,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hs3', label: 'Net Throw', icon: 'nv1_toxic_slash',
-        desc: ['Every 8th spear roots enemies 1.5s, +3 dmg', '+3 dmg, root duration 2.5s', '+4 dmg + Camouflage: invisible 2s after kill'],
+        desc: ['Every 8th spear roots enemies 1.5s, +3 damage', '+3 damage, root duration 2.5s', '+4 damage + Camouflage: invisible 2s after kill'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasNetThrow = true; p.damage += 3 }
           else if (lvl === 2) { p.damage += 3 }
@@ -934,7 +934,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hs5', label: 'Leap', icon: 'ns2_phantom_trail', isUltimate: true,
-        desc: ['Auto-leap 12m away when 4+ enemies within 5m, 4s CD, +15 speed', '+15 speed, leap CD 2.5s', '+15 speed, leap knocks away nearby enemies on landing'],
+        desc: ['Auto-leap 12m away when 4+ enemies within 5m, 4s cooldown, +15 speed', '+15 speed, leap cooldown 2.5s', '+15 speed, leap knocks away nearby enemies on landing'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasLeap = true; p.speed += 15 }
           else if (lvl === 2) { p.speed += 15 }
@@ -944,12 +944,12 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Warden', color: 0x4488ff,
+    name: 'Warden', color: 0x3b82f6,
     theme: 'One spear. One line through the horde.',
     upgrades: [
       {
         id: 'hw1', label: 'Heavy Spear', icon: 'sc3_mirror_ice',
-        desc: ['Spears +40% dmg and knock enemies back, +5 dmg', '+5 dmg, knockback distance doubles', '+5 dmg + Explosive Tips: spears explode on pierce'],
+        desc: ['Spears +40% damage and knock enemies back, +5 damage', '+5 damage, knockback distance doubles', '+5 damage + Explosive Tips: spears explode on pierce'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasHeavySpear = true; p.damage = Math.ceil(p.damage * 1.4) }
           else if (lvl === 2) { p.damage += 5 }
@@ -958,7 +958,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hw2', label: 'Explosive Tips', icon: 'if1_wide_burn',
-        desc: ['On first spear pierce: AoE 35% dmg in 4m, +15 splash', '+15 splash, AoE dmg increases to 50%', '+15 splash + Splinter Shot: miss spawns 3 shards 30% dmg'],
+        desc: ['On first spear pierce: AoE 35% damage in 4m, +1.5m splash', '+1.5m splash, AoE damage increases to 50%', '+1.5m splash + Splinter Shot: miss spawns 3 shards 30% damage'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasExplosiveTips = true; p.splashRadius += 15 }
           else if (lvl === 2) { p.splashRadius += 15 }
@@ -967,7 +967,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hw3', label: 'Splinter Shot', icon: 'ss2_shatter',
-        desc: ['Spear miss: spawns 3 shards 30% dmg in 8m, +4 dmg', '+4 dmg, shards home toward nearest enemy', '+5 dmg + Spear Wall: 3 orbiting spears 20% dmg/s each'],
+        desc: ['Spear miss: spawns 3 shards 30% damage in 8m, +4 damage', '+4 damage, shards home toward nearest enemy', '+5 damage + Spear Wall: 3 orbiting spears 20% damage/s each'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasSplinterShot = true; p.damage += 4 }
           else if (lvl === 2) { p.damage += 4 }
@@ -976,7 +976,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
       },
       {
         id: 'hw5', label: 'Earth Slam', icon: 'aq2_earthquake', isUltimate: true,
-        desc: ['Melee: shockwave line 15m, 60% dmg, +20% dmg', '+15% dmg, shockwave width doubles', '+15% dmg, shockwave ricochets off walls once'],
+        desc: ['Melee: shockwave line 15m, 60% damage, +20% damage', '+15% damage, shockwave width doubles', '+15% damage, shockwave ricochets off walls once'],
         apply: (p, lvl) => {
           if (lvl === 1) { p.hasEarthSlam = true; p.damage = Math.ceil(p.damage * 1.2) }
           else if (lvl === 2) { p.damage = Math.ceil(p.damage * 1.15) }
@@ -992,7 +992,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
 // ============================================================
 const VAEL_BRANCHES: BranchDef[] = [
   {
-    name: 'Pale Harvest', color: 0xaaddff,
+    name: 'Pale Harvest', color: 0xcbd5e1,
     theme: 'Soul drain, lifesteal, regeneration through killing. Every death feeds you.',
     upgrades: [
       {
@@ -1037,7 +1037,7 @@ const VAEL_BRANCHES: BranchDef[] = [
         id: 'ph4', label: 'Exsanguination', icon: 'ph4_exsanguination',
         desc: [
           'Chain the harvest\nSoul Bolt chains to 2 nearby enemies at 60% damage. Each chain hit heals at the standard rate',
-          'The chain grows hungry\nChains to 3 enemies at 65% damage. Chain range +30px',
+          'The chain grows hungry\nChains to 3 enemies at 65% damage. Chain range +3m',
           'No waste. Only transfer.\nChains to 3 enemies at 70% damage. 0.5s after the chain completes, a second arc fires from the last target',
         ],
         apply: (p, lvl) => {
@@ -1066,7 +1066,7 @@ const VAEL_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Ossuary', color: 0xccbb88,
+    name: 'Ossuary', color: 0xfde68a,
     theme: 'Raise the fallen as temporary undead servants. The battlefield becomes your army.',
     upgrades: [
       {
@@ -1088,8 +1088,8 @@ const VAEL_BRANCHES: BranchDef[] = [
         id: 'os2', label: 'Grave Pact', icon: 'os2_grave_pact',
         desc: [
           "A deal well struck\nThralls gain +20% HP and deal 50% of Vael's damage/hit (overrides Risen base)",
-          "Binding contract\nThralls gain +40% HP. On death, each Thrall releases a 40px bone-shrapnel burst dealing 60% of Vael's damage",
-          "Until the last\nThralls gain +60% HP. Shrapnel burst radius +20px. Shrapnel applies the Soul Bolt root (0.4s)",
+          "Binding contract\nThralls gain +40% HP. On death, each Thrall releases a 4m bone-shrapnel burst dealing 60% of Vael's damage",
+          "Until the last\nThralls gain +60% HP. Shrapnel burst radius +2m. Shrapnel applies the Soul Bolt root (0.4s)",
         ],
         apply: (p, lvl) => {
           p.hasGravePact = true
@@ -1118,9 +1118,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'os4', label: 'Charnel Tide', icon: 'os4_charnel_tide',
         desc: [
-          'You brought so many\nActivate: all corpses within 250px rise as Bone Thralls (up to 5). Duration 8s. CD: 20s',
-          'The tide crests\nRadius 300px, up to 6 Thralls, duration 10s. CD: 18s',
-          "I was running low\nRadius 300px, up to 6 Thralls, duration 10s. Surviving Thralls explode on timeout (80% Vael's damage, 60px radius each). CD: 16s",
+          'You brought so many\nActivate: all corpses within 25m rise as Bone Thralls (up to 5). Duration 8s. Cooldown: 20s',
+          'The tide crests\nRadius 30m, up to 6 Thralls, duration 10s. Cooldown: 18s',
+          "I was running low\nRadius 30m, up to 6 Thralls, duration 10s. Surviving Thralls explode on timeout (80% Vael's damage, 6m radius each). Cooldown: 16s",
         ],
         apply: (p, lvl) => {
           p.hasCharnelTide = true
@@ -1134,9 +1134,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'os5', label: 'Lich Dominion', icon: 'os5_lich_dominion', isUltimate: true,
         desc: [
-          "A general, not a soldier\nSummon 1 Revenant (150% Vael's HP, 80% dmg/hit). It persists until destroyed then reforms in 20s",
+          "A general, not a soldier\nSummon 1 Revenant (150% Vael's HP, 80% damage/hit). It persists until destroyed then reforms in 20s",
           "Authority over the grave\nRevenant gains +40% HP and aura: nearby Bone Thralls deal +20% damage. Reform cooldown: 15s",
-          "The Pale Court\nRevenant aura now also reduces enemy move speed by 15% within 120px. On Revenant death: all nearby corpses instantly rise (Charnel Tide effect, no CD consumed). Reform: 12s",
+          "The Pale Court\nRevenant aura now also reduces enemy move speed by 15% within 12m. On Revenant death: all nearby corpses instantly rise (Charnel Tide effect, no cooldown consumed). Reform: 12s",
         ],
         apply: (p, lvl) => {
           p.hasLichDominion = true
@@ -1149,7 +1149,7 @@ const VAEL_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Wasting Plague', color: 0x88cc55,
+    name: 'Wasting Plague', color: 0x84cc16,
     theme: 'AoE disease, debuffs, spreading contagion. Attrition warfare through rot.',
     upgrades: [
       {
@@ -1170,9 +1170,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'wp2', label: 'Virulent Spread', icon: 'wp2_virulent_spread',
         desc: [
-          'One carrier is all you need\nOn kill: all Rot stacks transfer to enemies within 80px. Each transferred stack deals 10% of Vael\'s damage as a burst',
-          'Epidemic logic\nTransfer radius: 110px. Burst damage per stack: 15% of Vael\'s damage',
-          'The math is inevitable\nTransfer radius: 140px. Burst: 15% per stack. Enemies receiving 4+ stacks from a single transfer are briefly stunned (0.5s)',
+          'One carrier is all you need\nOn kill: all Rot stacks transfer to enemies within 8m. Each transferred stack deals 10% of Vael\'s damage as a burst',
+          'Epidemic logic\nTransfer radius: 11m. Burst damage per stack: 15% of Vael\'s damage',
+          'The math is inevitable\nTransfer radius: 14m. Burst: 15% per stack. Enemies receiving 4+ stacks from a single transfer are briefly stunned (0.5s)',
         ],
         apply: (p, lvl) => {
           p.hasVirulentSpread = true
@@ -1184,9 +1184,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'wp3', label: 'Necrotic Bloom', icon: 'wp3_necrotic_bloom',
         desc: [
-          "Even the ground remembers\nEnemies dying with 5+ Rot stacks leave a Blight Pool (100px radius, 12% Vael's dmg/s, lasts 5s)",
-          "Spreading wound\nBlight threshold reduced to 4 stacks. Pools last 7s and deal 16% dmg/s",
-          "The ground is mine\nThreshold: 3 stacks. Pools last 8s, 20% dmg/s. Enemies standing in a Pool gain 1 Rot stack/s",
+          "Even the ground remembers\nEnemies dying with 5+ Rot stacks leave a Blight Pool (10m radius, 12% Vael's damage/s, lasts 5s)",
+          "Spreading wound\nBlight threshold reduced to 4 stacks. Pools last 7s and deal 16% damage/s",
+          "The ground is mine\nThreshold: 3 stacks. Pools last 8s, 20% damage/s. Enemies standing in a Pool gain 1 Rot stack/s",
         ],
         apply: (p, lvl) => {
           p.hasNecroticBloom = true
@@ -1199,9 +1199,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'wp4', label: 'Pandemic', icon: 'wp4_pandemic',
         desc: [
-          'The Rift does not discriminate\nActivate: 200px miasma ring — all enemies gain 5 Rot stacks instantly. CD: 18s',
-          'Second breath\nRing radius: 240px. Cloud pulses a second time 2s after cast (adds 3 more stacks). CD: 16s',
-          'Neither do I\nRadius 280px. Two pulses (+3 stacks each). Enemies that die while inside the cloud zone spread Blight Pools at double radius. CD: 14s',
+          'The Rift does not discriminate\nActivate: 20m miasma ring — all enemies gain 5 Rot stacks instantly. Cooldown: 18s',
+          'Second breath\nRing radius: 24m. Cloud pulses a second time 2s after cast (adds 3 more stacks). Cooldown: 16s',
+          'Neither do I\nRadius 28m. Two pulses (+3 stacks each). Enemies that die while inside the cloud zone spread Blight Pools at double radius. Cooldown: 14s',
         ],
         apply: (p, lvl) => {
           p.hasVaelPandemic = true
@@ -1214,9 +1214,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'wp5', label: 'Carrion Crown', icon: 'wp5_carrion_crown', isUltimate: true,
         desc: [
-          'The source of all rot\nPassive aura (150px): enemies inside gain 1 Rot stack every 2s. Stacks accumulate alongside Soul Bolt stacks',
-          'The crown spreads\nAura radius: 200px. Rot application: 1 stack every 1.5s. Enemies that exit the aura retain stacks',
-          'Nothing leaves clean\nAura: 240px, 1 stack/s. Enemies in the aura also deal 10% less damage (weakened by rot). On Vael kill: aura pulses once at 400px, applying 3 stacks to all enemies reached',
+          'The source of all rot\nPassive aura (15m): enemies inside gain 1 Rot stack every 2s. Stacks accumulate alongside Soul Bolt stacks',
+          'The crown spreads\nAura radius: 20m. Rot application: 1 stack every 1.5s. Enemies that exit the aura retain stacks',
+          'Nothing leaves clean\nAura: 24m, 1 stack/s. Enemies in the aura also deal 10% less damage (weakened by rot). On Vael kill: aura pulses once at 40m, applying 3 stacks to all enemies reached',
         ],
         apply: (p, lvl) => {
           p.hasCarrionCrown = true
@@ -1236,13 +1236,13 @@ const VAEL_BRANCHES: BranchDef[] = [
 // ============================================================
 const NIGHTBORNE_BRANCHES: BranchDef[] = [
   {
-    name: 'Void Blade', color: 0x9933FF,
+    name: 'Void Blade', color: 0xa855f7,
     theme: 'Pure offensive escalation — deeper cut, wider arc, void energy overload.',
     upgrades: [
       {
         id: 'vb1', label: 'Void Edge', icon: 'vb1_void_edge',
-        desc: ['+20% dmg; arc range → 105px', '+35% dmg total; range → 115px', '+50% dmg total; range → 130px; crescent lingers 0.3s'],
-        branch: 'Void Blade', branchColor: 0x9933FF,
+        desc: ['+20% damage; arc range → 10.5m', '+35% damage total; range → 11.5m', '+50% damage total; range → 13m; crescent lingers 0.3s'],
+        branch: 'Void Blade', branchColor: 0xa855f7,
         apply: (p, lvl) => {
           p.hasVoidEdge = true
           p.voidEdgeLevel = lvl
@@ -1253,8 +1253,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vb2', label: 'Cleave', icon: 'vb2_cleave',
-        desc: ['Arc angle → 190°', 'Arc → 220°; +10% dmg to outer-edge enemies', 'Arc → 270°; outer-edge dmg bonus +20%'],
-        branch: 'Void Blade', branchColor: 0x9933FF,
+        desc: ['Arc angle → 190°', 'Arc → 220°; +10% damage to outer-edge enemies', 'Arc → 270°; outer-edge damage bonus +20%'],
+        branch: 'Void Blade', branchColor: 0xa855f7,
         apply: (p, lvl) => {
           p.hasCleave = true
           if (lvl === 1) { p.voidArcAngle = 190 }
@@ -1264,8 +1264,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vb3', label: 'Void Surge', icon: 'vb3_void_surge',
-        desc: ['Every 4th attack: void ring (140px, 60% dmg)', 'Ring → 180px, 80% dmg; every 3rd attack', 'Ring → 220px, 100% dmg; surge leaves slow zone'],
-        branch: 'Void Blade', branchColor: 0x9933FF,
+        desc: ['Every 4th attack: void ring (14m, 60% damage)', 'Ring → 18m, 80% damage; every 3rd attack', 'Ring → 22m, 100% damage; surge leaves slow zone'],
+        branch: 'Void Blade', branchColor: 0xa855f7,
         apply: (p, lvl) => {
           p.hasVoidSurge = true
           p.voidSurgeLevel = lvl
@@ -1276,8 +1276,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vb4', label: 'Dark Resonance', icon: 'vb4_dark_resonance',
-        desc: ['2nd hit within 1.5s → resonance burst (40px, 50% dmg)', 'Burst → 60px, 70% dmg', 'Burst → 80px, 100% dmg; 0.4s stagger'],
-        branch: 'Void Blade', branchColor: 0x9933FF,
+        desc: ['2nd hit within 1.5s → resonance burst (4m, 50% damage)', 'Burst → 6m, 70% damage', 'Burst → 8m, 100% damage; 0.4s stagger'],
+        branch: 'Void Blade', branchColor: 0xa855f7,
         apply: (p, lvl) => {
           p.hasDarkResonance = true
           p.darkResonanceLevel = lvl
@@ -1288,8 +1288,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vb5', label: 'Void Ascendant', icon: 'vb5_void_ascendant', isUltimate: true,
-        desc: ['6s: CD halved, +80% dmg, secondary crescent per slash. 45s CD', 'Duration 8s, CD 38s; crescents pierce 2', 'Duration 10s, CD 30s; burst 180px on activation'],
-        branch: 'Void Blade', branchColor: 0x9933FF,
+        desc: ['6s: cooldown halved, +80% damage, secondary crescent per slash. 45s cooldown', 'Duration 8s, cooldown 38s; crescents pierce 2', 'Duration 10s, cooldown 30s; burst 18m on activation'],
+        branch: 'Void Blade', branchColor: 0xa855f7,
         apply: (p, lvl) => {
           p.hasVoidAscendant = true
           p.voidAscendantLevel = lvl
@@ -1302,13 +1302,13 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Phantom', color: 0xCC66FF,
+    name: 'Phantom', color: 0xe879f9,
     theme: 'Spectral duplication — multiply strikes, echo damage, shadow split.',
     upgrades: [
       {
         id: 'vp1', label: 'Echo Strike', icon: 'vp1_echo_strike',
-        desc: ['Echo slash 0.2s after each attack (35% dmg)', 'Echo → 50% dmg; inherits Void Edge bonus', 'Second echo 0.15s after first (25% dmg)'],
-        branch: 'Phantom', branchColor: 0xCC66FF,
+        desc: ['Echo slash 0.2s after each attack (35% damage)', 'Echo → 50% damage; inherits Void Edge bonus', 'Second echo 0.15s after first (25% damage)'],
+        branch: 'Phantom', branchColor: 0xe879f9,
         apply: (p, lvl) => {
           p.hasEchoStrike = true
           p.echoStrikeLevel = lvl
@@ -1318,8 +1318,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vp2', label: 'Split Shade', icon: 'vp2_split_shade',
-        desc: ['On hit: decoy shade 80px away (1.5s), 6s CD', 'Shade 2.5s, CD 4s; shade echo-slashes on expiry', 'Shade 3s, CD 3s; 2 shades spawn'],
-        branch: 'Phantom', branchColor: 0xCC66FF,
+        desc: ['On hit: decoy shade 8m away (1.5s), 6s cooldown', 'Shade 2.5s, cooldown 4s; shade echo-slashes on expiry', 'Shade 3s, cooldown 3s; 2 shades spawn'],
+        branch: 'Phantom', branchColor: 0xe879f9,
         apply: (p, lvl) => {
           p.hasSplitShade = true
           p.splitShadeLevel = lvl
@@ -1327,8 +1327,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vp3', label: 'Phantom Veil', icon: 'vp3_phantom_veil',
-        desc: ['30% chance to negate dmg during attack cooldown', 'Chance → 55%', 'Chance → 80%; negate resets attack CD'],
-        branch: 'Phantom', branchColor: 0xCC66FF,
+        desc: ['30% chance to negate damage during attack cooldown', 'Chance → 55%', 'Chance → 80%; negate resets attack cooldown'],
+        branch: 'Phantom', branchColor: 0xe879f9,
         apply: (p, lvl) => {
           p.hasPhantomVeil = true
           p.phantomVeilLevel = lvl
@@ -1339,8 +1339,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vp4', label: 'Mirror Swarm', icon: 'vp4_mirror_swarm',
-        desc: ['On kill: phantom ally does 1 slash (100% dmg)', '2 slashes', '3 slashes; chain kill spawns smaller phantom'],
-        branch: 'Phantom', branchColor: 0xCC66FF,
+        desc: ['On kill: phantom ally does 1 slash (100% damage)', '2 slashes', '3 slashes; chain kill spawns smaller phantom'],
+        branch: 'Phantom', branchColor: 0xe879f9,
         apply: (p, lvl) => {
           p.hasMirrorSwarm = true
           p.mirrorSwarmSlashes = lvl
@@ -1348,8 +1348,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vp5', label: 'Shade Legion', icon: 'vp5_shade_legion', isUltimate: true,
-        desc: ['5s: 4 duplicates (70% dmg, 600ms). Invulnerable. 50s CD', '7s, CD 42s; duplicates 85% dmg', '8s, CD 35s; on expiry: 160px void implosion 150% dmg'],
-        branch: 'Phantom', branchColor: 0xCC66FF,
+        desc: ['5s: 4 duplicates (70% damage, 600ms). Invulnerable. 50s cooldown', '7s, cooldown 42s; duplicates 85% damage', '8s, cooldown 35s; on expiry: 16m void implosion 150% damage'],
+        branch: 'Phantom', branchColor: 0xe879f9,
         apply: (p, lvl) => {
           p.hasShadeLegion = true
           p.shadeLegionLevel = lvl
@@ -1362,13 +1362,13 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Rift', color: 0x4400BB,
+    name: 'Rift', color: 0x6366f1,
     theme: 'Dimensional manipulation — blink strikes, void zones, spatial anchors.',
     upgrades: [
       {
         id: 'vr1', label: 'Void Step', icon: 'vr1_void_step',
-        desc: ['Blink 50px toward enemy before each attack', 'Blink → 75px; +15% dmg when landing ≤25px', 'Blink → 100px; micro-rift at origin (20px, 0.5s, 20% dmg)'],
-        branch: 'Rift', branchColor: 0x4400BB,
+        desc: ['Blink 5m toward enemy before each attack', 'Blink → 7.5m; +15% damage when landing ≤2.5m', 'Blink → 10m; micro-rift at origin (2m, 0.5s, 20% damage)'],
+        branch: 'Rift', branchColor: 0x6366f1,
         apply: (p, lvl) => {
           p.hasVoidStep = true
           p.voidStepLevel = lvl
@@ -1379,8 +1379,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vr2', label: 'Rift Anchor', icon: 'vr2_rift_anchor',
-        desc: ['Every 12s: anchor placed; auto-teleport when HP<25%', 'CD 9s, lasts 10s; HP threshold 35%; return dmg 80px', 'CD 6s; return dmg 130%; placement stuns 40px 0.6s'],
-        branch: 'Rift', branchColor: 0x4400BB,
+        desc: ['Every 12s: anchor placed; auto-teleport when HP<25%', 'Cooldown 9s, lasts 10s; HP threshold 35%; return damage 8m', 'Cooldown 6s; return damage 130%; placement stuns 4m 0.6s'],
+        branch: 'Rift', branchColor: 0x6366f1,
         apply: (p, lvl) => {
           p.hasRiftAnchor = true
           p.riftAnchorLevel = lvl
@@ -1392,8 +1392,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vr3', label: 'Void Zone', icon: 'vr3_void_zone',
-        desc: ['On kill: void zone (40px, 3s, 35% slow, 8% DoT/s)', 'Zone → 60px, 4s, 14% DoT/s', 'Zone → 80px, 6s, 20% DoT/s'],
-        branch: 'Rift', branchColor: 0x4400BB,
+        desc: ['On kill: void zone (4m, 3s, 35% slow, 8% DoT/s)', 'Zone → 6m, 4s, 14% DoT/s', 'Zone → 8m, 6s, 20% DoT/s'],
+        branch: 'Rift', branchColor: 0x6366f1,
         apply: (p, lvl) => {
           p.hasVoidZone = true
           if (lvl === 1) { p.voidZoneRadius = 40; p.voidZoneDuration = 3000; p.voidZoneDotPct = 0.08 }
@@ -1403,8 +1403,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vr4', label: 'Spatial Tear', icon: 'vr4_spatial_tear',
-        desc: ['Every 8s: void burst at nearest enemy (80px, 120% dmg)', 'CD 6s; AoE → 110px', 'CD 5s; AoE → 140px; drops void zone at burst'],
-        branch: 'Rift', branchColor: 0x4400BB,
+        desc: ['Every 8s: void burst at nearest enemy (8m, 120% damage)', 'Cooldown 6s; AoE → 11m', 'Cooldown 5s; AoE → 14m; drops void zone at burst'],
+        branch: 'Rift', branchColor: 0x6366f1,
         apply: (p, lvl) => {
           p.hasSpatialTear = true
           p.spatialTearLevel = lvl
@@ -1416,8 +1416,8 @@ const NIGHTBORNE_BRANCHES: BranchDef[] = [
       },
       {
         id: 'vr5', label: 'Rift Collapse', icon: 'vr5_rift_collapse', isUltimate: true,
-        desc: ['0.8s wind-up; 200px pull + 180% dmg. 40s CD', 'Pull → 240px, 220% dmg; CD 34s', 'Pull → 280px, 280% dmg; CD 28s; void zone at collapse'],
-        branch: 'Rift', branchColor: 0x4400BB,
+        desc: ['0.8s wind-up; 20m pull + 180% damage. 40s cooldown', 'Pull → 24m, 220% damage; cooldown 34s', 'Pull → 28m, 280% damage; cooldown 28s; void zone at collapse'],
+        branch: 'Rift', branchColor: 0x6366f1,
         apply: (p, lvl) => {
           p.hasRiftCollapse = true
           p.riftCollapseLevel = lvl

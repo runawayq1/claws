@@ -657,31 +657,19 @@ export class UIScene extends Phaser.Scene {
 
   private updateStanceBtn() {
     if (!this.stanceBtn || !this.stanceIcon) return
-    const p = this.gameScene.localPlayer
-    const isLightning = p.stance === 'lightning'
-    const label = isLightning ? '⚡ LIGHTNING [Q]' : '❄ ICE [Q]'
-    const color = isLightning ? '#bb88ff' : '#88ddff'
-    this.stanceBtn.setText(label).setColor(color)
+    this.stanceBtn.setText('')
     this.stanceIcon.clear()
   }
 
   private updateNazarStanceBtn() {
     if (!this.stanceBtn || !this.stanceIcon) return
-    const p = this.gameScene.localPlayer
-    const isVenom = p.nazarStance === 'venom'
-    const label = isVenom ? '☠ VENOM [Q]' : '⚔ SWORD [Q]'
-    const color = isVenom ? '#44cc44' : '#ff6644'
-    this.stanceBtn.setText(label).setColor(color)
+    this.stanceBtn.setText('')
     this.stanceIcon.clear()
   }
 
   private updateHuntressStanceBtn() {
     if (!this.stanceBtn || !this.stanceIcon) return
-    const p = this.gameScene.localPlayer
-    const isSpear = p.huntressStance === 'spear'
-    const label = isSpear ? '🏹 SPEAR [Q]' : '⚔ MELEE [Q]'
-    const color = isSpear ? '#2ecc71' : '#e67e22'
-    this.stanceBtn.setText(label).setColor(color)
+    this.stanceBtn.setText('')
     this.stanceIcon.clear()
   }
 

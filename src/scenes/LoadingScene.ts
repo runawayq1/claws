@@ -9,6 +9,7 @@ export class LoadingScene extends Phaser.Scene {
   private online = false
   private seed = 0
   private playerSlots: any[] = []
+  private startingBranch: string | null = null
   private barFill!: Phaser.GameObjects.Graphics
   private barX = 0
   private barY = 0
@@ -20,13 +21,14 @@ export class LoadingScene extends Phaser.Scene {
     super({ key: 'LoadingScene' })
   }
 
-  init(data: { hero: HeroType; map: string; playerName?: string; online?: boolean; seed?: number; playerSlots?: any[] }) {
+  init(data: { hero: HeroType; map: string; playerName?: string; online?: boolean; seed?: number; playerSlots?: any[]; startingBranch?: string }) {
     this.hero = data.hero || 'ignara'
     this.map = data.map || 'GameScene'
     this.playerName = data.playerName || ''
     this.online = data.online ?? false
     this.seed = data.seed ?? 0
     this.playerSlots = data.playerSlots ?? []
+    this.startingBranch = data.startingBranch ?? null
   }
 
   preload() {
@@ -317,6 +319,7 @@ export class LoadingScene extends Phaser.Scene {
       online: this.online,
       seed: this.seed,
       playerSlots: this.playerSlots,
+      startingBranch: this.startingBranch,
     })
     this.scene.bringToTop(this.scene.key)
 

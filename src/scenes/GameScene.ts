@@ -11,7 +11,7 @@ import type { BaseEnemy } from '../entities/BaseEnemy'
 import { EyeBoss } from '../entities/EyeBoss'
 import { WaveManager } from '../systems/WaveManager'
 import { XPSystem, GoldSystem } from '../systems/XPSystem'
-import { UpgradeTracker } from '../systems/UpgradeSystem'
+import { UpgradeTracker, HERO_BRANCHES } from '../systems/UpgradeSystem'
 import { Pickup } from '../entities/Pickup'
 import { Chest } from '../entities/Chest'
 import { ChunkManager } from '../systems/ChunkManager'
@@ -77,16 +77,18 @@ export class GameScene extends Phaser.Scene {
   _networkAdapter: NetworkGameAdapter | null = null
   private _playerSlots: Array<{ id: string; name: string; heroType: string; isHost: boolean }> = []
   private _seed = 0
+  private _startingBranch: string | null = null
 
   constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
     super(config ?? { key: 'GameScene' })
   }
 
-  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean; online?: boolean; seed?: number; playerSlots?: Array<{ id: string; name: string; heroType: string; isHost: boolean }> }) {
+  init(data?: { hero?: HeroType; playerName?: string; localCoop?: boolean; online?: boolean; seed?: number; playerSlots?: Array<{ id: string; name: string; heroType: string; isHost: boolean }>; startingBranch?: string }) {
     this.selectedHero = data?.hero || 'ignara'
     this._online = data?.online ?? false
     this._seed = data?.seed ?? 0
     this._playerSlots = data?.playerSlots ?? []
+    this._startingBranch = data?.startingBranch ?? null
     this._localCoop = data?.localCoop ?? (!this._online && new URL(location.href).searchParams.has('coop'))
     if (this._localCoop) {
       const HERO_LIST: HeroType[] = ['ignara', 'sifra', 'amun', 'nazar', 'huntress', 'khashin', 'muller']
@@ -590,6 +592,21 @@ export class GameScene extends Phaser.Scene {
     })
 
     this.upgradeTracker = new UpgradeTracker()
+
+    // Pre-seed chosen stance from HeroSelectScene so the first level-up
+    // shows normal upgrade cards instead of the branch picker.
+    if (this._startingBranch && !this._online) {
+      const branches = HERO_BRANCHES[this.localPlayer.heroType] || []
+      const branchDef = branches.find(b => b.name === this._startingBranch)
+      if (branchDef) {
+        const firstSkill = branchDef.upgrades[0]
+        if (firstSkill) {
+          firstSkill.apply(this.localPlayer, 1)
+          this.upgradeTracker.pick({ ...firstSkill, branch: branchDef.name, branchColor: branchDef.color })
+          this.localPlayer.chosenBranch = branchDef.name
+        }
+      }
+    }
 
     this.events.on('player-levelup', (levelingPlayer?: Player) => {
       if (this._online) {

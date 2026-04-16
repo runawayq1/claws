@@ -72,18 +72,17 @@ const SPRITE_HEROES: Record<HeroType, SpriteHeroCfg> = {
   },
 }
 
-const HERO_DEFS: Record<HeroType, HeroDef> = {
-  ignara:    { hp: 80,  speed: 140, damage: 30, range: 230, cooldown: 700,  color: 0xe84118, attackType: 'fireball' },
-  // khet removed from playable roster
-  // khet:    { hp: 55,  speed: 220, damage: 35, range: 48,  cooldown: 600,  color: 0x4a0072, attackType: 'dash' },
-  sifra:     { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x82ccdd, attackType: 'iceshard' },
-  amun:      { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800,  color: 0xfff200, attackType: 'shockwave' },
-  nazar:     { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xc23616, attackType: 'melee' },
-  huntress:  { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x2ecc71, attackType: 'spear' },
-  khashin:   { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x88ddff, attackType: 'windslash' },
-  muller:    { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x44aaff, attackType: 'crystalwave' },
-  nightborne: { hp: 110, speed: 150, damage: 28, range: 90,  cooldown: 850,  color: 0x9933FF, attackType: 'voidslash' },
-  vael:       { hp: 85,  speed: 130, damage: 22, range: 220, cooldown: 700,  color: 0x8866cc, attackType: 'soulbolt' },
+// Hero colors use Tailwind-inspired palette (matches HEROES in HeroSelectScene)
+export const HERO_DEFS: Record<HeroType, HeroDef> = {
+  ignara:    { hp: 80,  speed: 140, damage: 30, range: 230, cooldown: 700,  color: 0xf97316, attackType: 'fireball' },
+  sifra:     { hp: 70,  speed: 150, damage: 12, range: 160, cooldown: 800,  color: 0x38bdf8, attackType: 'iceshard' },
+  amun:      { hp: 160, speed: 120, damage: 22, range: 65,  cooldown: 800,  color: 0xfbbf24, attackType: 'shockwave' },
+  nazar:     { hp: 90,  speed: 140, damage: 18, range: 55,  cooldown: 400,  color: 0xf43f5e, attackType: 'melee' },
+  huntress:  { hp: 80,  speed: 140, damage: 18, range: 300, cooldown: 500,  color: 0x10b981, attackType: 'spear' },
+  khashin:   { hp: 90,  speed: 140, damage: 18, range: 160, cooldown: 900,  color: 0x67e8f9, attackType: 'windslash' },
+  muller:    { hp: 160, speed: 110, damage: 38, range: 260, cooldown: 1100, color: 0x60a5fa, attackType: 'crystalwave' },
+  nightborne: { hp: 110, speed: 150, damage: 28, range: 90,  cooldown: 850,  color: 0xa855f7, attackType: 'voidslash' },
+  vael:       { hp: 85,  speed: 130, damage: 22, range: 220, cooldown: 700,  color: 0xa78bfa, attackType: 'soulbolt' },
 }
 
 export class Player extends Phaser.Physics.Arcade.Sprite {

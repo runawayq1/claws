@@ -56,6 +56,8 @@ export interface MetaData {
   branchProgress: Partial<Record<string, Partial<Record<string, number>>>>
   // Persistently completed quest IDs (survive across runs/deaths).
   completedQuests: string[]
+  // Most recently selected hero for a run — shown as a "last played" dot in HeroSelect.
+  lastHero?: string
 }
 
 // ── Quest system ──────────────────────────────────────────────
@@ -217,6 +219,7 @@ export class MetaProgress {
       unlockedBranches: { amun: ['Wrath'] },
       branchProgress: {},
       completedQuests: [],
+      lastHero: undefined,
     }
   }
 
@@ -253,6 +256,8 @@ export class MetaProgress {
       if (!data.branchProgress) data.branchProgress = {}
       // Migrate old saves missing completedQuests
       if (!data.completedQuests) data.completedQuests = []
+      // Migrate old saves missing lastHero (optional field)
+      if (data.lastHero === undefined) data.lastHero = undefined
       // Nightborne + Vael are default-unlocked
       if (!data.unlockedHeroes.includes('nightborne')) data.unlockedHeroes.push('nightborne')
       if (!data.unlockedHeroes.includes('vael')) data.unlockedHeroes.push('vael')
@@ -374,6 +379,13 @@ export class MetaProgress {
     }
   }
 
+  /** Records the most recent hero the player started a run with (for HeroSelect "last played" indicator). */
+  static setLastHero(heroType: string): void {
+    const meta = MetaProgress.load()
+    meta.lastHero = heroType
+    MetaProgress.save(meta)
+  }
+
   /**
    * Check post-run hero unlock conditions (ignara, nazar, khashin).
    * Must be called AFTER recordSession() so meta totals are up-to-date.
@@ -476,6 +488,8 @@ export class MetaProgress {
     MetaProgress._runTimeMs = 0
     MetaProgress._runEnded = false
     MetaProgress._sifraFound = false
+    // Tag most-recent hero for HeroSelect "last played" indicator
+    MetaProgress.setLastHero(heroType)
     // Seed from persistent completed quests so already-done quests don't re-fire
     const meta = MetaProgress.load()
     MetaProgress._runMeta = meta
