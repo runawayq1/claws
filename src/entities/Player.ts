@@ -1570,6 +1570,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let closestDist = Infinity
     for (const enemy of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!enemy.active) continue
+      // Ignara overkill prevention: skip enemies that already have a fireball in-flight
+      if (this.heroType === 'ignara' && (enemy as any)._fireballIncoming > 0) continue
       const dist = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y)
       if (dist < searchRange && dist < closestDist) {
         closestDist = dist
