@@ -174,7 +174,26 @@ export class WaveManager {
     const spawnTotal = useEarly
       ? (ZONE_SPAWN_TOTALS_EARLY[zone] ?? ZONE_SPAWN_TOTALS_EARLY[4])
       : (ZONE_SPAWN_TOTALS[zone] ?? ZONE_SPAWN_TOTALS[4])
-    const Factory = pickWeighted(spawnTable, spawnTotal)
+    let Factory = pickWeighted(spawnTable, spawnTotal)
+
+    // Archer cap — max 5 archers near the player at any time to prevent barrage spam
+    if (Factory === (Archer as unknown as EnemyCtor)) {
+      let archerCount = 0
+      const px = this.player.x, py = this.player.y
+      for (const e of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+        if (!e.active) continue
+        if ((e as any).constructor?.name === 'Archer' && Phaser.Math.Distance.Between(px, py, e.x, e.y) < 500) {
+          archerCount++
+        }
+      }
+      if (archerCount >= 5) {
+        // Re-roll as a non-Archer
+        const earlyTable = ZONE_SPAWNS_EARLY[zone] ?? ZONE_SPAWNS_EARLY[4]
+        const earlyTotal = ZONE_SPAWN_TOTALS_EARLY[zone] ?? ZONE_SPAWN_TOTALS_EARLY[4]
+        Factory = pickWeighted(earlyTable, earlyTotal)
+      }
+    }
+
     const mob = new Factory(this.scene, x, y, this.player, tier)
     mob.players = this.players
 

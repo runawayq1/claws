@@ -148,6 +148,9 @@ function fireMoltenVolley(p: Player, angle: number, enemies: Phaser.Physics.Arca
  * Backdraft (strong knockback).
  */
 export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, enemies: Phaser.Physics.Arcade.Group) {
+  // Overkill prevention: mark target as having an in-flight fireball
+  const tgt = target as any
+  tgt._fireballIncoming = (tgt._fireballIncoming ?? 0) + 1
   const tx = target.x, ty = target.y
   let explodeRadius = 40 + p.splashRadius * 0.8
   const isHavoc = p.chosenBranch === 'Pyre' || p.chosenBranch === 'Havoc'
@@ -213,9 +216,10 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
       for (let ci = 0; ci < children.length; ci++) {
         const e = children[ci]
         if (!e.active) continue
-        if (Phaser.Math.Distance.Between(proj.x, proj.y, e.x, e.y) > 20) continue
+        if (Phaser.Math.Distance.Between(proj.x, proj.y, e.x, e.y) > 32) continue
         exploded = true
         trailTimer.destroy()
+        tgt._fireballIncoming = Math.max(0, (tgt._fireballIncoming ?? 1) - 1)
         const r = kegExplodeRadius || explodeRadius
         triggerFireboltExplosion(p, proj.x, proj.y, fireAngle, r, effectiveDmg, enemies)
         if (isPowderKegShot) spawnKegShrapnel(p, proj.x, proj.y, fireAngle, effectiveDmg, enemies)
@@ -231,6 +235,7 @@ export function attackFireball(p: Player, target: Phaser.Physics.Arcade.Sprite, 
     targets: trailTargets, x: tx, y: ty, duration: flyDuration,
     onComplete: () => {
       trailTimer.destroy(); proj.destroy(); if (glowCircle) glowCircle.destroy()
+      tgt._fireballIncoming = Math.max(0, (tgt._fireballIncoming ?? 1) - 1)
 
       // Wildfire without Powder Keg: firebolt_explode on contact, otherwise disappear
       if (isFortress && !isPowderKegShot) {

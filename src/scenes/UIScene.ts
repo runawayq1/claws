@@ -192,23 +192,21 @@ export class UIScene extends Phaser.Scene {
       ...textStyle, fontSize: '14px', color: '#66bbff',
     }).setDepth(2)
 
-    // Kills (top-right) — with skull icon
+    // Kills (top-right)
     this.killText = this.add.text(0, 22, '', {
       ...textStyle,
-      fontSize: this.isMobile ? '20px' : '14px',
+      fontSize: this.isMobile ? '16px' : '13px',
       color: '#ff8888',
-      fontStyle: this.isMobile ? 'bold' : 'normal',
     }).setDepth(2)
 
-    // Difficulty tier (top-right under kills)
+    // Wave indicator (top-right under kills)
     this.tierText = this.add.text(0, 40, '', {
       ...textStyle,
-      fontSize: this.isMobile ? '16px' : '11px',
-      color: '#ffaa44',
-      fontStyle: this.isMobile ? 'bold' : 'normal',
+      fontSize: this.isMobile ? '12px' : '10px',
+      color: '#88ff88',
     }).setDepth(2)
 
-    // Gold counter (top-right under tier) with coin icon
+    // Gold counter (top-right under wave) with coin icon
     if (!this.textures.exists('hud_coin')) {
       const gc = this.add.graphics()
       gc.fillStyle(0xffd700)
@@ -615,10 +613,10 @@ export class UIScene extends Phaser.Scene {
     const mmSize = portrait ? 90 : CONFIG.MINIMAP_SIZE
     const killsY = portrait ? CONFIG.MINIMAP_MARGIN + 76 + mmSize + 8 : 24
     const mobHud = this.isMobile
-    this.killText.setPosition(width - 20, killsY + 14).setOrigin(1, 0)
-    this.tierText.setPosition(width - 20, killsY + (mobHud ? 38 : 32)).setOrigin(1, 0)
-    this.goldText.setPosition(width - 20, killsY + (mobHud ? 60 : 48)).setOrigin(1, 0)
-    this.goldIcon.setPosition(width - 20 - this.goldText.width - 12, killsY + (mobHud ? 68 : 55))
+    this.killText.setPosition(width - 16, killsY + 10).setOrigin(1, 0)
+    this.tierText.setPosition(width - 16, killsY + (mobHud ? 30 : 26)).setOrigin(1, 0)
+    this.goldText.setPosition(width - 16, killsY + (mobHud ? 48 : 40)).setOrigin(1, 0)
+    this.goldIcon.setPosition(width - 16 - this.goldText.width - 10, killsY + (mobHud ? 55 : 46))
     this.timerText.setPosition(width / 2, this.isMobile ? 52 : 38).setOrigin(0.5, 0)
     this.announcement.setPosition(width / 2, 68)
     // Stance btn — anchor below HP/energy block (bottom-left)
@@ -1467,25 +1465,8 @@ export class UIScene extends Phaser.Scene {
       ease: 'Sine.easeIn',
     })
 
-    const survived = gs.gameTime
-    const mins = Math.floor(survived / 60000)
-    const secs = Math.floor((survived % 60000) / 1000)
-    const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-
-    let title: string
-    let titleColor: string
-    if (networkWon !== undefined) {
-      // Online mode: server determined outcome
-      title = networkWon ? 'VICTORY!' : 'GAME OVER'
-      titleColor = networkWon ? '#ffdd00' : '#ff4444'
-    } else {
-      const bossDefeated = (gs as any).bossDefeated === true
-      const wasClaws = !bossDefeated && survived >= CONFIG.RUN_DURATION
-      title = bossDefeated ? 'THE EYE IS BLIND!' : (wasClaws ? 'SEEN BY THE EYE' : 'GAME OVER')
-      titleColor = bossDefeated ? '#ffdd00' : (wasClaws ? '#ff6600' : '#ff4444')
-    }
-
     // Meta-progression: save session + check achievements
+    const survived = gs.gameTime
     const session: SessionRecord = {
       id: 0,
       hero: gs.player.heroType,
@@ -1537,6 +1518,31 @@ export class UIScene extends Phaser.Scene {
       this.showAchievementNotification(newAchievements)
     }
 
+    // Defer heavy object creation to next frame — overlay fade starts first,
+    // preventing the frame-spike where 30+ Text objects + confetti all
+    // render on the same tick as MetaProgress save + Supabase POST.
+    this.time.delayedCall(1, () => this._buildEndScreenContent(networkWon))
+  }
+
+  private _buildEndScreenContent(networkWon?: boolean) {
+    const { width, height } = this.scale
+    const gs = this.gameScene
+    const survived = gs.gameTime
+    const mins = Math.floor(survived / 60000)
+    const secs = Math.floor((survived % 60000) / 1000)
+    const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    let title: string
+    let titleColor: string
+    if (networkWon !== undefined) {
+      title = networkWon ? 'VICTORY!' : 'GAME OVER'
+      titleColor = networkWon ? '#ffdd00' : '#ff4444'
+    } else {
+      const bossDefeated = (gs as any).bossDefeated === true
+      const wasClaws = !bossDefeated && survived >= CONFIG.RUN_DURATION
+      title = bossDefeated ? 'THE EYE IS BLIND!' : (wasClaws ? 'SEEN BY THE EYE' : 'GAME OVER')
+      titleColor = bossDefeated ? '#ffdd00' : (wasClaws ? '#ff6600' : '#ff4444')
+    }
+
     // Layout — compute all content heights, then center vertically
     const cx = width / 2
     const mob = this.isMobile
@@ -1555,7 +1561,7 @@ export class UIScene extends Phaser.Scene {
     const subH = 18                        // sub-label
     const afterSubGap = 14 * sp            // gap to stats panel
 
-    const rowH = mob ? 22 : 24
+    const rowH = mob ? 30 : 34
     const goldDisplay = gs._online
       ? `${gs._networkAdapter?.serverSharedGold ?? 0} ✦`
       : `${gs.player.goldThisRun} ✦`
@@ -1567,7 +1573,7 @@ export class UIScene extends Phaser.Scene {
       ['MINIBOSSES',   String(gs.player.miniBossKills),       '#ffaa44',
        'DMG TAKEN',    Math.round(gs.player.damageTakenThisRun).toLocaleString(), '#ee7777'],
     ]
-    const ph = panelRows.length * rowH + 20
+    const ph = panelRows.length * rowH + 24
 
     // Skills
     const tracker = gs.upgradeTracker
@@ -1584,8 +1590,8 @@ export class UIScene extends Phaser.Scene {
     heroSkills.sort((a, b) => b.level - a.level)
     const maxSkills = portrait ? 3 : 4
     const topSkills = heroSkills.slice(0, maxSkills)
-    const skillRowH = mob ? 18 : 20
-    const skillSectionH = topSkills.length > 0 ? 16 + topSkills.length * skillRowH + 6 : 0
+    const iconSize = mob ? 36 : 40
+    const skillSectionH = topSkills.length > 0 ? iconSize + 28 : 0  // icon + dots + header
     const afterStatsGap = 10 * sp
 
     // Leaderboard
@@ -1634,7 +1640,7 @@ export class UIScene extends Phaser.Scene {
 
     // ── Stats panel — 2-column grid (cascade entrance) ───────────────
     const py = cy2
-    const col1 = px + 16, col2 = cx + 8
+    const col1 = px + 14, col2 = cx + 14
     const panelG = this.add.graphics().setDepth(31)
     panelG.fillStyle(0x1a1a2e, 0.9)
     panelG.fillRoundedRect(px, py, pw, ph, 10)
@@ -1653,44 +1659,101 @@ export class UIScene extends Phaser.Scene {
     const statTexts: Phaser.GameObjects.Text[] = []
     const statBaseDelay = 700  // ms after showEndScreen starts
     panelRows.forEach(([ll, lv, lc, rl, rv, rc], i) => {
-      const ry = py + 10 + i * rowH
+      const ry = py + 12 + i * rowH
       const rowDelay = statBaseDelay + i * 120
       const t_ll = this.add.text(col1, ry, ll, labelStyle).setOrigin(0, 0).setDepth(32).setAlpha(0)
-      const t_lv = this.add.text(col1, ry + 10, lv, { ...valStyle, color: lc }).setOrigin(0, 0).setDepth(32).setAlpha(0)
+      const t_lv = this.add.text(col1, ry + 12, lv, { ...valStyle, color: lc }).setOrigin(0, 0).setDepth(32).setAlpha(0)
       const t_rl = this.add.text(col2, ry, rl, labelStyle).setOrigin(0, 0).setDepth(32).setAlpha(0)
-      const t_rv = this.add.text(col2, ry + 10, rv, { ...valStyle, color: rc }).setOrigin(0, 0).setDepth(32).setAlpha(0)
+      const t_rv = this.add.text(col2, ry + 12, rv, { ...valStyle, color: rc }).setOrigin(0, 0).setDepth(32).setAlpha(0)
       this.tweens.add({ targets: [t_ll, t_lv, t_rl, t_rv], alpha: 1, duration: 200, delay: rowDelay })
       statTexts.push(t_ll, t_lv, t_rl, t_rv,
       )
     })
     cy2 += ph + afterStatsGap
 
-    // ── Hero skills section — top skills by level ──────────────────────
-    const skillTexts: Phaser.GameObjects.Text[] = []
+    // ── Hero skills section — icon slots with level dots ──────────────
+    const skillObjs: Phaser.GameObjects.GameObject[] = []
     const lastStatDelay = statBaseDelay + (panelRows.length - 1) * 120 + 200
     let lastContentDelay = lastStatDelay
-    if (topSkills.length > 0) {
-      const skillHeader = this.add.text(cx, cy2 + 2, 'TOP SKILLS', {
+
+    // Collect ALL picked skills (branch + generic) for icon display
+    const allPickedSkills: { label: string; level: number; icon: string }[] = []
+    const allBranches = HERO_BRANCHES[heroType] || []
+    for (const id of Object.keys(tracker.skillLevels)) {
+      if (tracker.skillLevels[id] <= 0) continue
+      let found = false
+      for (const b of allBranches) {
+        const skill = b.upgrades.find((u: { id: string; label: string; icon: string }) => u.id === id)
+        if (skill) { allPickedSkills.push({ label: skill.label, level: tracker.skillLevels[id], icon: skill.icon }); found = true; break }
+      }
+      if (!found) {
+        // Check generic pool
+        const gen = GENERIC_POOL.find((u: { id: string; label: string; icon: string }) => u.id === id)
+        if (gen) allPickedSkills.push({ label: gen.label, level: tracker.skillLevels[id], icon: gen.icon })
+      }
+    }
+    allPickedSkills.sort((a, b) => b.level - a.level)
+    const displaySkills = allPickedSkills.slice(0, portrait ? 4 : 6)
+
+    if (displaySkills.length > 0) {
+      const skillHeader = this.add.text(cx, cy2 + 2, 'SKILLS', {
         fontFamily: gameFont(), fontSize: mob ? '9px' : '10px', color: '#556677',
       }).setOrigin(0.5, 0).setDepth(32).setAlpha(0)
       this.tweens.add({ targets: skillHeader, alpha: 1, duration: 200, delay: lastStatDelay + 120 })
-      skillTexts.push(skillHeader)
+      skillObjs.push(skillHeader)
 
-      const dots = ['○○○', '●○○', '●●○', '●●●']
-      topSkills.forEach((sk, i) => {
-        const sy = cy2 + 16 + i * skillRowH
-        const skDelay = lastStatDelay + 240 + i * 120
-        const skL = this.add.text(col1, sy, sk.label, {
-          fontFamily: gameFont(), fontSize: mob ? '12px' : '13px', color: '#ccddee',
-        }).setOrigin(0, 0.5).setDepth(32).setAlpha(0)
-        const skD = this.add.text(cx + pw / 2 - 16, sy, dots[Math.min(sk.level, 3)], {
-          fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color: sk.level >= 3 ? '#ffcc44' : '#88aacc',
-        }).setOrigin(1, 0.5).setDepth(32).setAlpha(0)
-        this.tweens.add({ targets: [skL, skD], alpha: 1, duration: 200, delay: skDelay })
-        skillTexts.push(skL, skD)
+      // Icon grid — centered row of skill icons with dot indicators
+      const iconGap = mob ? 6 : 10
+      const totalIconW = displaySkills.length * iconSize + (displaySkills.length - 1) * iconGap
+      const iconStartX = cx - totalIconW / 2 + iconSize / 2
+      const iconY = cy2 + 18
+      const hasSheet = this.textures.exists('skill_icons')
+
+      displaySkills.forEach((sk, i) => {
+        const ix = iconStartX + i * (iconSize + iconGap)
+        const skDelay = lastStatDelay + 240 + i * 80
+
+        // Icon background panel
+        const bg = this.add.graphics().setDepth(31).setAlpha(0)
+        bg.fillStyle(0x1a1a2e, 0.9)
+        bg.fillRoundedRect(ix - iconSize / 2 - 2, iconY - iconSize / 2 - 2, iconSize + 4, iconSize + 4, 6)
+        bg.lineStyle(1, sk.level >= 3 ? 0xffcc44 : 0x444466)
+        bg.strokeRoundedRect(ix - iconSize / 2 - 2, iconY - iconSize / 2 - 2, iconSize + 4, iconSize + 4, 6)
+        skillObjs.push(bg)
+
+        // Skill icon from spritesheet
+        if (hasSheet) {
+          const frame = getIconFrame(sk.icon)
+          const img = this.add.image(ix, iconY, 'skill_icons', frame)
+            .setDisplaySize(iconSize - 4, iconSize - 4).setDepth(32).setAlpha(0)
+          this.tweens.add({ targets: [bg, img], alpha: 1, duration: 200, delay: skDelay })
+          skillObjs.push(img)
+        } else {
+          // Fallback — text label
+          const fallback = this.add.text(ix, iconY, sk.label.substring(0, 2).toUpperCase(), {
+            fontFamily: gameFont(), fontSize: '14px', color: '#ccddee',
+          }).setOrigin(0.5).setDepth(32).setAlpha(0)
+          this.tweens.add({ targets: [bg, fallback], alpha: 1, duration: 200, delay: skDelay })
+          skillObjs.push(fallback)
+        }
+
+        // Level dots below icon
+        const dotY = iconY + iconSize / 2 + 6
+        const dotG = this.add.graphics().setDepth(32).setAlpha(0)
+        for (let d = 0; d < 3; d++) {
+          const dx = ix + (d - 1) * 8
+          const filled = d < sk.level
+          if (filled) { dotG.fillStyle(sk.level >= 3 ? 0xffcc44 : 0x88aacc); dotG.fillCircle(dx, dotY, 2.5) }
+          else { dotG.lineStyle(1, 0x555555); dotG.strokeCircle(dx, dotY, 2.5) }
+        }
+        this.tweens.add({ targets: dotG, alpha: 1, duration: 200, delay: skDelay + 100 })
+        skillObjs.push(dotG)
+
         lastContentDelay = skDelay + 200
       })
-      cy2 += skillSectionH + afterSkillGap
+
+      const skillSectionActualH = iconSize + 28  // icon + dots + header
+      cy2 += skillSectionActualH + (8 * sp)
     }
 
     // ── Leaderboard panel ──────────────────────────────────────────────
@@ -1721,17 +1784,25 @@ export class UIScene extends Phaser.Scene {
 
     // ── Buttons (fade in last, 600ms after last content) ─────────────
     const btnDelay = lastContentDelay + 600
-    const btnStyle = {
-      fontFamily: gameFont(), fontSize: mob ? '16px' : '18px', color: '#FFD700',
-      backgroundColor: '#2a2a4e', padding: { x: mob ? 16 : 20, y: mob ? 7 : 10 },
+    const btnW = Math.min(200, pw - 20)
+    const makeBtn = (label: string, y: number, color: string, bgColor: number, delay: number) => {
+      const bg = this.add.graphics().setDepth(31).setAlpha(0)
+      bg.fillStyle(bgColor, 0.9)
+      bg.fillRoundedRect(cx - btnW / 2, y - 16, btnW, 32, 8)
+      bg.lineStyle(1, 0x555577)
+      bg.strokeRoundedRect(cx - btnW / 2, y - 16, btnW, 32, 8)
+      const txt = this.add.text(cx, y, label, {
+        fontFamily: gameFont(), fontSize: mob ? '14px' : '16px', color,
+      }).setOrigin(0.5).setDepth(32).setAlpha(0)
+      const hitZone = this.add.zone(cx, y, btnW, 32).setInteractive({ useHandCursor: true }).setDepth(33)
+      hitZone.on('pointerover', () => { txt.setColor('#ffffff'); bg.clear(); bg.fillStyle(0x3a3a5e, 0.95); bg.fillRoundedRect(cx - btnW / 2, y - 16, btnW, 32, 8); bg.lineStyle(1, 0x7777aa); bg.strokeRoundedRect(cx - btnW / 2, y - 16, btnW, 32, 8) })
+      hitZone.on('pointerout', () => { txt.setColor(color); bg.clear(); bg.fillStyle(bgColor, 0.9); bg.fillRoundedRect(cx - btnW / 2, y - 16, btnW, 32, 8); bg.lineStyle(1, 0x555577); bg.strokeRoundedRect(cx - btnW / 2, y - 16, btnW, 32, 8) })
+      this.tweens.add({ targets: [bg, txt], alpha: 1, duration: 300, delay })
+      return { bg, txt, hitZone }
     }
 
-    const t5 = this.add.text(cx, cy2 + btnH1 / 2, 'Try Again', btnStyle as Phaser.Types.GameObjects.Text.TextStyle)
-      .setOrigin(0.5).setInteractive().setDepth(32).setAlpha(0).setScale(0.9)
-    this.tweens.add({ targets: t5, alpha: 1, scale: 1, duration: 300, delay: btnDelay })
-    t5.on('pointerover', () => t5.setColor('#ffffff'))
-    t5.on('pointerout', () => t5.setColor('#FFD700'))
-    t5.on('pointerdown', () => {
+    const btn1 = makeBtn('Try Again', cy2 + btnH1 / 2, '#FFD700', 0x2a2a4e, btnDelay)
+    btn1.hitZone.on('pointerdown', () => {
       const hero = gs.player.heroType
       const map = gs.scene.key
       const branch = gs.upgradeTracker.chosenBranch ?? null
@@ -1749,14 +1820,8 @@ export class UIScene extends Phaser.Scene {
     })
     cy2 += btnH1 + btnGap
 
-    const t6 = this.add.text(cx, cy2 + btnH2 / 2, 'Choose Hero', {
-      ...btnStyle, fontSize: mob ? '13px' : '14px', color: '#aaaaaa',
-    } as Phaser.Types.GameObjects.Text.TextStyle)
-      .setOrigin(0.5).setInteractive().setDepth(32).setAlpha(0).setScale(0.9)
-    this.tweens.add({ targets: t6, alpha: 1, scale: 1, duration: 300, delay: btnDelay + 80 })
-    t6.on('pointerover', () => t6.setColor('#ffffff'))
-    t6.on('pointerout', () => t6.setColor('#aaaaaa'))
-    t6.on('pointerdown', () => {
+    const btn2 = makeBtn('Choose Hero', cy2 + btnH2 / 2, '#aaaaaa', 0x1a1a2e, btnDelay + 80)
+    btn2.hitZone.on('pointerdown', () => {
       const sceneKey = gs.scene.key
       this.cleanup()
       const sm = this.game.scene
@@ -1772,23 +1837,15 @@ export class UIScene extends Phaser.Scene {
     })
     cy2 += btnH2 + btnGap
 
-    // Forge button — gets a glow + pulse + hint label when the player has
-    // enough gold for their first meta upgrade and hasn't bought any yet.
+    // Forge button — gets a glow + pulse when first meta upgrade is affordable
     const meta = MetaProgress.load()
     const cheapestFirstCost = Math.min(...META_UPGRADES.map(u => u.costs[0]))
     const hasAnyMetaUpgrade = Object.values(meta.metaUpgrades).some(t => (t || 0) > 0)
     const showForgeHint = !hasAnyMetaUpgrade && meta.goldTotal >= cheapestFirstCost
-
     const forgeY = cy2 + btnH3 / 2
-    const t7 = this.add.text(cx, forgeY, 'FORGE', {
-      ...btnStyle, fontSize: mob ? '13px' : '14px', color: '#FFD700',
-      backgroundColor: showForgeHint ? '#3a2a05' : '#1a1a0a',
-    } as Phaser.Types.GameObjects.Text.TextStyle)
-      .setOrigin(0.5).setInteractive().setDepth(32).setAlpha(0).setScale(0.9)
-    this.tweens.add({ targets: t7, alpha: 1, scale: 1, duration: 300, delay: btnDelay + 160 })
-    t7.on('pointerover', () => t7.setColor('#ffffff'))
-    t7.on('pointerout', () => t7.setColor('#FFD700'))
-    t7.on('pointerdown', () => {
+
+    const btn3 = makeBtn('FORGE', forgeY, '#FFD700', showForgeHint ? 0x3a2a05 : 0x1a1a0a, btnDelay + 160)
+    btn3.hitZone.on('pointerdown', () => {
       const sceneKey = gs.scene.key
       this.cleanup()
       const sm = this.game.scene
@@ -1796,40 +1853,61 @@ export class UIScene extends Phaser.Scene {
       sm.start('ForgeScene')
     })
 
-    this.endTexts = [t1, subLabel, t5, t6, t7, panelG as any, lbG as any, ...statTexts, ...skillTexts, ...lbEntries]
+    const allEndObjs: Phaser.GameObjects.GameObject[] = [
+      t1, subLabel, panelG, lbG,
+      btn1.bg, btn1.txt, btn1.hitZone,
+      btn2.bg, btn2.txt, btn2.hitZone,
+      btn3.bg, btn3.txt, btn3.hitZone,
+      ...statTexts, ...skillObjs, ...lbEntries,
+    ]
 
     if (showForgeHint) {
-      // Glow ring behind the button — sized to match the actual button
       const glow = this.add.graphics().setDepth(31)
-      const gw = t7.width + 8, gh = t7.height + 8
       const drawGlow = (alpha: number) => {
         glow.clear()
         glow.lineStyle(2, 0xffd700, alpha)
-        glow.strokeRoundedRect(cx - gw / 2, forgeY - gh / 2, gw, gh, 8)
+        glow.strokeRoundedRect(cx - btnW / 2 - 3, forgeY - 19, btnW + 6, 38, 10)
       }
       drawGlow(0.6)
       this.tweens.add({
-        targets: { v: 0.3 },
-        v: 0.9,
-        duration: 700,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
+        targets: { v: 0.3 }, v: 0.9,
+        duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
         onUpdate: (tw) => drawGlow(tw.getValue() ?? 0.6),
       })
-      this.tweens.add({
-        targets: t7,
-        scale: 1.06,
-        duration: 700,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      })
-      const hint = this.add.text(cx, forgeY + gh / 2 + 8, '★ Spend gold on upgrades!', {
+      const hint = this.add.text(cx, forgeY + 30, '★ Spend gold on upgrades!', {
         fontFamily: gameFont(), fontSize: mob ? '10px' : '11px', color: '#FFD700',
       }).setOrigin(0.5).setDepth(32)
-      this.endTexts.push(glow as any, hint)
+      allEndObjs.push(glow as any, hint)
     }
+
+    // Victory confetti burst (boss defeated)
+    const bossDefeated = (gs as any).bossDefeated === true
+    if (bossDefeated) {
+      const confettiColors = [0xFFD700, 0xFF4444, 0x44FF44, 0x4488FF, 0xFF88FF, 0xFFAA22]
+      for (let i = 0; i < 30; i++) {
+        const cx2 = cx + Phaser.Math.Between(-120, 120)
+        const startY = height * 0.15
+        const c = this.add.graphics().setDepth(35)
+        const color = confettiColors[i % confettiColors.length]
+        c.fillStyle(color, 0.9)
+        c.fillRect(-2, -4, 4, 8)
+        c.x = cx2; c.y = startY
+        this.tweens.add({
+          targets: c,
+          y: startY + Phaser.Math.Between(80, 200),
+          x: cx2 + Phaser.Math.Between(-40, 40),
+          rotation: Phaser.Math.Between(-4, 4),
+          alpha: 0,
+          duration: Phaser.Math.Between(1200, 2500),
+          delay: Phaser.Math.Between(200, 800),
+          ease: 'Power1',
+          onComplete: () => c.destroy(),
+        })
+        allEndObjs.push(c as any)
+      }
+    }
+
+    this.endTexts = allEndObjs as any[]
   }
 
   private async _populateEndLeaderboard(
@@ -2676,37 +2754,35 @@ export class UIScene extends Phaser.Scene {
 
     }
 
-    // === TOP-RIGHT: Kills & Tier (panel above minimap) ===
-    this.killText.setText(`● ${p.kills} kills`)
-    // `_lastGold` initializes to -1 so the first HUD redraw on run start doesn't
-    // trigger the bump animation. Only animate when we have a valid prior value.
+    // === TOP-RIGHT: Kills + Wave + Gold — compact panel ===
+    this.killText.setText(`${p.kills}`)
     if (curGold !== this._lastGold && this._lastGold >= 0) {
-      // Bump animation on gold change
       this.tweens.add({
         targets: [this.goldText, this.goldIcon],
         scaleX: 1.3, scaleY: 1.3, duration: 80, yoyo: true,
       })
     }
     this.goldText.setText(`${p.goldThisRun}`)
-    // Reposition coin icon to left of text — portrait shifts kills below minimap
-    const _mmSz = _portrait ? 90 : CONFIG.MINIMAP_SIZE
-    const _killsOffY = _portrait ? CONFIG.MINIMAP_MARGIN + 76 + _mmSz + 8 : 24
-    this.goldIcon.setPosition(this.scale.width - 20 - this.goldText.width - 12, _killsOffY + (this.isMobile ? 68 : 55))
 
-    const tier = this.gameScene._online
+    const wave = this.gameScene._online
       ? (this.gameScene._networkAdapter?.serverWave || 1)
       : (this.gameScene.waveManager?.currentWave || 1)
-    const tierStars = tier >= 8 ? 'DANGER' : tier >= 5 ? 'HARD' : tier >= 3 ? 'MEDIUM' : 'EASY'
-    const tierColor = tier >= 8 ? '#ff4444' : tier >= 5 ? '#ffaa44' : tier >= 3 ? '#ffff66' : '#88ff88'
-    this.tierText.setText(`TIER ${tier}  ${tierStars}`).setColor(tierColor)
+    const waveColor = wave >= 8 ? '#ff4444' : wave >= 5 ? '#ffaa44' : '#88ff88'
+    this.tierText.setText(`Wave ${wave}`).setColor(waveColor)
 
-    // Kills/tier/gold background panel
-    const killPanelW = this.isMobile ? 160 : 130
-    const killPanelH = this.isMobile ? 76 : 56
-    const killPanelX = this.scale.width - killPanelW - 10
-    const killPanelY = _killsOffY + 6
-    g.fillStyle(0x0a0a1a, 0.6)
-    g.fillRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 4)
+    // Panel background — compact, right-aligned
+    const _mmSz = _portrait ? 90 : CONFIG.MINIMAP_SIZE
+    const _killsOffY = _portrait ? CONFIG.MINIMAP_MARGIN + 76 + _mmSz + 8 : 24
+    const killPanelW = this.isMobile ? 120 : 100
+    const killPanelH = this.isMobile ? 72 : 54
+    const killPanelX = this.scale.width - killPanelW - 8
+    const killPanelY = _killsOffY + 4
+    g.fillStyle(0x0a0a1a, 0.65)
+    g.fillRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 6)
+    g.lineStyle(1, 0x333355, 0.5)
+    g.strokeRoundedRect(killPanelX, killPanelY, killPanelW, killPanelH, 6)
+    // Coin icon position
+    this.goldIcon.setPosition(this.scale.width - 20 - this.goldText.width - 12, _killsOffY + (this.isMobile ? 62 : 48))
 
     // Minimap — throttle to every 3 frames
     this._mmFrame = ((this._mmFrame || 0) + 1) % 3
