@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { type HeroType } from '../entities/Player'
 import { unlockHero } from './EncyclopediaScene'
 import { MetaProgress } from '../systems/MetaProgress'
+import { NotificationBell } from '../ui/NotificationBell'
 import { addDiagonalBg } from '../utils/bgScroll'
 import { isMobileDevice, gameFont } from '../utils/device'
 
@@ -316,6 +317,9 @@ export class HeroSelectScene extends Phaser.Scene {
         })
       }
     })
+
+    // Notification bell — top-right
+    new NotificationBell(this, width - (compact ? 22 : 30), compact ? 20 : 26)
 
     // BACK button (bottom-left area)
     const backY = compact ? height - 14 : height * 0.92

@@ -1,5 +1,7 @@
 import Phaser from 'phaser'
 import { MetaProgress } from '../systems/MetaProgress'
+import { NotificationCenter } from '../systems/NotificationCenter'
+import { NotificationBell } from '../ui/NotificationBell'
 import { addDiagonalBg } from '../utils/bgScroll'
 import { isMobileDevice, gameFont } from '../utils/device'
 
@@ -360,6 +362,12 @@ export class StartScene extends Phaser.Scene {
         this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('TestScene'))
       })
     }
+
+    // Notification bell — top-right, left of logout
+    NotificationCenter.ensureSeeded()
+    const bellX = width - (compact ? 50 : 60)
+    const bellY = compact ? 20 : 26
+    new NotificationBell(this, bellX, bellY)
 
     // Logout button — top-right corner, procedural door+arrow icon
     if (this.playerName) {

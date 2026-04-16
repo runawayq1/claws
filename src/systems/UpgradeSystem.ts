@@ -1589,10 +1589,10 @@ export class UpgradeTracker {
       Object.keys(this.skillLevels).filter(id => !this.pickedGeneric.has(id) && this.skillLevels[id] > 0).length
     const atSkillCap = totalDistinctSkills >= MAX_TOTAL_SKILLS
 
-    // Per-hero generic exclusions: Ignara gets +15% base range and shouldn't
-    // see Eagle Eye (range generic) in the upgrade pool.
+    // Per-hero generic exclusions: Ignara gets +15% base range and native AoE,
+    // so Eagle Eye (g3, range) and Cleave (g7, splash) are redundant.
     const heroExcluded: Record<string, Set<string>> = {
-      ignara: new Set(['g3']),
+      ignara: new Set(['g3', 'g7']),
     }
     const excluded = heroExcluded[heroType] || new Set<string>()
 
