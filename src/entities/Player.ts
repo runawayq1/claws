@@ -1938,7 +1938,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Speed buff expiry
     if (this.speedBuffUntil > 0 && this.scene.time.now > this.speedBuffUntil) {
       this.speedBuffUntil = 0
-      // Restore speed from cache instead of dividing (avoids floating-point drift / compounding)
+      this.speed = this.baseSpeedCache
+    }
+    // Kill Stride expiry — revert to baseSpeedCache
+    if (this.killStrideUntil > 0 && this.scene.time.now > this.killStrideUntil) {
+      this.killStrideUntil = 0
       this.speed = this.baseSpeedCache
     }
 

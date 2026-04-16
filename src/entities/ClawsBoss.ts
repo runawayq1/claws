@@ -246,20 +246,22 @@ export class ClawsBoss extends BaseEnemy {
   }
 
   private _doVoidBurst() {
+    // Capture cast position — damage checks use this, not boss's moved position
+    const castX = this.x, castY = this.y
     // 3 staggered expanding rings
     for (let i = 0; i < 3; i++) {
       const delay = i * 180
       this.scene.time.delayedCall(delay, () => {
         if (!this.active) return
-        const ring = this.scene.add.circle(this.x, this.y, 12, 0x440088, 0.65 - i * 0.15).setDepth(15 - i)
+        const ring = this.scene.add.circle(castX, castY, 12, 0x440088, 0.65 - i * 0.15).setDepth(15 - i)
         this.scene.tweens.add({ targets: ring, scale: 17, alpha: 0, duration: 700, onComplete: () => ring.destroy() })
       })
     }
     this.scene.cameras.main.shake(300, 0.012)
-    // Damage check at 400ms
+    // Damage check at 400ms — from cast position, not current boss position
     this.scene.time.delayedCall(400, () => {
       if (!this.active) return
-      const dist = Phaser.Math.Distance.Between(this.x, this.y, this.player.x, this.player.y)
+      const dist = Phaser.Math.Distance.Between(castX, castY, this.player.x, this.player.y)
       if (dist < 200) {
         ;(this.player as PlayerLike).takeDamage(Math.ceil((this.player as PlayerLike).maxHp * 0.40))
       }

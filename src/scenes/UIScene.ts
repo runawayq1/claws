@@ -274,6 +274,7 @@ export class UIScene extends Phaser.Scene {
     this.overlay = this.add.graphics()
     this.overlay.setAlpha(0).setDepth(30)
     this.endScreenShown = false
+    this._killMilestones = new Set()
 
     // Low HP vignette (red pulse around screen edges at <20% HP)
     // Depth 27: above HUD (2-5) but below pause overlay (28) and end screen (30)
@@ -489,6 +490,7 @@ export class UIScene extends Phaser.Scene {
       this.gameScene?.events?.off('huntress-stance-changed')
       this.gameScene?.events?.off('khashin-stance-changed')
       this.gameScene?.events?.off('amun-stance-changed')
+      this.gameScene?.events?.off('vael-stance-changed')
       this.gameScene?.events?.off('branch-mastery-levelup')
       this.gameScene?.events?.off('boss-spawned')
       this.gameScene?.events?.off('boss-hp')
@@ -1732,6 +1734,7 @@ export class UIScene extends Phaser.Scene {
     t5.on('pointerdown', () => {
       const hero = gs.player.heroType
       const map = gs.scene.key
+      const branch = gs.upgradeTracker.chosenBranch ?? null
       this.cleanup()
       const sm = this.game.scene
       sm.stop('LevelUpScene'); sm.stop('BastionPickScene'); sm.stop(map); sm.stop('UIScene')
@@ -1741,7 +1744,7 @@ export class UIScene extends Phaser.Scene {
           sm.start('StartScene')
         })
       } else {
-        sm.start(map, { hero })
+        sm.start(map, { hero, startingBranch: branch })
       }
     })
     cy2 += btnH1 + btnGap

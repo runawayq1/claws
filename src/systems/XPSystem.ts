@@ -107,6 +107,7 @@ export class XPSystem {
 
   /** Call every frame — pulls nearby orbs toward the nearest player */
   updateMagnet() {
+    const now = this.scene.time.now
     for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!orb.active) continue
       let nearest: Player | null = null
@@ -117,12 +118,23 @@ export class XPSystem {
         if (dist < minDist) { nearest = p; minDist = dist }
       }
       if (nearest) {
-        const speed = 200 + (1 - minDist / this.magnetRadius) * 300
-        const dx = nearest.cx - orb.x
-        const dy = nearest.cy - orb.y
-        const len = Math.sqrt(dx * dx + dy * dy) || 1
-        const body = orb.body as Phaser.Physics.Arcade.Body
-        body.setVelocity((dx / len) * speed, (dy / len) * speed)
+        if (!(orb as any)._magnetSince) (orb as any)._magnetSince = now
+        const chaseTime = now - (orb as any)._magnetSince
+        const playerSpeed = nearest.speed || 140
+        const baseSpeed = 250 + (1 - minDist / this.magnetRadius) * 350
+        const chaseBoost = chaseTime > 500 ? Math.min(3, 1 + (chaseTime - 500) / 400) : 1
+        const speed = Math.max(baseSpeed, playerSpeed * 1.5) * chaseBoost
+        if (chaseTime > 1200 || minDist < 8) {
+          orb.setPosition(nearest.cx, nearest.cy)
+        } else {
+          const dx = nearest.cx - orb.x
+          const dy = nearest.cy - orb.y
+          const len = Math.sqrt(dx * dx + dy * dy) || 1
+          const body = orb.body as Phaser.Physics.Arcade.Body
+          body.setVelocity((dx / len) * speed, (dy / len) * speed)
+        }
+      } else {
+        (orb as any)._magnetSince = 0
       }
     }
   }
@@ -233,20 +245,11 @@ export class GoldSystem {
       if (orb.active) orb.setVelocity(0, 0)
     })
 
-    // Gentle bob loop
-    this.scene.tweens.add({
-      targets: orb, y: orb.y - 4, duration: 500, yoyo: true, repeat: -1,
-      ease: 'Sine.easeInOut', delay: 400,
-    })
-
-    // Pulse glow
-    this.scene.tweens.add({
-      targets: orb, alpha: 0.7, duration: 600, yoyo: true, repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
+    // No bob/alpha tweens — they conflict with physics velocity (magnet pull)
   }
 
   updateMagnet() {
+    const now = this.scene.time.now
     for (const orb of this.orbs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
       if (!orb.active) continue
       let nearest: Player | null = null
@@ -257,12 +260,23 @@ export class GoldSystem {
         if (dist < minDist) { nearest = p; minDist = dist }
       }
       if (nearest) {
-        const speed = 200 + (1 - minDist / this.magnetRadius) * 300
-        const dx = nearest.cx - orb.x
-        const dy = nearest.cy - orb.y
-        const len = Math.sqrt(dx * dx + dy * dy) || 1
-        const body = orb.body as Phaser.Physics.Arcade.Body
-        body.setVelocity((dx / len) * speed, (dy / len) * speed)
+        if (!(orb as any)._magnetSince) (orb as any)._magnetSince = now
+        const chaseTime = now - (orb as any)._magnetSince
+        const playerSpeed = nearest.speed || 140
+        const baseSpeed = 250 + (1 - minDist / this.magnetRadius) * 350
+        const chaseBoost = chaseTime > 500 ? Math.min(3, 1 + (chaseTime - 500) / 400) : 1
+        const speed = Math.max(baseSpeed, playerSpeed * 1.5) * chaseBoost
+        if (chaseTime > 1200 || minDist < 8) {
+          orb.setPosition(nearest.cx, nearest.cy)
+        } else {
+          const dx = nearest.cx - orb.x
+          const dy = nearest.cy - orb.y
+          const len = Math.sqrt(dx * dx + dy * dy) || 1
+          const body = orb.body as Phaser.Physics.Arcade.Body
+          body.setVelocity((dx / len) * speed, (dy / len) * speed)
+        }
+      } else {
+        (orb as any)._magnetSince = 0
       }
     }
   }

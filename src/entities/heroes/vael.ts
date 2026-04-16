@@ -1222,15 +1222,26 @@ function ensureThrallAnim(scene: Phaser.Scene) {
 }
 
 
+// Bone sprite pool for variety — pick a random one each spawn
+const BONE_TEXTURES = ['vael_bone_skull_1', 'vael_bone_pile_1', 'vael_bone_single_1', 'vael_bone_skull_2', 'vael_skull_small']
+
 function spawnSoulOrb(p: Player, x: number, y: number) {
   const st = getState(p)
   const scene = p.scene
   const now = scene.time.now
 
-  // Stationary bone/soul on ground — long lifetime, collected on player contact
-  const orb = scene.add.circle(x, y, 6, 0xccbb88, 0.95).setDepth(10)
-    .setStrokeStyle(1, 0xaaddff, 0.8)
-  st.soulOrbs.push({ gfx: orb, expireAt: now + 30000, homeSpeed: 0, autoCollect: false, healAmount: 0 })
+  // Pick a random bone sprite if loaded; fall back to procedural circle
+  const texKey = BONE_TEXTURES[Math.floor(Math.random() * BONE_TEXTURES.length)]
+  let orb: Phaser.GameObjects.GameObject & { x: number; y: number }
+  if (scene.textures.exists(texKey)) {
+    const img = scene.add.image(x, y, texKey).setDepth(10).setScale(0.7)
+    // Slight random rotation for variety
+    img.setAngle(Phaser.Math.Between(-25, 25))
+    orb = img
+  } else {
+    orb = scene.add.circle(x, y, 6, 0xccbb88, 0.95).setDepth(10)
+  }
+  st.soulOrbs.push({ gfx: orb as any, expireAt: now + 30000, homeSpeed: 0, autoCollect: false, healAmount: 0 })
 
 }
 
@@ -1256,12 +1267,12 @@ function spawnBlightPool(p: Player, x: number, y: number, doubleRadius = false) 
   const addRotStacks = (p as any).necroticBloomAddRot ?? false
 
   const gfx = scene.add.graphics().setDepth(7)
-  gfx.fillStyle(0x448833, 0.3)
+  gfx.fillStyle(0x448833, 0.25)
   gfx.fillCircle(x, y, radius)
-  gfx.lineStyle(1, 0x66cc44, 0.5)
+  gfx.lineStyle(1.5, 0x66cc44, 0.4)
   gfx.strokeCircle(x, y, radius)
-
-  scene.tweens.add({ targets: gfx, alpha: { from: 0.5, to: 0.3 }, duration: 800, yoyo: true, repeat: -1 })
+  gfx.lineStyle(0.5, 0x66cc44, 0.15)
+  gfx.strokeCircle(x, y, radius * 0.7)
 
   st.blightPools.push({ gfx, x, y, radius, expireAt: now + duration, dmgPerSec, tickTimer: 0, addRotStacks })
 }

@@ -487,12 +487,11 @@ export class GameScene extends Phaser.Scene {
         if (this.player.hasBattleFrenzy) {
           this.player.battleFrenzyUntil = now + 5000
         }
-        // Kill Stride: +20% speed for 3s
-        if (this.player.hasKillStride && this.player.killStrideUntil <= now) {
-          this.player.speed = Math.ceil(this.player.speed * 1.2)
-          this.player.killStrideUntil = now + 3000
-        } else if (this.player.hasKillStride) {
-          // Refresh timer
+        // Kill Stride: +20% speed for 3s (uses baseSpeedCache to avoid permanent compounding)
+        if (this.player.hasKillStride) {
+          if (this.player.killStrideUntil <= now) {
+            this.player.speed = Math.ceil(this.player.baseSpeedCache * 1.2)
+          }
           this.player.killStrideUntil = now + 3000
         }
         // Camouflage: invisible for 2s
