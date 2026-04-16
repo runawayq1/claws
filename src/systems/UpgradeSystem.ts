@@ -992,7 +992,7 @@ const HUNTRESS_BRANCHES: BranchDef[] = [
 // ============================================================
 const VAEL_BRANCHES: BranchDef[] = [
   {
-    name: 'Pale Harvest', color: 0xaaddff,
+    name: 'Pale Harvest', color: 0xcbd5e1,
     theme: 'Life through killing. Up to 20% lifesteal on hit, 10% per drain tick, 11 armor stacks (up to 11% less damage taken). Ultimate: 12s feeding window, 22% max HP per kill.',
     upgrades: [
       {
@@ -1085,7 +1085,7 @@ const VAEL_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Ossuary', color: 0xccbb88,
+    name: 'Ossuary', color: 0xfde68a,
     theme: 'Command up to 3 Zombies + 1 Lich. Zombies grant up to +27% attack speed and +24% damage. Lich: 150% HP, 80% damage, permanent champion.',
     upgrades: [
       {
@@ -1186,7 +1186,7 @@ const VAEL_BRANCHES: BranchDef[] = [
     ],
   },
   {
-    name: 'Wasting Plague', color: 0x88cc55,
+    name: 'Wasting Plague', color: 0x84cc16,
     theme: 'Rot stacks make enemies take up to 25% more damage. Blight Pools (max 4) deal 20% damage per second. Permanent 6m aura weakens enemies 10%.',
     upgrades: [
       {
