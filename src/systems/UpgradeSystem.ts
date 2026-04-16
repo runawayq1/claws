@@ -1110,9 +1110,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'os2', label: 'Grave Pact', icon: 'os2_grave_pact',
         desc: [
-          '✦ Lifedrain: Zombies gain +20% HP\n+1 flat damage per tick per active Zombie\nEach Zombie reduces drain cost by 5%',
-          '✦ Lifedrain: Zombies gain +40% HP\nEach nearby Zombie extends tendril reach\nZombies burst on death (1m radius, 60% damage)',
-          '✦ Lifedrain: Zombies gain +60% HP\nZombies act as relay points, extending tendril reach further\nDeath burst also roots enemies 0.4s',
+          'Zombies gain +20% HP\n+1 damage per tick per zombie · -5% drain cost each',
+          'Zombies gain +40% HP, extend tendril reach\nDeath burst: 1m radius, 60% damage',
+          'Zombies gain +60% HP, relay tendrils\nDeath burst roots enemies 0.4s',
         ],
         apply: (p, lvl) => {
           p.hasGravePact = true
@@ -1130,9 +1130,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'os3', label: 'Undying Labor', icon: 'os3_undying_labor',
         desc: [
-          '+5% attack speed per active Zombie (max +15%)\n+4% damage per Zombie',
-          '+7% attack speed per Zombie (max +21%)\n+6% damage per Zombie\nZombies last 2s longer',
-          '+9% attack speed per Zombie (max +27%)\n+8% damage per Zombie',
+          'Per zombie: +5% attack speed, +4% damage\nMax +15% speed from 3 zombies',
+          'Per zombie: +7% attack speed, +6% damage\nZombies last 2s longer · Max +21%',
+          'Per zombie: +9% attack speed, +8% damage\nMax +27% speed from 3 zombies',
         ],
         apply: (p, lvl) => {
           p.hasUndyingLabor = true
@@ -1145,9 +1145,9 @@ const VAEL_BRANCHES: BranchDef[] = [
       {
         id: 'os4', label: 'Charnel Tide', icon: 'os4_charnel_tide',
         desc: [
-          'Auto-cast: raise up to 5 corpses within 6m as Zombies (8s lifetime, 20s cooldown)\n◉ Soul Orbs: each raised Zombie also drops a bone\n✦ Lifedrain: raised Zombies instantly draw tendril fire',
-          '7.5m radius, up to 6 Zombies, 10s lifetime (18s cooldown)\n◉ Soul Orbs: raised Zombies deal +15% damage\n✦ Lifedrain: tendril range boosted 4s after cast',
-          '7.5m, 6 Zombies, 10s (16s cooldown)\nSurviving Zombies explode on expiry (80% damage, 1.5m radius)\n◉ Soul Orbs: explosions drop 2 bones each\n✦ Lifedrain: explosions apply 1 Rot stack',
+          'Auto-raise 5 zombies within 6m\n8s lifetime, 20s cooldown\nOrbs: each drops a bone · Drain: auto-target',
+          'Wider: 7.5m, 6 zombies, 10s life\n18s cooldown · Orbs: +15% zombie damage\nDrain: tendril range boost 4s',
+          'Zombies explode on expiry\n80% damage, 1.5m radius, 16s cooldown\nOrbs: 2 bones per explosion · Drain: +1 Rot',
         ],
         apply: (p, lvl) => {
           p.hasCharnelTide = true
