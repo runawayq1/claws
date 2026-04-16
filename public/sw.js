@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claws-v1.0.29'
+const CACHE_NAME = 'claws-v0.5.1'
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()

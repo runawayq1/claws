@@ -15,11 +15,18 @@ export interface GameNotification {
 }
 
 const STORAGE_KEY = 'claws_notifications'
-const SEEDED_KEY = 'claws_notifications_seeded'
+// Per-seed flag prefix — each SEED entry is seeded at most once,
+// keyed by its stable `seedId`. This lets us append new patch notes in
+// future versions without re-delivering older ones.
+const SEED_FLAG_PREFIX = 'claws_notif_seed_'
 
-// Seed messages — shown once on first load
-const SEED_MESSAGES: Omit<GameNotification, 'id' | 'timestamp' | 'read'>[] = [
+// Seed messages — delivered to every player's inbox exactly once per seedId.
+// To add a new patch note in a future release, append a new entry with a
+// unique `seedId` and keep the existing entries intact.
+type SeedNotification = Omit<GameNotification, 'id' | 'timestamp' | 'read'> & { seedId: string }
+const SEED_MESSAGES: SeedNotification[] = [
   {
+    seedId: 'v0_5_vael_nightborne',
     title: 'v0.5 — Vael & Nightborne',
     body: [
       'Two new heroes joined the roster.',
@@ -48,6 +55,41 @@ const SEED_MESSAGES: Omit<GameNotification, 'id' | 'timestamp' | 'read'>[] = [
     ].join('\n'),
     iconFrame: 19,  // phoenix heart icon as placeholder
   },
+  {
+    seedId: 'v0_5_1_hero_popup_scene',
+    title: 'v0.5.1 — Hero Select Overhaul',
+    body: [
+      'The hero-select screen got a full rework.',
+      '',
+      'NEW HERO POPUP',
+      '• Clicking a hero now opens a detailed card: animated portrait in a gold-framed window, full stats with animated bars, combat stances, and three stance options.',
+      '• Pick your starting stance BEFORE the run — no more level-1 branch picker. You start the run already specialized.',
+      '• Each stance card shows its theme, icon, and a bold one-line bonus summary (e.g. Pyre: "Burn aura 25%/s · +45% damage · molten volley").',
+      '• Cycle heroes from inside the popup: arrow buttons, keyboard Left/Right, or swipe on mobile.',
+      '• Attack animation plays when you pick a stance (except Vael/Khashin/Muller who pulse instead).',
+      '• Hero-themed ambient particles in the portrait frame — embers for Ignara, snow for Sifra, leaves for Lyra, void motes for Nightborne, etc.',
+      '• Gold tracer runs around the portrait and the PLAY button, shine sweep on the selected card, staggered entry and close animations.',
+      '',
+      'HERO SELECT SCENE',
+      '• Circle grid redesigned: 3×3 on desktop with bigger circles, 2-column on mobile.',
+      '• Gold halo + per-hero accent stripe + idle breathe on every unlocked circle.',
+      '• Locked heroes now reveal their unlock hint on hover (no more hunt-and-tap).',
+      '• Gold dot marks your last-played hero.',
+      '• Ambient drifting particles, staggered entry, restyled circular back button.',
+      '',
+      'COLOR PALETTE',
+      '• All hero and branch colors moved to a Tailwind-inspired harmonized palette. In-game VFX, HUD, and level-up cards all match.',
+      '',
+      'TEXT CLEANUP',
+      '• ~85 upgrade descriptions rewritten: "dmg" → "damage", "cd" → "cooldown", "20px blast" → "2m blast", "×1.6 proj" → "+60% projectile size", etc.',
+      '',
+      'ACCESSIBILITY & POLISH',
+      '• Respects prefers-reduced-motion (loop animations stop, entry fades stay).',
+      '• ESC / click-outside / X button all close the popup cleanly.',
+      '• Keyboard: 1/2/3 pick stance, Enter plays, arrows cycle heroes.',
+    ].join('\n'),
+    iconFrame: 19,
+  },
 ]
 
 export class NotificationCenter {
@@ -67,22 +109,31 @@ export class NotificationCenter {
     } catch {}
   }
 
-  /** Call on game start — seeds initial messages only once */
+  /**
+   * Call on game start — seeds any initial messages that haven't been
+   * delivered yet. Each seed is gated on its own `seedId` flag, so new
+   * patch notes added in later releases are delivered exactly once even
+   * to players who've already seen earlier seeds.
+   */
   static ensureSeeded() {
     try {
-      if (localStorage.getItem(SEEDED_KEY)) return
       const existing = NotificationCenter.load()
+      let changed = false
       const now = Date.now()
       for (const seed of SEED_MESSAGES) {
-        existing.push({
-          id: `seed_${seed.title.replace(/\W+/g, '_').toLowerCase()}_${now}`,
+        const flagKey = `${SEED_FLAG_PREFIX}${seed.seedId}`
+        if (localStorage.getItem(flagKey)) continue
+        const { seedId: _seedId, ...rest } = seed
+        existing.unshift({
+          id: `seed_${seed.seedId}_${now}`,
           timestamp: now,
           read: false,
-          ...seed,
+          ...rest,
         })
+        localStorage.setItem(flagKey, '1')
+        changed = true
       }
-      NotificationCenter.save(existing)
-      localStorage.setItem(SEEDED_KEY, '1')
+      if (changed) NotificationCenter.save(existing.slice(0, 20))
     } catch {}
   }
 
