@@ -7,6 +7,8 @@ import { FlyingEye } from '../entities/FlyingEye'
 import { Orc3 } from '../entities/Orc3'
 import { SandGolem } from '../entities/SandGolem'
 import { Orc0 } from '../entities/Grunt'
+import { DarkBat } from '../entities/DarkBat'
+import { FlyingDemon } from '../entities/FlyingDemon'
 
 export class TestScene extends Phaser.Scene {
   constructor() {
@@ -113,6 +115,20 @@ export class TestScene extends Phaser.Scene {
     this.load.spritesheet('nightborne_hurt',   'assets/nightborne/hurt.png',   { frameWidth: 240, frameHeight: 240 })
     this.load.spritesheet('nightborne_death',  'assets/nightborne/death.png',  { frameWidth: 240, frameHeight: 240 })
 
+    // Dark Bat (64x64)
+    this.load.spritesheet('darkbat_idle',   'assets/dark_bat/idle.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('darkbat_attack', 'assets/dark_bat/attack.png', { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('darkbat_hurt',   'assets/dark_bat/hurt.png',   { frameWidth: 64, frameHeight: 64 })
+    this.load.spritesheet('darkbat_death',  'assets/dark_bat/death.png',  { frameWidth: 64, frameHeight: 64 })
+
+    // Flying Demon (79x69)
+    this.load.spritesheet('fdemon_idle',       'assets/flying_demon/idle.png',       { frameWidth: 79, frameHeight: 69 })
+    this.load.spritesheet('fdemon_attack',     'assets/flying_demon/attack.png',     { frameWidth: 79, frameHeight: 69 })
+    this.load.spritesheet('fdemon_hurt',       'assets/flying_demon/hurt.png',       { frameWidth: 79, frameHeight: 69 })
+    this.load.spritesheet('fdemon_death',      'assets/flying_demon/death.png',      { frameWidth: 79, frameHeight: 69 })
+    this.load.spritesheet('fdemon_flying',     'assets/flying_demon/flying.png',     { frameWidth: 79, frameHeight: 69 })
+    this.load.spritesheet('fdemon_projectile', 'assets/flying_demon/projectile.png', { frameWidth: 16, frameHeight: 32 })
+
     // Rock images
     this.load.image('rock1_1', 'assets/rocks/Rock1_1_no_shadow.png')
     this.load.image('rock1_2', 'assets/rocks/Rock1_2_no_shadow.png')
@@ -171,6 +187,8 @@ export class TestScene extends Phaser.Scene {
     Orc1.createAnimations(this)
     Orc2.createAnimations(this)
     Orc3.createAnimations(this)
+    DarkBat.createAnimations(this)
+    FlyingDemon.createAnimations(this)
     Player.createAnimations(this)
 
     // -----------------------------------------------------------------------
@@ -251,6 +269,16 @@ export class TestScene extends Phaser.Scene {
         name: 'BigOrc',
         bodyW: 24, bodyH: 24,
         create: (x: number, y: number) => new SandGolem(this, x, y, dummyPlayer, 1),
+      },
+      {
+        name: 'DarkBat',
+        bodyW: 22, bodyH: 22,
+        create: (x: number, y: number) => new DarkBat(this, x, y, dummyPlayer, 1),
+      },
+      {
+        name: 'FlyingDemon',
+        bodyW: 30, bodyH: 30,
+        create: (x: number, y: number) => new FlyingDemon(this, x, y, dummyPlayer, 1),
       },
     ]
 

@@ -66,7 +66,20 @@ export class UndeadMapScene extends GameScene {
     const img = (key: string, path: string) => {
       if (!this.textures.exists(key)) this.load.image(key, path)
     }
+    // Undead-only enemies
+    ss('darkbat_idle',   'assets/dark_bat/idle.png',   64, 64)
+    ss('darkbat_attack', 'assets/dark_bat/attack.png', 64, 64)
+    ss('darkbat_hurt',   'assets/dark_bat/hurt.png',   64, 64)
+    ss('darkbat_death',  'assets/dark_bat/death.png',  64, 64)
+    ss('fdemon_idle',       'assets/flying_demon/idle.png',       79, 69)
+    ss('fdemon_attack',     'assets/flying_demon/attack.png',     79, 69)
+    ss('fdemon_hurt',       'assets/flying_demon/hurt.png',       79, 69)
+    ss('fdemon_death',      'assets/flying_demon/death.png',      79, 69)
+    ss('fdemon_flying',     'assets/flying_demon/flying.png',     79, 69)
+    ss('fdemon_projectile', 'assets/flying_demon/projectile.png', 16, 32)
+    // Undead terrain
     ss('undead_ground', 'assets/undead/Ground_rocks.png', 16, 16)
+    ss('undead_floor', 'assets/undead/floor_tiles.png', 64, 64)
     img('undead_grave1',       'assets/undead/Grave_shadow1_1.png')
     img('undead_grave2',       'assets/undead/Grave_shadow1_2.png')
     img('undead_grave3',       'assets/undead/Grave_shadow1_3.png')
@@ -307,12 +320,12 @@ export class UndeadMapScene extends GameScene {
     }
   }
 
-  protected useInfiniteMap(): boolean { return false }
+  protected useInfiniteMap(): boolean { return true }
+  protected getMapStyle() { return 'undead' as const }
 
   public getZone(px: number, py: number): number {
-    const cx = CONFIG.WORLD_WIDTH / 2
-    const cy = CONFIG.WORLD_HEIGHT / 2
-    const dist = Phaser.Math.Distance.Between(px, py, cx, cy)
+    // Infinite map: player spawns at (0,0), zones radiate from origin
+    const dist = Phaser.Math.Distance.Between(px, py, 0, 0)
     if (dist < 600) return 0
     if (dist < 1200) return 1
     if (dist < 1800) return 2

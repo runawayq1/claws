@@ -7,6 +7,8 @@ import { Orc2 } from '../entities/Orc2'
 import { Orc1 } from '../entities/Orc1'
 import { Orc3 } from '../entities/Orc3'
 import { Archer } from '../entities/Archer'
+import { DarkBat } from '../entities/DarkBat'
+import { FlyingDemon } from '../entities/FlyingDemon'
 import type { BaseEnemy } from '../entities/BaseEnemy'
 import { EyeBoss } from '../entities/EyeBoss'
 import { WaveManager } from '../systems/WaveManager'
@@ -14,7 +16,7 @@ import { XPSystem, GoldSystem } from '../systems/XPSystem'
 import { UpgradeTracker, HERO_BRANCHES } from '../systems/UpgradeSystem'
 import { Pickup } from '../entities/Pickup'
 import { Chest } from '../entities/Chest'
-import { ChunkManager } from '../systems/ChunkManager'
+import { ChunkManager, type MapStyle } from '../systems/ChunkManager'
 import { MetaProgress } from '../systems/MetaProgress'
 import { KeyboardInputController } from '../systems/InputController'
 import { isMobileDevice, isMobileUserAgent, isPortrait, gameFont } from '../utils/device'
@@ -134,6 +136,12 @@ export class GameScene extends Phaser.Scene {
     ss('archer_idle_run', 'assets/archer/idle_run.png', 64, 64)
     ss('archer_attack',   'assets/archer/attack.png',   64, 64)
     ss('archer_death',    'assets/archer/death.png',    64, 64)
+
+    // Dark Bat (64x64)
+    // DarkBat loaded in UndeadMapScene.preload (undead-only enemy)
+
+    // Flying Demon (79x69)
+    // FlyingDemon loaded in UndeadMapScene.preload (undead-only enemy)
 
     // Boss demon (288x160)
     ss('boss_demon', 'assets/boss_demon/spritesheet.png', 288, 160)
@@ -320,6 +328,9 @@ export class GameScene extends Phaser.Scene {
     Orc2.createAnimations(this)
     Orc3.createAnimations(this)
     Archer.createAnimations(this)
+    // Undead-only enemies — only create anims if textures were loaded (UndeadMapScene preload)
+    if (this.textures.exists('darkbat_idle')) DarkBat.createAnimations(this)
+    if (this.textures.exists('fdemon_idle')) FlyingDemon.createAnimations(this)
     Player.createAnimations(this)
 
     // Pre-warm all VFX sprite animations — prevents first-frame GPU upload stutter.
@@ -347,7 +358,7 @@ export class GameScene extends Phaser.Scene {
       this.players = [this.localPlayer]
       // NO camera.setBounds — infinite scroll
       this.chests = this.add.group()
-      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.localPlayer, this.chests, this._online)
+      this.chunkManager = new ChunkManager(this, this.rocks, (x, y) => this.getZone(x, y), this.localPlayer, this.chests, this._online, this.getMapStyle())
       this.chunkManager.create(0, 0)
       this.generateGraveTextures()
       this.events.emit('terrain-ready')
@@ -411,7 +422,8 @@ export class GameScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.scale.off('resize', applyPortraitZoom))
 
     // Zone marker centered on hero spawn
-    this.add.image(this.player.x, this.player.y, 'zone_marker').setOrigin(0.5).setScale(0.252).setDepth(1).setAlpha(0.85)
+    const zoneMarker = this.add.image(this.player.x, this.player.y, 'zone_marker').setOrigin(0.5).setScale(0.252).setDepth(1).setAlpha(0.85)
+    if (this.getMapStyle() === 'undead') zoneMarker.setTint(0x7755aa)
 
     // Caesar — decorative cat companion
     Cat.registerAnims(this)
@@ -945,6 +957,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   protected useInfiniteMap(): boolean { return true }
+  protected getMapStyle(): MapStyle { return 'grass' }
 
   /** Returns the biome zone (0-4) for a world pixel position. */
   public getZone(px: number, py: number): number {
@@ -1781,7 +1794,7 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     if (this.gameOver) return
-
+    try {
     // Clamp delta to 100ms to prevent massive accumulated damage from lag spikes
     // or tab-switch resumption. A spike of 1000ms × 30 enemies = insta-death.
     const dt = Math.min(delta, 100)
@@ -1880,6 +1893,9 @@ export class GameScene extends Phaser.Scene {
         this._networkAdapter.drawRemotePlayerHpBars(this.enemyHpBars)
       }
     }
+    } catch (err) {
+      console.error('[GameScene] update error:', err)
+    }
   }
 
 
@@ -1920,12 +1936,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   shutdown() {
+    // Kill ALL tweens + timers to prevent stale callbacks on restart
+    this.tweens.killAll()
+    this.time.removeAllEvents()
+    // Remove only custom game events (NOT removeAllListeners — that nukes Phaser internals)
     this.events.off('enemy-died')
     this.events.off('magnet-activated')
     this.events.off('player-levelup')
     this.events.off('player-died')
     this.events.off('claws-incoming')
     this.events.off('claws-spawn')
+    this.events.off('update')  // clears arrow/fireball per-frame listeners
+    // Destroy all enemies (and their arrow/fireball cleanup handlers)
+    if (this.enemies) {
+      for (const e of this.enemies.getChildren()) {
+        if (e.active) e.destroy()
+      }
+    }
     // Cancel Sifra tutorial tweens/timers (NPC, aura, proximity)
     this._sifraAuraTween?.stop(); this._sifraAuraTween = null
     this._sifraAuraTimer?.remove(); this._sifraAuraTimer = null

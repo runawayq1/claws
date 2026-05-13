@@ -152,6 +152,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private activeLockedHint: Phaser.GameObjects.Text | null = null
   private playerName = ''
   private popupRoot: Phaser.GameObjects.Container | null = null
+  private selectedMap: 'GameScene' | 'UndeadMapScene' = 'GameScene'
   private popupKeyboardHandler: ((ev: KeyboardEvent) => void) | null = null
   private popupTracerTween: Phaser.Tweens.Tween | null = null
   private popupPlayTracerTween: Phaser.Tweens.Tween | null = null
@@ -659,8 +660,25 @@ export class HeroSelectScene extends Phaser.Scene {
       },
     })
 
+    // Map toggle button — next to BACK, switches between Grasslands / Undead
+    const mapBtnX = compact ? 90 : 120
+    const mapBtnY = compact ? height - 22 : height * 0.92
+    const mapBtn = makeCircleButton(this, {
+      x: mapBtnX,
+      y: mapBtnY,
+      radius: compact ? 13 : 16,
+      icon: '☠',
+      label: this.selectedMap === 'GameScene' ? 'GRASS' : 'UNDEAD',
+      onClick: () => {
+        this.selectedMap = this.selectedMap === 'GameScene' ? 'UndeadMapScene' : 'GameScene'
+        const isUndead = this.selectedMap === 'UndeadMapScene'
+        mapBtn.iconText.setText(isUndead ? '🌿' : '☠')
+        if (mapBtn.labelText) mapBtn.labelText.setText(isUndead ? 'UNDEAD' : 'GRASS')
+      },
+    })
+
     // Back button fades in last at 600ms
-    const backObjs = [backBtn.graphics, backBtn.iconText, backBtn.labelText].filter(Boolean)
+    const backObjs = [backBtn.graphics, backBtn.iconText, backBtn.labelText, mapBtn.graphics, mapBtn.iconText, mapBtn.labelText].filter(Boolean)
     for (const o of backObjs) (o as any).setAlpha(0)
     this.tweens.add({
       targets: backObjs, alpha: 1,
@@ -1409,11 +1427,14 @@ export class HeroSelectScene extends Phaser.Scene {
     }
     drawPlayBg(false, false)
     const playLabel = this.add.text(playX + playW / 2, playY + playH / 2, 'PLAY', {
-      fontFamily: gameFont(), fontSize: compact ? '14px' : '17px', color: '#4a6b55',
+      fontFamily: gameFont(), fontSize: compact ? '14px' : '17px', color: '#6a9b75',
       fontStyle: 'bold',
     }).setOrigin(0.5)
+    // Ensure PLAY label + zone render above the glow pulse ring
+    playBg.setDepth(1)
+    playLabel.setDepth(2)
     const playZone = this.add.zone(playX + playW / 2, playY + playH / 2, playW, playH)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({ useHandCursor: true }).setDepth(3)
     playZone.on('pointerover', () => { if (chosenBranchName) drawPlayBg(true, true) })
     playZone.on('pointerout',  () => { if (chosenBranchName) drawPlayBg(true, false) })
     playZone.on('pointerdown', () => {
@@ -1449,7 +1470,7 @@ export class HeroSelectScene extends Phaser.Scene {
       this.cameras.main.flash(200, 255, 255, 255, false, (_c: Phaser.Cameras.Scene2D.Camera, progress: number) => {
         if (progress >= 1) {
           this.scene.start('LoadingScene', {
-            hero: hero.type, map: 'GameScene',
+            hero: hero.type, map: this.selectedMap,
             playerName: this.playerName,
             startingBranch: branchPicked,
           })
@@ -1485,7 +1506,7 @@ export class HeroSelectScene extends Phaser.Scene {
       this.closeHeroPopup()
     })
     body.add([backBg, backLabel, backZone])
-    stagger([playBg, playLabel, backBg, backLabel], 640, 240)
+    // Buttons always visible (no stagger — avoids alpha conflicts during hero cycling)
 
     // ── Stance card redraw (horizontal cards, stacked vertically in right column) ──
     const redrawCard = (i: number, hovered: boolean) => {

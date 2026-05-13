@@ -10,15 +10,32 @@ server/dist/
 .env.local
 .env.*.local
 
-# Claude Code / MCP config
+# Claude Code / MCP / AI tooling
 .mcp.json
 .claude/
 .agents/
+.cursor/
+.aider*
 skills-lock.json
 CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.claude-*
+claude-*.log
 
 # Editor state
 .obsidian/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docs & generated reports
+docs/
+graphify-out/
+GRAPH_REPORT.md
+*.session.md
 
 # Test artifacts
 test-results/

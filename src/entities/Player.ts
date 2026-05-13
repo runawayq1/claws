@@ -979,6 +979,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       })
     }
     // Huntress melee alt anim (Attack2, 5 frames)
+    if (scene.textures.exists('huntress_attack') && !scene.anims.exists('huntress_attack')) {
+      scene.anims.create({
+        key: 'huntress_attack',
+        frames: scene.anims.generateFrameNumbers('huntress_attack', { start: 0, end: 4 }),
+        frameRate: 14, repeat: 0,
+      })
+    }
     if (scene.textures.exists('huntress_attack2') && !scene.anims.exists('huntress_attack2')) {
       scene.anims.create({
         key: 'huntress_attack2',
@@ -1668,6 +1675,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.huntressMeleeCombo = !this.huntressMeleeCombo
             const key = this.huntressMeleeCombo ? 'huntress_attack2' : `${this.animPrefix}_attack`
             if (this.currentAnim !== key) { this.currentAnim = key; this.play(key) }
+            // Reset isAttacking when attack anim finishes so idle/run resumes
+            this.once(`animationcomplete-${key}`, () => { this.isAttacking = false })
+          } else {
+            this.isAttacking = false
           }
           this.attackHuntressMelee(enemies)
         } else {

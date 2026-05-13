@@ -8,16 +8,6 @@ export function attackHuntressMelee(p: Player, enemies: Phaser.Physics.Arcade.Gr
   const dmgRatio = Math.min(p.damage / 18, 4)
   const slashTint = dmgRatio > 2.5 ? 0xffffff : dmgRatio > 1.5 ? 0x7bed9f : 0x2ecc71
 
-  // Stab VFX — short line in facing direction
-  const stabAngle = p.flipX ? Math.PI : 0
-  const stabX = p.cx + Math.cos(stabAngle) * 25
-  const stabY = p.cy + Math.sin(stabAngle) * 25
-  const stab = p.scene.add.rectangle(stabX, stabY, 20, 3, slashTint).setDepth(10).setRotation(stabAngle)
-  p.scene.tweens.add({
-    targets: stab, alpha: 0, scaleX: 2, duration: 150,
-    onComplete: () => stab.destroy(),
-  })
-
   for (const e of enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
     if (!e.active) continue
     if (Phaser.Math.Distance.Between(p.cx, p.cy, e.x, e.y) <= hitRadius) {

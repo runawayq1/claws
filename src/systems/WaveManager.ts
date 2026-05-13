@@ -9,8 +9,10 @@ import BaseEnemy from '../entities/BaseEnemy'
 import { Orc3 } from '../entities/Orc3'
 import { Orc0 } from '../entities/Grunt'
 import { Archer } from '../entities/Archer'
+import { DarkBat } from '../entities/DarkBat'
+import { FlyingDemon } from '../entities/FlyingDemon'
 
-type EnemyCtor = new (scene: Phaser.Scene, x: number, y: number, player: Player, tier: number) => Orc0 | Orc1 | Orc2 | Orc3 | FlyingEye | Archer
+type EnemyCtor = new (scene: Phaser.Scene, x: number, y: number, player: Player, tier: number) => Orc0 | Orc1 | Orc2 | Orc3 | FlyingEye | Archer | DarkBat | FlyingDemon
 
 interface SpawnEntry { factory: EnemyCtor; weight: number }
 
@@ -46,6 +48,31 @@ for (const [zone, entries] of Object.entries(ZONE_SPAWNS)) {
   ZONE_SPAWN_TOTALS[Number(zone)] = entries.reduce((s, e) => s + e.weight, 0)
 }
 
+// Undead map spawn tables — DarkBat replaces FlyingEye, FlyingDemon added as ranged threat
+const UNDEAD_ZONE_SPAWNS: Record<number, SpawnEntry[]> = {
+  0: [{ factory: Orc0 as unknown as EnemyCtor, weight: 50 }, { factory: Orc1 as unknown as EnemyCtor, weight: 35 }, { factory: DarkBat as unknown as EnemyCtor, weight: 15 }],
+  1: [{ factory: Orc0 as unknown as EnemyCtor, weight: 25 }, { factory: Orc1 as unknown as EnemyCtor, weight: 30 }, { factory: Orc2 as unknown as EnemyCtor, weight: 15 }, { factory: DarkBat as unknown as EnemyCtor, weight: 20 }, { factory: FlyingDemon as unknown as EnemyCtor, weight: 10 }],
+  2: [{ factory: Orc2 as unknown as EnemyCtor, weight: 20 }, { factory: Orc3 as unknown as EnemyCtor, weight: 25 }, { factory: DarkBat as unknown as EnemyCtor, weight: 25 }, { factory: FlyingDemon as unknown as EnemyCtor, weight: 20 }, { factory: Archer as unknown as EnemyCtor, weight: 10 }],
+  3: [{ factory: Orc3 as unknown as EnemyCtor, weight: 30 }, { factory: DarkBat as unknown as EnemyCtor, weight: 25 }, { factory: FlyingDemon as unknown as EnemyCtor, weight: 25 }, { factory: Archer as unknown as EnemyCtor, weight: 15 }, { factory: Orc2 as unknown as EnemyCtor, weight: 5 }],
+  4: [{ factory: Orc3 as unknown as EnemyCtor, weight: 25 }, { factory: DarkBat as unknown as EnemyCtor, weight: 30 }, { factory: FlyingDemon as unknown as EnemyCtor, weight: 30 }, { factory: Archer as unknown as EnemyCtor, weight: 15 }],
+}
+
+// Pre-filtered undead pools for early waves (no Archer, no FlyingDemon)
+const UNDEAD_ZONE_SPAWNS_EARLY: Record<number, SpawnEntry[]> = {}
+for (const [zone, entries] of Object.entries(UNDEAD_ZONE_SPAWNS)) {
+  UNDEAD_ZONE_SPAWNS_EARLY[Number(zone)] = entries.filter(e =>
+    e.factory !== (Archer as unknown as EnemyCtor) && e.factory !== (FlyingDemon as unknown as EnemyCtor)
+  )
+}
+const UNDEAD_ZONE_SPAWN_TOTALS_EARLY: Record<number, number> = {}
+for (const [zone, entries] of Object.entries(UNDEAD_ZONE_SPAWNS_EARLY)) {
+  UNDEAD_ZONE_SPAWN_TOTALS_EARLY[Number(zone)] = entries.reduce((s, e) => s + e.weight, 0)
+}
+const UNDEAD_ZONE_SPAWN_TOTALS: Record<number, number> = {}
+for (const [zone, entries] of Object.entries(UNDEAD_ZONE_SPAWNS)) {
+  UNDEAD_ZONE_SPAWN_TOTALS[Number(zone)] = entries.reduce((s, e) => s + e.weight, 0)
+}
+
 function pickWeighted(entries: SpawnEntry[], total: number): EnemyCtor {
   let roll = Math.random() * total
   for (const entry of entries) {
@@ -68,12 +95,14 @@ export class WaveManager {
   currentWave = 0
   /** Tracked active enemy count — avoids O(n) countActive() in tick(). */
   private _aliveCount = 0
+  private isUndead: boolean
 
   constructor(scene: Phaser.Scene, players: Player[], enemies: Phaser.Physics.Arcade.Group) {
     this.scene = scene
     this.players = players
     this.player = players[0]
     this.enemies = enemies
+    this.isUndead = scene.scene.key === 'UndeadMapScene'
   }
 
   start() {
@@ -167,33 +196,51 @@ export class WaveManager {
 
     const zone: number = Math.min((this.scene as any).getZone(x, y) as number, 4)
     // Use pre-filtered pool (no Archer) until wave unlock
-    const useEarly = this.currentWave < ARCHER_MIN_WAVE
-    const spawnTable = useEarly
-      ? (ZONE_SPAWNS_EARLY[zone] ?? ZONE_SPAWNS_EARLY[4])
-      : (ZONE_SPAWNS[zone] ?? ZONE_SPAWNS[4])
-    const spawnTotal = useEarly
-      ? (ZONE_SPAWN_TOTALS_EARLY[zone] ?? ZONE_SPAWN_TOTALS_EARLY[4])
-      : (ZONE_SPAWN_TOTALS[zone] ?? ZONE_SPAWN_TOTALS[4])
+    // Undead: FlyingDemon from wave 2 (~30s); grasslands: Archer from wave 5
+    const rangedMinWave = this.isUndead ? 2 : ARCHER_MIN_WAVE
+    const useEarly = this.currentWave < rangedMinWave
+    let spawnTable: SpawnEntry[]
+    let spawnTotal: number
+    if (this.isUndead) {
+      spawnTable = useEarly
+        ? (UNDEAD_ZONE_SPAWNS_EARLY[zone] ?? UNDEAD_ZONE_SPAWNS_EARLY[4])
+        : (UNDEAD_ZONE_SPAWNS[zone] ?? UNDEAD_ZONE_SPAWNS[4])
+      spawnTotal = useEarly
+        ? (UNDEAD_ZONE_SPAWN_TOTALS_EARLY[zone] ?? UNDEAD_ZONE_SPAWN_TOTALS_EARLY[4])
+        : (UNDEAD_ZONE_SPAWN_TOTALS[zone] ?? UNDEAD_ZONE_SPAWN_TOTALS[4])
+    } else {
+      spawnTable = useEarly
+        ? (ZONE_SPAWNS_EARLY[zone] ?? ZONE_SPAWNS_EARLY[4])
+        : (ZONE_SPAWNS[zone] ?? ZONE_SPAWNS[4])
+      spawnTotal = useEarly
+        ? (ZONE_SPAWN_TOTALS_EARLY[zone] ?? ZONE_SPAWN_TOTALS_EARLY[4])
+        : (ZONE_SPAWN_TOTALS[zone] ?? ZONE_SPAWN_TOTALS[4])
+    }
     let Factory = pickWeighted(spawnTable, spawnTotal)
 
-    // Archer cap — max 5 archers near the player at any time to prevent barrage spam
-    if (Factory === (Archer as unknown as EnemyCtor)) {
-      let archerCount = 0
+    // Ranged enemy cap — max 5 archers/demons near the player to prevent barrage spam
+    const isRangedFactory = Factory === (Archer as unknown as EnemyCtor)
+      || Factory === (FlyingDemon as unknown as EnemyCtor)
+    if (isRangedFactory) {
+      let rangedCount = 0
       const px = this.player.x, py = this.player.y
       for (const e of this.enemies.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
         if (!e.active) continue
-        if ((e as any).constructor?.name === 'Archer' && Phaser.Math.Distance.Between(px, py, e.x, e.y) < 500) {
-          archerCount++
+        const name = (e as any).constructor?.name
+        if ((name === 'Archer' || name === 'FlyingDemon') && Phaser.Math.Distance.Between(px, py, e.x, e.y) < 500) {
+          rangedCount++
         }
       }
-      if (archerCount >= 5) {
-        // Re-roll as a non-Archer
-        const earlyTable = ZONE_SPAWNS_EARLY[zone] ?? ZONE_SPAWNS_EARLY[4]
-        const earlyTotal = ZONE_SPAWN_TOTALS_EARLY[zone] ?? ZONE_SPAWN_TOTALS_EARLY[4]
+      if (rangedCount >= 5) {
+        const earlyTable = this.isUndead
+          ? (UNDEAD_ZONE_SPAWNS_EARLY[zone] ?? UNDEAD_ZONE_SPAWNS_EARLY[4])
+          : (ZONE_SPAWNS_EARLY[zone] ?? ZONE_SPAWNS_EARLY[4])
+        const earlyTotal = this.isUndead
+          ? (UNDEAD_ZONE_SPAWN_TOTALS_EARLY[zone] ?? UNDEAD_ZONE_SPAWN_TOTALS_EARLY[4])
+          : (ZONE_SPAWN_TOTALS_EARLY[zone] ?? ZONE_SPAWN_TOTALS_EARLY[4])
         Factory = pickWeighted(earlyTable, earlyTotal)
       }
     }
-
     const mob = new Factory(this.scene, x, y, this.player, tier)
     mob.players = this.players
 
